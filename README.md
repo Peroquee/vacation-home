@@ -60,17 +60,17 @@ that Windows checkouts agree with `.editorconfig` and Prettier.
 
 ## Troubleshooting
 
-### `next build` fails with "An Application Control policy has blocked this file"
+### "An Application Control policy has blocked this file"
 
 Windows Smart App Control blocks Next's unsigned native binary
-(`@next/swc-win32-x64-msvc`), and Turbopack has no WASM fallback, so
-`npm run build` cannot run. Either build through webpack, which does fall back
-to WASM:
+(`@next/swc-win32-x64-msvc`). Turbopack has no WASM fallback, so neither
+`npm run dev` nor `npm run build` can run. Webpack does fall back to WASM:
 
 ```bash
+npx next dev --webpack
 npx next build --webpack
 ```
 
-or develop inside the Docker environment, which avoids the host policy
+Or develop inside the Docker environment, which avoids the host policy
 entirely. The same policy will block Prisma's native query engine, so Docker is
 the more durable answer.

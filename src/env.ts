@@ -16,6 +16,8 @@
  */
 import { z } from "zod";
 
+import { EnvValidationError } from "./env-error";
+
 const envSchema = z.object({
   /** PostgreSQL connection string used by Prisma. */
   DATABASE_URL: z.url({
@@ -47,11 +49,10 @@ function loadEnv(): Env {
       .map((issue) => `  ${issue.path.join(".")}: ${issue.message}`)
       .join("\n");
 
-    // Thrown rather than `console.error` followed by `process.exit(1)`: an
-    // uncaught throw reaches stderr synchronously, so the diagnostic cannot be
-    // lost when stderr is a pipe (CI logs, `docker build`), and it works in the
-    // Edge runtime, where `process.exit` does not exist.
-    throw new Error(
+    // Thrown rather than written and exited here: this module has no business
+    // deciding how the process dies, and throwing keeps it usable from any
+    // runtime. src/instrumentation.ts turns this into a clean boot failure.
+    throw new EnvValidationError(
       `Invalid environment configuration:\n\n${problems}\n\n` +
         `Copy .env.example to .env and fill in the missing values.`,
     );
