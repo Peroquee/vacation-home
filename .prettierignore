@@ -5,3 +5,7 @@ coverage/
 node_modules/
 package-lock.json
 next-env.d.ts
+
+# Issue seed data, imported as-is. Not project source, and reformatting it
+# would make it diverge from the file the importer consumes.
+gitlab-issues.yaml
