@@ -1,0 +1,1291 @@
+# Vacation Rental Manager — GitLab issue seed file
+# Format: consumed by an agent that creates labels, milestones and issues via the GitLab REST API.
+
+meta:
+  project: "vacation-rental-manager"
+  stack: "Next.js (App Router) + TypeScript, PostgreSQL + Prisma, Tailwind + shadcn/ui, Auth.js (Google OAuth), Recharts, Docker"
+  currency_handling: "integer minor units + explicit currency code"
+
+agent_instructions: |
+  Execute in this order against the GitLab API. PROJECT_ID and a token with `api` scope are required.
+
+  1. LABELS — for each entry in `labels`:
+     POST /projects/:id/labels  {name, color, description}
+     A 409 (already exists) is not an error; skip and continue.
+
+  2. MILESTONES — for each entry in `milestones`:
+     GET /projects/:id/milestones?title=<title> first; if empty,
+     POST /projects/:id/milestones {title, description}
+     Keep a map title -> milestone_id.
+
+  3. ISSUES — iterate `issues` IN THE ORDER GIVEN (it is dependency-sorted):
+     POST /projects/:id/issues
+       {
+         title:        <title>,
+         description:  <description>,
+         labels:       <labels joined by ",">,
+         milestone_id: <resolved from milestone title>,
+         weight:       <weight>
+       }
+     Record the returned `iid` in a map keyed by the issue's `key` field.
+
+  4. LINKS — second pass, after all issues exist. For each issue with `depends_on`:
+     For every dependency key D:
+       POST /projects/:id/issues/:iid/links
+         { target_project_id: <PROJECT_ID>, target_issue_iid: <iid of D>, link_type: "is_blocked_by" }
+     If the instance rejects `link_type` (Free tier), fall back to appending a line
+     "Blocked by: #<iid>, #<iid>" to the issue description via PUT /projects/:id/issues/:iid.
+
+  5. Write a `created-issues.json` mapping {key: iid} to disk so re-runs are idempotent:
+     on re-run, skip any key already present in that file.
+
+  Do not invent issues, do not merge issues, do not reword titles.
+
+labels:
+  - name: "type::feature"
+    color: "#1f75cb"
+    description: "New user-facing capability"
+  - name: "type::chore"
+    color: "#666666"
+    description: "Tooling, config, infrastructure"
+  - name: "type::docs"
+    color: "#8e44ad"
+    description: "Documentation"
+  - name: "area::frontend"
+    color: "#009966"
+    description: "UI and client-side work"
+  - name: "area::backend"
+    color: "#d9534f"
+    description: "API, domain logic, database"
+  - name: "area::infra"
+    color: "#e8a33d"
+    description: "CI/CD, deployment, environments"
+  - name: "area::integration"
+    color: "#5843ad"
+    description: "Third-party services (Google Calendar)"
+  - name: "priority::high"
+    color: "#cc0033"
+    description: "Blocks the critical path"
+  - name: "priority::medium"
+    color: "#ed9121"
+    description: "Needed for a complete product"
+  - name: "priority::low"
+    color: "#95a5a6"
+    description: "Nice to have"
+  - name: "scope::mvp"
+    color: "#217645"
+    description: "Required for first usable release"
+  - name: "scope::post-mvp"
+    color: "#a8a8a8"
+    description: "Deliberately deferred"
+
+milestones:
+  - title: "M0 — Foundation"
+    description: "Repository, CI, database, authentication and application shell."
+  - title: "M1 — Core Domain"
+    description: "Properties, guests, bookings, availability rules and their CRUD surfaces."
+  - title: "M2 — Booking Calendar"
+    description: "Visual month calendar with range selection, blocks and conflict handling."
+  - title: "M3 — Google Calendar Sync"
+    description: "Two-way synchronisation between bookings and a Google Calendar."
+  - title: "M4 — Finance Module"
+    description: "Income and expense tracking tied to properties and bookings."
+  - title: "M5 — Dashboard & Analytics"
+    description: "Aggregated KPIs and charts over bookings and transactions."
+  - title: "M6 — Hardening & Release"
+    description: "Accessibility, i18n, security, monitoring, deployment and documentation."
+
+issues:
+
+  # ---------------------------------------------------------------- M0
+
+  - key: project-init
+    title: "Initialise Next.js + TypeScript project with linting and formatting"
+    milestone: "M0 — Foundation"
+    labels: ["type::chore", "area::infra", "priority::high", "scope::mvp"]
+    weight: 2
+    depends_on: []
+    description: |
+      ## Context
+      Bootstrap the repository so every later issue has a consistent starting point.
+
+      ## Tasks
+      - Create a Next.js App Router project with TypeScript in strict mode.
+      - Add ESLint (with the Next.js config) and Prettier, plus an `npm run lint` and `npm run format` script.
+      - Add a pre-commit hook (husky + lint-staged) that runs lint and format on staged files.
+      - Add `.editorconfig` and a `.nvmrc` pinning the Node version.
+
+      ## Acceptance criteria
+      - `npm run lint`, `npm run typecheck` and `npm run build` all pass on a clean checkout.
+      - Committing a badly formatted file is auto-corrected or rejected by the hook.
+
+  - key: docker-dev-env
+    title: "Docker Compose development environment with PostgreSQL"
+    milestone: "M0 — Foundation"
+    labels: ["type::chore", "area::infra", "priority::high", "scope::mvp"]
+    weight: 2
+    depends_on: [project-init]
+    description: |
+      ## Context
+      Everyone (and CI) should run the same Postgres version without local installs.
+
+      ## Tasks
+      - `docker-compose.yml` with a `db` service (PostgreSQL 16, named volume) and an `app` service for the dev server.
+      - Expose the database on a non-default host port to avoid clashing with local installs.
+      - Document `docker compose up` in the README.
+
+      ## Acceptance criteria
+      - `docker compose up` starts the app and a persistent database from a clean machine.
+      - Stopping and restarting the stack preserves database contents.
+
+  - key: env-config
+    title: "Typed environment variable loading and validation"
+    milestone: "M0 — Foundation"
+    labels: ["type::chore", "area::backend", "priority::high", "scope::mvp"]
+    weight: 1
+    depends_on: [project-init]
+    description: |
+      ## Context
+      Missing secrets should fail loudly at boot, not at the first Google API call.
+
+      ## Tasks
+      - Define a zod schema for all env vars (database URL, auth secret, Google client id/secret, app URL).
+      - Export a typed `env` object; import it everywhere instead of `process.env`.
+      - Commit a `.env.example` with every key documented and no real values.
+
+      ## Acceptance criteria
+      - Booting with a missing or malformed variable prints a readable error naming the variable and exits.
+      - No direct `process.env` reads remain outside the config module.
+
+  - key: prisma-setup
+    title: "Set up Prisma with migration workflow"
+    milestone: "M0 — Foundation"
+    labels: ["type::chore", "area::backend", "priority::high", "scope::mvp"]
+    weight: 2
+    depends_on: [docker-dev-env, env-config]
+    description: |
+      ## Context
+      All later data-model issues depend on a working migration pipeline.
+
+      ## Tasks
+      - Install Prisma, configure the Postgres datasource, generate the client.
+      - Add scripts for `migrate:dev`, `migrate:deploy` and `studio`.
+      - Create a singleton Prisma client that survives Next.js hot reload.
+
+      ## Acceptance criteria
+      - A trivial model can be created, migrated and queried from a route handler.
+      - Migration files are committed and `migrate:deploy` runs cleanly against an empty database.
+
+  - key: ci-pipeline
+    title: "GitLab CI pipeline: lint, typecheck, test, build"
+    milestone: "M0 — Foundation"
+    labels: ["type::chore", "area::infra", "priority::high", "scope::mvp"]
+    weight: 2
+    depends_on: [project-init]
+    description: |
+      ## Context
+      Catch breakage before merge; the pipeline is later extended to deploy.
+
+      ## Tasks
+      - `.gitlab-ci.yml` with stages: install (cached node_modules), quality, test, build.
+      - Cache the npm store keyed on the lockfile hash.
+      - Run the pipeline on merge requests and on the default branch.
+
+      ## Acceptance criteria
+      - A merge request with a lint error or type error shows a failed pipeline.
+      - A green pipeline completes in under five minutes on cache hit.
+
+  - key: test-infra
+    title: "Testing infrastructure: unit tests and end-to-end harness"
+    milestone: "M0 — Foundation"
+    labels: ["type::chore", "area::infra", "priority::medium", "scope::mvp"]
+    weight: 2
+    depends_on: [ci-pipeline, prisma-setup]
+    description: |
+      ## Context
+      Availability and sync logic are the parts most likely to break silently; they need tests from the start.
+
+      ## Tasks
+      - Configure Vitest for unit tests with a path alias matching the app.
+      - Configure Playwright for end-to-end tests against a disposable test database.
+      - Add a sample test of each kind and wire both into CI.
+
+      ## Acceptance criteria
+      - `npm test` and `npm run test:e2e` pass locally and in CI.
+      - The e2e run resets the test database between runs.
+
+  - key: auth-google
+    title: "Google OAuth authentication with protected routes"
+    milestone: "M0 — Foundation"
+    labels: ["type::feature", "area::backend", "priority::high", "scope::mvp"]
+    weight: 3
+    depends_on: [prisma-setup, env-config]
+    description: |
+      ## Context
+      Login uses the same Google OAuth client that will later request Calendar scopes, so set it up with that in mind.
+
+      ## Tasks
+      - Add Auth.js with the Google provider and the Prisma adapter.
+      - Persist accounts, sessions and refresh tokens; request `offline` access.
+      - Restrict sign-in to an allow-list of email addresses from configuration.
+      - Add middleware redirecting unauthenticated requests to the sign-in page.
+
+      ## Acceptance criteria
+      - An allow-listed Google account can sign in and out; a non-listed account is rejected with a clear message.
+      - Every route except the sign-in page requires a session.
+      - A refresh token is stored for the signed-in account.
+
+  - key: app-shell
+    title: "Application shell: layout, navigation and theme"
+    milestone: "M0 — Foundation"
+    labels: ["type::feature", "area::frontend", "priority::high", "scope::mvp"]
+    weight: 3
+    depends_on: [project-init]
+    description: |
+      ## Context
+      A single consistent frame for every page: this is where the "intuitive interface" requirement starts.
+
+      ## Tasks
+      - Install Tailwind and shadcn/ui; define the colour palette, typography scale and spacing tokens.
+      - Build a responsive shell: sidebar navigation on desktop collapsing to a bottom or drawer nav on mobile.
+      - Add navigation entries for Calendar, Bookings, Finance, Dashboard, Settings.
+      - Include the signed-in user's avatar and a sign-out action.
+
+      ## Acceptance criteria
+      - The shell renders correctly at 375px, 768px and 1440px widths.
+      - The active navigation item is visually marked.
+      - Colours and fonts come from tokens, not from hard-coded values in components.
+
+  - key: ui-primitives
+    title: "Shared UI primitives and state components"
+    milestone: "M0 — Foundation"
+    labels: ["type::feature", "area::frontend", "priority::medium", "scope::mvp"]
+    weight: 2
+    depends_on: [app-shell]
+    description: |
+      ## Context
+      Building these once prevents every feature page from inventing its own empty state.
+
+      ## Tasks
+      - Page header, card, data table, modal/sheet, confirmation dialog.
+      - Loading skeletons, empty state and error state components.
+      - A toast system for success and failure feedback.
+      - Money and date formatting helpers respecting the configured locale.
+
+      ## Acceptance criteria
+      - Components are documented with usage examples in the repository.
+      - Later feature issues use these primitives rather than bespoke markup.
+
+  # ---------------------------------------------------------------- M1
+
+  - key: model-property
+    title: "Data model and CRUD API for properties"
+    milestone: "M1 — Core Domain"
+    labels: ["type::feature", "area::backend", "priority::high", "scope::mvp"]
+    weight: 2
+    depends_on: [prisma-setup]
+    description: |
+      ## Context
+      Everything else hangs off a property, even in a single-property setup.
+
+      ## Tasks
+      - Model: id, name, address, timezone, currency, default nightly rate, default cleaning fee, colour, archived flag.
+      - Migration plus create/read/update/archive endpoints with zod-validated input.
+      - Prevent deletion of a property that has bookings; archive instead.
+
+      ## Acceptance criteria
+      - All four operations are covered by unit tests.
+      - Invalid input returns a 422 with per-field messages.
+
+  - key: model-guest
+    title: "Data model and CRUD API for guests"
+    milestone: "M1 — Core Domain"
+    labels: ["type::feature", "area::backend", "priority::medium", "scope::mvp"]
+    weight: 2
+    depends_on: [prisma-setup]
+    description: |
+      ## Context
+      Guests are reused across repeat stays and appear in booking forms as a typeahead.
+
+      ## Tasks
+      - Model: id, name, email, phone, notes, timestamps.
+      - CRUD endpoints plus a search endpoint matching on name and email.
+      - Deduplicate on email when creating a guest inline from a booking.
+
+      ## Acceptance criteria
+      - Searching returns matches for partial, case-insensitive input.
+      - Creating a guest with an existing email returns the existing record instead of a duplicate.
+
+  - key: model-booking
+    title: "Data model for bookings"
+    milestone: "M1 — Core Domain"
+    labels: ["type::feature", "area::backend", "priority::high", "scope::mvp"]
+    weight: 3
+    depends_on: [model-property, model-guest]
+    description: |
+      ## Context
+      The central entity. Get the field set right now; migrations against live bookings are painful.
+
+      ## Tasks
+      - Model: id, propertyId, guestId, checkIn (date), checkOut (date), status (inquiry/confirmed/cancelled), source (direct/airbnb/booking.com/other), guestCount, nightlyRate, cleaningFee, totalAmount, currency, notes, timestamps.
+      - Store all money as integer minor units.
+      - Treat checkOut as exclusive (a departure day is bookable by the next guest).
+      - Index on (propertyId, checkIn, checkOut) for range queries.
+
+      ## Acceptance criteria
+      - Migration applies cleanly and the checkout-exclusive rule is documented in the schema comments.
+      - Model-level tests confirm money round-trips without precision loss.
+
+  - key: model-block
+    title: "Data model for owner blocks and external blocks"
+    milestone: "M1 — Core Domain"
+    labels: ["type::feature", "area::backend", "priority::high", "scope::mvp"]
+    weight: 2
+    depends_on: [model-property]
+    description: |
+      ## Context
+      Maintenance windows, personal use, and later the events that arrive from Google Calendar all need somewhere to live that is not a booking.
+
+      ## Tasks
+      - Model: id, propertyId, startDate, endDate, reason, origin (manual/google), externalEventId, timestamps.
+      - Blocks affect availability exactly as confirmed bookings do.
+
+      ## Acceptance criteria
+      - A block overlapping a requested range makes those dates unavailable.
+      - `origin` distinguishes manually created blocks from imported ones.
+
+  - key: availability-service
+    title: "Availability and overlap validation service"
+    milestone: "M1 — Core Domain"
+    labels: ["type::feature", "area::backend", "priority::high", "scope::mvp"]
+    weight: 3
+    depends_on: [model-booking, model-block]
+    description: |
+      ## Context
+      Single source of truth for "can this range be booked". Derived on read — no materialised availability table.
+
+      ## Tasks
+      - `isAvailable(propertyId, checkIn, checkOut, ignoreBookingId?)` returning conflicts.
+      - `getAvailability(propertyId, from, to)` returning per-date status for calendar rendering.
+      - Enforce the rule at the database level too, with an exclusion constraint on confirmed bookings.
+      - Cancelled bookings never block.
+
+      ## Acceptance criteria
+      - Unit tests cover: exact overlap, partial overlap at each end, same-day checkout/checkin (allowed), adjacent ranges (allowed), fully contained range, cancelled booking (ignored).
+      - Concurrent creation of two overlapping bookings results in exactly one success.
+
+  - key: booking-crud-api
+    title: "Booking CRUD API with availability enforcement"
+    milestone: "M1 — Core Domain"
+    labels: ["type::feature", "area::backend", "priority::high", "scope::mvp"]
+    weight: 3
+    depends_on: [availability-service]
+    description: |
+      ## Context
+      The API surface the calendar and forms sit on.
+
+      ## Tasks
+      - Create, read, update, cancel endpoints with zod validation.
+      - List endpoint with filters: property, date range, status, source, guest search; paginated.
+      - Reject overlapping ranges with a 409 naming the conflicting booking.
+      - Auto-calculate `totalAmount` from nights × rate + cleaning fee, allowing manual override.
+
+      ## Acceptance criteria
+      - Overlap rejection is tested at the API level, not only in the service.
+      - Updating a booking's dates re-runs the availability check while ignoring itself.
+
+  - key: booking-form
+    title: "Booking create and edit form"
+    milestone: "M1 — Core Domain"
+    labels: ["type::feature", "area::frontend", "priority::high", "scope::mvp"]
+    weight: 3
+    depends_on: [booking-crud-api, ui-primitives]
+    description: |
+      ## Context
+      The main data-entry surface; it must be fast for someone entering a booking off a phone call.
+
+      ## Tasks
+      - Fields: property, date range picker, guest (typeahead with inline create), guest count, rates, source, status, notes.
+      - Live-calculate nights and total as dates change; show the override control.
+      - Surface availability conflicts inline, before submit.
+      - Reuse the same form for create and edit.
+
+      ## Acceptance criteria
+      - Selecting an unavailable range shows the conflict without a round-trip to submit.
+      - The form is fully keyboard-operable and validation errors are announced to screen readers.
+
+  - key: booking-detail
+    title: "Booking detail view with status transitions"
+    milestone: "M1 — Core Domain"
+    labels: ["type::feature", "area::frontend", "priority::medium", "scope::mvp"]
+    weight: 2
+    depends_on: [booking-form]
+    description: |
+      ## Context
+      Where the owner checks a stay's facts and moves it between statuses.
+
+      ## Tasks
+      - Show stay dates, nights, guest and contact details, pricing breakdown, source, notes.
+      - Actions: confirm, cancel, edit, delete (with confirmation).
+      - Show linked finance entries and Google Calendar sync status once those exist.
+
+      ## Acceptance criteria
+      - Confirming an inquiry that now conflicts with another booking fails with a clear message.
+      - Cancelling frees the dates immediately in the calendar.
+
+  - key: booking-list
+    title: "Booking list view with filters and search"
+    milestone: "M1 — Core Domain"
+    labels: ["type::feature", "area::frontend", "priority::medium", "scope::mvp"]
+    weight: 2
+    depends_on: [booking-crud-api, ui-primitives]
+    description: |
+      ## Context
+      A calendar is bad at answering "what did we do last March"; the list view covers that.
+
+      ## Tasks
+      - Sortable table: dates, guest, property, status, source, total.
+      - Filters for property, status, source and date range; free-text guest search.
+      - Default to upcoming stays; support a past-stays toggle.
+
+      ## Acceptance criteria
+      - Filters are reflected in the URL and survive a page reload.
+      - The list is usable on a phone (card layout below the table breakpoint).
+
+  - key: property-settings
+    title: "Property settings page"
+    milestone: "M1 — Core Domain"
+    labels: ["type::feature", "area::frontend", "priority::medium", "scope::mvp"]
+    weight: 2
+    depends_on: [model-property, ui-primitives]
+    description: |
+      ## Context
+      Defaults set here (rate, cleaning fee, currency, timezone) flow into every new booking.
+
+      ## Tasks
+      - List of properties with add, edit and archive.
+      - Form for all property fields including a colour picker used by the calendar.
+      - Timezone and currency selectors from standard lists.
+
+      ## Acceptance criteria
+      - Changing a default rate affects new bookings only, never existing ones.
+      - Archived properties disappear from selectors but their history remains visible.
+
+  - key: seed-script
+    title: "Seed script with realistic demo data"
+    milestone: "M1 — Core Domain"
+    labels: ["type::chore", "area::backend", "priority::low", "scope::mvp"]
+    weight: 1
+    depends_on: [model-booking, model-block]
+    description: |
+      ## Context
+      Needed to develop the calendar and dashboard without hand-entering months of data.
+
+      ## Tasks
+      - Seed two properties, ~20 guests, ~60 bookings spread over 18 months with varied statuses and sources, plus a few blocks.
+      - Make the output deterministic with a fixed random seed.
+      - Guard the script so it refuses to run against a non-development database.
+
+      ## Acceptance criteria
+      - `npm run seed` produces a database that exercises the calendar, list and dashboard views meaningfully.
+
+  # ---------------------------------------------------------------- M2
+
+  - key: availability-api
+    title: "Availability API for calendar rendering"
+    milestone: "M2 — Booking Calendar"
+    labels: ["type::feature", "area::backend", "priority::high", "scope::mvp"]
+    weight: 2
+    depends_on: [availability-service]
+    description: |
+      ## Context
+      The calendar needs one cheap call per view, not one per day cell.
+
+      ## Tasks
+      - Endpoint returning, for a property and date window, all bookings and blocks plus a per-date availability map.
+      - Support multiple property ids in one request.
+      - Cache the response per window and invalidate on booking or block mutation.
+
+      ## Acceptance criteria
+      - A three-month window for two properties resolves in a single request.
+      - Creating a booking invalidates the cached window covering it.
+
+  - key: calendar-month-grid
+    title: "Month calendar grid with booking bars"
+    milestone: "M2 — Booking Calendar"
+    labels: ["type::feature", "area::frontend", "priority::high", "scope::mvp"]
+    weight: 5
+    depends_on: [availability-api, ui-primitives]
+    description: |
+      ## Context
+      The centrepiece of the product. Build it as a controlled component with no data fetching inside.
+
+      ## Tasks
+      - Month grid with weekday headers, correct week start for the locale, and leading/trailing days from adjacent months.
+      - Render bookings as continuous bars spanning their nights, split correctly across week rows.
+      - Half-day rendering at check-in and check-out so a turnover day reads as two stays.
+      - Colour by status and property; legend included.
+      - Previous/next/today navigation and a month picker.
+
+      ## Acceptance criteria
+      - A booking spanning a month boundary renders correctly in both months.
+      - A same-day checkout and check-in on one date is visually unambiguous.
+      - Rendering three months of seeded data stays under 100ms on a mid-range laptop.
+
+  - key: calendar-range-selection
+    title: "Drag date-range selection with live availability feedback"
+    milestone: "M2 — Booking Calendar"
+    labels: ["type::feature", "area::frontend", "priority::high", "scope::mvp"]
+    weight: 3
+    depends_on: [calendar-month-grid]
+    description: |
+      ## Context
+      "Clear date-range selection" from the brief — the single most-used interaction.
+
+      ## Tasks
+      - Click-drag on desktop and tap-start/tap-end on touch to select a range.
+      - Highlight the range while dragging; show nights count and a computed total in a floating hint.
+      - Turn the selection red and block submission if it overlaps existing bookings or blocks.
+      - Release opens the booking form pre-filled with the property and dates.
+      - Escape cancels an in-progress selection.
+
+      ## Acceptance criteria
+      - Selection works with mouse, touch and keyboard (arrow keys plus shift-extend).
+      - Dragging backwards across the start date produces a correctly ordered range.
+
+  - key: calendar-blocks-ui
+    title: "Create and manage owner blocks from the calendar"
+    milestone: "M2 — Booking Calendar"
+    labels: ["type::feature", "area::frontend", "priority::medium", "scope::mvp"]
+    weight: 2
+    depends_on: [calendar-range-selection, model-block]
+    description: |
+      ## Context
+      Maintenance and personal use need to occupy dates without pretending to be bookings.
+
+      ## Tasks
+      - On range release, offer "New booking" or "Block dates".
+      - Block creation with a reason field; visually distinct hatched rendering.
+      - Edit and delete blocks by clicking them.
+
+      ## Acceptance criteria
+      - Blocks are clearly distinguishable from bookings at a glance.
+      - Imported Google blocks are read-only in this view and say so.
+
+  - key: calendar-multi-property
+    title: "Multi-property calendar switching and combined view"
+    milestone: "M2 — Booking Calendar"
+    labels: ["type::feature", "area::frontend", "priority::medium", "scope::mvp"]
+    weight: 3
+    depends_on: [calendar-month-grid]
+    description: |
+      ## Context
+      Even one property today; the switcher costs little now and avoids a rebuild later.
+
+      ## Tasks
+      - Property selector above the calendar with an "All properties" option.
+      - In combined mode, colour bars by property and stack overlapping stays within a day cell.
+      - Persist the last selection per user.
+
+      ## Acceptance criteria
+      - With a single property configured, the selector is hidden rather than showing one useless option.
+      - Combined mode remains readable with three properties booked on the same night.
+
+  - key: calendar-mobile
+    title: "Mobile calendar and agenda view"
+    milestone: "M2 — Booking Calendar"
+    labels: ["type::feature", "area::frontend", "priority::medium", "scope::mvp"]
+    weight: 3
+    depends_on: [calendar-month-grid]
+    description: |
+      ## Context
+      Day-to-day checks happen on a phone; a squeezed desktop grid is not good enough.
+
+      ## Tasks
+      - Below the tablet breakpoint, offer a scrollable agenda list grouped by month alongside a compact month grid.
+      - Vertical swipe or infinite scroll to move through months.
+      - Tapping any entry opens the booking detail sheet.
+
+      ## Acceptance criteria
+      - Every calendar action available on desktop has a touch equivalent.
+      - No horizontal scrolling at 375px width.
+
+  - key: calendar-conflict-ux
+    title: "Conflict and error feedback in the calendar"
+    milestone: "M2 — Booking Calendar"
+    labels: ["type::feature", "area::frontend", "priority::medium", "scope::mvp"]
+    weight: 2
+    depends_on: [calendar-range-selection, booking-crud-api]
+    description: |
+      ## Context
+      The API already rejects overlaps; the user needs to understand why, and what conflicts.
+
+      ## Tasks
+      - On a 409, highlight the conflicting booking and offer to open it.
+      - Explain the checkout-exclusive rule inline when the conflict is a same-day turnover attempt.
+      - Optimistic updates roll back cleanly on failure.
+
+      ## Acceptance criteria
+      - A rejected booking attempt never leaves a phantom bar on the calendar.
+
+  - key: calendar-quick-actions
+    title: "Drag to move and resize existing bookings"
+    milestone: "M2 — Booking Calendar"
+    labels: ["type::feature", "area::frontend", "priority::low", "scope::post-mvp"]
+    weight: 3
+    depends_on: [calendar-conflict-ux]
+    description: |
+      ## Context
+      Convenient, but risky enough (accidental drags) that it should follow the stable base.
+
+      ## Tasks
+      - Drag a booking bar to shift the stay; drag its edges to extend or shorten.
+      - Show a confirmation with old and new dates before persisting.
+      - Validate against availability during the drag and forbid invalid drops.
+
+      ## Acceptance criteria
+      - An accidental one-pixel drag does not change a booking.
+      - The change is undoable via a toast action for at least ten seconds.
+
+  # ---------------------------------------------------------------- M3
+
+  - key: gcal-oauth-scopes
+    title: "Google Calendar OAuth scopes and token management"
+    milestone: "M3 — Google Calendar Sync"
+    labels: ["type::feature", "area::integration", "priority::high", "scope::mvp"]
+    weight: 3
+    depends_on: [auth-google]
+    description: |
+      ## Context
+      Extends the existing sign-in with calendar access, requested incrementally rather than at first login.
+
+      ## Tasks
+      - Add the `calendar` scope via an incremental authorisation flow triggered from settings.
+      - Store refresh tokens encrypted at rest.
+      - Implement transparent access-token refresh with a single-flight guard.
+      - Handle revoked grants by flagging the connection as disconnected.
+
+      ## Acceptance criteria
+      - Signing in does not request calendar access until the user connects a calendar.
+      - Revoking access in the Google account surfaces a "reconnect" prompt rather than silent failures.
+
+  - key: gcal-api-client
+    title: "Google Calendar API client with retry and rate limiting"
+    milestone: "M3 — Google Calendar Sync"
+    labels: ["type::feature", "area::integration", "priority::high", "scope::mvp"]
+    weight: 3
+    depends_on: [gcal-oauth-scopes]
+    description: |
+      ## Context
+      A thin wrapper keeps quota handling and error semantics in one place.
+
+      ## Tasks
+      - Wrap list/insert/update/delete for events and list for calendars.
+      - Exponential backoff with jitter on 403 rate-limit and 5xx responses.
+      - Structured logging of every call with the calendar id and event id.
+      - Map Google errors to typed application errors.
+
+      ## Acceptance criteria
+      - Unit tests with a mocked transport cover retry behaviour and give-up conditions.
+      - Quota errors never surface as unhandled exceptions.
+
+  - key: gcal-link-model
+    title: "Booking-to-event link model"
+    milestone: "M3 — Google Calendar Sync"
+    labels: ["type::feature", "area::backend", "priority::high", "scope::mvp"]
+    weight: 2
+    depends_on: [model-booking, prisma-setup]
+    description: |
+      ## Context
+      Idempotent sync requires durable identity mapping; without it, retries duplicate events.
+
+      ## Tasks
+      - Model: id, bookingId (or blockId), calendarId, googleEventId, etag, lastSyncedAt, syncState, lastError.
+      - Unique constraint on (calendarId, googleEventId).
+      - Cascade behaviour on booking deletion that still allows the remote event to be cleaned up.
+
+      ## Acceptance criteria
+      - Re-running a sync for an already-synced booking updates rather than duplicates.
+
+  - key: gcal-outbound-sync
+    title: "Outbound sync: push bookings to Google Calendar"
+    milestone: "M3 — Google Calendar Sync"
+    labels: ["type::feature", "area::integration", "priority::high", "scope::mvp"]
+    weight: 5
+    depends_on: [gcal-api-client, gcal-link-model]
+    description: |
+      ## Context
+      The first half of two-way sync, and the half that delivers most of the value.
+
+      ## Tasks
+      - On booking create/update/cancel, enqueue a sync job.
+      - Map a booking to an all-day event: title from guest and property, description with contact details and total, dates honouring checkout-exclusive semantics.
+      - Cancelled bookings delete the remote event.
+      - Mark app-created events with a private extended property so inbound sync can recognise them.
+
+      ## Acceptance criteria
+      - Creating, editing dates on, and cancelling a booking are each reflected in Google within one minute.
+      - Two rapid edits do not produce two events.
+      - Events created by the app carry the identifying extended property.
+
+  - key: gcal-settings-ui
+    title: "Sync settings interface"
+    milestone: "M3 — Google Calendar Sync"
+    labels: ["type::feature", "area::frontend", "priority::high", "scope::mvp"]
+    weight: 3
+    depends_on: [gcal-outbound-sync]
+    description: |
+      ## Context
+      The user picks which calendar to sync, per property, and needs a way to see whether it is working.
+
+      ## Tasks
+      - Connect and disconnect Google account.
+      - Per-property calendar selector listing the account's writable calendars.
+      - Toggles for outbound sync and inbound import.
+      - "Resync everything" action and a last-synced timestamp.
+
+      ## Acceptance criteria
+      - Disconnecting stops all sync jobs and states plainly that existing Google events are left untouched.
+      - The selector excludes read-only calendars.
+
+  - key: gcal-inbound-watch
+    title: "Inbound sync: push notification channel and renewal"
+    milestone: "M3 — Google Calendar Sync"
+    labels: ["type::feature", "area::integration", "priority::medium", "scope::mvp"]
+    weight: 5
+    depends_on: [gcal-outbound-sync]
+    description: |
+      ## Context
+      The second half of two-way sync. Watch channels expire, so renewal is part of the feature, not a follow-up.
+
+      ## Tasks
+      - Register a watch channel per synced calendar against a public webhook endpoint.
+      - Verify the channel token on every incoming notification and reject anything else.
+      - Store channel id, resource id and expiry; renew on a schedule before expiry.
+      - On notification, perform an incremental list using the stored sync token.
+
+      ## Acceptance criteria
+      - An event created directly in Google triggers a webhook call that is processed.
+      - An expired or invalidated sync token triggers a full resync rather than data loss.
+      - Unauthenticated calls to the webhook are rejected.
+
+  - key: gcal-inbound-import
+    title: "Inbound sync: import external events as blocks"
+    milestone: "M3 — Google Calendar Sync"
+    labels: ["type::feature", "area::integration", "priority::medium", "scope::mvp"]
+    weight: 3
+    depends_on: [gcal-inbound-watch, model-block]
+    description: |
+      ## Context
+      Events the app did not create become blocks, never bookings. This is what stops a sync loop.
+
+      ## Tasks
+      - Skip events carrying the app's extended property (they are echoes of our own writes).
+      - Create, update and delete blocks with `origin = google` from remaining all-day events.
+      - Ignore timed events shorter than a configurable threshold so ordinary meetings don't block nights.
+      - Show imported blocks as read-only in the calendar with their source named.
+
+      ## Acceptance criteria
+      - Creating a booking in the app does not produce a duplicate block on the return trip.
+      - Deleting the source event in Google removes the block.
+
+  - key: gcal-conflict-rules
+    title: "Sync conflict resolution and idempotency rules"
+    milestone: "M3 — Google Calendar Sync"
+    labels: ["type::feature", "area::integration", "priority::medium", "scope::mvp"]
+    weight: 3
+    depends_on: [gcal-inbound-import]
+    description: |
+      ## Context
+      Edits on both sides between syncs are inevitable; the resolution rule must be explicit and documented.
+
+      ## Tasks
+      - Compare etags; if the remote event changed since `lastSyncedAt`, the app's booking wins and overwrites, but the discarded remote change is logged.
+      - Detect an inbound block overlapping an existing booking and flag it for review instead of silently blocking.
+      - Document the precedence rules in the repository.
+
+      ## Acceptance criteria
+      - Simultaneous edits on both sides converge to the app's version without an infinite update loop.
+      - A conflicting inbound event produces a visible warning, not a silent state change.
+
+  - key: gcal-sync-status
+    title: "Sync status surface, error reporting and retry queue"
+    milestone: "M3 — Google Calendar Sync"
+    labels: ["type::feature", "area::frontend", "priority::medium", "scope::mvp"]
+    weight: 3
+    depends_on: [gcal-conflict-rules, gcal-settings-ui]
+    description: |
+      ## Context
+      Silent sync failure is worse than no sync — the owner would trust a stale calendar.
+
+      ## Tasks
+      - Per-booking sync badge: synced, pending, failed.
+      - A settings panel listing recent failures with the error and a manual retry.
+      - A persistent banner when sync has been failing for over an hour.
+      - Dead-letter handling after a configured number of retries.
+
+      ## Acceptance criteria
+      - Forcing an API failure produces a visible failed state and a retry that succeeds once the failure is removed.
+
+  # ---------------------------------------------------------------- M4
+
+  - key: model-transaction
+    title: "Data model for transactions and categories"
+    milestone: "M4 — Finance Module"
+    labels: ["type::feature", "area::backend", "priority::high", "scope::mvp"]
+    weight: 3
+    depends_on: [model-property, model-booking]
+    description: |
+      ## Context
+      Foundation of the income and expense tracker.
+
+      ## Tasks
+      - Transaction: id, propertyId, bookingId (nullable), type (income/expense), categoryId, amount (minor units), currency, date, description, isRecurring, timestamps.
+      - Category: id, name, type, colour, isSystem.
+      - Seed default categories: booking income, cleaning, maintenance, utilities, platform fees, supplies, insurance, taxes, other.
+      - Index on (propertyId, date) for dashboard aggregation.
+
+      ## Acceptance criteria
+      - A transaction can exist with or without a linked booking.
+      - System categories cannot be deleted, only hidden.
+
+  - key: transaction-api
+    title: "Transaction CRUD and query API"
+    milestone: "M4 — Finance Module"
+    labels: ["type::feature", "area::backend", "priority::high", "scope::mvp"]
+    weight: 2
+    depends_on: [model-transaction]
+    description: |
+      ## Context
+      Serves both the ledger view and the dashboard aggregations.
+
+      ## Tasks
+      - CRUD endpoints with validation.
+      - List with filters: property, type, category, date range, linked booking; paginated and sortable.
+      - Bulk delete for cleaning up import mistakes.
+
+      ## Acceptance criteria
+      - Filter combinations are covered by tests.
+      - Amounts are never returned as floats.
+
+  - key: category-management
+    title: "Category management interface"
+    milestone: "M4 — Finance Module"
+    labels: ["type::feature", "area::frontend", "priority::medium", "scope::mvp"]
+    weight: 2
+    depends_on: [model-transaction, ui-primitives]
+    description: |
+      ## Context
+      Everyone's expense taxonomy differs; the defaults are a starting point, not a cage.
+
+      ## Tasks
+      - List, create, edit and hide categories with a colour picker.
+      - Prevent deleting a category in use; offer reassignment instead.
+
+      ## Acceptance criteria
+      - Category colours are the ones used in the expense breakdown chart.
+      - Attempting to delete a used category offers to move its transactions elsewhere.
+
+  - key: transaction-entry
+    title: "Transaction entry form and ledger view"
+    milestone: "M4 — Finance Module"
+    labels: ["type::feature", "area::frontend", "priority::high", "scope::mvp"]
+    weight: 3
+    depends_on: [transaction-api, ui-primitives]
+    description: |
+      ## Context
+      Logging an expense should take under ten seconds or it won't get done.
+
+      ## Tasks
+      - Quick-add form: type toggle, amount, category, date (defaulting to today), property, optional booking link, description.
+      - Ledger table with running totals, filters and inline edit.
+      - Keyboard shortcut to open quick-add from anywhere.
+
+      ## Acceptance criteria
+      - Adding an expense takes at most four interactions from the ledger view.
+      - The ledger shows period totals for income, expenses and net.
+
+  - key: booking-income-automation
+    title: "Generate income transactions from confirmed bookings"
+    milestone: "M4 — Finance Module"
+    labels: ["type::feature", "area::backend", "priority::medium", "scope::mvp"]
+    weight: 3
+    depends_on: [transaction-api, booking-crud-api]
+    description: |
+      ## Context
+      Retyping every booking total into the ledger is the fastest way to make the finance module fall out of use.
+
+      ## Tasks
+      - On confirmation, create an income transaction for the accommodation total and a separate one for the cleaning fee.
+      - Keep them linked to the booking; update them if the booking's amounts change.
+      - On cancellation, delete or zero the generated entries according to a setting.
+      - Make the automation toggleable per property.
+
+      ## Acceptance criteria
+      - Generated entries are marked as auto-created and are not duplicated by repeated confirmation.
+      - Manually editing a generated entry detaches it from automation and warns the user.
+
+  - key: recurring-expenses
+    title: "Recurring expense definitions"
+    milestone: "M4 — Finance Module"
+    labels: ["type::feature", "area::backend", "priority::medium", "scope::mvp"]
+    weight: 3
+    depends_on: [transaction-api]
+    description: |
+      ## Context
+      Insurance, internet and utilities repeat monthly; entering them by hand invites gaps.
+
+      ## Tasks
+      - Model a recurring rule: amount, category, property, interval (monthly/quarterly/annual), start date, optional end date.
+      - Scheduled job materialising due transactions.
+      - Management interface listing rules with next due date, plus pause and delete.
+
+      ## Acceptance criteria
+      - A monthly rule generates exactly one transaction per period, including after a missed job run.
+      - Pausing a rule stops generation without deleting past transactions.
+
+  - key: receipt-attachments
+    title: "Receipt attachments on transactions"
+    milestone: "M4 — Finance Module"
+    labels: ["type::feature", "area::backend", "priority::low", "scope::post-mvp"]
+    weight: 3
+    depends_on: [transaction-entry]
+    description: |
+      ## Context
+      Useful at tax time; needs a storage decision, which is why it sits after the core module.
+
+      ## Tasks
+      - Upload images and PDFs to object storage or a mounted volume.
+      - Validate type and size; generate thumbnails for images.
+      - Preview and download from the transaction detail.
+
+      ## Acceptance criteria
+      - Uploads are restricted to authenticated users and served through an authorised route, never a public bucket URL.
+
+  - key: finance-import-export
+    title: "CSV import and export of transactions"
+    milestone: "M4 — Finance Module"
+    labels: ["type::feature", "area::backend", "priority::low", "scope::post-mvp"]
+    weight: 3
+    depends_on: [transaction-api]
+    description: |
+      ## Context
+      Bridges to the accountant and to whatever spreadsheet exists today.
+
+      ## Tasks
+      - Export filtered transactions to CSV with a documented column set.
+      - Import with column mapping, a preview step and per-row validation errors.
+      - Skip duplicates using a date-amount-description heuristic with user confirmation.
+
+      ## Acceptance criteria
+      - A file exported by the app re-imports without creating duplicates or losing precision.
+      - A malformed row is reported with its line number and does not abort the whole import.
+
+  # ---------------------------------------------------------------- M5
+
+  - key: analytics-service
+    title: "Financial and occupancy aggregation service"
+    milestone: "M5 — Dashboard & Analytics"
+    labels: ["type::feature", "area::backend", "priority::high", "scope::mvp"]
+    weight: 5
+    depends_on: [transaction-api, model-booking]
+    description: |
+      ## Context
+      One tested aggregation layer, so the dashboard components stay dumb.
+
+      ## Tasks
+      - Monthly series of income, expenses and net profit for a property or all properties.
+      - Expense totals grouped by category for a period.
+      - Occupancy rate: booked nights over available nights, excluding owner blocks from the denominator (make this configurable).
+      - Average nightly rate and revenue per available night.
+      - Comparison against the equivalent prior period.
+
+      ## Acceptance criteria
+      - Aggregations are unit-tested against a fixed seeded dataset with hand-checked expected values.
+      - Partial months at the range boundaries are handled without off-by-one errors.
+      - A twelve-month query over seeded data returns in under 300ms.
+
+  - key: dashboard-kpis
+    title: "Dashboard KPI cards"
+    milestone: "M5 — Dashboard & Analytics"
+    labels: ["type::feature", "area::frontend", "priority::high", "scope::mvp"]
+    weight: 2
+    depends_on: [analytics-service, ui-primitives]
+    description: |
+      ## Context
+      The five-second answer to "how is the property doing".
+
+      ## Tasks
+      - Cards for revenue, expenses, net profit, profit margin, occupancy rate and upcoming bookings.
+      - Each shows the change against the prior period with direction.
+      - Skeleton loading states.
+
+      ## Acceptance criteria
+      - Cards respect the selected date range and property filter.
+      - Zero-data periods show a neutral empty state, not "NaN" or "-100%".
+
+  - key: chart-revenue-expenses
+    title: "Monthly revenue versus expenses chart"
+    milestone: "M5 — Dashboard & Analytics"
+    labels: ["type::feature", "area::frontend", "priority::high", "scope::mvp"]
+    weight: 3
+    depends_on: [analytics-service, ui-primitives]
+    description: |
+      ## Context
+      The headline chart of the finance dashboard.
+
+      ## Tasks
+      - Grouped bars for income and expenses per month with a net-profit line overlay.
+      - Tooltip with exact formatted amounts.
+      - Responsive down to mobile width, with fewer x-axis labels rather than rotated text.
+
+      ## Acceptance criteria
+      - Months with no data render as an explicit zero, not a gap in the axis.
+      - Colours are readable in both light and dark themes and are distinguishable without relying on hue alone.
+
+  - key: chart-expense-breakdown
+    title: "Expense breakdown by category chart"
+    milestone: "M5 — Dashboard & Analytics"
+    labels: ["type::feature", "area::frontend", "priority::high", "scope::mvp"]
+    weight: 2
+    depends_on: [analytics-service, category-management]
+    description: |
+      ## Context
+      Answers "where is the money going" at a glance.
+
+      ## Tasks
+      - Donut or horizontal bar chart using each category's configured colour.
+      - Percentage and absolute value per category; group the long tail into "Other".
+      - Clicking a segment filters the ledger to that category and period.
+
+      ## Acceptance criteria
+      - Categories under a threshold share are aggregated rather than producing unreadable slivers.
+
+  - key: chart-occupancy
+    title: "Occupancy visualisation"
+    milestone: "M5 — Dashboard & Analytics"
+    labels: ["type::feature", "area::frontend", "priority::medium", "scope::mvp"]
+    weight: 3
+    depends_on: [analytics-service]
+    description: |
+      ## Context
+      Occupancy drives pricing decisions and shows seasonality that a revenue chart hides.
+
+      ## Tasks
+      - Monthly occupancy percentage as a line or area chart.
+      - A year heatmap of booked nights.
+      - Optional prior-year overlay for seasonality comparison.
+
+      ## Acceptance criteria
+      - The occupancy definition (whether blocks count as unavailable) is stated in the UI.
+
+  - key: dashboard-filters
+    title: "Dashboard date-range and property filters"
+    milestone: "M5 — Dashboard & Analytics"
+    labels: ["type::feature", "area::frontend", "priority::medium", "scope::mvp"]
+    weight: 2
+    depends_on: [dashboard-kpis, chart-revenue-expenses]
+    description: |
+      ## Context
+      Every widget must respond to one shared filter state.
+
+      ## Tasks
+      - Presets: this month, last month, year to date, last twelve months, custom range.
+      - Property selector including "All".
+      - Persist filter state in the URL.
+
+      ## Acceptance criteria
+      - Changing a filter updates every widget in one render pass without a full page reload.
+      - A shared dashboard URL reproduces the same view.
+
+  - key: dashboard-export
+    title: "Export financial report"
+    milestone: "M5 — Dashboard & Analytics"
+    labels: ["type::feature", "area::backend", "priority::low", "scope::post-mvp"]
+    weight: 3
+    depends_on: [analytics-service, dashboard-filters]
+    description: |
+      ## Context
+      For the accountant and for annual tax preparation.
+
+      ## Tasks
+      - Generate a PDF summary for the selected period: KPIs, charts, category totals.
+      - Also offer a CSV of the underlying transactions.
+
+      ## Acceptance criteria
+      - The PDF matches the on-screen figures exactly for the same filter state.
+
+  # ---------------------------------------------------------------- M6
+
+  - key: a11y-pass
+    title: "Accessibility audit and fixes"
+    milestone: "M6 — Hardening & Release"
+    labels: ["type::chore", "area::frontend", "priority::medium", "scope::mvp"]
+    weight: 3
+    depends_on: [calendar-conflict-ux, dashboard-filters]
+    description: |
+      ## Context
+      The calendar grid is the hard part: custom drag interactions need keyboard and screen-reader equivalents.
+
+      ## Tasks
+      - Keyboard navigation and ARIA grid semantics for the calendar.
+      - Verify contrast ratios across both themes; ensure status is never conveyed by colour alone.
+      - Focus management in modals and sheets; visible focus rings throughout.
+      - Add automated axe checks to the e2e suite.
+
+      ## Acceptance criteria
+      - The full booking-creation flow is completable with keyboard only.
+      - Automated accessibility checks pass on the calendar, ledger and dashboard pages.
+
+  - key: i18n-scaffold
+    title: "Internationalisation with German and English locales"
+    milestone: "M6 — Hardening & Release"
+    labels: ["type::feature", "area::frontend", "priority::medium", "scope::mvp"]
+    weight: 3
+    depends_on: [ui-primitives]
+    description: |
+      ## Context
+      Cheaper to extract strings once than to hunt them down later.
+
+      ## Tasks
+      - Add an i18n library with locale routing or a locale cookie.
+      - Extract all user-facing strings into message catalogues; provide de and en.
+      - Localise dates, week start, number and currency formatting.
+
+      ## Acceptance criteria
+      - Switching locale changes all visible text, date formats and the calendar's first day of the week.
+      - A missing translation key fails the build rather than rendering the raw key.
+
+  - key: security-hardening
+    title: "Security hardening pass"
+    milestone: "M6 — Hardening & Release"
+    labels: ["type::chore", "area::backend", "priority::high", "scope::mvp"]
+    weight: 3
+    depends_on: [gcal-oauth-scopes, transaction-api]
+    description: |
+      ## Context
+      The app holds guest personal data and a Google refresh token; both raise the stakes.
+
+      ## Tasks
+      - Rate-limit authentication and webhook endpoints.
+      - Verify token encryption at rest and rotate the encryption key without data loss.
+      - Set security headers (CSP, HSTS, frame options) and confirm CSRF protection on mutations.
+      - Ensure API responses never leak data across users or properties.
+      - Run a dependency audit in CI.
+
+      ## Acceptance criteria
+      - A documented threat checklist is reviewed with each item marked addressed or accepted.
+      - Automated tests confirm cross-account access is refused.
+
+  - key: error-monitoring
+    title: "Error tracking and structured logging"
+    milestone: "M6 — Hardening & Release"
+    labels: ["type::chore", "area::infra", "priority::medium", "scope::mvp"]
+    weight: 2
+    depends_on: [ci-pipeline]
+    description: |
+      ## Context
+      Especially for background sync jobs, which fail where nobody is watching.
+
+      ## Tasks
+      - Wire up an error tracker for client and server, with release tagging and source maps.
+      - Structured JSON logging with request ids, correlated through to sync jobs.
+      - Scrub personal data and tokens from logs and error payloads.
+
+      ## Acceptance criteria
+      - A deliberately thrown error appears in the tracker with a usable stack trace.
+      - No guest email address or OAuth token appears in any log line.
+
+  - key: backup-strategy
+    title: "Database backup and restore procedure"
+    milestone: "M6 — Hardening & Release"
+    labels: ["type::chore", "area::infra", "priority::high", "scope::mvp"]
+    weight: 2
+    depends_on: [prisma-setup]
+    description: |
+      ## Context
+      Booking data is not reconstructable from anywhere else.
+
+      ## Tasks
+      - Scheduled `pg_dump` to off-host storage with a retention policy.
+      - A documented, rehearsed restore procedure.
+      - Alert if a backup has not completed in over 48 hours.
+
+      ## Acceptance criteria
+      - A restore into a clean database has been performed and documented at least once.
+
+  - key: prod-deployment
+    title: "Production deployment"
+    milestone: "M6 — Hardening & Release"
+    labels: ["type::chore", "area::infra", "priority::high", "scope::mvp"]
+    weight: 5
+    depends_on: [ci-pipeline, security-hardening, backup-strategy]
+    description: |
+      ## Context
+      Google Calendar push notifications require a publicly reachable HTTPS endpoint, so this must land before inbound sync can be verified in the real world.
+
+      ## Tasks
+      - Multi-stage production Dockerfile with a non-root user.
+      - Reverse proxy with TLS certificates and automatic renewal.
+      - Health check and readiness endpoints; run migrations on deploy.
+      - CI deploy stage for the default branch, with a documented rollback.
+
+      ## Acceptance criteria
+      - A push to the default branch deploys automatically and the app stays reachable during the deploy.
+      - The Google webhook endpoint is reachable over HTTPS with a valid certificate.
+
+  - key: performance-pass
+    title: "Performance review and optimisation"
+    milestone: "M6 — Hardening & Release"
+    labels: ["type::chore", "area::frontend", "priority::low", "scope::post-mvp"]
+    weight: 3
+    depends_on: [prod-deployment]
+    description: |
+      ## Context
+      Worth measuring once real data volume exists rather than optimising speculatively.
+
+      ## Tasks
+      - Audit bundle size and code-split the charting library.
+      - Review slow database queries and add indexes where the plan shows sequential scans.
+      - Measure Core Web Vitals on the calendar and dashboard.
+
+      ## Acceptance criteria
+      - Calendar and dashboard reach a Lighthouse performance score above 90 on a throttled connection.
+
+  - key: user-documentation
+    title: "User and operator documentation"
+    milestone: "M6 — Hardening & Release"
+    labels: ["type::docs", "priority::medium", "scope::mvp"]
+    weight: 2
+    depends_on: [prod-deployment, gcal-sync-status]
+    description: |
+      ## Context
+      Chiefly the Google Cloud setup, which is fiddly and easy to forget.
+
+      ## Tasks
+      - README covering local setup, environment variables and deployment.
+      - Step-by-step Google Cloud project and OAuth consent screen configuration.
+      - A short user guide for the calendar, sync and finance features.
+      - Document the sync conflict rules and the occupancy definition.
+
+      ## Acceptance criteria
+      - Someone with no prior context can bring the app up locally using only the README.
+
+  - key: ical-import
+    title: "iCal feed import from booking platforms"
+    milestone: "M6 — Hardening & Release"
+    labels: ["type::feature", "area::integration", "priority::low", "scope::post-mvp"]
+    weight: 5
+    depends_on: [model-block, gcal-inbound-import]
+    description: |
+      ## Context
+      Airbnb and Booking.com publish iCal feeds; importing them prevents double bookings without a full channel-manager integration.
+
+      ## Tasks
+      - Store one or more iCal URLs per property.
+      - Poll on a schedule, parse events and create blocks with `origin` naming the platform.
+      - Also expose an outbound iCal feed of the property's availability for those platforms to consume.
+
+      ## Acceptance criteria
+      - Imported platform blocks appear in the calendar labelled with their source.
+      - The outbound feed validates against an iCal parser and reflects bookings and blocks.
