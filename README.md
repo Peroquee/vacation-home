@@ -23,9 +23,14 @@ npm run dev
 ## Configuration
 
 Every environment variable is documented in [`.env.example`](.env.example) and
-validated against a schema at boot by [`src/env.ts`](src/env.ts). A missing or
-malformed variable stops the process with a message naming it, rather than
-failing later at the first database query or Google API call.
+validated against a schema by [`src/env.ts`](src/env.ts). A missing or malformed
+variable stops the process with a message naming it, rather than failing later
+at the first database query or Google API call.
+
+Validation is triggered from [`src/instrumentation.ts`](src/instrumentation.ts),
+which Next runs once per server process. It deliberately does **not** run during
+`next build`, so building an image does not require production secrets — only
+starting the app does.
 
 `src/env.ts` is the only module permitted to read `process.env`; everything
 else imports the typed `env` object from `@/env`. An ESLint rule enforces this.
@@ -52,3 +57,20 @@ corrected as you commit rather than reviewed in a merge request.
 
 Line endings are LF everywhere, pinned by [`.gitattributes`](.gitattributes) so
 that Windows checkouts agree with `.editorconfig` and Prettier.
+
+## Troubleshooting
+
+### `next build` fails with "An Application Control policy has blocked this file"
+
+Windows Smart App Control blocks Next's unsigned native binary
+(`@next/swc-win32-x64-msvc`), and Turbopack has no WASM fallback, so
+`npm run build` cannot run. Either build through webpack, which does fall back
+to WASM:
+
+```bash
+npx next build --webpack
+```
+
+or develop inside the Docker environment, which avoids the host policy
+entirely. The same policy will block Prisma's native query engine, so Docker is
+the more durable answer.

@@ -1,14 +1,18 @@
 /**
  * Validated environment configuration.
  *
- * This is the only module allowed to read `process.env` — an ESLint rule
- * (`no-restricted-properties`) enforces that everywhere else. Every other
- * module imports the typed `env` object below, so a missing or malformed
- * variable fails loudly here at boot instead of surfacing as `undefined` at
- * the first database query or Google API call.
+ * This is the only module that reads `process.env`. An ESLint rule
+ * (`no-restricted-properties`) keeps direct reads out of the rest of the app —
+ * a guard rail rather than a proof, since an indirect read such as
+ * `const p = process; p.env.X` still slips past it.
  *
- * Server-only: these values include secrets and must never be imported from a
- * client component.
+ * Validation runs when a server process boots, via `register()` in
+ * `src/instrumentation.ts`. It deliberately does not run during `next build`,
+ * so building an image does not require production secrets.
+ *
+ * Server-side only: these are secrets. Next never inlines a variable without a
+ * `NEXT_PUBLIC_` prefix into the client bundle, so importing this from a client
+ * component produces a validation failure rather than a leak.
  */
 import { z } from "zod";
 
@@ -20,11 +24,11 @@ const envSchema = z.object({
   }),
 
   /** Signing key for Auth.js sessions. Generate one with `npx auth secret`. */
-  AUTH_SECRET: z.string().min(32, "must be at least 32 characters"),
+  AUTH_SECRET: z.string().trim().min(32, "must be at least 32 characters"),
 
   /** Google OAuth client. The same client later requests the Calendar scopes. */
-  AUTH_GOOGLE_ID: z.string().min(1, "is required"),
-  AUTH_GOOGLE_SECRET: z.string().min(1, "is required"),
+  AUTH_GOOGLE_ID: z.string().trim().min(1, "is required"),
+  AUTH_GOOGLE_SECRET: z.string().trim().min(1, "is required"),
 
   /** Public base URL of this app; OAuth redirect URIs are built from it. */
   APP_URL: z.url({
@@ -43,11 +47,14 @@ function loadEnv(): Env {
       .map((issue) => `  ${issue.path.join(".")}: ${issue.message}`)
       .join("\n");
 
-    console.error(
-      `\nInvalid environment configuration:\n\n${problems}\n\n` +
-        `Copy .env.example to .env and fill in the missing values.\n`,
+    // Thrown rather than `console.error` followed by `process.exit(1)`: an
+    // uncaught throw reaches stderr synchronously, so the diagnostic cannot be
+    // lost when stderr is a pipe (CI logs, `docker build`), and it works in the
+    // Edge runtime, where `process.exit` does not exist.
+    throw new Error(
+      `Invalid environment configuration:\n\n${problems}\n\n` +
+        `Copy .env.example to .env and fill in the missing values.`,
     );
-    process.exit(1);
   }
 
   return parsed.data;

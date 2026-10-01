@@ -12,7 +12,10 @@ const eslintConfig = defineConfig([
     rules: {
       // The environment is read and validated in exactly one module; everything
       // else imports the typed `env` object so a missing variable cannot reach
-      // production as `undefined`.
+      // production as `undefined`. Two cases legitimately need a literal read
+      // and must carry an inline disable with a reason: `process.env.NODE_ENV`,
+      // and any `process.env.NEXT_PUBLIC_*`, which Next can only inline when it
+      // appears verbatim in the source.
       "no-restricted-properties": [
         "error",
         {
