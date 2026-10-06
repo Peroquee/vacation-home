@@ -36,6 +36,8 @@ const eslintConfig = defineConfig([
   globalIgnores([
     // Default ignores of eslint-config-next:
     ".next/**",
+    // npm's download store, relocated here by CI so the cache can carry it.
+    ".npm/**",
     "out/**",
     "build/**",
     "next-env.d.ts",

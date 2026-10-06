@@ -48,6 +48,23 @@ else imports the typed `env` object from `@/env`. An ESLint rule enforces this.
 | `npm run format:check` | Prettier, check only (used by CI)   |
 | `npm run typecheck`    | `next typegen`, then `tsc --noEmit` |
 
+## Continuous integration
+
+[`.gitlab-ci.yml`](.gitlab-ci.yml) runs on merge requests and on the default
+branch; a push to a branch with no open merge request builds nothing.
+
+- `install` seeds two caches: npm's download store under a stable key, so it
+  survives a dependency bump, and `node_modules` under the `package-lock.json`
+  hash, since that tree is valid only for the lockfile that produced it.
+- `quality` runs lint, typecheck and the Prettier check as parallel jobs, so a
+  lint error and a type error are both reported instead of one masking the other.
+- `test` is wired up but empty until the suites in #44 land.
+- `build` runs a production build with no environment variables, because
+  validation happens at server boot rather than at build time.
+
+The job image is pinned to the exact Node version in [`.nvmrc`](.nvmrc), and
+`install` fails if the two ever drift apart.
+
 ## Code style
 
 Prettier owns formatting and ESLint owns correctness — `eslint-config-prettier`
