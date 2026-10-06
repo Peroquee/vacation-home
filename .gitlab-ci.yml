@@ -1,8 +1,8 @@
 # Pipeline for the Vacation Rental Manager.
 #
-# Runs on merge requests and on the default branch, and nowhere else. Without
-# the `never` fallback a push to a branch with an open MR produces two
-# pipelines (one branch, one merge request) that both consume a runner slot.
+# Two kinds of pipeline exist: merge request pipelines, and default-branch
+# pipelines after a merge. A push to a feature branch with no open merge
+# request creates nothing, because no workflow rule matches it.
 
 stages:
   - install
@@ -14,57 +14,76 @@ workflow:
   rules:
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
     - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+    # Redundant - GitLab already creates no pipeline when nothing matches - but
+    # kept so the intent is stated rather than inferred from an absence.
     - when: never
 
 variables:
-  # npm's store has to live inside the project directory for GitLab's cache to
-  # be able to carry it between jobs.
+  # npm's download store has to sit inside the project directory for GitLab's
+  # cache to carry it between jobs. It is ignored by git, ESLint and Prettier,
+  # each of which would otherwise walk it.
   npm_config_cache: "$CI_PROJECT_DIR/.npm"
   # The git hooks are a local developer convenience; installing them into a
-  # throwaway CI clone is pointless work.
+  # throwaway CI clone is wasted work.
   HUSKY: "0"
 
-# Keyed on the lockfile, so any dependency change invalidates it and an
-# unchanged lockfile reuses both the download store and the installed tree.
-.npm_cache: &npm_cache
+# Two caches, because they have different lifetimes. The download store keeps a
+# stable key so it survives a dependency bump and only the changed packages are
+# re-fetched. The installed tree is keyed on the lockfile, since it is valid
+# only for the lockfile that produced it.
+.npm_store: &npm_store
+  key: npm-store
+  paths:
+    - .npm/
+
+.node_modules: &node_modules
   key:
     files:
       - package-lock.json
   paths:
-    - .npm/
     - node_modules/
 
 default:
-  # Matches .nvmrc (24.20.0) and the `engines` floor in package.json. The
-  # glibc image rather than Alpine, because Prisma's engines land in #42.
-  image: node:24-bookworm
+  # Pinned to exactly the version .nvmrc names. `node:24-bookworm` floats to
+  # the newest 24.x and would silently drift away from local development.
+  image: node:24.20.0-bookworm
   interruptible: true
   cache:
-    <<: *npm_cache
-    policy: pull
+    - <<: *npm_store
+      policy: pull
+    - <<: *node_modules
+      policy: pull
 
 .node:
   before_script:
     # node_modules normally arrives from the cache. Reinstall only when it did
-    # not, so a cache miss degrades to a slower job rather than a failing one.
+    # not, so an evicted cache degrades to a slower job rather than a failing
+    # one. The install job re-seeds both caches on every pipeline.
     - |
       if [ ! -d node_modules ]; then
-        echo "cache miss: installing dependencies"
+        echo "cache miss - installing dependencies"
         npm ci --prefer-offline --no-audit --no-fund
       fi
 
 install:
   stage: install
+  # Not interruptible: cancelling this job part-way through its cache upload
+  # would leave a partial archive for every later job to trip over.
+  interruptible: false
   cache:
-    <<: *npm_cache
-    policy: pull-push
+    - <<: *npm_store
+      policy: pull-push
+    - <<: *node_modules
+      policy: pull-push
   script:
     - npm ci --prefer-offline --no-audit --no-fund
-    # A block scalar, because an unquoted list item containing ": " is parsed
-    # as a map rather than a command string.
+    # A block scalar, because an unquoted script item containing ": " is valid
+    # YAML but parses as a map rather than a command string.
     - |
       if [ "v$(cat .nvmrc)" != "$(node --version)" ]; then
-        echo "WARNING - image is $(node --version) but .nvmrc pins v$(cat .nvmrc)"
+        echo "Node mismatch - image is $(node --version) but .nvmrc pins v$(cat .nvmrc)"
+        echo "Bump the image in .gitlab-ci.yml and .nvmrc together."
+        exit 1
       fi
 
 lint:
@@ -89,9 +108,11 @@ test:
   stage: test
   extends: .node
   script:
-    # #44 (test-infra) adds Vitest and Playwright. Until then this is wired up
-    # but empty: --if-present exits 0 when no `test` script exists, so the
-    # stage is real and correctly ordered without implying coverage exists.
+    # Wired up but empty until #44 adds Vitest and Playwright.
+    # `npm run test --if-present` exits 0 when no `test` script exists, so the
+    # stage exists without implying coverage does. Note the stage order comes
+    # from #43; Playwright needs a built app, so #44's e2e job will have to
+    # build or run the dev server itself rather than rely on `build` below.
     - npm run test --if-present
 
 build:

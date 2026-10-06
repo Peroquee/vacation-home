@@ -42,3 +42,6 @@ next-env.d.ts
 
 # ...but the documented template is committed.
 !.env.example
+
+# npm store, relocated into the project in CI so the cache can carry it
+.npm/
