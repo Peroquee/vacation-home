@@ -1,0 +1,104 @@
+# Pipeline for the Vacation Rental Manager.
+#
+# Runs on merge requests and on the default branch, and nowhere else. Without
+# the `never` fallback a push to a branch with an open MR produces two
+# pipelines (one branch, one merge request) that both consume a runner slot.
+
+stages:
+  - install
+  - quality
+  - test
+  - build
+
+workflow:
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+    - when: never
+
+variables:
+  # npm's store has to live inside the project directory for GitLab's cache to
+  # be able to carry it between jobs.
+  npm_config_cache: "$CI_PROJECT_DIR/.npm"
+  # The git hooks are a local developer convenience; installing them into a
+  # throwaway CI clone is pointless work.
+  HUSKY: "0"
+
+# Keyed on the lockfile, so any dependency change invalidates it and an
+# unchanged lockfile reuses both the download store and the installed tree.
+.npm_cache: &npm_cache
+  key:
+    files:
+      - package-lock.json
+  paths:
+    - .npm/
+    - node_modules/
+
+default:
+  # Matches .nvmrc (24.20.0) and the `engines` floor in package.json. The
+  # glibc image rather than Alpine, because Prisma's engines land in #42.
+  image: node:24-bookworm
+  interruptible: true
+  cache:
+    <<: *npm_cache
+    policy: pull
+
+.node:
+  before_script:
+    # node_modules normally arrives from the cache. Reinstall only when it did
+    # not, so a cache miss degrades to a slower job rather than a failing one.
+    - |
+      if [ ! -d node_modules ]; then
+        echo "cache miss: installing dependencies"
+        npm ci --prefer-offline --no-audit --no-fund
+      fi
+
+install:
+  stage: install
+  cache:
+    <<: *npm_cache
+    policy: pull-push
+  script:
+    - npm ci --prefer-offline --no-audit --no-fund
+    # A block scalar, because an unquoted list item containing ": " is parsed
+    # as a map rather than a command string.
+    - |
+      if [ "v$(cat .nvmrc)" != "$(node --version)" ]; then
+        echo "WARNING - image is $(node --version) but .nvmrc pins v$(cat .nvmrc)"
+      fi
+
+lint:
+  stage: quality
+  extends: .node
+  script:
+    - npm run lint
+
+typecheck:
+  stage: quality
+  extends: .node
+  script:
+    - npm run typecheck
+
+format:
+  stage: quality
+  extends: .node
+  script:
+    - npm run format:check
+
+test:
+  stage: test
+  extends: .node
+  script:
+    # #44 (test-infra) adds Vitest and Playwright. Until then this is wired up
+    # but empty: --if-present exits 0 when no `test` script exists, so the
+    # stage is real and correctly ordered without implying coverage exists.
+    - npm run test --if-present
+
+build:
+  stage: build
+  extends: .node
+  script:
+    # No environment variables here on purpose: validation runs from
+    # src/instrumentation.ts at server boot, not at build time, so a build
+    # never needs production secrets.
+    - npm run build

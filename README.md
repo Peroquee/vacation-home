@@ -48,6 +48,14 @@ else imports the typed `env` object from `@/env`. An ESLint rule enforces this.
 | `npm run format:check` | Prettier, check only (used by CI)   |
 | `npm run typecheck`    | `next typegen`, then `tsc --noEmit` |
 
+## Continuous integration
+
+[`.gitlab-ci.yml`](.gitlab-ci.yml) runs on merge requests and on the default
+branch: `install` warms a dependency cache keyed on `package-lock.json`,
+`quality` runs lint, typecheck and the Prettier check in parallel, `test` is
+wired up for the suites in #44, and `build` runs a production build with no
+environment variables, since validation happens at boot rather than at build.
+
 ## Code style
 
 Prettier owns formatting and ESLint owns correctness — `eslint-config-prettier`
