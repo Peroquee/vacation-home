@@ -1,5 +1,9 @@
 import type { Metadata } from "next";
 
+import { AppShell } from "@/components/shell/app-shell";
+
+import "./globals.css";
+
 export const metadata: Metadata = {
   title: "Vacation Rental Manager",
   description:
@@ -9,7 +13,9 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html lang="en">
-      <body>{children}</body>
+      <body>
+        <AppShell>{children}</AppShell>
+      </body>
     </html>
   );
 }
