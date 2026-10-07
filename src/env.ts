@@ -58,6 +58,27 @@ function loadEnv(): Env {
     );
   }
 
+  // The placeholders in .env.example are valid on purpose, so that a fresh
+  // checkout can boot before Google OAuth exists. They must never reach a
+  // deployed environment: a known AUTH_SECRET means forgeable sessions.
+  if (process.env.NODE_ENV === "production") {
+    const unreplaced = Object.entries(parsed.data)
+      .filter(([, value]) => value.includes("replace-me"))
+      .map(([name]) => `  ${name}: still set to the .env.example placeholder`);
+
+    if (unreplaced.length > 0) {
+      throw new EnvValidationError(
+        [
+          "Invalid environment configuration:",
+          "",
+          ...unreplaced,
+          "",
+          "Replace the placeholder values before running in production.",
+        ].join("\n"),
+      );
+    }
+  }
+
   return parsed.data;
 }
 
