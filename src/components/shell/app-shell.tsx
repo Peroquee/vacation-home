@@ -13,8 +13,8 @@ import { getCurrentUser } from "@/lib/session";
  * the account menu. Mobile: a top bar for the brand and account, and a fixed
  * bottom bar for navigation, so the primary destinations stay thumb-reachable.
  */
-export function AppShell({ children }: { children: React.ReactNode }) {
-  const user = getCurrentUser();
+export async function AppShell({ children }: { children: React.ReactNode }) {
+  const user = await getCurrentUser();
 
   return (
     <div className="min-h-dvh">
@@ -43,7 +43,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         )}
       </header>
 
-      {/* pb-16 clears the fixed bottom bar; md:pl-64 clears the sidebar. */}
+      {/* pb-16 clears the fixed bottom bar. pl-68 is 17rem: the 16rem
+          sidebar plus a 1rem gutter, so it is deliberately not pl-64. */}
       <main className="px-4 pt-4 pb-16 md:pb-8 md:pl-68">{children}</main>
 
       <MobileNav />

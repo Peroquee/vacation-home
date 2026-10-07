@@ -16,8 +16,6 @@
  * competing mechanism.
  */
 @theme {
-  --font-sans:
-    ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   --font-mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
 
   --text-xs: 0.75rem;
@@ -48,6 +46,19 @@
 
   --shadow-card: 0 1px 2px oklch(0.24 0.01 250 / 0.06), 0 1px 3px oklch(0.24 0.01 250 / 0.1);
   --shadow-raised: 0 4px 12px oklch(0.24 0.01 250 / 0.1);
+}
+
+/*
+ * The font stack lives in :root, not in @theme, because shadcn's
+ * `@theme inline` block below declares `--font-sans: var(--font-sans)` -
+ * it expects the real value in :root, which is where next/font would put
+ * it. Defining it in @theme instead made that a self-reference, and the
+ * stack never reached the stylesheet at all: every page fell back to the
+ * browser's default font.
+ */
+:root {
+  --font-sans:
+    ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
 }
 /*
  ---break---
@@ -133,6 +144,12 @@
 }
 /*
  ---break---
+ */
+/*
+ * Defined but not yet activated: nothing sets this class and there is no
+ * prefers-color-scheme mapping, so the app is light-only for now. The
+ * switch arrives with the theme work in #91; the palette is kept here so
+ * that is a one-line change rather than a re-derivation.
  */
 .dark {
   --background: oklch(0.145 0 0);

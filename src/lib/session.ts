@@ -1,10 +1,9 @@
 /**
- * Current user.
+ * Current user. Server-side only.
  *
- * TODO(#45): replace the placeholder with the Auth.js session. The shell is
- * built against this one function precisely so that wiring real authentication
- * touches nothing else - #45 only has to make `getCurrentUser` read the
- * session and return `null` when there isn't one.
+ * TODO(#45): replace the placeholder with the Auth.js session. This is
+ * already async and already returns null for the signed-out case, so that
+ * swapping in `await auth()` does not change any caller's shape.
  */
 
 export type CurrentUser = {
@@ -14,20 +13,10 @@ export type CurrentUser = {
   image: string | null;
 };
 
-export function getCurrentUser(): CurrentUser | null {
+export async function getCurrentUser(): Promise<CurrentUser | null> {
   return {
     name: "Placeholder User",
     email: "placeholder@example.com",
     image: null,
   };
-}
-
-/** Initials for the avatar fallback, e.g. "Ada Lovelace" -> "AL". */
-export function initials(name: string): string {
-  const parts = name.trim().split(/\s+/).filter(Boolean);
-  if (parts.length === 0) return "?";
-  return parts
-    .slice(0, 2)
-    .map((p) => p[0]!.toUpperCase())
-    .join("");
 }

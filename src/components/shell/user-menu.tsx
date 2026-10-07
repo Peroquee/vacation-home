@@ -11,7 +11,8 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { type CurrentUser, initials } from "@/lib/session";
+import { initials } from "@/lib/initials";
+import { type CurrentUser } from "@/lib/session";
 
 /**
  * Signed-in user, with a sign-out action.
@@ -43,9 +44,11 @@ export function UserMenu({ user }: { user: CurrentUser }) {
           <span className="text-muted-foreground block truncate text-xs">{user.email}</span>
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
-        {/* A real form with a submit button, so signing out keeps working
-            without JavaScript. This shadcn style is built on Base UI, whose
-            composition prop is `render`, not Radix style `asChild`. */}
+        {/* Base UI defaults nativeButton to false; without it useButton
+            attaches non-native handlers to a real submit button and warns
+            that this harms forms and accessibility. The menu is portaled and
+            only mounts once JS opens it, so this is not a no-JS fallback -
+            it is a plain POST so #45 needs no client-side sign-out handler. */}
         <form action="/api/auth/signout" method="post">
           <DropdownMenuItem render={<button type="submit" />} className="w-full gap-2">
             <LogOut aria-hidden className="size-4" />
