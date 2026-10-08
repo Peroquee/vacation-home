@@ -132,6 +132,7 @@ describe("create", () => {
     });
 
     expect(response.status).toBe(200);
+    expect(response.headers.get("location")).toBeNull();
     expect(again).toEqual(first);
     expect(store.rows.size).toBe(1);
   });
@@ -192,8 +193,9 @@ describe("search", () => {
     ]);
   });
 
-  it("rejects an invalid limit", async () => {
+  it("rejects an invalid limit, but treats an empty one as the default", async () => {
     expect((await search(new Request(`${BASE}?limit=0`))).status).toBe(422);
+    expect((await search(new Request(`${BASE}?q=a&limit=`))).status).toBe(200);
   });
 });
 

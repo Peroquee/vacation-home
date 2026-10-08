@@ -25,8 +25,10 @@ export async function POST(request: Request) {
   if ("response" in body) return body.response;
 
   const { guest, created } = await findOrCreateGuest(body.data);
-  return Response.json(toDto(guest), {
-    status: created ? 201 : 200,
-    headers: { Location: `/api/guests/${guest.id}` },
-  });
+  return created
+    ? Response.json(toDto(guest), {
+        status: 201,
+        headers: { Location: `/api/guests/${guest.id}` },
+      })
+    : Response.json(toDto(guest));
 }

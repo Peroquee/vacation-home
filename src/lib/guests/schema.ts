@@ -42,7 +42,11 @@ export const updateGuestSchema = z
 
 export const searchGuestsSchema = z.object({
   q: z.string().trim().max(200).optional(),
-  limit: z.coerce.number().int().min(1).max(100).default(20),
+  // `?limit=` with no value means the default, not zero.
+  limit: z.preprocess(
+    (value) => (value === "" ? undefined : value),
+    z.coerce.number().int().min(1).max(100).default(20),
+  ),
 });
 
 export type CreateGuestInput = z.infer<typeof createGuestSchema>;

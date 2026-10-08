@@ -1,7 +1,7 @@
 /** Guest persistence. Server-side only. */
 import type { Guest } from "@/generated/prisma/client";
 import { db } from "@/lib/db";
-import { isPrismaError, orNullIfMissing } from "@/lib/db-errors";
+import { isPrismaError } from "@/lib/db-errors";
 
 import type { CreateGuestInput, UpdateGuestInput } from "./schema";
 
@@ -50,18 +50,19 @@ export async function getGuest(id: string): Promise<Guest | null> {
 export async function findOrCreateGuest(
   input: CreateGuestInput,
 ): Promise<{ guest: Guest; created: boolean }> {
-  if (input.email) {
-    const existing = await db.guest.findUnique({ where: { email: input.email } });
-    if (existing) return { guest: existing, created: false };
-  }
-  try {
-    return { guest: await db.guest.create({ data: input }), created: true };
-  } catch (error) {
-    if (input.email && isPrismaError(error, "P2002")) {
+  // Twice at most: a create that loses a race normally finds the winner; if
+  // the winner vanished again in between (deleted, email changed), the
+  // second create simply succeeds.
+  for (let attempt = 1; ; attempt++) {
+    if (input.email) {
       const existing = await db.guest.findUnique({ where: { email: input.email } });
       if (existing) return { guest: existing, created: false };
     }
-    throw error;
+    try {
+      return { guest: await db.guest.create({ data: input }), created: true };
+    } catch (error) {
+      if (!(input.email && isPrismaError(error, "P2002") && attempt < 2)) throw error;
+    }
   }
 }
 
@@ -69,9 +70,9 @@ export type UpdateResult = { guest: Guest } | { error: "not_found" | "email_take
 
 export async function updateGuest(id: string, input: UpdateGuestInput): Promise<UpdateResult> {
   try {
-    const guest = await orNullIfMissing(db.guest.update({ where: { id }, data: input }));
-    return guest ? { guest } : { error: "not_found" };
+    return { guest: await db.guest.update({ where: { id }, data: input }) };
   } catch (error) {
+    if (isPrismaError(error, "P2025")) return { error: "not_found" };
     if (isPrismaError(error, "P2002")) return { error: "email_taken" };
     throw error;
   }
