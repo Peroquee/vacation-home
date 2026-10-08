@@ -47,13 +47,22 @@ export function encryptSecret(plaintext: string, base64Key: string | undefined):
     .join(":");
 }
 
-export function decryptSecret(sealed: string, base64Key: string | undefined): string {
-  const key = parseKey(base64Key);
+/**
+ * Decrypts with whichever key sealed the value: `base64Key`, or one of
+ * `previousKeys` - the keys before a rotation, kept readable until every
+ * value has been sealed again under the current one (`npm run tokens:rotate`).
+ */
+export function decryptSecret(
+  sealed: string,
+  base64Key: string | undefined,
+  previousKeys: string[] = [],
+): string {
   const [version, id, iv, tag, ciphertext] = sealed.split(":");
   if (version !== VERSION || !id || !iv || !tag || ciphertext === undefined) {
     throw new Error("Not an encrypted secret");
   }
-  if (id !== keyId(key)) throw new WrongSecretKeyError();
+  const key = [parseKey(base64Key), ...previousKeys.map(parseKey)].find((k) => keyId(k) === id);
+  if (!key) throw new WrongSecretKeyError();
   const decipher = createDecipheriv("aes-256-gcm", key, Buffer.from(iv, "base64url"));
   decipher.setAuthTag(Buffer.from(tag, "base64url"));
   try {
@@ -64,4 +73,9 @@ export function decryptSecret(sealed: string, base64Key: string | undefined): st
   } catch {
     throw new WrongSecretKeyError();
   }
+}
+
+/** Whether a value is sealed under `base64Key` (so needs no rotation). */
+export function sealedWith(sealed: string, base64Key: string): boolean {
+  return sealed.split(":")[1] === keyId(parseKey(base64Key));
 }

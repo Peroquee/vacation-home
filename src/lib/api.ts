@@ -14,6 +14,10 @@ export type ApiErrorCode =
   | "validation_failed"
   | "not_found"
   | "conflict"
+  /** A cross-site request to a mutating route. 403. */
+  | "forbidden"
+  /** Too many requests; see Retry-After. 429. */
+  | "rate_limited"
   /** A service the request needs (Google) failed; try again later. 502. */
   | "upstream_unavailable";
 
