@@ -8,12 +8,13 @@ const isCI = Boolean(process.env.CI);
 
 export default defineConfig({
   testDir: "e2e",
-  globalSetup: "./e2e/global-setup.ts",
   // The tests share one database, so they run one at a time.
   fullyParallel: false,
   workers: 1,
   forbidOnly: isCI,
-  retries: isCI ? 1 : 0,
+  // No retries: the database is reset once per run, not per attempt, so a
+  // retry would see the first attempt's rows. A flaky test gets fixed instead.
+  retries: 0,
   reporter: isCI ? [["list"], ["html", { open: "never" }]] : "list",
   use: {
     baseURL,
@@ -21,9 +22,10 @@ export default defineConfig({
   },
   projects: [{ name: "chromium", use: { ...devices["Desktop Chrome"] } }],
   webServer: {
-    // A production build rather than `next dev`: it is what ships, and it
-    // never shares a port or a .next/dev directory with your dev server.
-    command: `npm run build && npm start -- --port ${PORT}`,
+    // Reset the database first, so a refused or failed reset stops the run
+    // before the build. Then a production build rather than `next dev`: it is
+    // what ships, and never shares a port or .next/dev with your dev server.
+    command: `node e2e/reset-database.mjs && npm run build && npm start -- --port ${PORT}`,
     url: baseURL,
     reuseExistingServer: false,
     timeout: 180_000,

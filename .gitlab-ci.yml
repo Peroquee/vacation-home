@@ -120,7 +120,7 @@ e2e:
   extends: .node
   # The same server version as docker-compose.yml. The harness drops and
   # recreates its own database on it before the run, so no state survives
-  # between pipelines - or between retries.
+  # between pipelines.
   services:
     - name: postgres:16.15
       alias: postgres
@@ -129,9 +129,25 @@ e2e:
     POSTGRES_PASSWORD: vacation
     POSTGRES_DB: vacation_home
     E2E_DATABASE_URL: postgresql://vacation:vacation@postgres:5432/vacation_home_e2e
+    # Inside the project directory so the cache below can carry the browser.
+    PLAYWRIGHT_BROWSERS_PATH: "$CI_PROJECT_DIR/.cache/ms-playwright"
+  cache:
+    - <<: *npm_store
+      policy: pull
+    - <<: *node_modules
+      policy: pull
+    # Keyed on the lockfile, since the browser build is tied to the exact
+    # @playwright/test version.
+    - key:
+        prefix: playwright
+        files:
+          - package-lock.json
+      paths:
+        - .cache/ms-playwright/
   script:
-    # The browser has to match the installed @playwright/test exactly, and the
-    # Node image ships neither it nor its system libraries.
+    # The browser has to match the installed @playwright/test exactly. On a
+    # cache hit only the system libraries are installed; the Node image ships
+    # neither them nor the browser.
     - npx playwright install --with-deps chromium
     # Builds and starts the app itself (see webServer in playwright.config.ts),
     # so this does not depend on the build job below.

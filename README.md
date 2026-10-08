@@ -106,15 +106,16 @@ npx playwright install chromium   # once, and after a Playwright upgrade
 npm run test:e2e
 ```
 
-Each run first drops and recreates a separate database, `vacation_home_e2e`, on
+Before building, each run drops and recreates a separate database, `vacation_home_e2e`, on
 the same server and applies the committed migrations, so every run starts
 empty and your development data is never touched. The harness refuses to reset
-a database whose name does not end in `_test` or `_e2e`. Set
+a database whose name does not end in `_test` or `_e2e`, or one on a host other
+than the local and Compose/CI service names. Set
 `E2E_DATABASE_URL` to point it elsewhere.
 
 Playwright then builds the app and serves it with `next start` on port 3100,
 with test-only credentials, so it runs alongside `npm run dev` without
-conflict. The tests share the one database and so run serially.
+conflict. It does overwrite any production build of your own in `.next`. The tests share the one database and so run serially.
 
 ## Configuration
 

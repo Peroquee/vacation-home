@@ -1,7 +1,6 @@
 import { expect, test } from "@playwright/test";
-import { Client } from "pg";
 
-import { E2E_DATABASE_URL } from "./database";
+import { withE2eDb } from "./database";
 
 test("the home page redirects to the calendar", async ({ page }) => {
   await page.goto("/");
@@ -11,15 +10,9 @@ test("the home page redirects to the calendar", async ({ page }) => {
 });
 
 test("the API reads what is in the database", async ({ request }) => {
-  const client = new Client({ connectionString: E2E_DATABASE_URL });
-  await client.connect();
-  try {
-    await client.query("INSERT INTO properties (name, updated_at) VALUES ($1, now())", [
-      "Seaside Cottage",
-    ]);
-  } finally {
-    await client.end();
-  }
+  await withE2eDb((db) =>
+    db.query("INSERT INTO properties (name, updated_at) VALUES ($1, now())", ["Seaside Cottage"]),
+  );
 
   const response = await request.get("/api/properties");
   expect(response.ok()).toBe(true);
