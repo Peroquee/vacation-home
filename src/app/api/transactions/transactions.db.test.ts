@@ -126,6 +126,14 @@ describe("POST /api/transactions", () => {
     expect(await fields({ propertyId: "00000000-0000-4000-8000-000000000000" })).toEqual({
       propertyId: ["does not exist"],
     });
+    await db.property.update({ where: { id: cabin }, data: { archivedAt: new Date() } });
+    try {
+      expect(await fields({ propertyId: cabin, categoryId: cat.cleaning })).toEqual({
+        propertyId: ["is archived"],
+      });
+    } finally {
+      await db.property.update({ where: { id: cabin }, data: { archivedAt: null } });
+    }
 
     await db.category.update({ where: { id: cat.cleaning }, data: { hidden: true } });
     expect(await fields({})).toEqual({ categoryId: ["is hidden"] });
@@ -365,11 +373,14 @@ describe("GET /api/transactions: filter combinations", () => {
     const { body } = await query(`propertyId=${lake}&pageSize=2`);
     expect(body.items).toHaveLength(2);
     expect(body.total).toBe(5);
-    expect(body.totals).toEqual({
-      incomeMinor: 45_000,
-      expenseMinor: 3_000 + 25_000 + 7_777,
-      netMinor: 45_000 - 35_777,
-    });
+    expect(body.totals).toEqual([
+      {
+        currency: "EUR",
+        incomeMinor: 45_000,
+        expenseMinor: 3_000 + 25_000 + 7_777,
+        netMinor: 45_000 - 35_777,
+      },
+    ]);
   });
 
   it("sorts by date or amount, either way, and paginates", async () => {
@@ -386,6 +397,26 @@ describe("GET /api/transactions: filter combinations", () => {
     expect(second.body.items.map((t: { amountMinor: number }) => t.amountMinor)).toEqual([
       7_777, 25_000,
     ]);
+  });
+
+  it("sums beyond the 32-bit range exactly", async () => {
+    for (let i = 0; i < 3; i++) {
+      await post({
+        propertyId: cabin,
+        type: "income",
+        categoryId: cat.booking_income,
+        amountMinor: 2_000_000_000,
+        date: "2026-09-01",
+      });
+    }
+    const { body } = await query(`propertyId=${cabin}&type=income`);
+    expect(body.totals[0].incomeMinor).toBe(60_000 + 6_000_000_000);
+  });
+
+  it("counts a repeated parameter like a comma-separated one", async () => {
+    expect(await amounts(`categoryId=${cat.maintenance}&categoryId=${cat.utilities}`)).toEqual(
+      expected((r) => ["maintenance", "utilities"].includes(r.category)),
+    );
   });
 
   it("never returns an amount as a float", async () => {
@@ -405,6 +436,10 @@ describe("GET /api/transactions: filter combinations", () => {
     expect((await query("from=2026-08-01&to=2026-07-01")).body.error.fields.to).toEqual([
       "must be after from",
     ]);
+    expect((await query(`bookingId=${lakeBooking}&linked=false`)).body.error.fields.linked).toEqual(
+      ["cannot be combined with bookingId"],
+    );
+    expect((await query("page=9007199254740991")).status).toBe(422);
   });
 });
 

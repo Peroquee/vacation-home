@@ -10,23 +10,18 @@ import { z } from "zod";
 
 import type { Prisma } from "@/generated/prisma/client";
 import { MAX_AMOUNT_MINOR } from "@/lib/bookings/pricing";
-import { fromUtcDate, isCalendarDate, toUtcDate } from "@/lib/calendar-date";
+import { fromUtcDate, toUtcDate } from "@/lib/calendar-date";
 import { db } from "@/lib/db";
 import { isPrismaError } from "@/lib/db-errors";
+import { calendarDate, csv, fromBeforeTo, optionalText, page, pageSize } from "@/lib/query";
 
 import { TRANSACTION_TYPES } from "./categories";
 
-const calendarDate = z.string().trim().refine(isCalendarDate, "must be a date as YYYY-MM-DD");
 const amountMinor = z
   .int({ error: "must be a whole number of minor units (cents)" })
   .min(1, "must be positive; the type gives the direction")
   .max(MAX_AMOUNT_MINOR, "is too large");
-const description = z
-  .string()
-  .trim()
-  .max(500, "must be at most 500 characters")
-  .nullable()
-  .transform((value) => value || null);
+const description = optionalText(500);
 
 export const createTransactionSchema = z.strictObject({
   propertyId: z.uuid("must be a property id"),
@@ -53,15 +48,6 @@ export const updateTransactionSchema = z
   .partial()
   .refine((update) => Object.keys(update).length > 0, "at least one field is required");
 
-const csv = <T extends z.ZodType>(item: T) =>
-  z.preprocess(
-    (value) =>
-      typeof value === "string" && value !== "" ? value.split(",").map((s) => s.trim()) : undefined,
-    z.array(item).optional(),
-  );
-const blankAsDefault = <T extends z.ZodType>(schema: T) =>
-  z.preprocess((value) => (value === "" ? undefined : value), schema);
-
 export const listTransactionsSchema = z
   .object({
     propertyId: z.uuid().optional(),
@@ -74,19 +60,15 @@ export const listTransactionsSchema = z
     bookingId: z.uuid().optional(),
     /** Only those linked to some booking ("true") or to none ("false"). */
     linked: z.enum(["true", "false"]).optional(),
-    page: blankAsDefault(z.coerce.number().int().min(1).default(1)),
-    pageSize: blankAsDefault(z.coerce.number().int().min(1).max(200).default(50)),
+    page,
+    pageSize: pageSize(200, 50),
     sort: z.enum(["date", "-date", "amount", "-amount"]).default("-date"),
   })
-  .refine(
-    (q) =>
-      typeof q.from !== "string" ||
-      typeof q.to !== "string" ||
-      !isCalendarDate(q.from) ||
-      !isCalendarDate(q.to) ||
-      q.from < q.to,
-    { path: ["to"], message: "must be after from" },
-  );
+  .refine(...fromBeforeTo)
+  .refine((q) => !(q.bookingId && q.linked), {
+    path: ["linked"],
+    message: "cannot be combined with bookingId",
+  });
 
 export const bulkDeleteSchema = z.strictObject({
   ids: z
@@ -122,19 +104,18 @@ async function checkReferences(
   { type, categoryId, bookingId }: { type: string; categoryId?: string; bookingId?: string | null },
   { newCategory }: { newCategory: boolean },
 ): Promise<Invalid | null> {
+  const [category, booking] = await Promise.all([
+    categoryId ? db.category.findUnique({ where: { id: categoryId } }) : null,
+    bookingId
+      ? db.booking.findUnique({ where: { id: bookingId }, select: { propertyId: true } })
+      : null,
+  ]);
   if (categoryId) {
-    const category = await db.category.findUnique({ where: { id: categoryId } });
     if (!category) return invalid("categoryId", "does not exist");
-    if (category.type !== type) {
-      return invalid("categoryId", `is not an ${type} category`);
-    }
+    if (category.type !== type) return invalid("categoryId", `is not an ${type} category`);
     if (newCategory && category.hidden) return invalid("categoryId", "is hidden");
   }
   if (bookingId) {
-    const booking = await db.booking.findUnique({
-      where: { id: bookingId },
-      select: { propertyId: true },
-    });
     if (!booking) return invalid("bookingId", "does not exist");
     if (booking.propertyId !== propertyId)
       return invalid("bookingId", "belongs to another property");
@@ -152,9 +133,13 @@ function refused(error: unknown): Invalid | null {
 export async function createTransaction(
   input: z.infer<typeof createTransactionSchema>,
 ): Promise<TransactionWrite> {
-  const property = await db.property.findUnique({ where: { id: input.propertyId } });
+  const [property, problem] = await Promise.all([
+    db.property.findUnique({ where: { id: input.propertyId } }),
+    checkReferences(input.propertyId, input, { newCategory: true }),
+  ]);
   if (!property) return invalid("propertyId", "does not exist");
-  const problem = await checkReferences(property.id, input, { newCategory: true });
+  // Like bookings: an archived property takes no new entries.
+  if (property.archivedAt) return invalid("propertyId", "is archived");
   if (problem) return problem;
 
   try {
@@ -263,36 +248,43 @@ export async function listTransactions(query: z.infer<typeof listTransactionsSch
     { id: "asc" },
   ];
 
-  const [items, count, sums] = await db.$transaction([
-    db.transaction.findMany({
-      where,
-      include: withRelations,
-      orderBy,
-      skip: (query.page - 1) * query.pageSize,
-      take: query.pageSize,
-    }),
-    db.transaction.count({ where }),
-    db.transaction.groupBy({
-      by: ["type"],
-      where,
-      orderBy: { type: "asc" },
-      _sum: { amountMinor: true },
-    }),
-  ]);
-  const sum = (type: "income" | "expense") =>
-    sums.find((row) => row.type === type)?._sum?.amountMinor ?? 0;
+  // One snapshot for the page, the count and the totals, so they agree.
+  const [items, count, sums] = await db.$transaction(
+    [
+      db.transaction.findMany({
+        where,
+        include: withRelations,
+        orderBy,
+        skip: (query.page - 1) * query.pageSize,
+        take: query.pageSize,
+      }),
+      db.transaction.count({ where }),
+      db.transaction.groupBy({
+        by: ["currency", "type"],
+        where,
+        orderBy: [{ currency: "asc" }, { type: "asc" }],
+        _sum: { amountMinor: true },
+      }),
+    ],
+    { isolationLevel: "RepeatableRead" },
+  );
 
-  return {
-    items,
-    total: count,
-    page: query.page,
-    pageSize: query.pageSize,
-    // Over every matching transaction, not just this page: the ledger's
-    // period totals. Integers of minor units, like every amount.
-    totals: {
+  // Per currency: minor units of different currencies cannot be added up.
+  const currencies = [...new Set(sums.map((row) => row.currency))];
+  const totals = currencies.map((currency) => {
+    const sum = (type: "income" | "expense") =>
+      Number(
+        sums.find((row) => row.currency === currency && row.type === type)?._sum?.amountMinor ?? 0,
+      );
+    return {
+      currency,
       incomeMinor: sum("income"),
       expenseMinor: sum("expense"),
       netMinor: sum("income") - sum("expense"),
-    },
-  };
+    };
+  });
+
+  // Over every matching transaction, not just this page: the ledger's
+  // period totals. Integers of minor units, like every amount.
+  return { items, total: count, page: query.page, pageSize: query.pageSize, totals };
 }

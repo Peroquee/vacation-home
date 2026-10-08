@@ -206,8 +206,10 @@ delete them (`reason: "system"`). The app finds them by their fixed
   `from`/`to` (dates; `to` exclusive), `bookingId` or `linked=true|false`,
   `page`, `pageSize` (≤ 200), and `sort` (`date`, `-date`, `amount`,
   `-amount`; default `-date`). The response is `{ items, total, page,
-pageSize, totals: { incomeMinor, expenseMinor, netMinor } }`, where
-  `totals` covers every matching transaction, not just the page.
+pageSize, totals: [{ currency, incomeMinor, expenseMinor, netMinor }] }`, where
+  `totals` covers every matching transaction, not just the page, with one entry
+  per currency, since minor units of different currencies can't be added. A
+  repeated parameter (`?categoryId=a&categoryId=b`) counts like a comma list.
 
 ### Calendar availability
 
