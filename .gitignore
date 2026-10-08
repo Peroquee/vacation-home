@@ -45,3 +45,6 @@ next-env.d.ts
 
 # npm store, relocated into the project in CI so the cache can carry it
 .npm/
+
+# Prisma client, generated from prisma/schema.prisma on `npm install`
+/src/generated/

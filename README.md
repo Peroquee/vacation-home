@@ -28,9 +28,10 @@ That starts PostgreSQL and the Next dev server on <http://localhost:3000>. A
 clean checkout needs no `.env`: when the container finds no env file at all it
 falls back to the bootable placeholders in `.env.example`. Otherwise Next loads
 your `.env` / `.env.local` exactly as it does on the host, except that
-`DATABASE_URL` is always pointed at the `db` service. The first start runs `npm ci` inside the container, so it takes a
-while; later starts reuse the installed dependencies until
-`package-lock.json` changes.
+`DATABASE_URL` is always pointed at the `db` service. The first start runs
+`npm ci` inside the container, so it takes a while; later starts reuse the
+installed dependencies until `package-lock.json` changes. Every start applies
+pending migrations before the dev server comes up.
 
 | Command                  | Does                                          |
 | ------------------------ | --------------------------------------------- |
@@ -48,6 +49,7 @@ restarting and recreating the containers; only `down -v` removes it.
 npm install
 cp .env.example .env    # then fill in the blanks
 docker compose up -d db
+npm run migrate:deploy
 npm run dev
 ```
 
@@ -66,6 +68,29 @@ noticeably slower than on the host — Next's own guidance is to develop on the
 host there. The hybrid workflow above gives you the shared database without
 that cost.
 
+## Database
+
+The schema lives in [`prisma/schema.prisma`](prisma/schema.prisma) and every
+change to it ships as a migration under [`prisma/migrations`](prisma/migrations),
+committed with the code that needs it.
+
+```bash
+# after editing the schema: write a migration, apply it, regenerate the client
+npm run migrate:dev -- --name add-guest-email
+```
+
+`migrate:dev` is for development only — it may offer to reset the database when
+it detects drift. Deployments and fresh databases use `migrate:deploy`, which
+only applies committed migrations, in order, and never generates or resets.
+
+The client is generated into `src/generated/prisma` (ignored by git) on every
+`npm install`, so a fresh clone or CI job needs no extra step. After pulling a
+schema change, `npm run db:generate` regenerates it without reinstalling.
+Application code imports the shared instance from
+[`src/lib/db.ts`](src/lib/db.ts), which survives hot reloads instead of opening
+a new connection pool on each one. The Prisma CLI reads `.env` files through
+Next's own loader, so it sees the same variables `npm run dev` does.
+
 ## Configuration
 
 Every environment variable is documented in [`.env.example`](.env.example) and
@@ -76,23 +101,29 @@ at the first database query or Google API call.
 Validation is triggered from [`src/instrumentation.ts`](src/instrumentation.ts),
 which Next runs once per server process. It deliberately does **not** run during
 `next build`, so building an image does not require production secrets — only
-starting the app does.
+starting the app does. During the build `env` validates lazily, on the first
+value read, because the build imports server modules to collect page data;
+reading a variable at build time still fails loudly.
 
 `src/env.ts` is the only module permitted to read `process.env`; everything
 else imports the typed `env` object from `@/env`. An ESLint rule enforces this.
 
 ## Scripts
 
-| Script                 | Does                                |
-| ---------------------- | ----------------------------------- |
-| `npm run dev`          | Development server                  |
-| `npm run build`        | Production build                    |
-| `npm start`            | Serve a production build            |
-| `npm run lint`         | ESLint                              |
-| `npm run lint:fix`     | ESLint with autofix                 |
-| `npm run format`       | Prettier, writing changes           |
-| `npm run format:check` | Prettier, check only (used by CI)   |
-| `npm run typecheck`    | `next typegen`, then `tsc --noEmit` |
+| Script                   | Does                                       |
+| ------------------------ | ------------------------------------------ |
+| `npm run dev`            | Development server                         |
+| `npm run build`          | Production build                           |
+| `npm start`              | Serve a production build                   |
+| `npm run lint`           | ESLint                                     |
+| `npm run lint:fix`       | ESLint with autofix                        |
+| `npm run format`         | Prettier, writing changes                  |
+| `npm run format:check`   | Prettier, check only (used by CI)          |
+| `npm run typecheck`      | `next typegen`, then `tsc --noEmit`        |
+| `npm run migrate:dev`    | Create and apply a migration (development) |
+| `npm run migrate:deploy` | Apply committed migrations                 |
+| `npm run studio`         | Prisma Studio, a browser UI for the data   |
+| `npm run db:generate`    | Regenerate the Prisma client               |
 
 ## Continuous integration
 

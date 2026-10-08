@@ -78,8 +78,20 @@ services:
             done
             if [ -z "$$found" ]; then
               echo "No .env file found, using the placeholders in .env.example"
+              # Restoring the saved exports afterwards lets the variables set
+              # by Compose (DATABASE_URL) win over the placeholders.
+              saved="$$(export -p)"
               set -a; . ./.env.example; set +a
+              eval "$$saved"
             fi
+
+            # Bring the schema up to date, so a fresh database volume is usable
+            # straight away. Creating new migrations stays a deliberate step:
+            # `npm run migrate:dev`.
+            # Regenerate the client too: a schema change does not touch the
+            # lockfile, so `npm ci` above would not have done it.
+            npm run db:generate
+            npm run migrate:deploy
 
             exec npm run dev
           '
