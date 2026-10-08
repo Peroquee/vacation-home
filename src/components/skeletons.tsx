@@ -93,3 +93,28 @@ export function PageSkeleton() {
     </Loading>
   );
 }
+
+/** A row of stat tiles (`StatTile`), announced once for the whole row. */
+export function StatTilesSkeleton({
+  count = 6,
+  className,
+}: {
+  count?: number;
+  className?: string;
+}) {
+  return (
+    <Loading label="Loading figures" className={className}>
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6" aria-hidden>
+        {Array.from({ length: count }, (_, i) => (
+          <Card key={i} size="sm">
+            <CardContent className="space-y-2">
+              <Skeleton className="h-4 w-1/2" />
+              <Skeleton className="h-7 w-3/4" />
+              <Skeleton className="h-3 w-2/3" />
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+    </Loading>
+  );
+}
