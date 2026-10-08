@@ -19,8 +19,8 @@ import { BookingFilters } from "./booking-filters";
 
 export const metadata: Metadata = { title: "Bookings" };
 
-/** Where a booking's row leads. The detail page (GitLab #55) will replace it. */
-const bookingHref = (b: BookingDto) => `/bookings/${b.id}/edit`;
+/** Where a booking's row leads: its detail page. */
+const bookingHref = (b: BookingDto) => `/bookings/${b.id}`;
 
 const FILTER_KEYS = ["propertyId", "status", "source", "from", "to", "q"];
 
