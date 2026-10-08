@@ -14,6 +14,7 @@ vi.mock("next/navigation", () => ({
 vi.mock("@/components/toast", () => ({ toastSuccess: vi.fn(), toastError: vi.fn() }));
 
 // The guest typeahead has its own concerns; here a plain button picks Ada.
+// The form labels it "Guest", which is its accessible name.
 const ada = { id: "0b9a0c8e-8a43-4c50-9a59-3f1f7c3b2d11", name: "Ada Lovelace", email: null };
 vi.mock("./guest-picker", () => ({
   GuestPicker: ({
@@ -117,7 +118,7 @@ describe("BookingForm", () => {
     const fetchMock = serve(free);
     const user = userEvent.setup();
     render(<BookingForm properties={[property]} />);
-    await user.click(screen.getByRole("button", { name: "Pick Ada" }));
+    await user.click(screen.getByRole("button", { name: "Guest" }));
     await fillStay(user, "2026-07-14", "2026-07-18");
     await user.clear(screen.getByLabelText("Nightly rate"));
     await user.type(screen.getByLabelText("Nightly rate"), "199.5");
@@ -163,7 +164,7 @@ describe("BookingForm", () => {
     );
     const user = userEvent.setup();
     render(<BookingForm properties={[property]} />);
-    await user.click(screen.getByRole("button", { name: "Pick Ada" }));
+    await user.click(screen.getByRole("button", { name: "Guest" }));
     await fillStay(user, "2026-07-14", "2026-07-18");
     await user.click(screen.getByRole("button", { name: "Add booking" }));
 
@@ -188,7 +189,7 @@ describe("BookingForm", () => {
     );
     const user = userEvent.setup();
     render(<BookingForm properties={[property]} />);
-    await user.click(screen.getByRole("button", { name: "Pick Ada" }));
+    await user.click(screen.getByRole("button", { name: "Guest" }));
     await fillStay(user, "2026-07-14", "2026-07-18");
     await user.click(screen.getByRole("button", { name: "Add booking" }));
 
@@ -237,7 +238,7 @@ describe("BookingForm", () => {
 
     expect(screen.getByLabelText("Property")).toBeDisabled();
     expect(screen.getByLabelText("Total")).toHaveValue("600.00");
-    await user.click(screen.getByLabelText("Set the total by hand"));
+    await user.click(screen.getByRole("checkbox", { name: "Set the total by hand" }));
     await user.click(screen.getByRole("button", { name: "Save booking" }));
 
     await waitFor(() => expect(push).toHaveBeenCalled());
