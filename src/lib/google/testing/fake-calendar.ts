@@ -13,17 +13,20 @@ export function fakeInboundCalendar() {
   const channels = new Map<string, { resourceId: string; token: string; address: string }>();
   const stopped: string[] = [];
   const lists: { syncToken?: string }[] = [];
+  /** Event ids the app wrote (inserts and updates), in order. */
+  const writes: string[] = [];
   let failures = 0;
   let version = 0;
 
   const put = (event: Partial<CalendarEvent> & { id: string }) => {
+    // Like Google: every write gets a new etag.
     events.set(event.id, {
-      etag: `"${++version}"`,
       status: "confirmed",
-      updated: new Date().toISOString(),
       start: { date: "2026-12-01" },
       end: { date: "2026-12-02" },
       ...event,
+      etag: `"${++version}"`,
+      updated: new Date().toISOString(),
     } as CalendarEvent);
     changes.push(event.id);
   };
@@ -52,12 +55,32 @@ export function fakeInboundCalendar() {
     },
     // Writes, as outbound sync makes them: they show up in later lists too.
     async insertEvent(_calendarId: string, input: { id: string }) {
+      if (events.has(input.id)) throw new GoogleCalendarError("conflict", 409, "duplicate", 1);
+      writes.push(input.id);
       put(input as CalendarEvent);
       return events.get(input.id)!;
     },
-    async updateEvent(_calendarId: string, eventId: string, input: object) {
+    async updateEvent(
+      _calendarId: string,
+      eventId: string,
+      input: object,
+      { etag }: { etag?: string } = {},
+    ) {
+      const current = events.get(eventId);
+      if (!current || current.status === "cancelled") {
+        throw new GoogleCalendarError("not_found", 404, "notFound", 1);
+      }
+      if (etag && etag !== current.etag) {
+        throw new GoogleCalendarError("precondition_failed", 412, "conditionNotMet", 1);
+      }
+      writes.push(eventId);
       put({ ...(input as CalendarEvent), id: eventId });
       return events.get(eventId)!;
+    },
+    async getEvent(_calendarId: string, eventId: string) {
+      const event = events.get(eventId);
+      if (!event) throw new GoogleCalendarError("not_found", 404, "notFound", 1);
+      return event;
     },
     async deleteEvent(_calendarId: string, eventId: string) {
       if (!events.has(eventId)) return "already_gone" as const;
@@ -84,6 +107,7 @@ export function fakeInboundCalendar() {
     channels,
     stopped,
     lists,
+    writes,
     put,
     remove: (id: string) => put({ ...events.get(id)!, status: "cancelled" }),
     expireTokens: () => {

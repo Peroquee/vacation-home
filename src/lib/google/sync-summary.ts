@@ -4,6 +4,8 @@
  */
 import { db } from "@/lib/db";
 
+import { openIssueCount } from "./sync-issues";
+
 /**
  * What each recorded error kind means, for people. Links store only the
  * kind (an error code, never Google's text), so these fixed sentences are
@@ -35,12 +37,14 @@ export type SyncSummary = {
   failed: number;
   /** The most recent failure, as a short sentence. */
   lastError: string | null;
+  /** Sync issues waiting for review (GET /api/calendar-sync/issues). */
+  openIssues: number;
 };
 
 /** The summary over every booking event the user's connection writes. */
 export async function syncSummary(userId: string): Promise<SyncSummary> {
   const where = { userId };
-  const [last, pending, failed, latestFailure] = await Promise.all([
+  const [last, pending, failed, latestFailure, openIssues] = await Promise.all([
     db.calendarEventLink.aggregate({ where, _max: { lastSyncedAt: true } }),
     db.calendarEventLink.count({
       where: { ...where, syncState: { in: ["pending", "pending_delete"] } },
@@ -51,11 +55,13 @@ export async function syncSummary(userId: string): Promise<SyncSummary> {
       orderBy: { updatedAt: "desc" },
       select: { lastError: true },
     }),
+    openIssueCount(userId),
   ]);
   return {
     lastSyncedAt: last._max.lastSyncedAt?.toISOString() ?? null,
     pending,
     failed,
     lastError: errorMessage(latestFailure?.lastError ?? null),
+    openIssues,
   };
 }

@@ -526,9 +526,13 @@ and imports it as read-only blocks with `origin: "google"`
 - **No personal data:** a block keeps the Google event id and the dates, and
   its reason names only the source ("Google Calendar · <calendar name>").
   The event's title, description, location and attendees are never stored.
-- **Conflicts:** an event over a confirmed booking isn't imported (the
-  database refuses the overlap). It's logged, and GitLab #74 raises it for
-  review.
+- **Conflicts:** an event over a confirmed booking isn't imported. It
+  becomes a sync issue for review instead (`GET /api/calendar-sync/issues`,
+  `POST /api/calendar-sync/issues/:id/dismiss`), and the count is
+  `sync.openIssues` on `GET /api/google/connection`.
+- **Who wins:** the booking wins over its own event, and Google wins over its
+  own events. See [docs/calendar-sync.md](docs/calendar-sync.md) for the
+  precedence rules and why sync can't loop.
 
 How changes are found:
 
