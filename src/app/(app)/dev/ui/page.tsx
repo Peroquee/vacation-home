@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
 import { ExpenseBreakdown } from "@/components/charts/expense-breakdown";
+import { OccupancyChart } from "@/components/charts/occupancy-chart";
+import { OccupancyHeatmap } from "@/components/charts/occupancy-heatmap";
 import { RevenueExpensesChart } from "@/components/charts/revenue-expenses-chart";
 import { type Column, DataTable } from "@/components/data-table";
 import { PageHeader } from "@/components/page-header";
@@ -12,6 +14,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatDate, formatDateRange, formatDateTime, formatMoney } from "@/lib/format";
 import { breakdownRows } from "@/lib/dashboard/breakdown";
+import { heatmap } from "@/lib/dashboard/occupancy";
 import { APP_LOCALE } from "@/lib/locale";
 
 import { InteractiveExamples } from "./interactive-examples";
@@ -164,6 +167,37 @@ export default function UiPrimitivesPage() {
                   color: String(color),
                   amountMinor: Number(amountMinor),
                   share: Number(amountMinor) / 978000,
+                })),
+              )}
+            />
+          </CardContent>
+        </Card>
+      </Section>
+
+      <Section title="Occupancy">
+        <Card>
+          <CardContent className="grid gap-8 lg:grid-cols-2">
+            <OccupancyChart
+              months={chartMonths.map((m, i) => ({
+                month: m.month,
+                // A seasonal curve, with one fully blocked month (no rate).
+                rate: i === 3 ? null : 0.3 + 0.6 * Math.sin((Math.PI * (i + 1)) / 12) ** 2,
+                booked: i === 3 ? 0 : 10 + i,
+                available: i === 3 ? 0 : 30,
+                priorRate: 0.25 + 0.5 * Math.sin((Math.PI * (i + 1)) / 12) ** 2,
+              }))}
+            />
+            <OccupancyHeatmap
+              properties={3}
+              months={heatmap(
+                { start: "2026-01-01", end: "2027-01-01" },
+                [0, 1, 2].map((p) => ({
+                  days: Array.from({ length: 365 }, (_, d) => {
+                    const date = new Date(Date.UTC(2026, 0, 1 + d)).toISOString().slice(0, 10);
+                    // Busier in summer, each property a little differently.
+                    const busy = Math.sin((Math.PI * d) / 365) ** 2 > 0.35 + p * 0.15;
+                    return { date, status: busy && (d + p) % 9 !== 0 ? "booked" : "available" };
+                  }),
                 })),
               )}
             />

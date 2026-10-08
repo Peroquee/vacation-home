@@ -15,6 +15,7 @@ import { listProperties } from "@/lib/properties/service";
 
 import { ExpenseChart } from "./expense-chart";
 import { Kpis } from "./kpis";
+import { OccupancySection } from "./occupancy-section";
 import { RevenueChart } from "./revenue-chart";
 
 export const metadata: Metadata = { title: "Dashboard" };
@@ -83,6 +84,9 @@ export default async function DashboardPage({ searchParams }: PageProps<"/dashbo
             <ExpenseChart state={state} />
           </Suspense>
         </div>
+        <Suspense key={`occupancy-${JSON.stringify(state)}`} fallback={<CardSkeleton lines={8} />}>
+          <OccupancySection state={state} />
+        </Suspense>
       </div>
     </>
   );
