@@ -32,7 +32,17 @@ export default async function FinancePage({ searchParams }: PageProps<"/finance"
   const month = ledgerMonth(params, today);
   const [properties, categories] = await Promise.all([listProperties(), listCategories()]);
 
-  const header = <PageHeader title="Finance" description="Income and expenses, month by month." />;
+  const header = (
+    <PageHeader
+      title="Finance"
+      description="Income and expenses, month by month."
+      actions={
+        <Link href="/finance/categories" className={buttonVariants({ variant: "outline" })}>
+          Categories
+        </Link>
+      }
+    />
+  );
   if (properties.length === 0) {
     return (
       <>

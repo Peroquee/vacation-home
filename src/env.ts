@@ -91,6 +91,29 @@ const envSchema = z.object({
       .optional(),
   ),
 
+  /**
+   * How often, in seconds, each synced Google Calendar is checked for changes
+   * (inbound sync). At least 60; default 300. Polling needs no inbound
+   * connection, so it works for an app that is only reachable on the LAN.
+   */
+  GOOGLE_CALENDAR_POLL_SECONDS: optional(
+    z.coerce.number().int().min(60, "must be at least 60"),
+  ).default(300),
+
+  /**
+   * Optional: the public https base URL at which Google can reach this app,
+   * e.g. https://vacation.example.com. When set, Google pushes change
+   * notifications to <url>/api/google/webhook, so changes arrive in seconds;
+   * polling continues, less often, as a safety net. Leave unset when the app
+   * is only reachable on the LAN: polling alone then picks up changes.
+   */
+  GOOGLE_WEBHOOK_URL: optional(
+    z.url({
+      protocol: /^https$/,
+      error: "must be a public https URL, e.g. https://vacation.example.com",
+    }),
+  ),
+
   /** Minimum level written by the logger in src/lib/logger.ts. */
   LOG_LEVEL: optional(z.enum(["trace", "debug", "info", "warn", "error", "fatal"])).default("info"),
 

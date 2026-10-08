@@ -91,10 +91,19 @@ function barStyle(bar: Bar): React.CSSProperties {
   return { backgroundColor: color, color: textOn(color) };
 }
 
+/**
+ * Blocks shown before the server has them (an optimistic create) carry an
+ * id with this prefix; they are drawn faded and are not clickable.
+ */
+export const PENDING_PREFIX = "pending-";
+const isPending = (id: string) => id.startsWith(PENDING_PREFIX);
+
 function barLabel(bar: Bar): string {
   const when = formatDateRange(bar.start, bar.end);
   if (bar.kind === "block") {
-    return `Blocked${bar.block.reason ? `: ${bar.block.reason}` : ""}, ${bar.property.name}, ${when}`;
+    const source = bar.block.origin === "google" ? ", from Google Calendar" : "";
+    const saving = isPending(bar.block.id) ? ", saving" : "";
+    return `Blocked${bar.block.reason ? `: ${bar.block.reason}` : ""}, ${bar.property.name}, ${when}${source}${saving}`;
   }
   const status = bar.booking.status === "inquiry" ? "inquiry" : "confirmed";
   return `${bar.booking.guest.name}, ${bar.property.name}, ${status}, ${when}`;
@@ -103,10 +112,13 @@ function barLabel(bar: Bar): string {
 function BarView({
   segment,
   href,
+  onClick,
   inTheWay = false,
 }: {
   segment: Segment<Bar>;
   href?: string;
+  /** For a bar that opens something in place, e.g. a block's editor. */
+  onClick?: () => void;
   /** Stands in the way of the current selection: ringed in red. */
   inTheWay?: boolean;
 }) {
@@ -129,7 +141,11 @@ function BarView({
   };
   // The grid lines, also as data, which tests and tooling can read without
   // a layout engine.
-  const lines = { "data-from-line": segment.fromLine, "data-to-line": segment.toLine };
+  const lines = {
+    "data-bar": "",
+    "data-from-line": segment.fromLine,
+    "data-to-line": segment.toLine,
+  };
   const text = bar.kind === "booking" ? bar.booking.guest.name : (bar.block.reason ?? "Blocked");
   const content = (
     <>
@@ -137,6 +153,23 @@ function BarView({
       <span className="truncate">{text}</span>
     </>
   );
+  const pendingBlock = bar.kind === "block" && isPending(bar.block.id);
+  if (pendingBlock) style.opacity = 0.6;
+  if (onClick && !pendingBlock) {
+    return (
+      <button
+        type="button"
+        className={cn(className, "cursor-pointer text-left")}
+        style={style}
+        title={label}
+        aria-label={label}
+        onClick={onClick}
+        {...lines}
+      >
+        {content}
+      </button>
+    );
+  }
   return href ? (
     <Link
       href={href}
@@ -177,6 +210,13 @@ export type MonthCalendarProps = {
     checkIn: CalendarDate;
     checkOut: CalendarDate;
   }) => void;
+  /** Called when a block's bar is clicked; without it, blocks are not interactive. */
+  onBlockClick?: (block: CalendarBlock & { propertyId: string }) => void;
+  /**
+   * Bars to ring as being in the way, by key ("b-<booking id>" or
+   * "k-<block id>"), e.g. after the server refused a write.
+   */
+  highlight?: string[];
   /** Shown while the next month's data is on its way. */
   pending?: boolean;
 };
@@ -202,6 +242,8 @@ export function MonthCalendar({
   onMonthChange,
   bookingHref,
   onSelectRange,
+  onBlockClick,
+  highlight: ringed,
   pending = false,
 }: MonthCalendarProps) {
   const weeks = useMemo(() => monthWeeks(month, weekStart), [month, weekStart]);
@@ -319,7 +361,7 @@ export function MonthCalendar({
         onPointerDown(event: React.PointerEvent<HTMLDivElement>) {
           if (event.button !== 0) return;
           // A bar is a link to its booking; let it be one.
-          if ((event.target as Element).closest("a,[role=img]")) return;
+          if ((event.target as Element).closest("[data-bar]")) return;
           const day = dayAt(event);
           if (!day) return;
           // Touch keeps scrolling; only a mouse or pen drags.
@@ -373,7 +415,10 @@ export function MonthCalendar({
     highlight !== null && date >= highlight.from && date <= highlight.to;
   const taken = conflicts.length > 0;
   // Bar keys, so the calendar can ring what stands in the way.
-  const inTheWay = new Set(conflicts.map((c) => `${c.kind === "booking" ? "b" : "k"}-${c.id}`));
+  const inTheWay = new Set([
+    ...conflicts.map((c) => `${c.kind === "booking" ? "b" : "k"}-${c.id}`),
+    ...(ringed ?? []),
+  ]);
 
   return (
     <section aria-labelledby="calendar-title" aria-busy={pending}>
@@ -555,6 +600,17 @@ export function MonthCalendar({
                     key={segment.span.key}
                     segment={segment}
                     inTheWay={inTheWay.has(segment.span.key)}
+                    onClick={
+                      segment.span.kind === "block" && onBlockClick
+                        ? () => {
+                            const { block, property } = segment.span as Extract<
+                              Bar,
+                              { kind: "block" }
+                            >;
+                            onBlockClick({ ...block, propertyId: property.id });
+                          }
+                        : undefined
+                    }
                     href={
                       segment.span.kind === "booking" && bookingHref
                         ? bookingHref(segment.span.booking.id)
