@@ -116,6 +116,62 @@ describe("connecting Google Calendar", () => {
     expect(outcome(await back({ code: "c", state }))).toBe("error");
   });
 
+  it("summarises the sync of the user's booking events", async () => {
+    await back({ code: "code-1", state: await start() });
+    expect((await (await status()).json()).sync).toEqual({
+      lastSyncedAt: null,
+      pending: 0,
+      failed: 0,
+      lastError: null,
+    });
+
+    const property = await db.property.create({
+      data: { name: "Lake", timezone: "UTC", currency: "EUR", color: "#0f766e" },
+    });
+    const guest = await db.guest.create({ data: { name: "Ada Lovelace" } });
+    const booking = (day: number) =>
+      db.booking.create({
+        data: {
+          propertyId: property.id,
+          guestId: guest.id,
+          checkIn: new Date(Date.UTC(2026, 11, day)),
+          checkOut: new Date(Date.UTC(2026, 11, day + 1)),
+          status: "confirmed",
+          nightlyRateMinor: 0,
+          cleaningFeeMinor: 0,
+          totalAmountMinor: 0,
+          currency: "EUR",
+        },
+      });
+    const synced = new Date("2026-10-01T10:00:00Z");
+    const link = async (day: number, data: Record<string, unknown>) =>
+      db.calendarEventLink.create({
+        data: {
+          bookingId: (await booking(day)).id,
+          calendarId: "lake@group.calendar.google.com",
+          googleEventId: `vh${String(day).padStart(5, "0")}`,
+          userId: session.userId,
+          ...data,
+        },
+      });
+    await link(1, { syncState: "synced", lastSyncedAt: new Date("2026-09-01T10:00:00Z") });
+    await link(2, { syncState: "synced", lastSyncedAt: synced });
+    await link(3, { syncState: "pending" });
+    await link(4, { syncState: "pending_delete" });
+    await link(5, { syncState: "failed", lastError: "rate_limited" });
+    await link(6, { syncState: "failed", lastError: "something_new" });
+
+    const { sync } = await (await status()).json();
+    expect(sync).toEqual({
+      lastSyncedAt: synced.toISOString(),
+      pending: 2,
+      failed: 2,
+      // The latest failure, as a fixed sentence: never Google's text.
+      lastError: "Syncing an event failed; the app retries automatically.",
+    });
+    expect(JSON.stringify(sync)).not.toContain("Ada");
+  });
+
   it("disconnects", async () => {
     await back({ code: "code-1", state: await start() });
     google.mockResolvedValue(new Response(null, { status: 200 }));
@@ -124,6 +180,10 @@ describe("connecting Google Calendar", () => {
       "https://oauth2.googleapis.com/revoke",
       expect.anything(),
     );
-    expect(await (await status()).json()).toEqual({ available: true, status: "not_connected" });
+    expect(await (await status()).json()).toEqual({
+      available: true,
+      status: "not_connected",
+      sync: null,
+    });
   });
 });

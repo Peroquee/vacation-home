@@ -466,6 +466,10 @@ sign-in ([`src/lib/google/`](src/lib/google)):
   connection is marked `disconnected` with reason `revoked`, and callers get
   a `CalendarNotConnectedError`. `GET /api/google/connection` reports it so
   settings can show a "reconnect" prompt; reconnecting replaces the grant.
+  The same response carries `sync`, a summary of the user's booking events
+  in Google: `{ lastSyncedAt, pending, failed, lastError }`. It's `null`
+  unless the account is connected. `lastError` is a fixed sentence for the
+  latest failure's kind, never Google's text.
   Tokens sealed under an earlier `TOKEN_ENCRYPTION_KEY` do the same, with
   reason `key_changed`.
 - **Disconnecting**: `DELETE /api/google/connection` revokes the grant at
