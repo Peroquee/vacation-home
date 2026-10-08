@@ -136,6 +136,35 @@ any case), `phone` and `notes`. Creating with a known email never makes a
 duplicate, even when two requests race. That is what the booking form's
 inline "new guest" relies on.
 
+### Bookings
+
+| Method and path                 | Does                                                              |
+| ------------------------------- | ----------------------------------------------------------------- |
+| `GET /api/bookings`             | List, paginated, with filters (below)                             |
+| `POST /api/bookings`            | Create; `409` if a confirmed booking's dates are taken            |
+| `GET /api/bookings/:id`         | One booking, with its property and guest                          |
+| `PATCH /api/bookings/:id`       | Update; new dates or confirming re-check availability             |
+| `POST /api/bookings/:id/cancel` | Cancel: frees the dates, keeps the record. Bookings never delete. |
+
+- **Dates**: `checkIn`/`checkOut` are `YYYY-MM-DD`; check-out is exclusive,
+  so a guest may arrive on another's departure day. At most 365 nights.
+- **Status**: `inquiry` (default; holds nothing), `confirmed` (holds the
+  dates), `cancelled`. **Source**: `direct`, `airbnb`, `booking.com`, `other`.
+- **Money**: rates default to the property's and the currency is copied
+  from it. `totalAmountMinor` is nights × `nightlyRateMinor` +
+  `cleaningFeeMinor`, kept up to date as dates and rates change, unless set by
+  hand (`totalIsManual`); `PATCH` with `totalAmountMinor: null` hands it back
+  to the calculation.
+- **Conflicts**: a confirmed booking overlapping another confirmed booking or
+  a block gets a `409` whose `error.conflicts` lists what is in the way
+  (`kind`, `id`, `start`, `end`, and for blocks `reason`/`origin`). Moving a
+  booking ignores its own old dates. PostgreSQL enforces the same rules, so
+  they hold under concurrency.
+- **List filters**: `propertyId`, `from`/`to` (stays overlapping that range),
+  `status` and `source` (comma-separated), `q` (part of the guest's name or
+  email), `page`, `pageSize` (≤ 100), `sort` (`checkIn` or `-checkIn`). The
+  response is `{ items, total, page, pageSize }`.
+
 ## Testing
 
 **Unit tests** use [Vitest](https://vitest.dev) and live next to the code they
