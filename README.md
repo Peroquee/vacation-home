@@ -91,6 +91,15 @@ Application code imports the shared instance from
 a new connection pool on each one. The Prisma CLI reads `.env` files through
 Next's own loader, so it sees the same variables `npm run dev` does.
 
+### Backups
+
+The `backup` service in `docker-compose.yml` dumps the database daily to
+off-host storage, keeps a rotating set and reports to a monitor that alerts
+after 48 hours without a backup. It is off in development; start it with
+`docker compose --profile backup up -d backup`. Setup, the restore procedure
+(`scripts/backup/restore.sh`) and how erased guests age out of backups are in
+[docs/backup-and-restore.md](docs/backup-and-restore.md).
+
 ## API
 
 JSON route handlers under `src/app/api`. Errors always look like:
@@ -182,9 +191,34 @@ delete them (`reason: "system"`). The app finds them by their fixed
 `systemKey`. A category used by transactions can't be deleted
 (`reason: "in_use"`).
 
-Transactions (GitLab #77 adds their API) must use a category of their own
-type, and a linked booking must belong to the transaction's property. The
-database enforces both with composite foreign keys.
+### Transactions
+
+| Method and path                      | Does                                                   |
+| ------------------------------------ | ------------------------------------------------------ |
+| `GET /api/transactions`              | The ledger: filtered, paginated, sorted, with totals   |
+| `POST /api/transactions`             | Record one; `201`                                      |
+| `GET /api/transactions/:id`          | One transaction, with its category                     |
+| `PATCH /api/transactions/:id`        | Update any subset of fields                            |
+| `DELETE /api/transactions/:id`       | Delete one                                             |
+| `POST /api/transactions/bulk-delete` | `{ "ids": [...] }`, up to 500, e.g. after a bad import |
+
+- **Amounts** are positive integers of minor units (`amountMinor`), and the
+  `type` (`income`/`expense`) gives the direction. They're in the
+  property's currency, which a property can't change once it has
+  transactions. No amount, total included, is ever a float.
+- **References** are checked and reported per field. The category must have
+  the transaction's type and must not be hidden (for a new choice), and a
+  linked booking must belong to the same property. The database enforces the
+  same rules with composite foreign keys. Changing the type needs a category
+  of the new type in the same request; the property can't change.
+- **List filters**: `propertyId`, `type`, `categoryId` (comma-separated),
+  `from`/`to` (dates; `to` exclusive), `bookingId` or `linked=true|false`,
+  `page`, `pageSize` (≤ 200), and `sort` (`date`, `-date`, `amount`,
+  `-amount`; default `-date`). The response is `{ items, total, page,
+pageSize, totals: [{ currency, incomeMinor, expenseMinor, netMinor }] }`, where
+  `totals` covers every matching transaction, not just the page, with one entry
+  per currency, since minor units of different currencies can't be added. A
+  repeated parameter (`?categoryId=a&categoryId=b`) counts like a comma list.
 
 ### Calendar availability
 
@@ -294,11 +328,57 @@ stored in the database ([`src/auth.ts`](src/auth.ts)).
   on every route except `/signin` and Auth.js's own `/api/auth/*`. Pages
   redirect to sign-in and come back afterwards. API calls get a `401` instead.
 - **Google client setup**: create an OAuth client of type "Web application"
-  and add `<APP_URL>/api/auth/callback/google` as an authorised redirect URI.
-  The same client will later request Calendar access, so sign-in already asks
-  for offline access. The refresh token is stored on the account and replaced
-  on every sign-in.
+  and add `<APP_URL>/api/auth/callback/google` and
+  `<APP_URL>/api/google/callback` as authorised redirect URIs.
+- **Sign-in asks for identity only** (`openid email profile`): no calendar
+  access and no offline access, and no token from sign-in is stored.
 - **Signing out** deletes the session row.
+
+### Google Calendar access
+
+Calendar access is a separate grant the user makes from settings, on top of
+sign-in ([`src/lib/google/`](src/lib/google)):
+
+- **Connecting**: `GET /api/google/connect` sends the browser to Google's
+  consent screen with incremental authorisation (`include_granted_scopes`)
+  for the `calendar` scope and offline access. Google returns to
+  `/api/google/callback`, which checks the CSRF `state` (an httpOnly cookie
+  bound to the user), stores the grant and redirects to
+  `/settings?google=connected` (or `denied`, `scope_missing`, `unavailable`,
+  `error`).
+- **Tokens at rest** are encrypted with AES-256-GCM under
+  `TOKEN_ENCRYPTION_KEY` ([`src/lib/secrets.ts`](src/lib/secrets.ts)). Without
+  that key, connecting is unavailable; the rest of the app works.
+- **Using it**: `getAccessToken(userId)` returns a valid access token,
+  refreshing it when it is within a minute of expiry. Concurrent callers share
+  one refresh.
+- **Revoked access**: when Google answers a refresh with `invalid_grant`
+  (access removed in the Google account, or the grant expired), the
+  connection is marked `disconnected` with reason `revoked`, and callers get
+  a `CalendarNotConnectedError`. `GET /api/google/connection` reports it so
+  settings can show a "reconnect" prompt; reconnecting replaces the grant.
+  Tokens sealed under an earlier `TOKEN_ENCRYPTION_KEY` do the same, with
+  reason `key_changed`.
+- **Disconnecting**: `DELETE /api/google/connection` revokes the grant at
+  Google (best effort) and deletes it.
+
+**Calling the API**: `createCalendarClient({ userId })`
+([`src/lib/google/calendar.ts`](src/lib/google/calendar.ts)) wraps calendar
+list and event list/get/insert/update/delete:
+
+- Rate limits (429, 403 `rateLimitExceeded`/`userRateLimitExceeded`), 5xx,
+  network failures and timeouts are retried with exponential backoff and full
+  jitter, honouring `Retry-After`, up to 5 attempts. A 401 refreshes the
+  token once. One user's requests are spaced at least 100 ms apart.
+- Every failure is a `GoogleCalendarError` with a `kind` (`rate_limited`,
+  `quota_exceeded`, `not_found`, `gone`, `precondition_failed`, ...) and a
+  `transient` flag that says whether a job should retry later. A revoked grant
+  is a `CalendarNotConnectedError`.
+- Inserting with a caller-chosen event id survives a retried insert that
+  had already reached Google. Updates can pass an `etag` (`If-Match`).
+  Deleting an event that is already gone counts as done.
+- Every call is logged with its operation, calendar id, event id, status,
+  attempt and duration, never a body.
 
 End-to-end tests sign in by inserting a real session into their own test
 database and sending its cookie. The app has no test-only login path that a

@@ -28,6 +28,8 @@ export default defineConfig({
       AUTH_GOOGLE_SECRET: "db-test-google-secret",
       AUTH_ALLOWED_EMAILS: "owner@example.test",
       APP_URL: "http://localhost:3000",
+      // 32 bytes, base64: Google tokens are stored encrypted.
+      TOKEN_ENCRYPTION_KEY: "ZGItdGVzdC1rZXktZGItdGVzdC1rZXktZGItdGVzdC0=",
       // Run as far from UTC as possible, so any calendar date that is
       // accidentally pushed through local time shifts and fails loudly.
       TZ: "Pacific/Kiritimati",

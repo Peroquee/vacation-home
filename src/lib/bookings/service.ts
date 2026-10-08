@@ -317,7 +317,6 @@ export async function cancelBooking(id: string): Promise<BookingWithRelations | 
   return result.booking;
 }
 
-/** Bookings matching `query`, one page at a time, with the total count. */
 /**
  * The ORDER BY for a list sort. Ties fall back to check-in, then creation,
  * so pages never shuffle between requests.
@@ -340,6 +339,7 @@ function orderFor(sort: BookingSort): Prisma.BookingOrderByWithRelationInput[] {
   return [primary[column], ...ties];
 }
 
+/** Bookings matching `query`, one page at a time, with the total count. */
 export async function listBookings(query: ListBookingsQuery) {
   const where: Prisma.BookingWhereInput = {
     propertyId: query.propertyId,

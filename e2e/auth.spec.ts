@@ -14,7 +14,12 @@ test.describe("signed out", () => {
   });
 
   test("API calls get a 401, not a redirect", async ({ request }) => {
-    for (const path of ["/api/properties", "/api/guests", "/api/debug/error"]) {
+    for (const path of [
+      "/api/properties",
+      "/api/guests",
+      "/api/debug/error",
+      "/api/google/connection",
+    ]) {
       const response = await request.get(path, { maxRedirects: 0 });
       expect(response.status(), path).toBe(401);
       expect((await response.json()).error.code).toBe("unauthorized");

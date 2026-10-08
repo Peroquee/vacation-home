@@ -257,6 +257,43 @@ model Transaction {
   @@map("transactions")
 }
 
+// --- Google Calendar --------------------------------------------------------------
+
+enum GoogleConnectionStatus {
+  connected
+  /// Google refused the refresh token: access was revoked or expired. The
+  /// user must reconnect; nothing is synced until then.
+  disconnected
+
+  @@map("google_connection_status")
+}
+
+/// A user's grant of Google Calendar access, requested separately from
+/// sign-in (incremental authorisation, from the settings page). The tokens
+/// are encrypted at rest (src/lib/secrets.ts); never log them.
+model GoogleConnection {
+  id                    String                 @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId                String                 @unique @map("user_id") @db.Uuid
+  /// The Google account granting access (its `sub`) - not necessarily the
+  /// one the user signs in with - and its address, to show which it is.
+  googleAccountId       String                 @map("google_account_id")
+  googleEmail           String?                @map("google_email")
+  scope                 String
+  refreshTokenEncrypted String                 @map("refresh_token_encrypted")
+  accessTokenEncrypted  String?                @map("access_token_encrypted")
+  accessTokenExpiresAt  DateTime?              @map("access_token_expires_at")
+  status                GoogleConnectionStatus @default(connected)
+  /// Why it is disconnected, e.g. "revoked". Never a token or a Google
+  /// error body.
+  disconnectedReason    String?                @map("disconnected_reason")
+  connectedAt           DateTime               @default(now()) @map("connected_at")
+  updatedAt             DateTime               @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("google_connections")
+}
+
 // --- Audit ----------------------------------------------------------------------
 
 /// That something happened, when, and who did it - never the data involved.
@@ -286,22 +323,24 @@ model AuditEvent {
 /// Someone who has signed in. Who may sign in at all is decided by
 /// AUTH_ALLOWED_EMAILS, checked at sign-in and on every request.
 model User {
-  id            String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  id            String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   name          String?
-  email         String?   @unique
-  emailVerified DateTime? @map("email_verified")
+  email         String?           @unique
+  emailVerified DateTime?         @map("email_verified")
   image         String?
   accounts      Account[]
   sessions      Session[]
-  createdAt     DateTime  @default(now()) @map("created_at")
-  updatedAt     DateTime  @updatedAt @map("updated_at")
+  google        GoogleConnection?
+  createdAt     DateTime          @default(now()) @map("created_at")
+  updatedAt     DateTime          @updatedAt @map("updated_at")
 
   @@map("users")
 }
 
-/// A linked Google account. Holds the OAuth tokens - including the refresh
-/// token that Google Calendar sync will use, so it is requested with
-/// `access_type=offline` and kept current on every sign-in. Never log these.
+/// The Google account a user signs in with. Sign-in only identifies the
+/// user, so no tokens are kept here (the token columns exist for the
+/// adapter and stay empty); Google Calendar access is a separate,
+/// encrypted GoogleConnection.
 model Account {
   id                String  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   userId            String  @map("user_id") @db.Uuid
