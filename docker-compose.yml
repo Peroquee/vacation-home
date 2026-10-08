@@ -6,6 +6,10 @@
 #
 # Nothing here is for production; the production image arrives with its own
 # Dockerfile.
+#
+# The `backup` service is the exception: scheduled database backups, off by
+# default and started with `docker compose --profile backup up -d`. The
+# production deployment reuses it. See docs/backup-and-restore.md.
 
 name: vacation-home
 
@@ -110,6 +114,49 @@ services:
       # Kept apart from a host-side `npm run dev`, whose cache would hold
       # binaries and paths for a different machine.
       - app-next:/app/.next
+    depends_on:
+      db:
+        condition: service_healthy
+
+  backup:
+    # Scheduled pg_dump with daily/weekly/monthly rotation, from a maintained
+    # image (github.com/prodrigestivill/docker-postgres-backup-local) rather
+    # than a home-grown cron script. The 16 matches the server above, so
+    # pg_dump and the server are the same major version; pinned to a build.
+    image: prodrigestivill/postgres-backup-local:16-debian-d257e5d
+    # Only with `--profile backup`: a dev database needs no backups.
+    profiles: [backup]
+    restart: unless-stopped
+    # The image's recommended non-root user (uid 999). The backup directory
+    # must be writable by it: see docs/backup-and-restore.md.
+    user: postgres:postgres
+    environment:
+      POSTGRES_HOST: db
+      # Must agree with the `db` service.
+      POSTGRES_DB: vacation_home
+      POSTGRES_USER: vacation
+      POSTGRES_PASSWORD: vacation
+      # Compressed plain SQL, without ownership or grants, so a dump restores
+      # into any database whatever its owner is called.
+      POSTGRES_EXTRA_OPTS: -Z1 --no-owner --no-privileges
+      # Everything below comes from .env; the defaults are in .env.example.
+      SCHEDULE: ${BACKUP_SCHEDULE:-@daily}
+      TZ: ${BACKUP_TZ:-Europe/Berlin}
+      # A backup on every (re)start, so a new setup proves itself at once.
+      BACKUP_ON_START: "TRUE"
+      BACKUP_KEEP_DAYS: ${BACKUP_KEEP_DAYS:-7}
+      BACKUP_KEEP_WEEKS: ${BACKUP_KEEP_WEEKS:-4}
+      BACKUP_KEEP_MONTHS: ${BACKUP_KEEP_MONTHS:-6}
+      # Called after every successful backup: the heartbeat of the 48-hour
+      # staleness alert. "**None**" is the image's spelling of "disabled".
+      WEBHOOK_POST_BACKUP_URL: ${BACKUP_HEARTBEAT_URL:-**None**}
+      # Called when a backup fails, for an alert straight away.
+      WEBHOOK_ERROR_URL: ${BACKUP_FAILURE_URL:-**None**}
+    volumes:
+      # Off-host storage: point BACKUP_HOST_DIR at an NFS mount. The default
+      # keeps backups next to the checkout, which is fine for trying it out
+      # and useless when this machine dies.
+      - ${BACKUP_HOST_DIR:-./backups}:/backups
     depends_on:
       db:
         condition: service_healthy
