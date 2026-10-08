@@ -18,7 +18,7 @@ test("pages carry a nonce-based CSP that the app runs under without violations",
     .first()
     .click();
   await expect(page.getByRole("menuitem", { name: "Sign out" })).toBeVisible();
-  for (const path of ["/bookings", "/finance", "/settings"]) {
+  for (const path of ["/dashboard", "/bookings", "/guests", "/finance", "/settings"]) {
     await page.goto(path);
     await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
   }
