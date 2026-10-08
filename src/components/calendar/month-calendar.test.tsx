@@ -130,3 +130,95 @@ describe("MonthCalendar", () => {
     );
   });
 });
+
+describe("MonthCalendar range selection", () => {
+  const priced: CalendarProperty = {
+    ...lake,
+    property: {
+      ...lake.property,
+      currency: "EUR",
+      defaultNightlyRateMinor: 10000,
+      defaultCleaningFeeMinor: 5000,
+    },
+  };
+
+  function renderSelectable() {
+    const onSelectRange = vi.fn();
+    render(
+      <MonthCalendar
+        month="2026-07"
+        weekStart={1}
+        today="2026-07-08"
+        calendars={[priced]}
+        onMonthChange={vi.fn()}
+        onSelectRange={onSelectRange}
+      />,
+    );
+    return { user: userEvent.setup(), onSelectRange };
+  }
+
+  const day = (name: string) => screen.getByRole("button", { name });
+  // 23 to 26 July 2026 is free; Ada stays 10 to 15 July.
+  const THU_23 = "Thursday, July 23, 2026";
+  const SUN_26 = "Sunday, July 26, 2026";
+  const free = { propertyId: "p1", checkIn: "2026-07-23", checkOut: "2026-07-26" };
+
+  it("selects by dragging, forwards or backwards", async () => {
+    const { user, onSelectRange } = renderSelectable();
+    await user.pointer([
+      { keys: "[MouseLeft>]", target: day(THU_23) },
+      { target: day(SUN_26) },
+      { keys: "[/MouseLeft]", target: day(SUN_26) },
+    ]);
+    await user.pointer([
+      { keys: "[MouseLeft>]", target: day(SUN_26) },
+      { target: day(THU_23) },
+      { keys: "[/MouseLeft]", target: day(THU_23) },
+    ]);
+    expect(onSelectRange.mock.calls).toEqual([[free], [free]]);
+  });
+
+  it("selects by tapping the first and the last day", async () => {
+    const { user, onSelectRange } = renderSelectable();
+    await user.click(day(THU_23));
+    expect(screen.getByText(/Now pick the last day/)).toBeInTheDocument();
+    await user.click(day(SUN_26));
+    expect(onSelectRange).toHaveBeenCalledWith(free);
+  });
+
+  it("selects with the keyboard: shift and arrows extend, Enter finishes", async () => {
+    const { user, onSelectRange } = renderSelectable();
+    day(THU_23).focus();
+    await user.keyboard("{Shift>}{ArrowRight}{ArrowRight}{ArrowRight}{/Shift}");
+    expect(day(SUN_26)).toHaveFocus();
+    // Three nights at €100 plus a €50 cleaning fee.
+    expect(screen.getByText(/3 nights · €350\.00/)).toBeInTheDocument();
+    await user.keyboard("{Enter}");
+    expect(onSelectRange).toHaveBeenCalledWith(free);
+  });
+
+  it("cancels with Escape", async () => {
+    const { user, onSelectRange } = renderSelectable();
+    await user.click(day(THU_23));
+    await user.keyboard("{Escape}");
+    expect(screen.getByText(/Drag across days/)).toBeInTheDocument();
+    await user.click(day(SUN_26));
+    expect(onSelectRange).not.toHaveBeenCalled();
+  });
+
+  it("turns red and opens nothing when the range overlaps a stay", async () => {
+    const { user, onSelectRange } = renderSelectable();
+    await user.click(day("Monday, July 13, 2026"));
+    await user.click(day("Thursday, July 16, 2026"));
+
+    expect(onSelectRange).not.toHaveBeenCalled();
+    const hint = screen.getByText(/Not available: Booked by Ada Lovelace/);
+    expect(hint).toHaveClass("text-destructive");
+    expect(hint).toHaveTextContent("Change the dates, or press Escape.");
+  });
+
+  it("is read-only without onSelectRange", async () => {
+    renderCalendar();
+    expect(screen.queryByText(/Drag across days/)).not.toBeInTheDocument();
+  });
+});
