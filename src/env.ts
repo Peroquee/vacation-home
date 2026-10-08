@@ -8,12 +8,17 @@
  *
  * Validation runs when a server process boots, via `register()` in
  * `src/instrumentation.ts`. It deliberately does not run during `next build`,
- * so building an image does not require production secrets.
+ * so building an image does not require production secrets. The build still
+ * imports server modules to collect page data, so during the build phase the
+ * export below is a stand-in that validates on first read instead: importing
+ * it is harmless, while actually using a value at build time still fails
+ * loudly.
  *
  * Server-side only: these are secrets. Next never inlines a variable without a
  * `NEXT_PUBLIC_` prefix into the client bundle, so importing this from a client
  * component produces a validation failure rather than a leak.
  */
+import { PHASE_PRODUCTION_BUILD } from "next/constants";
 import { z } from "zod";
 
 import { EnvValidationError } from "./env-error";
@@ -82,4 +87,16 @@ function loadEnv(): Env {
   return parsed.data;
 }
 
-export const env = loadEnv();
+/** Defers validation to the first property read. */
+function loadOnFirstRead(): Env {
+  let loaded: Env | undefined;
+  return new Proxy({} as Env, {
+    get: (_target, name) => {
+      loaded ??= loadEnv();
+      return loaded[name as keyof Env];
+    },
+  });
+}
+
+export const env: Env =
+  process.env.NEXT_PHASE === PHASE_PRODUCTION_BUILD ? loadOnFirstRead() : loadEnv();

@@ -64,6 +64,11 @@ default:
         echo "cache miss - installing dependencies"
         npm ci --prefer-offline --no-audit --no-fund
       fi
+    # The Prisma client is generated into src/, which no cache carries. `npm
+    # ci` generates it via postinstall, but a cache hit skips the install, so
+    # generate it explicitly. It needs no database and takes well under a
+    # second.
+    - npm run db:generate
 
 install:
   stage: install
