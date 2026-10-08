@@ -11,7 +11,11 @@ test("the home page redirects to the calendar", async ({ page }) => {
 
 test("the API reads what is in the database", async ({ request }) => {
   await withE2eDb((db) =>
-    db.query("INSERT INTO properties (name, updated_at) VALUES ($1, now())", ["Seaside Cottage"]),
+    db.query(
+      `INSERT INTO properties (name, timezone, currency, color, updated_at)
+       VALUES ($1, 'Europe/Lisbon', 'EUR', '#0f766e', now())`,
+      ["Seaside Cottage"],
+    ),
   );
 
   const response = await request.get("/api/properties");
