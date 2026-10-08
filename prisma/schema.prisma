@@ -56,6 +56,10 @@ model Guest {
   email     String?  @unique
   phone     String?
   notes     String?
+  /// Set when the guest's personal data was erased (DSGVO Art. 17): the
+  /// record stays, anonymised, because its bookings are accounting records.
+  /// A purged guest is read-only and never found by search.
+  purgedAt  DateTime? @map("purged_at")
   createdAt DateTime  @default(now()) @map("created_at")
   updatedAt DateTime  @updatedAt @map("updated_at")
   bookings  Booking[]
@@ -173,6 +177,28 @@ model Block {
   @@unique([propertyId, externalEventId])
   @@index([propertyId, startDate, endDate])
   @@map("blocks")
+}
+
+// --- Audit ----------------------------------------------------------------------
+
+/// That something happened, when, and who did it - never the data involved.
+/// Append-only: written by the app, never updated or deleted by it.
+model AuditEvent {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  /// What happened, e.g. "guest.purged".
+  action      String
+  /// The kind and id of what it happened to; the id carries no personal data.
+  subjectType String   @map("subject_type")
+  subjectId   String   @map("subject_id") @db.Uuid
+  /// The signed-in user who did it, if any. Not a relation: the trail must
+  /// outlive the user's account.
+  actorUserId String?  @map("actor_user_id") @db.Uuid
+  /// Facts about the event, such as counts - never personal data.
+  details     Json     @default("{}")
+  occurredAt  DateTime @default(now()) @map("occurred_at")
+
+  @@index([subjectType, subjectId])
+  @@map("audit_events")
 }
 
 // --- Authentication (Auth.js) ------------------------------------------------

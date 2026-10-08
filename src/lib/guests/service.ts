@@ -6,13 +6,22 @@ import { escapeLike } from "@/lib/like";
 
 import type { CreateGuestInput, UpdateGuestInput } from "./schema";
 
-export type GuestDto = Omit<Guest, "createdAt" | "updatedAt"> & {
+export type GuestDto = Omit<Guest, "createdAt" | "updatedAt" | "purgedAt"> & {
+  /** Personal data erased; see src/lib/guests/purge.ts. Read-only. */
+  purged: boolean;
+  purgedAt: string | null;
   createdAt: string;
   updatedAt: string;
 };
 
-export function toDto({ createdAt, updatedAt, ...rest }: Guest): GuestDto {
-  return { ...rest, createdAt: createdAt.toISOString(), updatedAt: updatedAt.toISOString() };
+export function toDto({ createdAt, updatedAt, purgedAt, ...rest }: Guest): GuestDto {
+  return {
+    ...rest,
+    purged: purgedAt !== null,
+    purgedAt: purgedAt?.toISOString() ?? null,
+    createdAt: createdAt.toISOString(),
+    updatedAt: updatedAt.toISOString(),
+  };
 }
 
 /**
@@ -25,14 +34,16 @@ export async function searchGuests(query: string | undefined, limit: number): Pr
   // in what the user typed would act as wildcards.
   const text = query === undefined ? undefined : escapeLike(query);
   return db.guest.findMany({
-    where: text
-      ? {
-          OR: [
-            { name: { contains: text, mode: "insensitive" } },
-            { email: { contains: text, mode: "insensitive" } },
-          ],
-        }
-      : undefined,
+    where: {
+      // Purged guests are never offered: not in search, not in the typeahead.
+      purgedAt: null,
+      ...(text && {
+        OR: [
+          { name: { contains: text, mode: "insensitive" } },
+          { email: { contains: text, mode: "insensitive" } },
+        ],
+      }),
+    },
     orderBy: [{ name: "asc" }, { createdAt: "asc" }],
     take: limit,
   });
@@ -67,13 +78,19 @@ export async function findOrCreateGuest(
   }
 }
 
-export type UpdateResult = { guest: Guest } | { error: "not_found" | "email_taken" };
+export type UpdateResult = { guest: Guest } | { error: "not_found" | "email_taken" | "purged" };
 
+/** Updates a guest; a purged guest is read-only. */
 export async function updateGuest(id: string, input: UpdateGuestInput): Promise<UpdateResult> {
   try {
-    return { guest: await db.guest.update({ where: { id }, data: input }) };
+    // Conditional on not being purged, so a purge cannot be undone by an
+    // edit that raced it.
+    return { guest: await db.guest.update({ where: { id, purgedAt: null }, data: input }) };
   } catch (error) {
-    if (isPrismaError(error, "P2025")) return { error: "not_found" };
+    if (isPrismaError(error, "P2025")) {
+      const exists = await db.guest.findUnique({ where: { id }, select: { id: true } });
+      return { error: exists ? "purged" : "not_found" };
+    }
     if (isPrismaError(error, "P2002")) return { error: "email_taken" };
     throw error;
   }

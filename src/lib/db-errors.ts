@@ -37,3 +37,17 @@ export function isExclusionViolation(error: unknown, constraint: string): boolea
     new RegExp(`\\b${constraint}\\b`).test(cause.originalMessage)
   );
 }
+
+/**
+ * Whether `error` was raised by one of this schema's own triggers whose
+ * message starts with `marker` (e.g. "guest_purged"). The driver passes the
+ * message on, so the marker leads it.
+ */
+export function raisedByDatabase(error: unknown, marker: string): boolean {
+  if (!(error instanceof Prisma.PrismaClientKnownRequestError)) return false;
+  const cause = (error.meta?.driverAdapterError as { cause?: Record<string, unknown> } | undefined)
+    ?.cause;
+  return (
+    typeof cause?.originalMessage === "string" && cause.originalMessage.startsWith(`${marker}:`)
+  );
+}
