@@ -1,0 +1,108 @@
+# Development environment: PostgreSQL plus the Next dev server.
+#
+#   docker compose up        start both (Ctrl+C stops them, data is kept)
+#   docker compose down      remove the containers, keep the data
+#   docker compose down -v   remove the containers and wipe the database
+#
+# Nothing here is for production; the production image arrives with its own
+# Dockerfile.
+
+name: vacation-home
+
+services:
+  db:
+    # Pinned to an exact minor, for the same reason CI pins Node to .nvmrc:
+    # "16" floats, and everyone (and CI) should run the same server.
+    image: postgres:16.15
+    restart: unless-stopped
+    environment:
+      # Must agree with DATABASE_URL in .env.example and in `app` below.
+      POSTGRES_USER: vacation
+      POSTGRES_PASSWORD: vacation
+      POSTGRES_DB: vacation_home
+    ports:
+      # Host port 5433, not 5432, so a locally installed PostgreSQL keeps its
+      # port. Tools on the host (psql, Prisma Studio, `npm run dev` outside
+      # Docker) connect via localhost:5433; containers use db:5432.
+      - "5433:5432"
+    volumes:
+      # A named volume, so the data outlives the container: `down` and `up`
+      # keep it, only `down -v` removes it.
+      - db-data:/var/lib/postgresql/data
+    healthcheck:
+      # Over TCP: during first-run initialisation the image runs a temporary
+      # server on the Unix socket only, which a socket check would accept.
+      test:
+        - CMD-SHELL
+        - pg_isready -h 127.0.0.1 -U "$$POSTGRES_USER" -d "$$POSTGRES_DB"
+      interval: 2s
+      timeout: 5s
+      retries: 15
+
+  app:
+    # Exactly the version .nvmrc and .gitlab-ci.yml name. Bump all three
+    # together.
+    image: node:24.20.0-bookworm
+    working_dir: /app
+    command:
+      - sh
+      - -ec
+      - |
+        # Run as whoever owns the checkout rather than as root, so files the
+        # dev server writes into the bind mount (next-env.d.ts, later codegen)
+        # stay editable from the host. Fresh volumes start out root-owned.
+        uid=$$(stat -c %u .) gid=$$(stat -c %g .)
+        for dir in node_modules .next; do
+          [ "$$(stat -c %u:%g "$$dir")" = "$$uid:$$gid" ] || chown -R "$$uid:$$gid" "$$dir"
+        done
+        exec setpriv --reuid="$$uid" --regid="$$gid" --clear-groups \
+          env HOME=/tmp sh -ec '
+            # The dependency tree lives in a volume, not the bind mount:
+            # native packages (the SWC binary, later the Prisma engine) must
+            # be built for Linux and for this Node. Reinstall when the
+            # lockfile or the Node version changes. The stamp is written only
+            # after a successful install, so an interrupted one is retried.
+            stamp="$$(node --version) $$(sha256sum package-lock.json)"
+            if [ "$$stamp" != "$$(cat node_modules/.compose-stamp 2>/dev/null)" ]; then
+              npm ci --no-audit --no-fund
+              echo "$$stamp" > node_modules/.compose-stamp
+            fi
+
+            # A clean checkout has no env file, so fall back to the bootable
+            # placeholders - but only then. Anything in process.env beats
+            # every env file Next loads, so exporting them unconditionally
+            # would silently mask the values in a local .env.local.
+            found=
+            for f in .env .env.local .env.development .env.development.local; do
+              [ -e "$$f" ] && found=1
+            done
+            if [ -z "$$found" ]; then
+              echo "No .env file found, using the placeholders in .env.example"
+              set -a; . ./.env.example; set +a
+            fi
+
+            exec npm run dev
+          '
+    environment:
+      # Overrides the localhost URL from the env files: inside the network the
+      # database is the `db` service on its container port.
+      DATABASE_URL: postgresql://vacation:vacation@db:5432/vacation_home
+      # Keeps `npm ci` from pointing the bind-mounted repo's git hooks at a
+      # container path.
+      HUSKY: "0"
+    ports:
+      - "3000:3000"
+    volumes:
+      - .:/app
+      - app-node-modules:/app/node_modules
+      # Kept apart from a host-side `npm run dev`, whose cache would hold
+      # binaries and paths for a different machine.
+      - app-next:/app/.next
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  db-data:
+  app-node-modules:
+  app-next:
