@@ -19,6 +19,8 @@ beforeAll(async () => {
 
 afterAll(async () => {
   await db.booking.deleteMany();
+  await db.guest.deleteMany({ where: { id: guestId } });
+  await db.property.deleteMany({ where: { id: propertyId } });
   await db.$disconnect();
 });
 

@@ -40,6 +40,7 @@ model Property {
   createdAt               DateTime  @default(now()) @map("created_at")
   updatedAt               DateTime  @updatedAt @map("updated_at")
   bookings                Booking[]
+  blocks                  Block[]
 
   @@map("properties")
 }
@@ -128,6 +129,50 @@ model Booking {
   @@index([propertyId, checkIn, checkOut])
   @@index([guestId])
   @@map("bookings")
+}
+
+// --- Blocks -------------------------------------------------------------------
+
+enum BlockOrigin {
+  /// Created in this app: maintenance, personal use.
+  manual
+  /// Imported from an event in the property's Google Calendar.
+  google
+
+  @@map("block_origin")
+}
+
+/// Dates a property cannot be booked that are not a booking: an owner block
+/// (maintenance, personal use) or an event imported from Google Calendar.
+/// Blocks affect availability exactly as confirmed bookings do.
+///
+/// DATES follow the booking rule: calendar dates in the property's timezone,
+/// half-open. The block covers the nights from `startDate` up to but not
+/// including `endDate`, so a block ending on the 18th leaves the 18th free for
+/// an arrival. Google Calendar ends all-day events the same way, so their
+/// dates map directly. A timed event must first be converted to calendar
+/// dates in the property's timezone by the importer: every night it touches.
+model Block {
+  id              String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  propertyId      String      @map("property_id") @db.Uuid
+  startDate       DateTime    @map("start_date") @db.Date
+  /// Exclusive, like a booking's check-out.
+  endDate         DateTime    @map("end_date") @db.Date
+  reason          String?
+  origin          BlockOrigin @default(manual)
+  /// The Google Calendar event a `google` block came from; null for manual
+  /// blocks. Unique per property, so a re-import updates instead of
+  /// duplicating.
+  externalEventId String?     @map("external_event_id")
+  createdAt       DateTime    @default(now()) @map("created_at")
+  updatedAt       DateTime    @updatedAt @map("updated_at")
+
+  // Blocks have no life without their property.
+  property Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+
+  @@unique([propertyId, externalEventId])
+  @@index([propertyId, startDate, endDate])
+  @@map("blocks")
 }
 
 // --- Authentication (Auth.js) ------------------------------------------------
