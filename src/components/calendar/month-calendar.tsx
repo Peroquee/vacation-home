@@ -1,0 +1,368 @@
+"use client";
+
+import { ChevronLeft, ChevronRight } from "lucide-react";
+import Link from "next/link";
+import { useMemo } from "react";
+
+import { Button } from "@/components/ui/button";
+import { NativeSelect, NativeSelectOption } from "@/components/ui/native-select";
+import type { CalendarBlock, CalendarBooking } from "@/lib/availability/calendar";
+import { type CalendarDate } from "@/lib/calendar-date";
+import {
+  addMonths,
+  layoutWeeks,
+  type MonthKey,
+  monthOf,
+  monthWeeks,
+  type Segment,
+  type Span,
+  type Weekday,
+} from "@/lib/calendar/month";
+import { formatDateRange } from "@/lib/format";
+import { APP_LOCALE } from "@/lib/locale";
+import { cn } from "@/lib/utils";
+
+/** What the calendar needs of one property: who it is, and what is booked. */
+export type CalendarProperty = {
+  property: { id: string; name: string; color: string };
+  bookings: CalendarBooking[];
+  blocks: CalendarBlock[];
+};
+
+type Bar = Span &
+  (
+    | { kind: "booking"; booking: CalendarBooking; property: CalendarProperty["property"] }
+    | { kind: "block"; block: CalendarBlock; property: CalendarProperty["property"] }
+  );
+
+/** Black or white, whichever reads better on `hex`. */
+function textOn(hex: string): string {
+  const [r, g, b] = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16) / 255);
+  const linear = (c: number) => (c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4);
+  const luminance = 0.2126 * linear(r!) + 0.7152 * linear(g!) + 0.0722 * linear(b!);
+  return luminance > 0.4 ? "#000000" : "#ffffff";
+}
+
+function barStyle(bar: Bar): React.CSSProperties {
+  const color = bar.property.color;
+  if (bar.kind === "block") {
+    return {
+      backgroundImage:
+        "repeating-linear-gradient(135deg, var(--muted) 0 4px, color-mix(in oklch, var(--muted-foreground) 25%, transparent) 4px 8px)",
+      color: "var(--foreground)",
+      boxShadow: `inset 3px 0 0 ${color}`,
+    };
+  }
+  if (bar.booking.status === "inquiry") {
+    // Holds nothing yet: a tinted outline rather than a solid bar.
+    return {
+      backgroundColor: `color-mix(in oklch, ${color} 15%, var(--background))`,
+      border: `1.5px dashed ${color}`,
+      color: "var(--foreground)",
+    };
+  }
+  return { backgroundColor: color, color: textOn(color) };
+}
+
+function barLabel(bar: Bar): string {
+  const when = formatDateRange(bar.start, bar.end);
+  if (bar.kind === "block") {
+    return `Blocked${bar.block.reason ? `: ${bar.block.reason}` : ""}, ${bar.property.name}, ${when}`;
+  }
+  const status = bar.booking.status === "inquiry" ? "inquiry" : "confirmed";
+  return `${bar.booking.guest.name}, ${bar.property.name}, ${status}, ${when}`;
+}
+
+function BarView({ segment, href }: { segment: Segment<Bar>; href?: string }) {
+  const bar = segment.span;
+  const label = barLabel(bar);
+  const className = cn(
+    "relative z-10 mx-px flex h-5 min-w-0 items-center overflow-hidden px-1 text-[11px] leading-none whitespace-nowrap sm:text-xs",
+    // Rounded only where the stay really starts or ends, so a cut at a week
+    // edge reads as "continues".
+    !segment.continuesBefore && "rounded-l-full pl-1.5",
+    !segment.continuesAfter && "rounded-r-full",
+    href &&
+      "hover:brightness-95 focus-visible:ring-ring focus-visible:ring-2 focus-visible:outline-none",
+  );
+  const style: React.CSSProperties = {
+    ...barStyle(bar),
+    gridColumn: `${segment.fromLine} / ${segment.toLine}`,
+    gridRow: segment.lane + 2,
+  };
+  // The grid lines, also as data, which tests and tooling can read without
+  // a layout engine.
+  const lines = { "data-from-line": segment.fromLine, "data-to-line": segment.toLine };
+  const text = bar.kind === "booking" ? bar.booking.guest.name : (bar.block.reason ?? "Blocked");
+  const content = (
+    <>
+      {segment.continuesBefore ? <span aria-hidden>‹ </span> : null}
+      <span className="truncate">{text}</span>
+    </>
+  );
+  return href ? (
+    <Link
+      href={href}
+      className={className}
+      style={style}
+      title={label}
+      aria-label={label}
+      {...lines}
+    >
+      {content}
+    </Link>
+  ) : (
+    <div className={className} style={style} title={label} role="img" aria-label={label} {...lines}>
+      {content}
+    </div>
+  );
+}
+
+export type MonthCalendarProps = {
+  /** The month shown, "2026-07". */
+  month: MonthKey;
+  /** 0 = Sunday … 6 = Saturday. */
+  weekStart: Weekday;
+  /** Highlighted as today. */
+  today: CalendarDate;
+  /** Properties in the order their bars stack; their bookings and blocks. */
+  calendars: CalendarProperty[];
+  onMonthChange: (month: MonthKey) => void;
+  /** Where a booking's bar leads; without it, bars are not links. */
+  bookingHref?: (bookingId: string) => string;
+  /** Shown while the next month's data is on its way. */
+  pending?: boolean;
+};
+
+/**
+ * A month of stays: a controlled component that draws what it is given and
+ * reports navigation through `onMonthChange`, fetching nothing itself.
+ * Stays are bars from mid check-in to mid check-out, so a turnover day shows
+ * one stay leaving in the morning half and the next arriving in the
+ * afternoon half. Confirmed stays are solid in the property's colour,
+ * inquiries dashed, blocks hatched.
+ */
+export function MonthCalendar({
+  month,
+  weekStart,
+  today,
+  calendars,
+  onMonthChange,
+  bookingHref,
+  pending = false,
+}: MonthCalendarProps) {
+  const weeks = useMemo(() => monthWeeks(month, weekStart), [month, weekStart]);
+  const layout = useMemo(() => {
+    const bars: Bar[] = calendars.flatMap(({ property, bookings, blocks }) =>
+      [
+        ...bookings.map((booking): Bar => ({
+          kind: "booking",
+          key: `b-${booking.id}`,
+          start: booking.checkIn,
+          end: booking.checkOut,
+          booking,
+          property,
+        })),
+        ...blocks.map((block): Bar => ({
+          kind: "block",
+          key: `k-${block.id}`,
+          start: block.startDate,
+          end: block.endDate,
+          block,
+          property,
+        })),
+      ].sort((a, b) => (a.start < b.start ? -1 : a.start > b.start ? 1 : 0)),
+    );
+    return layoutWeeks(weeks, bars);
+  }, [weeks, calendars]);
+
+  const title = new Intl.DateTimeFormat(APP_LOCALE, {
+    month: "long",
+    year: "numeric",
+    timeZone: "UTC",
+  }).format(new Date(`${month}-01T00:00:00Z`));
+  const weekday = new Intl.DateTimeFormat(APP_LOCALE, { weekday: "short", timeZone: "UTC" });
+  const monthName = new Intl.DateTimeFormat(APP_LOCALE, { month: "long", timeZone: "UTC" });
+  const [year, monthNumber] = month.split("-").map(Number) as [number, number];
+  const thisYear = Number(today.slice(0, 4));
+  const years = Array.from(
+    new Set([...Array.from({ length: 6 }, (_, i) => thisYear - 2 + i), year]),
+  ).sort((a, b) => a - b);
+
+  return (
+    <section aria-labelledby="calendar-title" aria-busy={pending}>
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+        <h2 id="calendar-title" className="text-lg font-medium">
+          {title}
+        </h2>
+        <div className="flex flex-wrap items-center gap-2">
+          <Button
+            variant="outline"
+            size="icon"
+            aria-label="Previous month"
+            onClick={() => onMonthChange(addMonths(month, -1))}
+          >
+            <ChevronLeft aria-hidden />
+          </Button>
+          <Button
+            variant="outline"
+            onClick={() => onMonthChange(monthOf(today))}
+            disabled={month === monthOf(today)}
+          >
+            Today
+          </Button>
+          <Button
+            variant="outline"
+            size="icon"
+            aria-label="Next month"
+            onClick={() => onMonthChange(addMonths(month, 1))}
+          >
+            <ChevronRight aria-hidden />
+          </Button>
+          <NativeSelect
+            aria-label="Month"
+            value={String(monthNumber)}
+            onChange={(event) => onMonthChange(`${year}-${event.target.value.padStart(2, "0")}`)}
+          >
+            {Array.from({ length: 12 }, (_, i) => (
+              <NativeSelectOption key={i} value={String(i + 1)}>
+                {monthName.format(new Date(Date.UTC(2026, i, 1)))}
+              </NativeSelectOption>
+            ))}
+          </NativeSelect>
+          <NativeSelect
+            aria-label="Year"
+            value={String(year)}
+            onChange={(event) =>
+              onMonthChange(`${event.target.value}-${String(monthNumber).padStart(2, "0")}`)
+            }
+          >
+            {years.map((y) => (
+              <NativeSelectOption key={y} value={String(y)}>
+                {y}
+              </NativeSelectOption>
+            ))}
+          </NativeSelect>
+        </div>
+      </div>
+
+      <div className={cn("rounded-card border", pending && "opacity-60 transition-opacity")}>
+        <div className="grid grid-cols-7 border-b" aria-hidden>
+          {weeks[0]!.map((date) => (
+            <div key={date} className="text-muted-foreground px-1 py-1.5 text-center text-xs">
+              {weekday.format(new Date(`${date}T00:00:00Z`))}
+            </div>
+          ))}
+        </div>
+
+        {weeks.map((week, w) => {
+          const lanes = Math.max(0, ...layout[w]!.map((s) => s.lane + 1));
+          return (
+            <div key={week[0]} className="relative border-b last:border-b-0">
+              {/* Day cells behind the bars: borders, shading, today. */}
+              <div className="absolute inset-0 grid grid-cols-7" aria-hidden>
+                {week.map((date) => (
+                  <div
+                    key={date}
+                    className={cn(
+                      "border-r last:border-r-0",
+                      monthOf(date) !== month && "bg-muted/40",
+                    )}
+                  />
+                ))}
+              </div>
+              <div
+                className="relative grid grid-cols-[repeat(14,minmax(0,1fr))] gap-y-1 pb-2"
+                style={{ gridTemplateRows: `auto repeat(${lanes}, 1.25rem)` }}
+              >
+                {week.map((date, d) => (
+                  <div
+                    key={date}
+                    className="px-1 pt-1 text-xs sm:text-sm"
+                    style={{ gridColumn: `${d * 2 + 1} / span 2`, gridRow: 1 }}
+                  >
+                    <time
+                      dateTime={date}
+                      className={cn(
+                        "inline-flex size-6 items-center justify-center rounded-full tabular-nums",
+                        monthOf(date) !== month && "text-muted-foreground",
+                        date === today && "bg-primary text-primary-foreground font-medium",
+                      )}
+                      aria-current={date === today ? "date" : undefined}
+                    >
+                      {Number(date.slice(8))}
+                    </time>
+                  </div>
+                ))}
+                {layout[w]!.map((segment) => (
+                  <BarView
+                    key={segment.span.key}
+                    segment={segment}
+                    href={
+                      segment.span.kind === "booking" && bookingHref
+                        ? bookingHref(segment.span.booking.id)
+                        : undefined
+                    }
+                  />
+                ))}
+                {/* Keeps an empty week as tall as one with a lane. */}
+                {lanes === 0 ? <div className="h-5" style={{ gridRow: 2 }} /> : null}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      <Legend calendars={calendars} />
+    </section>
+  );
+}
+
+function Legend({ calendars }: { calendars: CalendarProperty[] }) {
+  const sample = calendars[0]?.property.color ?? "#0f766e";
+  const swatch = "inline-block h-3 w-6 rounded-full";
+  return (
+    <div className="text-muted-foreground mt-3 flex flex-wrap gap-x-5 gap-y-2 text-xs">
+      <ul className="flex flex-wrap gap-x-4 gap-y-1" aria-label="Properties">
+        {calendars.map(({ property }) => (
+          <li key={property.id} className="flex items-center gap-1.5">
+            <span className={swatch} style={{ backgroundColor: property.color }} aria-hidden />
+            {property.name}
+          </li>
+        ))}
+      </ul>
+      <ul className="flex flex-wrap gap-x-4 gap-y-1" aria-label="Status">
+        <li className="flex items-center gap-1.5">
+          <span className={swatch} style={{ backgroundColor: sample }} aria-hidden />
+          Confirmed
+        </li>
+        <li className="flex items-center gap-1.5">
+          <span
+            className={swatch}
+            style={{
+              border: `1.5px dashed ${sample}`,
+              backgroundColor: `color-mix(in oklch, ${sample} 15%, transparent)`,
+            }}
+            aria-hidden
+          />
+          Inquiry (dates not held)
+        </li>
+        <li className="flex items-center gap-1.5">
+          <span
+            className={swatch}
+            style={barStyle({
+              kind: "block",
+              key: "",
+              start: "",
+              end: "",
+              block: { id: "", startDate: "", endDate: "", reason: null, origin: "manual" },
+              property: { id: "", name: "", color: sample },
+            })}
+            aria-hidden
+          />
+          Blocked
+        </li>
+      </ul>
+    </div>
+  );
+}
