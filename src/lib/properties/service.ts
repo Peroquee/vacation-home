@@ -47,14 +47,24 @@ export async function createProperty(input: CreatePropertyInput): Promise<Proper
 }
 
 /** Null when there is no such property. */
+/**
+ * Null when there is no such property; "currency_locked" when the currency
+ * would change while transactions are recorded in the old one (the
+ * database refuses: their amounts are minor units of that currency).
+ */
 export async function updateProperty(
   id: string,
   input: UpdatePropertyInput,
-): Promise<Property | null> {
-  const property = await orNullIfMissing(db.property.update({ where: { id }, data: input }));
-  // Name and colour show in every calendar window of the property.
-  if (property) invalidateWindows(id);
-  return property;
+): Promise<Property | null | "currency_locked"> {
+  try {
+    const property = await orNullIfMissing(db.property.update({ where: { id }, data: input }));
+    // Name and colour show in every calendar window of the property.
+    if (property) invalidateWindows(id);
+    return property;
+  } catch (error) {
+    if (input.currency !== undefined && isPrismaError(error, "P2003")) return "currency_locked";
+    throw error;
+  }
 }
 
 /**
@@ -85,7 +95,8 @@ export async function deleteProperty(id: string): Promise<DeleteResult> {
     return "deleted";
   } catch (error) {
     if (isPrismaError(error, "P2025")) return "not_found";
-    // P2003: a foreign key from a dependent row (a booking) refused it.
+    // P2003: a foreign key from a dependent row (a booking or a transaction)
+    // refused it.
     if (isPrismaError(error, "P2003")) return "has_history";
     throw error;
   }

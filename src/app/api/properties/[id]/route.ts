@@ -38,6 +38,12 @@ export async function PATCH(request: Request, { params }: Context) {
   }
 
   const property = await updateProperty(id, body.data);
+  if (property === "currency_locked") {
+    return fieldError(
+      "currency",
+      "cannot change: transactions are recorded in the current currency",
+    );
+  }
   return property ? Response.json(toDto(property)) : notFound("Property");
 }
 
@@ -58,7 +64,7 @@ export async function DELETE(_request: Request, { params }: Context) {
       return apiError(
         409,
         "conflict",
-        "This property has bookings and cannot be deleted. Archive it instead.",
+        "This property has bookings or transactions and cannot be deleted. Archive it instead.",
       );
   }
 }
