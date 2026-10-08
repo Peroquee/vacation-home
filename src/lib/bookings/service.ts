@@ -350,3 +350,12 @@ export async function listBookings(query: ListBookingsQuery) {
   ]);
   return { items, total: count, page: query.page, pageSize: query.pageSize };
 }
+
+/** Every booking of one guest, newest stay first: the guest's history. */
+export async function listGuestBookings(guestId: string): Promise<BookingWithRelations[]> {
+  return db.booking.findMany({
+    where: { guestId },
+    include: withRelations,
+    orderBy: [{ checkIn: "desc" }, { createdAt: "asc" }],
+  });
+}
