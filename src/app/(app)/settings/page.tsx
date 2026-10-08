@@ -8,8 +8,17 @@ import { EmptyState } from "@/components/states";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatMoney } from "@/lib/format";
+import { db } from "@/lib/db";
+import { toDto as calendarDto } from "@/lib/google/calendar-settings";
+import { calendarConnectAvailable, getConnectionStatus } from "@/lib/google/connection";
 import { listProperties, type PropertyDto, toDto } from "@/lib/properties/service";
+import { getCurrentUser } from "@/lib/session";
 
+import {
+  GoogleCalendarSection,
+  type GoogleConnection,
+  type PropertySync,
+} from "./google-calendar-section";
 import { PropertyArchiveButton } from "./property-archive-button";
 import { PropertyFormDialog } from "./property-form-dialog";
 
@@ -75,12 +84,15 @@ function AddPropertyButton() {
   );
 }
 
-export default async function SettingsPage() {
+/** `?google=` reports how a round trip through Google's consent screen ended. */
+export default async function SettingsPage({ searchParams }: PageProps<"/settings">) {
+  const returned = (await searchParams).google;
   // Read at request time: the list changes with every edit.
   await connection();
   const properties = (await listProperties({ includeArchived: true })).map(toDto);
   const active = properties.filter((p) => !p.archived);
   const archived = properties.filter((p) => p.archived);
+  const google = await googleSettings(active.map((p) => ({ id: p.id, name: p.name })));
 
   return (
     <>
@@ -134,7 +146,41 @@ export default async function SettingsPage() {
             </CardContent>
           </Card>
         ) : null}
+
+        {google ? (
+          <GoogleCalendarSection
+            connection={google.connection}
+            properties={google.properties}
+            returned={typeof returned === "string" ? returned : undefined}
+          />
+        ) : null}
       </div>
     </>
   );
+}
+
+/**
+ * The Google Calendar section's data, or null when this server cannot
+ * connect to Google at all (no encryption key), so the section stays hidden.
+ */
+async function googleSettings(
+  properties: { id: string; name: string }[],
+): Promise<{ connection: GoogleConnection; properties: PropertySync[] } | null> {
+  if (!calendarConnectAvailable()) return null;
+  const user = await getCurrentUser();
+  const [status, configs] = await Promise.all([
+    user ? getConnectionStatus(user.id) : { status: "not_connected" as const },
+    db.propertyCalendar.findMany({ where: { propertyId: { in: properties.map((p) => p.id) } } }),
+  ]);
+  const byProperty = new Map(configs.map((c) => [c.propertyId, calendarDto(c)]));
+  return {
+    connection: {
+      ...status,
+      connectedAt: "connectedAt" in status ? (status.connectedAt?.toISOString() ?? null) : null,
+    },
+    properties: properties.map((property) => ({
+      property,
+      calendar: byProperty.get(property.id) ?? null,
+    })),
+  };
 }
