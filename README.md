@@ -362,6 +362,15 @@ sign-in ([`src/lib/google/`](src/lib/google)):
 - **Disconnecting**: `DELETE /api/google/connection` revokes the grant at
   Google (best effort) and deletes it.
 
+**Event links** ([`src/lib/google/links.ts`](src/lib/google/links.ts),
+table `calendar_event_links`) map each booking or manual block to the Google
+event pushed for it, one per calendar. The event id is chosen by the app
+(`vh` + 32 hex digits) before the first insert, so a retry or re-run updates
+the same event instead of duplicating it. Deleting the booking or block keeps
+the link as `pending_delete` (a trigger), so the remote event can still be
+deleted; `deleteRemoteEvent` then removes the link. A failure is recorded as
+`failed` with its error kind, never Google's text.
+
 **Calling the API**: `createCalendarClient({ userId })`
 ([`src/lib/google/calendar.ts`](src/lib/google/calendar.ts)) wraps calendar
 list and event list/get/insert/update/delete:
