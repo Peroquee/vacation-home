@@ -16,8 +16,14 @@ import {
 import { Button } from "@/components/ui/button";
 
 type ConfirmDialogProps = {
-  /** The element that opens the dialog, usually a `<Button>`. */
-  trigger: React.ReactElement;
+  /**
+   * The element that opens the dialog, usually a `<Button>`. Leave it out
+   * and pass `open`/`onOpenChange` to open the dialog from code instead.
+   */
+  trigger?: React.ReactElement;
+  /** Controlled mode: whether the dialog is open. */
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
   title: React.ReactNode;
   description?: React.ReactNode;
   confirmLabel?: string;
@@ -35,6 +41,8 @@ type ConfirmDialogProps = {
 /** Asks before doing something that cannot be undone. */
 export function ConfirmDialog({
   trigger,
+  open: controlledOpen,
+  onOpenChange,
   title,
   description,
   confirmLabel = "Confirm",
@@ -42,7 +50,12 @@ export function ConfirmDialog({
   destructive = false,
   onConfirm,
 }: ConfirmDialogProps) {
-  const [open, setOpen] = useState(false);
+  const [uncontrolledOpen, setUncontrolledOpen] = useState(false);
+  const open = controlledOpen ?? uncontrolledOpen;
+  const setOpen = (next: boolean) => {
+    setUncontrolledOpen(next);
+    onOpenChange?.(next);
+  };
   const [pending, setPending] = useState(false);
 
   async function confirm() {
@@ -59,7 +72,7 @@ export function ConfirmDialog({
 
   return (
     <AlertDialog open={open} onOpenChange={(next) => pending || setOpen(next)}>
-      <AlertDialogTrigger render={trigger} />
+      {trigger ? <AlertDialogTrigger render={trigger} /> : null}
       <AlertDialogContent>
         <AlertDialogHeader>
           <AlertDialogTitle>{title}</AlertDialogTitle>

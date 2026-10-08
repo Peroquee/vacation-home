@@ -171,6 +171,19 @@ and the error appears as a toast, so the user can retry or cancel.
 />;
 ```
 
+To open it from code instead, say after a request comes back refused, leave
+out `trigger` and control it with `open` and `onOpenChange`:
+
+```tsx
+<ConfirmDialog
+  open={inUse}
+  onOpenChange={setInUse}
+  title="This category is in use"
+  confirmLabel="Move and delete"
+  onConfirm={moveAndDelete}
+/>
+```
+
 ## EmptyState and ErrorState
 
 `EmptyState` says what would be here and offers the action that adds the first
