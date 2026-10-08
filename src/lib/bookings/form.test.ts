@@ -86,7 +86,10 @@ describe("stayConflicts", () => {
 
   it("finds nothing while the dates are incomplete", () => {
     expect(
-      stayConflicts({ checkIn: "2026-07-16", checkOut: "" }, { bookings: [booking({})], blocks: [] }),
+      stayConflicts(
+        { checkIn: "2026-07-16", checkOut: "" },
+        { bookings: [booking({})], blocks: [] },
+      ),
     ).toEqual([]);
   });
 });

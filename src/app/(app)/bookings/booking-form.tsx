@@ -6,13 +6,7 @@ import { useId, useState } from "react";
 import { toastError, toastSuccess } from "@/components/toast";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import {
-  Field,
-  FieldDescription,
-  FieldError,
-  FieldGroup,
-  FieldLabel,
-} from "@/components/ui/field";
+import { Field, FieldDescription, FieldError, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { NativeSelect, NativeSelectOption } from "@/components/ui/native-select";
 import { Textarea } from "@/components/ui/textarea";
@@ -193,7 +187,8 @@ export function BookingForm({
     const amountHint = currency ? `must be an amount like ${minorToInput(18050, currency)}` : "";
     if (currency && nightlyRateMinor === null) local.nightlyRateMinor = [amountHint];
     if (currency && cleaningFeeMinor === null) local.cleaningFeeMinor = [amountHint];
-    const totalMinor = currency && values.overrideTotal ? inputToMinor(values.total, currency) : null;
+    const totalMinor =
+      currency && values.overrideTotal ? inputToMinor(values.total, currency) : null;
     if (values.overrideTotal && totalMinor === null) local.totalAmountMinor = [amountHint];
     const guestCount = Number(values.guestCount);
     if (!Number.isInteger(guestCount)) local.guestCount = ["must be a whole number"];
@@ -251,7 +246,11 @@ export function BookingForm({
   function field(
     key: string,
     label: string,
-    control: (props: { id: string; "aria-invalid"?: true; "aria-describedby"?: string }) => React.ReactNode,
+    control: (props: {
+      id: string;
+      "aria-invalid"?: true;
+      "aria-describedby"?: string;
+    }) => React.ReactNode,
     description?: React.ReactNode,
   ) {
     const messages = errors[key];
@@ -536,7 +535,9 @@ function AvailabilityNotice({
         </p>
         <ul className="mt-1 list-disc pl-5">
           {conflicts.map((conflict) => (
-            <li key={`${conflict.kind}-${conflict.id}`}>{describeConflict(conflict, guestNames)}</li>
+            <li key={`${conflict.kind}-${conflict.id}`}>
+              {describeConflict(conflict, guestNames)}
+            </li>
           ))}
         </ul>
       </div>

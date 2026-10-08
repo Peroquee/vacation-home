@@ -38,7 +38,11 @@ export function useStayAvailability(
     const timer = setTimeout(async () => {
       let value: Answer;
       try {
-        const params = new URLSearchParams({ propertyIds: propertyId, from: checkIn, to: checkOut });
+        const params = new URLSearchParams({
+          propertyIds: propertyId,
+          from: checkIn,
+          to: checkOut,
+        });
         const response = await fetch(`/api/availability?${params}`, { signal: controller.signal });
         if (!response.ok) throw new Error(`The server answered ${response.status}.`);
         const body: { properties: PropertyCalendar[] } = await response.json();

@@ -64,7 +64,11 @@ afterEach(() => {
   vi.clearAllMocks();
 });
 
-async function fillStay(user: ReturnType<typeof userEvent.setup>, checkIn: string, checkOut: string) {
+async function fillStay(
+  user: ReturnType<typeof userEvent.setup>,
+  checkIn: string,
+  checkOut: string,
+) {
   await user.type(screen.getByLabelText("Check-in"), checkIn);
   const out = screen.getByLabelText("Check-out");
   await user.clear(out);

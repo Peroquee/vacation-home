@@ -70,7 +70,12 @@ export function stayConflicts(
   if (stayNights(stay.checkIn, stay.checkOut) === null) return [];
   return findConflicts(
     { start: stay.checkIn, end: stay.checkOut },
-    calendar.bookings.map((b) => ({ id: b.id, start: b.checkIn, end: b.checkOut, status: b.status })),
+    calendar.bookings.map((b) => ({
+      id: b.id,
+      start: b.checkIn,
+      end: b.checkOut,
+      status: b.status,
+    })),
     calendar.blocks.map((b) => ({
       id: b.id,
       start: b.startDate,

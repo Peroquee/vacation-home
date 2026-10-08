@@ -12,7 +12,14 @@ import {
   ComboboxItem,
   ComboboxList,
 } from "@/components/ui/combobox";
-import { Field, FieldError, FieldGroup, FieldLabel, FieldSet, FieldLegend } from "@/components/ui/field";
+import {
+  Field,
+  FieldError,
+  FieldGroup,
+  FieldLabel,
+  FieldSet,
+  FieldLegend,
+} from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 
 export type GuestOption = { id: string; name: string; email: string | null };
@@ -201,7 +208,9 @@ function NewGuestForm({
                   }
                 }}
               />
-              <FieldError errors={messages?.map((message) => ({ message: `${label} ${message}` }))} />
+              <FieldError
+                errors={messages?.map((message) => ({ message: `${label} ${message}` }))}
+              />
             </Field>
           );
         })}
