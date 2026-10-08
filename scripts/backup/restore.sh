@@ -238,8 +238,9 @@ if $live; then
   printf '\nRestore finished. Check the app in the browser.\n'
   if [ -n "$back_file" ]; then
     printf '\nERASE THESE GUESTS AGAIN NOW, before anyone uses the app:\n'
-    printf '  npm run guests:repurge -- %s\n' "$back_file"
-    printf '(or by hand: docs/backup-and-restore.md, "After a restore")\n'
+    printf '  docker compose exec app npm run guests:repurge -- %s\n' "$back_file"
+    printf 'It prints how many were erased again. Running it twice is harmless.\n'
+    printf '(More: docs/backup-and-restore.md, "After a restore")\n'
   fi
   printf '\nThe previous data is kept as the database "%s".\n' "$kept"
   printf 'It holds personal data, including guests erased since the backup.\n'
