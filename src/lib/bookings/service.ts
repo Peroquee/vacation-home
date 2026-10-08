@@ -28,6 +28,7 @@ import { escapeLike } from "@/lib/like";
 import { calculateTotalMinor, nights } from "./pricing";
 import {
   type ApiBookingSource,
+  type BookingSort,
   type CreateBookingInput,
   type ListBookingsQuery,
   stayProblem,
@@ -317,6 +318,28 @@ export async function cancelBooking(id: string): Promise<BookingWithRelations | 
 }
 
 /** Bookings matching `query`, one page at a time, with the total count. */
+/**
+ * The ORDER BY for a list sort. Ties fall back to check-in, then creation,
+ * so pages never shuffle between requests.
+ */
+function orderFor(sort: BookingSort): Prisma.BookingOrderByWithRelationInput[] {
+  const direction = sort.startsWith("-") ? "desc" : "asc";
+  const column = sort.replace(/^-/, "") as Exclude<BookingSort, `-${string}`>;
+  const primary: Record<typeof column, Prisma.BookingOrderByWithRelationInput> = {
+    checkIn: { checkIn: direction },
+    guest: { guest: { name: direction } },
+    property: { property: { name: direction } },
+    status: { status: direction },
+    source: { source: direction },
+    total: { totalAmountMinor: direction },
+  };
+  const ties: Prisma.BookingOrderByWithRelationInput[] = [
+    ...(column === "checkIn" ? [] : [{ checkIn: "asc" as const }]),
+    { createdAt: "asc" },
+  ];
+  return [primary[column], ...ties];
+}
+
 export async function listBookings(query: ListBookingsQuery) {
   const where: Prisma.BookingWhereInput = {
     propertyId: query.propertyId,
@@ -336,13 +359,11 @@ export async function listBookings(query: ListBookingsQuery) {
         }
       : undefined,
   };
-  const direction = query.sort === "-checkIn" ? "desc" : "asc";
-
   const [items, count] = await db.$transaction([
     db.booking.findMany({
       where,
       include: withRelations,
-      orderBy: [{ checkIn: direction }, { createdAt: "asc" }],
+      orderBy: orderFor(query.sort),
       skip: (query.page - 1) * query.pageSize,
       take: query.pageSize,
     }),

@@ -25,6 +25,23 @@ export const BOOKING_STATUSES = ["inquiry", "confirmed", "cancelled"] as const;
 export const BOOKING_SOURCES = ["direct", "airbnb", "booking.com", "other"] as const;
 export type ApiBookingSource = (typeof BOOKING_SOURCES)[number];
 
+/** List orders: a column, ascending, or with a leading "-", descending. */
+export const BOOKING_SORTS = [
+  "checkIn",
+  "-checkIn",
+  "guest",
+  "-guest",
+  "property",
+  "-property",
+  "status",
+  "-status",
+  "source",
+  "-source",
+  "total",
+  "-total",
+] as const;
+export type BookingSort = (typeof BOOKING_SORTS)[number];
+
 const calendarDate = z.string().trim().refine(isCalendarDate, "must be a date as YYYY-MM-DD");
 
 const amountMinor = z
@@ -137,7 +154,7 @@ export const listBookingsSchema = z
     q: z.string().trim().max(200).optional(),
     page: blankAsDefault(z.coerce.number().int().min(1).default(1)),
     pageSize: blankAsDefault(z.coerce.number().int().min(1).max(100).default(25)),
-    sort: z.enum(["checkIn", "-checkIn"]).default("checkIn"),
+    sort: z.enum(BOOKING_SORTS).default("checkIn"),
   })
   .refine(
     (query) =>
