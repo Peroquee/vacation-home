@@ -152,6 +152,7 @@ describe("MonthCalendar range selection", () => {
         calendars={[priced]}
         onMonthChange={vi.fn()}
         onSelectRange={onSelectRange}
+        bookingHref={(id) => `/bookings/${id}`}
       />,
     );
     return { user: userEvent.setup(), onSelectRange };
@@ -220,5 +221,56 @@ describe("MonthCalendar range selection", () => {
   it("is read-only without onSelectRange", async () => {
     renderCalendar();
     expect(screen.queryByText(/Drag across days/)).not.toBeInTheDocument();
+  });
+});
+
+describe("MonthCalendar conflict feedback", () => {
+  function renderRefused(first: string, last: string) {
+    const onSelectRange = vi.fn();
+    render(
+      <MonthCalendar
+        month="2026-07"
+        weekStart={1}
+        today="2026-07-08"
+        calendars={[lake]}
+        onMonthChange={vi.fn()}
+        onSelectRange={onSelectRange}
+        bookingHref={(id) => `/bookings/${id}`}
+      />,
+    );
+    const user = userEvent.setup();
+    return (async () => {
+      await user.click(screen.getByRole("button", { name: first }));
+      await user.click(screen.getByRole("button", { name: last }));
+      return onSelectRange;
+    })();
+  }
+
+  it("rings what is in the way and offers to open it", async () => {
+    const onSelectRange = await renderRefused("Monday, July 13, 2026", "Thursday, July 16, 2026");
+    expect(onSelectRange).not.toHaveBeenCalled();
+    for (const bar of screen.getAllByRole("link", { name: /^Ada Lovelace/ })) {
+      expect(bar).toHaveAccessibleName(/in the way of the selected dates$/);
+    }
+    // Grace's inquiry holds nothing, so it is not in the way.
+    expect(screen.getByRole("link", { name: /^Grace Hopper/ })).not.toHaveAccessibleName(
+      /in the way/,
+    );
+    expect(screen.getByRole("link", { name: /^Open the booking of Ada Lovelace/ })).toHaveAttribute(
+      "href",
+      "/bookings/out",
+    );
+  });
+
+  it("explains a changeover missed by one night", async () => {
+    // Arriving the 14th overlaps Ada's last night; she leaves the 15th.
+    await renderRefused("Tuesday, July 14, 2026", "Saturday, July 18, 2026");
+    expect(screen.getByText(/^Arrive on July 15, 2026 instead/)).toBeInTheDocument();
+  });
+
+  it("clears the ring once the selection is abandoned", async () => {
+    await renderRefused("Monday, July 13, 2026", "Thursday, July 16, 2026");
+    await userEvent.setup().keyboard("{Escape}");
+    expect(screen.queryByRole("link", { name: /in the way/ })).not.toBeInTheDocument();
   });
 });
