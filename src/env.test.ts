@@ -23,6 +23,14 @@ describe("optional settings", () => {
     expect(env.ENABLE_ERROR_TEST_ROUTE).toBe(true);
   });
 
+  it("parse the allow-list into normalised addresses", async () => {
+    const env = await loadEnv({ AUTH_ALLOWED_EMAILS: " A@Example.com ,b@example.com," });
+    expect(env.AUTH_ALLOWED_EMAILS).toEqual(["a@example.com", "b@example.com"]);
+    await expect(loadEnv({ AUTH_ALLOWED_EMAILS: "not-an-email" })).rejects.toThrow(
+      /AUTH_ALLOWED_EMAILS/,
+    );
+  });
+
   it("still reject a value that means nothing", async () => {
     await expect(loadEnv({ LOG_LEVEL: "verbose" })).rejects.toThrow(/LOG_LEVEL/);
   });

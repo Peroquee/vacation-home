@@ -170,6 +170,29 @@ formatting helpers. [`src/components/README.md`](src/components/README.md)
 documents each with usage examples, and `/dev/ui` renders them all while
 `npm run dev` is running.
 
+## Authentication
+
+Sign-in is Google only, through [Auth.js](https://authjs.dev) with sessions
+stored in the database ([`src/auth.ts`](src/auth.ts)).
+
+- **Who can sign in**: verified Google accounts listed in `AUTH_ALLOWED_EMAILS`.
+  Anyone else is sent back to the sign-in page with an explanation. The list
+  is checked again on every request, so removing an address signs that
+  account out on its next request.
+- **Everything is private**: [`src/proxy.ts`](src/proxy.ts) requires a session
+  on every route except `/signin` and Auth.js's own `/api/auth/*`. Pages
+  redirect to sign-in and come back afterwards. API calls get a `401` instead.
+- **Google client setup**: create an OAuth client of type "Web application"
+  and add `<APP_URL>/api/auth/callback/google` as an authorised redirect URI.
+  The same client will later request Calendar access, so sign-in already asks
+  for offline access. The refresh token is stored on the account and replaced
+  on every sign-in.
+- **Signing out** deletes the session row.
+
+End-to-end tests sign in by inserting a real session into their own test
+database and sending its cookie. The app has no test-only login path that a
+production deployment could have switched on.
+
 ## Logging and error tracking
 
 **Logs** are JSON, one object per line on stdout, from

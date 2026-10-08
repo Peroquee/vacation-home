@@ -56,3 +56,6 @@ next-env.d.ts
 
 # Playwright browsers, relocated into the project in CI for caching
 /.cache/
+
+# Playwright sign-in state, written by e2e/auth.setup.ts
+/e2e/.auth/

@@ -65,7 +65,7 @@ function SignInPrompt() {
   return (
     <div className="p-2">
       <Link
-        href="/api/auth/signin"
+        href="/signin"
         className="hover:bg-sidebar-accent/50 block rounded-control px-3 py-2 text-sm"
       >
         Sign in

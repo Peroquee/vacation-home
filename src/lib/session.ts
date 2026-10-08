@@ -1,12 +1,14 @@
 /**
- * Current user. Server-side only.
+ * The signed-in user. Server-side only.
  *
- * TODO(#45): replace the placeholder with the Auth.js session. This is
- * already async and already returns null for the signed-out case, so that
- * swapping in `await auth()` does not change any caller's shape.
+ * The proxy has already turned away requests without a valid session, so
+ * inside a page or route handler this is normally non-null.
  */
+import { auth } from "@/auth";
+import { isAllowedEmail } from "@/lib/allowed-emails";
 
 export type CurrentUser = {
+  id: string;
   name: string;
   email: string;
   /** Avatar URL, or null to fall back to initials. */
@@ -14,9 +16,16 @@ export type CurrentUser = {
 };
 
 export async function getCurrentUser(): Promise<CurrentUser | null> {
+  const session = await auth();
+  const user = session?.user;
+  // Same rule as the proxy: a valid session for an address since removed
+  // from the allow-list does not count. (Disagreeing with the proxy here sent
+  // such a session round in a redirect loop via the sign-in page.)
+  if (!user?.id || !user.email || !isAllowedEmail(user.email)) return null;
   return {
-    name: "Placeholder User",
-    email: "placeholder@example.com",
-    image: null,
+    id: user.id,
+    name: user.name || user.email,
+    email: user.email,
+    image: user.image ?? null,
   };
 }
