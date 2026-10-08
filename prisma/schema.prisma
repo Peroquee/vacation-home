@@ -42,3 +42,21 @@ model Property {
 
   @@map("properties")
 }
+
+/// A guest, reused across repeat stays and offered in booking forms as a
+/// typeahead. Personal data: never log it (src/lib/scrub.ts masks emails).
+model Guest {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name      String
+  /// Stored trimmed and lower-cased, so uniqueness is case-insensitive. One
+  /// guest per address; optional, since some guests only leave a phone
+  /// number (PostgreSQL allows any number of NULLs under a unique index).
+  email     String?  @unique
+  phone     String?
+  notes     String?
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([name])
+  @@map("guests")
+}

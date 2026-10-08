@@ -1,0 +1,92 @@
+/** Guest persistence. Server-side only. */
+import type { Guest } from "@/generated/prisma/client";
+import { db } from "@/lib/db";
+import { isPrismaError, orNullIfMissing } from "@/lib/db-errors";
+
+import type { CreateGuestInput, UpdateGuestInput } from "./schema";
+
+export type GuestDto = Omit<Guest, "createdAt" | "updatedAt"> & {
+  createdAt: string;
+  updatedAt: string;
+};
+
+export function toDto({ createdAt, updatedAt, ...rest }: Guest): GuestDto {
+  return { ...rest, createdAt: createdAt.toISOString(), updatedAt: updatedAt.toISOString() };
+}
+
+/**
+ * Guests whose name or email contains `query`, case-insensitively, by name -
+ * the typeahead in the booking form. Without a query, the first guests by
+ * name.
+ */
+export async function searchGuests(query: string | undefined, limit: number): Promise<Guest[]> {
+  // Prisma's `contains` becomes SQL LIKE without escaping, so `%` and `_`
+  // in what the user typed would act as wildcards.
+  const text = query?.replace(/[\\%_]/g, "\\$&");
+  return db.guest.findMany({
+    where: text
+      ? {
+          OR: [
+            { name: { contains: text, mode: "insensitive" } },
+            { email: { contains: text, mode: "insensitive" } },
+          ],
+        }
+      : undefined,
+    orderBy: [{ name: "asc" }, { createdAt: "asc" }],
+    take: limit,
+  });
+}
+
+export async function getGuest(id: string): Promise<Guest | null> {
+  return db.guest.findUnique({ where: { id } });
+}
+
+/**
+ * Creates a guest, unless one with the same email exists: then that guest is
+ * returned unchanged, so creating a guest inline from a booking never
+ * duplicates a returning one. Safe under concurrency - the unique index
+ * decides, and the loser of a race gets the winner's record.
+ */
+export async function findOrCreateGuest(
+  input: CreateGuestInput,
+): Promise<{ guest: Guest; created: boolean }> {
+  if (input.email) {
+    const existing = await db.guest.findUnique({ where: { email: input.email } });
+    if (existing) return { guest: existing, created: false };
+  }
+  try {
+    return { guest: await db.guest.create({ data: input }), created: true };
+  } catch (error) {
+    if (input.email && isPrismaError(error, "P2002")) {
+      const existing = await db.guest.findUnique({ where: { email: input.email } });
+      if (existing) return { guest: existing, created: false };
+    }
+    throw error;
+  }
+}
+
+export type UpdateResult = { guest: Guest } | { error: "not_found" | "email_taken" };
+
+export async function updateGuest(id: string, input: UpdateGuestInput): Promise<UpdateResult> {
+  try {
+    const guest = await orNullIfMissing(db.guest.update({ where: { id }, data: input }));
+    return guest ? { guest } : { error: "not_found" };
+  } catch (error) {
+    if (isPrismaError(error, "P2002")) return { error: "email_taken" };
+    throw error;
+  }
+}
+
+export type DeleteResult = "deleted" | "not_found" | "has_history";
+
+/** Deletes a guest with no bookings; one with bookings is refused. */
+export async function deleteGuest(id: string): Promise<DeleteResult> {
+  try {
+    await db.guest.delete({ where: { id } });
+    return "deleted";
+  } catch (error) {
+    if (isPrismaError(error, "P2025")) return "not_found";
+    if (isPrismaError(error, "P2003")) return "has_history";
+    throw error;
+  }
+}

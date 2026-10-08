@@ -2,8 +2,9 @@
  * Property persistence. Server-side only. Route handlers validate input with
  * ./schema and translate the results below into HTTP responses.
  */
-import { Prisma, type Property } from "@/generated/prisma/client";
+import type { Property } from "@/generated/prisma/client";
 import { db } from "@/lib/db";
+import { isPrismaError, orNullIfMissing } from "@/lib/db-errors";
 
 import type { CreatePropertyInput, UpdatePropertyInput } from "./schema";
 
@@ -80,20 +81,6 @@ export async function deleteProperty(id: string): Promise<DeleteResult> {
     if (isPrismaError(error, "P2025")) return "not_found";
     // P2003: a foreign key from a dependent row (a booking) refused it.
     if (isPrismaError(error, "P2003")) return "has_history";
-    throw error;
-  }
-}
-
-function isPrismaError(error: unknown, code: string): boolean {
-  return error instanceof Prisma.PrismaClientKnownRequestError && error.code === code;
-}
-
-async function orNullIfMissing<T>(operation: Promise<T>): Promise<T | null> {
-  try {
-    return await operation;
-  } catch (error) {
-    // P2025: the record to update no longer exists.
-    if (isPrismaError(error, "P2025")) return null;
     throw error;
   }
 }
