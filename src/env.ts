@@ -87,14 +87,15 @@ function loadEnv(): Env {
   return parsed.data;
 }
 
-/** Defers validation to the first property read. */
+/** Defers validation to the first time anything inspects the object. */
 function loadOnFirstRead(): Env {
   let loaded: Env | undefined;
+  const real = () => (loaded ??= loadEnv());
   return new Proxy({} as Env, {
-    get: (_target, name) => {
-      loaded ??= loadEnv();
-      return loaded[name as keyof Env];
-    },
+    get: (_target, name) => Reflect.get(real(), name),
+    has: (_target, name) => Reflect.has(real(), name),
+    ownKeys: () => Reflect.ownKeys(real()),
+    getOwnPropertyDescriptor: (_target, name) => Reflect.getOwnPropertyDescriptor(real(), name),
   });
 }
 

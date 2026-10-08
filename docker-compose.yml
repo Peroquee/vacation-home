@@ -88,6 +88,9 @@ services:
             # Bring the schema up to date, so a fresh database volume is usable
             # straight away. Creating new migrations stays a deliberate step:
             # `npm run migrate:dev`.
+            # Regenerate the client too: a schema change does not touch the
+            # lockfile, so `npm ci` above would not have done it.
+            npm run db:generate
             npm run migrate:deploy
 
             exec npm run dev

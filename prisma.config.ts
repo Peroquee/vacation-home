@@ -9,7 +9,10 @@
 import { loadEnvConfig } from "@next/env";
 import { defineConfig } from "prisma/config";
 
-loadEnvConfig(process.cwd());
+// Development mode unless told otherwise, as for `next dev`: otherwise the
+// loader would pick the .env.production* files, and `migrate dev` - which can
+// reset a database - could end up pointed at production.
+loadEnvConfig(process.cwd(), process.env.NODE_ENV !== "production");
 
 export default defineConfig({
   schema: "prisma/schema.prisma",
