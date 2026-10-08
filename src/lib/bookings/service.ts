@@ -129,7 +129,7 @@ async function check(
 export async function createBooking(input: CreateBookingInput): Promise<WriteResult> {
   const [property, guest] = await Promise.all([
     db.property.findUnique({ where: { id: input.propertyId } }),
-    db.guest.findUnique({ where: { id: input.guestId }, select: { id: true } }),
+    db.guest.findUnique({ where: { id: input.guestId }, select: { id: true, purgedAt: true } }),
   ]);
   const noProperty = { error: "invalid", field: "propertyId", message: "does not exist" } as const;
   if (!property) return noProperty;
@@ -137,6 +137,7 @@ export async function createBooking(input: CreateBookingInput): Promise<WriteRes
     return { error: "invalid", field: "propertyId", message: "is archived" };
   }
   if (!guest) return { error: "invalid", field: "guestId", message: "does not exist" };
+  if (guest.purgedAt) return { error: "invalid", field: "guestId", message: "has been erased" };
 
   // Copied from the property now; later changes there never touch this booking.
   const rates = {
@@ -205,9 +206,12 @@ export async function updateBooking(id: string, input: UpdateBookingInput): Prom
       if (input.guestId && input.guestId !== current.guestId) {
         const guest = await tx.guest.findUnique({
           where: { id: input.guestId },
-          select: { id: true },
+          select: { id: true, purgedAt: true },
         });
         if (!guest) return { error: "invalid", field: "guestId", message: "does not exist" };
+        if (guest.purgedAt) {
+          return { error: "invalid", field: "guestId", message: "has been erased" };
+        }
       }
 
       stay = {

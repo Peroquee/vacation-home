@@ -20,11 +20,20 @@ export async function PATCH(request: Request, { params }: Context) {
 
   const result = await updateGuest(id, body.data);
   if ("guest" in result) return Response.json(toDto(result.guest));
-  return result.error === "not_found"
-    ? notFound("Guest")
-    : apiError(409, "conflict", "Another guest already has this email address.", {
+  switch (result.error) {
+    case "not_found":
+      return notFound("Guest");
+    case "purged":
+      return apiError(
+        409,
+        "conflict",
+        "This guest's personal data was erased; it cannot be edited.",
+      );
+    case "email_taken":
+      return apiError(409, "conflict", "Another guest already has this email address.", {
         email: ["belongs to another guest"],
       });
+  }
 }
 
 /** Deletes a guest without bookings; 409 for one with bookings. */

@@ -1,0 +1,98 @@
+/**
+ * Erasure of a guest's personal data (DSGVO Art. 17). Server-side only.
+ *
+ * A guest with bookings is ANONYMISED in place, not deleted: bookings and
+ * their amounts are accounting records that must be kept (AO §147, and
+ * Art. 17(3)(b) DSGVO), and they reference the guest. In one transaction:
+ * - the guest's name becomes a neutral placeholder and email, phone and
+ *   notes are cleared; `purgedAt` is set;
+ * - the free-text notes of the guest's bookings are cleared - the only
+ *   personal data a booking row can hold (it references the guest by id);
+ * - an audit event records that it happened, when and by whom, without any
+ *   of the removed data.
+ * A guest without bookings is simply deleted, with the same audit event.
+ *
+ * Afterwards the guest is read-only, never found by search, and cannot be
+ * given new bookings. Purging again is harmless.
+ *
+ * NOT REACHED by a purge (yet):
+ * - Google Calendar: events created by outbound sync (GitLab #70) live in
+ *   Google. Their titles and descriptions must not carry guest personal
+ *   data, or the purge must update them - #70 has to settle this.
+ * - Logs and error reports: the app does not log guest records; email
+ *   addresses and phone fields are masked anyway (src/lib/scrub.ts), and
+ *   request bodies are never sent to the error tracker. A guest's NAME is
+ *   not pattern-masked, so it must never be logged.
+ * - Backups: the data disappears from them once backup retention passes;
+ *   the backup procedure (GitLab #95) documents that period.
+ */
+import type { Guest } from "@/generated/prisma/client";
+import { recordAudit } from "@/lib/audit";
+import { db } from "@/lib/db";
+
+/** The name a purged guest is shown with. Not personal data by design. */
+export const PURGED_GUEST_NAME = "Deleted guest";
+
+export type PurgeResult =
+  | { outcome: "anonymised"; guest: Guest; bookings: number }
+  | { outcome: "deleted" }
+  | { outcome: "already_purged"; guest: Guest }
+  | { outcome: "not_found" };
+
+export async function purgeGuest(id: string, actorUserId: string | null): Promise<PurgeResult> {
+  return db.$transaction(async (tx) => {
+    // Locked, so no edit or new booking can slip in while the purge runs: a
+    // booking insert waits for this row, and then sees what became of it.
+    const [row] = await tx.$queryRaw<{ purged_at: Date | null }[]>`
+      SELECT purged_at FROM guests WHERE id = ${id}::uuid FOR UPDATE`;
+    if (!row) return { outcome: "not_found" };
+    if (row.purged_at) {
+      return {
+        outcome: "already_purged",
+        guest: await tx.guest.findUniqueOrThrow({ where: { id } }),
+      };
+    }
+
+    const bookings = await tx.booking.count({ where: { guestId: id } });
+    if (bookings === 0) {
+      await tx.guest.delete({ where: { id } });
+      await recordAudit(
+        {
+          action: "guest.deleted",
+          subjectType: "guest",
+          subjectId: id,
+          actorUserId,
+          details: { erasure: true },
+        },
+        tx,
+      );
+      return { outcome: "deleted" };
+    }
+
+    const { count: notesCleared } = await tx.booking.updateMany({
+      where: { guestId: id, notes: { not: null } },
+      data: { notes: null },
+    });
+    const guest = await tx.guest.update({
+      where: { id },
+      data: {
+        name: PURGED_GUEST_NAME,
+        email: null,
+        phone: null,
+        notes: null,
+        purgedAt: new Date(),
+      },
+    });
+    await recordAudit(
+      {
+        action: "guest.purged",
+        subjectType: "guest",
+        subjectId: id,
+        actorUserId,
+        details: { bookings, bookingNotesCleared: notesCleared },
+      },
+      tx,
+    );
+    return { outcome: "anonymised", guest, bookings };
+  });
+}

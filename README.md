@@ -165,6 +165,35 @@ inline "new guest" relies on.
   email), `page`, `pageSize` (≤ 100), `sort` (`checkIn` or `-checkIn`). The
   response is `{ items, total, page, pageSize }`.
 
+### Erasing a guest's personal data (DSGVO Art. 17)
+
+`POST /api/guests/:id/purge` with `{ "confirm": "<the guest's id>" }`. This
+cannot be undone, which is why the id has to be repeated.
+
+- **A guest with bookings is anonymised, not deleted.** Bookings are
+  accounting records that must be kept (AO §147; Art. 17(3)(b) DSGVO).
+  - Name becomes "Deleted guest"; email, phone and notes are cleared.
+  - The notes on their bookings are cleared too. A booking references its
+    guest by id only, so booking dates and amounts are untouched.
+  - An audit event records that a purge happened, when and by whom, without
+    any of the removed data. The audit trail is append-only in the database.
+- **A guest without bookings is deleted** outright, with the same audit event.
+- **Afterwards** the guest is read-only (`409` on edit), never appears in
+  search or the typeahead, and can't be given new bookings. Purging again is
+  harmless.
+
+What a purge does **not** reach yet (details in
+[`src/lib/guests/purge.ts`](src/lib/guests/purge.ts)):
+
+- **Google Calendar events from outbound sync** (GitLab #70). Their titles and
+  descriptions must not carry guest personal data, or the purge must update
+  them.
+- **Logs and error reports.** The app doesn't log guest records. Emails and
+  phone fields are masked anyway, and request bodies never reach the error
+  tracker. A guest's _name_ isn't pattern-masked, so it must never be logged.
+- **Backups.** The data disappears from them once backup retention passes; the
+  backup procedure (GitLab #95) documents that period.
+
 ## Testing
 
 **Unit tests** use [Vitest](https://vitest.dev) and live next to the code they
