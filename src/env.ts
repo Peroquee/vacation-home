@@ -23,6 +23,17 @@ import { z } from "zod";
 
 import { EnvValidationError } from "./env-error";
 
+/**
+ * For optional settings: a blank value (`LOG_LEVEL=`) counts as unset, so the
+ * default applies, and case does not matter (`INFO`).
+ */
+function optional<T extends z.ZodType>(schema: T) {
+  return z.preprocess(
+    (value) => (typeof value === "string" ? value.trim().toLowerCase() || undefined : value),
+    schema.optional(),
+  );
+}
+
 const envSchema = z.object({
   /** PostgreSQL connection string used by Prisma. */
   DATABASE_URL: z.url({
@@ -42,6 +53,17 @@ const envSchema = z.object({
     protocol: /^https?$/,
     error: "must be an http(s) URL, e.g. http://localhost:3000",
   }),
+
+  /** Minimum level written by the logger in src/lib/logger.ts. */
+  LOG_LEVEL: optional(z.enum(["trace", "debug", "info", "warn", "error", "fatal"])).default("info"),
+
+  /**
+   * Enables GET /api/debug/error, which throws on purpose so the error
+   * tracker can be checked end to end. Off unless set to "true" (or 1/yes).
+   */
+  ENABLE_ERROR_TEST_ROUTE: optional(z.enum(["true", "false", "1", "0", "yes", "no"]))
+    .default("false")
+    .transform((value) => ["true", "1", "yes"].includes(value)),
 });
 
 export type Env = z.infer<typeof envSchema>;
@@ -68,7 +90,7 @@ function loadEnv(): Env {
   // deployed environment: a known AUTH_SECRET means forgeable sessions.
   if (process.env.NODE_ENV === "production") {
     const unreplaced = Object.entries(parsed.data)
-      .filter(([, value]) => value.includes("replace-me"))
+      .filter(([, value]) => typeof value === "string" && value.includes("replace-me"))
       .map(([name]) => `  ${name}: still set to the .env.example placeholder`);
 
     if (unreplaced.length > 0) {

@@ -125,6 +125,56 @@ formatting helpers. [`src/components/README.md`](src/components/README.md)
 documents each with usage examples, and `/dev/ui` renders them all while
 `npm run dev` is running.
 
+## Logging and error tracking
+
+**Logs** are JSON, one object per line on stdout, from
+[`src/lib/logger.ts`](src/lib/logger.ts). Pipe through `npx pino-pretty` to read
+them in development.
+
+```ts
+const log = await requestLogger(); // in a route handler, action or server component
+log.info({ bookingId }, "booking saved");
+log.error({ err }, "could not save booking");
+```
+
+**Request ids.** [`src/proxy.ts`](src/proxy.ts) gives every request an
+`x-request-id`. It keeps a well-formed one from upstream and otherwise
+generates one, and returns it in the response so a user can quote it.
+`requestLogger()` stamps it on every line, and failed requests are logged
+with it by the `onRequestError` hook. Background jobs run through `runJob()`
+([`src/lib/jobs.ts`](src/lib/jobs.ts)), which carries the enqueuing request's id
+into every line the job writes, alongside `job` and `jobId`. So a failed sync can
+be traced back to the request that started it.
+
+**No personal data or credentials in logs or error reports.**
+[`src/lib/scrub.ts`](src/lib/scrub.ts) masks email addresses, OAuth and bearer
+tokens, JWTs and token-bearing query parameters inside any string. It also
+replaces the value of any field whose name marks it as sensitive (`email`,
+`phone`, `token`, `secret`, `authorization`, `cookie`, …). It runs on every
+logger call, on everything written through `console` on the server
+(including Next's own error output), and on every event sent to the error
+tracker.
+
+**Error tracking** uses the Sentry SDK, which also talks to
+[GlitchTip](https://glitchtip.com), an open-source, self-hostable tracker, and
+to self-hosted Sentry. No hosted account is needed. It catches server errors
+(via `onRequestError` in [`src/instrumentation.ts`](src/instrumentation.ts),
+tagged with the request id), client errors (via `error.tsx`, `global-error.tsx`
+and [`src/instrumentation-client.ts`](src/instrumentation-client.ts)) and failed
+jobs. It is off until `NEXT_PUBLIC_SENTRY_DSN` is set. Events carry no cookies,
+request bodies, user details or local variables.
+
+- **Releases**: every event is tagged with a release, which is `SENTRY_RELEASE`,
+  else the commit SHA (`CI_COMMIT_SHA` on GitLab), baked in at build time.
+- **Source maps**: when `SENTRY_AUTH_TOKEN` (plus `SENTRY_URL`, `SENTRY_ORG`
+  and `SENTRY_PROJECT`) is set at build time, source maps are uploaded and then
+  deleted from the build output, so production stack traces resolve to the
+  original source. Without a token the build skips this and needs no network.
+- **Checking it works**: start the app with `ENABLE_ERROR_TEST_ROUTE=true` and
+  open `/api/debug/error`. The error should show up in the tracker with the
+  request's id and with the guest email in its message masked. In development,
+  `/dev/ui` also has a button that throws a client-side error.
+
 ## Configuration
 
 Every environment variable is documented in [`.env.example`](.env.example) and

@@ -9,6 +9,8 @@
  * execute there. Keeping them out of this file's module graph removes the
  * warnings rather than suppressing them.
  */
+import type { Instrumentation } from "next";
+
 export async function register() {
   // NEXT_RUNTIME is set by Next itself, is not part of the validated schema,
   // and has to be read literally here: this check is what keeps the Node APIs
@@ -19,3 +21,16 @@ export async function register() {
   const { bootstrap } = await import("./instrumentation-node");
   await bootstrap();
 }
+
+/**
+ * Called by Next for every error thrown while handling a request - rendering,
+ * route handlers, server actions, proxy. Logs it with the request's id and
+ * reports it to the error tracker.
+ */
+export const onRequestError: Instrumentation.onRequestError = async (error, request, context) => {
+  // eslint-disable-next-line no-restricted-properties -- see register()
+  if (process.env.NEXT_RUNTIME !== "nodejs") return;
+
+  const { reportRequestError } = await import("./instrumentation-node");
+  await reportRequestError(error, request, context);
+};
