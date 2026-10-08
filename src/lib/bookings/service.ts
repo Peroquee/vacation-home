@@ -21,7 +21,7 @@ import {
 } from "@/lib/availability/service";
 import { type CalendarDate, fromUtcDate, toUtcDate } from "@/lib/calendar-date";
 import { db, type DbClient } from "@/lib/db";
-import { isPrismaError } from "@/lib/db-errors";
+import { isPrismaError, raisedByDatabase } from "@/lib/db-errors";
 import { escapeLike } from "@/lib/like";
 
 import { calculateTotalMinor, nights } from "./pricing";
@@ -92,6 +92,11 @@ async function locked(
     // P2003: the guest was deleted between our check and the write.
     if (isPrismaError(error, "P2003")) {
       return { error: "invalid", field: "guestId", message: "does not exist" };
+    }
+    // The guest was erased between our check and the write; the database
+    // refuses to attach anything to an erased guest.
+    if (raisedByDatabase(error, "guest_purged")) {
+      return { error: "invalid", field: "guestId", message: "has been erased" };
     }
     throw error;
   }
@@ -200,8 +205,15 @@ export async function updateBooking(id: string, input: UpdateBookingInput): Prom
     head.propertyId,
     { error: "not_found" },
     async (tx) => {
-      const current = await tx.booking.findUnique({ where: { id } });
+      const current = await tx.booking.findUnique({
+        where: { id },
+        include: { guest: { select: { purgedAt: true } } },
+      });
       if (!current) return { error: "not_found" };
+      // An erased guest's bookings keep their facts but take no new notes.
+      if (current.guest.purgedAt && input.notes && input.guestId === undefined) {
+        return { error: "invalid", field: "notes", message: "cannot be set: the guest was erased" };
+      }
 
       if (input.guestId && input.guestId !== current.guestId) {
         const guest = await tx.guest.findUnique({
@@ -299,6 +311,8 @@ export async function listBookings(query: ListBookingsQuery) {
     checkIn: query.to ? { lt: toUtcDate(query.to) } : undefined,
     guest: query.q
       ? {
+          // An erased guest is never found by search, here as in the typeahead.
+          purgedAt: null,
           OR: [
             { name: { contains: escapeLike(query.q), mode: "insensitive" } },
             { email: { contains: escapeLike(query.q), mode: "insensitive" } },

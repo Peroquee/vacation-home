@@ -41,11 +41,19 @@ export type PurgeResult =
 
 export async function purgeGuest(id: string, actorUserId: string | null): Promise<PurgeResult> {
   return db.$transaction(async (tx) => {
-    // Locked, so no edit or new booking can slip in while the purge runs: a
-    // booking insert waits for this row, and then sees what became of it.
+    // Locked, so no edit or new booking can slip in while the purge runs: the
+    // bookings trigger share-locks the guest row before attaching anything to
+    // it, so it waits for this and then refuses an erased guest.
     const [row] = await tx.$queryRaw<{ purged_at: Date | null }[]>`
       SELECT purged_at FROM guests WHERE id = ${id}::uuid FOR UPDATE`;
-    if (!row) return { outcome: "not_found" };
+    if (!row) {
+      // Erased earlier by deletion? Then repeating is harmless, as promised.
+      const deleted = await tx.auditEvent.findFirst({
+        where: { action: "guest.deleted", subjectType: "guest", subjectId: id },
+        select: { id: true },
+      });
+      return deleted ? { outcome: "deleted" } : { outcome: "not_found" };
+    }
     if (row.purged_at) {
       return {
         outcome: "already_purged",

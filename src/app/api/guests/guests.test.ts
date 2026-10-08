@@ -64,28 +64,15 @@ vi.mock("@/lib/db", () => {
           where,
           data,
         }: {
-          where: { id: string };
+          where: { id: string; purgedAt?: null };
           data: Record<string, unknown>;
         }) => {
           const row = store.rows.get(where.id);
-          if (!row) throw knownError("P2025");
+          if (!row || (where.purgedAt === null && row.purgedAt)) throw knownError("P2025");
           if ("email" in data && emailTaken(data.email, where.id)) throw knownError("P2002");
           const updated = { ...row, ...data, updatedAt: new Date() };
           store.rows.set(where.id, updated);
           return updated;
-        },
-        updateMany: async ({
-          where,
-          data,
-        }: {
-          where: { id: string; purgedAt: null };
-          data: Record<string, unknown>;
-        }) => {
-          const row = store.rows.get(where.id);
-          if (!row || row.purgedAt) return { count: 0 };
-          if ("email" in data && emailTaken(data.email, where.id)) throw knownError("P2002");
-          store.rows.set(where.id, { ...row, ...data, updatedAt: new Date() });
-          return { count: 1 };
         },
         delete: async ({ where }: { where: { id: string } }) => {
           const row = store.rows.get(where.id);

@@ -13,7 +13,8 @@ vi.mock("@/lib/session", () => ({
   }),
 }));
 
-import { POST as createBooking } from "@/app/api/bookings/route";
+import { PATCH as patchBooking } from "@/app/api/bookings/[id]/route";
+import { GET as listBookings, POST as createBooking } from "@/app/api/bookings/route";
 import { POST as purge } from "@/app/api/guests/[id]/purge/route";
 import { GET as getGuest, PATCH as patchGuest } from "@/app/api/guests/[id]/route";
 import { GET as search, POST as createGuest } from "@/app/api/guests/route";
@@ -202,6 +203,89 @@ describe("purging a guest with bookings", () => {
     expect((await response.json()).error.fields).toEqual({ guestId: ["has been erased"] });
   });
 
+  it("takes no new notes on their bookings, and none moved onto them", async () => {
+    const guest = await guestWithBookings(1);
+    const other = await (
+      await createGuest(new Request(BASE, send("POST", { name: "Other Guest" })))
+    ).json();
+    const otherBooking = await db.booking.create({
+      data: {
+        propertyId,
+        guestId: other.id,
+        checkIn: toUtcDate("2026-05-01"),
+        checkOut: toUtcDate("2026-05-03"),
+        nightlyRateMinor: 0,
+        cleaningFeeMinor: 0,
+        totalAmountMinor: 0,
+        currency: "EUR",
+      },
+    });
+    await purgeRequest(guest.id);
+    const [own] = await db.booking.findMany({ where: { guestId: guest.id } });
+
+    const notes = await patchBooking(
+      new Request("http://localhost/api/bookings", send("PATCH", { notes: "Zebulon again" })),
+      context(own!.id),
+    );
+    expect(notes.status).toBe(422);
+    expect((await notes.json()).error.fields).toEqual({
+      notes: ["cannot be set: the guest was erased"],
+    });
+
+    const moved = await patchBooking(
+      new Request("http://localhost/api/bookings", send("PATCH", { guestId: guest.id })),
+      context(otherBooking.id),
+    );
+    expect((await moved.json()).error.fields).toEqual({ guestId: ["has been erased"] });
+
+    // The database refuses it too, for any code path.
+    await expect(
+      db.booking.update({ where: { id: own!.id }, data: { notes: "Zebulon" } }),
+    ).rejects.toThrow(/guest_purged/);
+    await expect(
+      db.booking.update({ where: { id: otherBooking.id }, data: { guestId: guest.id } }),
+    ).rejects.toThrow(/guest_purged/);
+  });
+
+  it("wins against a booking racing it: nothing personal is attached afterwards", async () => {
+    for (let round = 0; round < 5; round++) {
+      const guest = await guestWithBookings(1);
+      const [purged, booked] = await Promise.all([
+        purgeRequest(guest.id),
+        createBooking(
+          new Request(
+            "http://localhost/api/bookings",
+            send("POST", {
+              propertyId,
+              guestId: guest.id,
+              checkIn: `2026-1${round % 3}-01`,
+              checkOut: `2026-1${round % 3}-03`,
+              notes: "Zebulon calls ahead",
+            }),
+          ),
+        ),
+      ]);
+      expect(purged.status).toBe(200);
+      // Either the booking came first and the purge cleared its notes, or the
+      // purge came first and the booking was refused.
+      expect([201, 422]).toContain(booked.status);
+      expect(await rowsMentioning("Zebulon")).toBe(0);
+      await db.booking.deleteMany();
+      await db.guest.deleteMany();
+    }
+  });
+
+  it("are not found through booking search either", async () => {
+    const guest = await guestWithBookings(1);
+    await purgeRequest(guest.id);
+    for (const q of ["Deleted", "Zebulon"]) {
+      const page = await (
+        await listBookings(new Request(`http://localhost/api/bookings?q=${q}`))
+      ).json();
+      expect(page.items, q).toEqual([]);
+    }
+  });
+
   it("is harmless to repeat", async () => {
     const guest = await guestWithBookings();
     await purgeRequest(guest.id);
@@ -240,7 +324,11 @@ describe("purging a guest without bookings", () => {
     expect((await db.auditEvent.findFirstOrThrow({ where: { subjectId: guest.id } })).action).toBe(
       "guest.deleted",
     );
-    expect((await purgeRequest(guest.id)).status).toBe(404);
+    // Repeating answers the same, from the audit trail.
+    const again = await purgeRequest(guest.id);
+    expect([again.status, await again.json()]).toEqual([200, { outcome: "deleted" }]);
+    // An id that was never a guest is still a 404.
+    expect((await purgeRequest("00000000-0000-4000-8000-000000000000")).status).toBe(404);
   });
 });
 
@@ -261,6 +349,9 @@ describe("the database", () => {
     await purgeRequest(guest.id);
     await expect(
       db.guest.update({ where: { id: guest.id }, data: { phone: "+1 555 0100" } }),
+    ).rejects.toThrow(/guests_purged_hold_no_personal_data/);
+    await expect(
+      db.guest.update({ where: { id: guest.id }, data: { name: "Zebulon" } }),
     ).rejects.toThrow(/guests_purged_hold_no_personal_data/);
 
     await expect(db.auditEvent.deleteMany()).rejects.toThrow(/append-only/);

@@ -13,8 +13,11 @@ export async function recordAudit(
     subjectType: "guest";
     subjectId: string;
     actorUserId: string | null;
-    /** Counts and flags only. Never names, addresses or free text. */
-    details?: Record<string, number | boolean | string>;
+    /**
+     * Counts and flags only - deliberately no strings, so no name, address or
+     * free text can reach a table that cannot be erased from.
+     */
+    details?: Record<string, number | boolean>;
   },
   client: DbClient = db,
 ): Promise<void> {
