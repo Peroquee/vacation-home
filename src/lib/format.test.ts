@@ -22,6 +22,13 @@ describe("formatMoney", () => {
     expect(formatMoney(0, "USD", { locale: "en-US" })).toBe("$0.00");
   });
 
+  it("is exact for amounts too large to divide as a float", () => {
+    expect(formatMoney(9007199254740991, "USD", { locale: "en-US" })).toBe(
+      "$90,071,992,547,409.91",
+    );
+    expect(formatMoney(5, "KWD", { locale: "en-US" }).endsWith("0.005")).toBe(true);
+  });
+
   it("rejects fractional minor units", () => {
     expect(() => formatMoney(12.5, "USD")).toThrow(RangeError);
   });
@@ -47,6 +54,11 @@ describe("formatDateRange", () => {
     expect(plain(formatDateRange("2026-12-30", "2027-01-02", { locale: "en-US" }))).toBe(
       "Dec 30, 2026 – Jan 2, 2027",
     );
+  });
+
+  it("allows a same-day range but rejects a reversed one", () => {
+    expect(formatDateRange("2026-07-14", "2026-07-14", { locale: "en-US" })).toBe("Jul 14, 2026");
+    expect(() => formatDateRange("2026-07-18", "2026-07-14")).toThrow(RangeError);
   });
 });
 

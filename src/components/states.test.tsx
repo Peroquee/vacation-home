@@ -20,4 +20,9 @@ describe("ErrorState", () => {
     await userEvent.click(screen.getByRole("button", { name: "Try again" }));
     expect(onRetry).toHaveBeenCalledOnce();
   });
+
+  it("shows a reference the user can quote", () => {
+    render(<ErrorState reference="3141592653" />);
+    expect(screen.getByRole("alert")).toHaveTextContent("Reference: 3141592653");
+  });
 });

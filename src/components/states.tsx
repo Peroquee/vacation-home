@@ -73,9 +73,14 @@ export function EmptyState({
 export function ErrorState({
   title = "Something went wrong",
   description = "Please try again. If it keeps happening, reload the page.",
+  reference,
   onRetry,
   className,
-}: Partial<StateProps> & { onRetry?: () => void }) {
+}: Partial<StateProps> & {
+  /** An identifier the user can quote, e.g. Next's error `digest`. */
+  reference?: string;
+  onRetry?: () => void;
+}) {
   return (
     <StateFrame
       icon={CircleAlert}
@@ -85,6 +90,9 @@ export function ErrorState({
       description={description}
       className={className}
     >
+      {reference ? (
+        <p className="text-muted-foreground font-mono text-xs">Reference: {reference}</p>
+      ) : null}
       {onRetry ? (
         <Button variant="outline" onClick={onRetry}>
           <RotateCw data-icon="inline-start" aria-hidden />

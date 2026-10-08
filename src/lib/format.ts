@@ -31,9 +31,28 @@ export function formatMoney(
     throw new RangeError(`formatMoney expects integer minor units, got ${amountMinor}`);
   }
 
-  const format = new Intl.NumberFormat(locale, { style: "currency", currency });
+  const format = currencyFormat(locale, currency);
   const digits = format.resolvedOptions().maximumFractionDigits ?? 2;
-  return format.format(amountMinor / 10 ** digits);
+  // Place the decimal point in the digit string rather than dividing, so the
+  // amount never passes through a float. Intl formats decimal strings exactly.
+  const sign = amountMinor < 0 ? "-" : "";
+  const padded = String(Math.abs(amountMinor)).padStart(digits + 1, "0");
+  const decimal = digits === 0 ? padded : `${padded.slice(0, -digits)}.${padded.slice(-digits)}`;
+  return format.format(`${sign}${decimal}` as `${number}`);
+}
+
+// Building an Intl formatter is far slower than using one, and a table of
+// amounts would otherwise build one per cell.
+const currencyFormats = new Map<string, Intl.NumberFormat>();
+
+function currencyFormat(locale: string, currency: string): Intl.NumberFormat {
+  const key = `${locale}|${currency}`;
+  let format = currencyFormats.get(key);
+  if (!format) {
+    format = new Intl.NumberFormat(locale, { style: "currency", currency });
+    currencyFormats.set(key, format);
+  }
+  return format;
 }
 
 // --- Dates ------------------------------------------------------------------
@@ -86,9 +105,16 @@ export function formatDateRange(
   end: CalendarDate,
   { style = "medium", locale = APP_LOCALE }: FormatOptions & { style?: DateStyle } = {},
 ): string {
+  const from = parseCalendarDate(start);
+  const to = parseCalendarDate(end);
+  // A check-out before the check-in is bad data; showing it as a plausible
+  // stay would hide that.
+  if (to < from) {
+    throw new RangeError(`formatDateRange: end ${end} is before start ${start}`);
+  }
   return new Intl.DateTimeFormat(locale, { dateStyle: style, timeZone: "UTC" }).formatRange(
-    parseCalendarDate(start),
-    parseCalendarDate(end),
+    from,
+    to,
   );
 }
 

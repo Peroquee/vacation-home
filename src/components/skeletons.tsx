@@ -7,7 +7,11 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 
-/** Announces the loading state once, for screen readers. */
+/**
+ * The one live region per skeleton, announcing the loading state to screen
+ * readers. Skeletons compose from the unannounced parts, never from each
+ * other, so regions do not nest.
+ */
 function Loading({
   label,
   className,
@@ -33,29 +37,32 @@ export function PageHeaderSkeleton() {
   );
 }
 
-export function TableSkeleton({
-  rows = 5,
-  columns = 4,
-  className,
-}: {
-  rows?: number;
-  columns?: number;
-  className?: string;
-}) {
+type TableShape = { rows?: number; columns?: number };
+
+/** The table's shape alone, with no live region of its own. */
+function TableBones({ rows = 5, columns = 4 }: TableShape) {
   return (
-    <Loading label="Loading table" className={cn("space-y-3", className)}>
-      <div className="flex gap-4 border-b pb-3" aria-hidden>
+    <div className="space-y-3" aria-hidden>
+      <div className="flex gap-4 border-b pb-3">
         {Array.from({ length: columns }, (_, c) => (
           <Skeleton key={c} className="h-4 flex-1" />
         ))}
       </div>
       {Array.from({ length: rows }, (_, r) => (
-        <div key={r} className="flex gap-4" aria-hidden>
+        <div key={r} className="flex gap-4">
           {Array.from({ length: columns }, (_, c) => (
             <Skeleton key={c} className="h-5 flex-1" />
           ))}
         </div>
       ))}
+    </div>
+  );
+}
+
+export function TableSkeleton({ className, ...shape }: TableShape & { className?: string }) {
+  return (
+    <Loading label="Loading table" className={className}>
+      <TableBones {...shape} />
     </Loading>
   );
 }
@@ -82,7 +89,7 @@ export function PageSkeleton() {
   return (
     <Loading label="Loading page">
       <PageHeaderSkeleton />
-      <TableSkeleton />
+      <TableBones />
     </Loading>
   );
 }

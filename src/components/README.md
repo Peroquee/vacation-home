@@ -214,8 +214,9 @@ Use `toast` (re-exported from sonner) for anything else, such as
 ## Formatting money and dates
 
 Everything is formatted in the app's locale, `NEXT_PUBLIC_APP_LOCALE` (default
-`en-US`, validated at boot). Currency and timezone are per property, so they
-are always passed in.
+`en-US`). It is inlined when the app is built, so changing it means rebuilding,
+and an unsupported value fails `next dev` / `next build`. Currency and timezone
+are per property, so they are always passed in.
 
 **Money is stored and passed around as integer minor units** (cents, pence),
 never as floats. The currency decides how many minor digits there are:
