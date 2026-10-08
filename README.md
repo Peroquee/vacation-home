@@ -252,6 +252,21 @@ pageSize, totals: [{ currency, incomeMinor, expenseMinor, netMinor }] }`, where
   per currency, since minor units of different currencies can't be added. A
   repeated parameter (`?categoryId=a&categoryId=b`) counts like a comma list.
 
+- **Income from bookings** (per property, off by default:
+  `GET`/`PUT /api/properties/:id/income-automation` with
+  `{ enabled, onCancel: "delete" | "zero" }`):
+  - When a booking is confirmed, it creates two income entries linked to the
+    booking and marked `generated`. `booking_accommodation` holds the total
+    less the cleaning fee, in "Booking income". `booking_cleaning` holds the
+    cleaning fee, in "Cleaning fees".
+  - Both are dated on the check-in day and follow the booking's amounts and
+    dates. They're never duplicated.
+  - Cancelling deletes them, or sets them to zero, per `onCancel`.
+  - Bookings confirmed before the automation was on aren't backfilled.
+  - Editing a generated entry by hand detaches it (`detachedAt` is set) and
+    the response carries `warning.code: "detached_from_booking"`. From then
+    on the automation leaves it alone.
+
 ### Analytics
 
 `GET /api/analytics?from=&to=` gives the dashboard every figure it shows, from

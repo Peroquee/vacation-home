@@ -8,8 +8,9 @@
  * in the way. The database's own overlap rules back this up; should one fire
  * anyway, it is reported the same way.
  *
- * Every write also schedules the booking's Google Calendar event, in the same
- * transaction (src/lib/google/outbound.ts).
+ * Every write also updates the booking's generated income entries
+ * (src/lib/finance/booking-income.ts) and schedules its Google Calendar event
+ * (src/lib/google/outbound.ts), in the same transaction.
  *
  * Bookings hold no guest personal data except free-text `notes`: the guest
  * is referenced by id only, so purging a guest (GitLab #100) never needs to
@@ -26,6 +27,7 @@ import {
 import { type CalendarDate, fromUtcDate, toUtcDate } from "@/lib/calendar-date";
 import { db, type DbClient } from "@/lib/db";
 import { isPrismaError, raisedByDatabase } from "@/lib/db-errors";
+import { syncBookingIncome } from "@/lib/finance/booking-income";
 import { scheduleBookingSync } from "@/lib/google/outbound";
 import { kickOutboundSync } from "@/lib/google/sync-worker";
 import { escapeLike } from "@/lib/like";
@@ -186,6 +188,7 @@ export async function createBooking(input: CreateBookingInput): Promise<WriteRes
         if (conflict) return conflict;
       }
       const booking = await tx.booking.create({ data, include: withRelations });
+      await syncBookingIncome(booking.id, tx, { justConfirmed: booking.status === "confirmed" });
       await scheduleBookingSync(booking.id, tx);
       return { booking };
     },
@@ -292,6 +295,9 @@ export async function updateBooking(id: string, input: UpdateBookingInput): Prom
         },
         include: withRelations,
       });
+      await syncBookingIncome(id, tx, {
+        justConfirmed: status === "confirmed" && current.status !== "confirmed",
+      });
       await scheduleBookingSync(id, tx);
       return { booking };
     },
@@ -317,7 +323,10 @@ export async function cancelBooking(id: string): Promise<BookingWithRelations | 
       where: { id, status: { not: "cancelled" } },
       data: { status: "cancelled" },
     });
-    if (count > 0) await scheduleBookingSync(id, tx);
+    if (count > 0) {
+      await syncBookingIncome(id, tx);
+      await scheduleBookingSync(id, tx);
+    }
     const booking = await tx.booking.findUnique({ where: { id }, include: withRelations });
     return booking ? { booking } : { error: "not_found" };
   });
