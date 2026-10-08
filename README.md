@@ -174,6 +174,33 @@ inline "new guest" relies on.
   email), `page`, `pageSize` (≤ 100), `sort` (`checkIn` or `-checkIn`). The
   response is `{ items, total, page, pageSize }`.
 
+### Blocks
+
+Dates a property cannot be booked that are not a booking: owner blocks
+(maintenance, personal use) and events imported from Google Calendar.
+
+| Method and path          | Does                                                              |
+| ------------------------ | ----------------------------------------------------------------- |
+| `GET /api/blocks`        | List, paginated, by start date (filters below)                    |
+| `POST /api/blocks`       | Create a manual block; `409` if a confirmed booking is in the way |
+| `GET /api/blocks/:id`    | One block                                                         |
+| `PATCH /api/blocks/:id`  | Update `startDate`, `endDate` and/or `reason`                     |
+| `DELETE /api/blocks/:id` | Delete a manual block (`204`); it is not an accounting record     |
+
+- **Body**: `propertyId` (create only; it cannot change), `startDate`,
+  `endDate` (`YYYY-MM-DD`, exclusive like a check-out, at most 730 nights),
+  `reason` (optional, at most 200 characters; blank means none).
+- **Conflicts**: a block may not share a night with a confirmed booking
+  (inquiries and the check-out day are fine; other blocks are too). The
+  `409` has `error.reason: "overlap"` and `error.conflicts` listing the
+  bookings in the way (`kind`, `id`, `start`, `end`). PostgreSQL enforces the
+  same rule.
+- **Google blocks** (`origin: "google"`, `readOnly: true`) are changed only
+  by the sync: `PATCH` and `DELETE` answer `409` with `error.reason: "google"`.
+- **List filters**: `propertyId`, `from`/`to` (blocks overlapping that
+  range), `page`, `pageSize` (≤ 500, default 100). The response is
+  `{ items, total, page, pageSize }`.
+
 ### Categories
 
 | Method and path              | Does                                                                     |
