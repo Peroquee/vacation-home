@@ -8,7 +8,8 @@ import { createBooking, listBookings, toDto } from "@/lib/bookings/service";
  * Lists bookings, a page at a time. Filters: `propertyId`, `from`/`to` (stays
  * overlapping that range), `status` and `source` (comma-separated), `q` (part
  * of the guest's name or email); `page`, `pageSize` (at most 100) and `sort`
- * (`checkIn` or `-checkIn`).
+ * (`checkIn`, `guest`, `property`, `status`, `source` or `total`; a leading
+ * `-` sorts descending).
  */
 export async function GET(request: Request) {
   const parsed = listBookingsSchema.safeParse(queryParams(request));
