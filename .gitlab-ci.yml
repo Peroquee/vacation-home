@@ -97,6 +97,14 @@ lint:
   script:
     - npm run lint
 
+audit:
+  stage: quality
+  extends: .node
+  script:
+    # High and critical advisories in production dependencies fail the
+    # pipeline unless reviewed in security/audit-allowlist.json.
+    - npm run audit
+
 typecheck:
   stage: quality
   extends: .node

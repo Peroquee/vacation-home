@@ -587,6 +587,19 @@ End-to-end tests sign in by inserting a real session into their own test
 database and sending its cookie. The app has no test-only login path that a
 production deployment could have switched on.
 
+## Security
+
+[docs/security.md](docs/security.md) is the threat checklist, with each item
+marked addressed or accepted. It also has the steps for rotating the token
+encryption key (`npm run tokens:rotate`). In short:
+
+- **Headers:** every page carries a per-request nonce CSP, frame blocking
+  and the usual hardening headers (HSTS over https).
+- **CSRF:** mutating API calls from another site are refused (`403`).
+- **Rate limits:** sign-in, the Google webhook and calendar connect, guest
+  erasure, category reassign and bulk delete are rate limited (`429`).
+- **Dependency audit:** `npm run audit` runs in CI.
+
 ## Logging and error tracking
 
 **Logs** are JSON, one object per line on stdout, from

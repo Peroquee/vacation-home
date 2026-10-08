@@ -5,7 +5,17 @@ import { apiError } from "@/lib/api";
 import { decideAccess } from "@/lib/access";
 import { isAllowedEmail } from "@/lib/allowed-emails";
 import { db } from "@/lib/db";
+import { isCrossSiteMutation } from "@/lib/csrf";
+import { RateLimiter, rateLimitKey } from "@/lib/rate-limit";
 import { REQUEST_ID_HEADER, requestIdFrom } from "@/lib/request-id";
+import {
+  API_POLICY,
+  commonHeaders,
+  type HeaderOptions,
+  newNonce,
+  pagePolicy,
+} from "@/lib/security-headers";
+import { env } from "@/env";
 
 /**
  * Runs before every request:
@@ -17,8 +27,35 @@ import { REQUEST_ID_HEADER, requestIdFrom } from "@/lib/request-id";
  *   sign-in and answering API calls with a 401. A session whose email has
  *   since been removed from AUTH_ALLOWED_EMAILS is revoked: its row deleted
  *   and its cookie cleared, so it cannot linger and, for instance, have a
- *   later Google sign-in on that browser attached to the old user.
+ *   later Google sign-in on that browser attached to the old user;
+ * - refuses cross-site mutating API calls (src/lib/csrf.ts) with a 403, and
+ *   over-eager callers of the sensitive endpoints (src/lib/rate-limit.ts)
+ *   with a 429;
+ * - sets the security headers, with a fresh CSP nonce for every page
+ *   (src/lib/security-headers.ts).
  */
+const limiter = new RateLimiter();
+
+function headerOptions(): HeaderOptions {
+  // NODE_ENV and the public DSN are build-time values, read literally.
+  // eslint-disable-next-line no-restricted-properties
+  const dev = process.env.NODE_ENV === "development";
+  // eslint-disable-next-line no-restricted-properties
+  const dsn = process.env.NEXT_PUBLIC_SENTRY_DSN;
+  let reportOrigin: string | null = null;
+  try {
+    reportOrigin = dsn ? new URL(dsn).origin : null;
+  } catch {
+    reportOrigin = null;
+  }
+  return { https: new URL(env.APP_URL).protocol === "https:", dev, reportOrigin };
+}
+
+/** The client's address, when a trusted reverse proxy reports it. */
+function clientAddress(request: NextRequest): string | null {
+  if (!env.TRUST_PROXY_HEADERS) return null;
+  return request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || null;
+}
 // With a lazily built configuration (see src/auth.ts), auth(handler) resolves
 // to the middleware rather than returning it.
 const withSession = auth(async (request) => {
@@ -32,9 +69,33 @@ const withSession = auth(async (request) => {
     await db.session.deleteMany({ where: { sessionToken: { in: tokens } } });
   }
 
+  const { pathname } = request.nextUrl;
+  const isApi = pathname === "/api" || pathname.startsWith("/api/");
+  const options = headerOptions();
+  const nonce = isApi ? null : newNonce();
   const decision = decideAccess(request.nextUrl, signedIn);
+  const limited = rateLimitKey(request.method, pathname, {
+    user: signedIn ? (request.auth?.user?.id ?? request.auth?.user?.email ?? null) : null,
+    client: clientAddress(request),
+  });
+  const retryAfter = limited
+    ? limiter.hit(limited.key, limited.rule.limit, limited.rule.windowMs)
+    : null;
+
   let response: Response;
-  if (decision.kind === "unauthorized") {
+  if (
+    isCrossSiteMutation({ method: request.method, pathname, headers: request.headers }, [
+      new URL(env.APP_URL).origin,
+      request.nextUrl.origin,
+    ])
+  ) {
+    response = apiError(403, "forbidden", "Cross-site requests to the API are refused.");
+  } else if (retryAfter !== null) {
+    response = apiError(429, "rate_limited", "Too many requests; try again later.", undefined, {
+      retryAfterSeconds: retryAfter,
+    });
+    response.headers.set("Retry-After", String(retryAfter));
+  } else if (decision.kind === "unauthorized") {
     response = apiError(401, "unauthorized", "Sign in to use the API.");
   } else if (decision.kind === "sign-in") {
     const url = new URL(SIGN_IN_PATH, request.nextUrl);
@@ -43,6 +104,11 @@ const withSession = auth(async (request) => {
   } else {
     const headers = new Headers(request.headers);
     headers.set(REQUEST_ID_HEADER, requestId);
+    if (nonce) {
+      // Next reads the policy from the request to put the nonce on its scripts.
+      headers.set("x-nonce", nonce);
+      headers.set("Content-Security-Policy", pagePolicy(nonce, options));
+    }
     response = NextResponse.next({ request: { headers } });
   }
 
@@ -56,6 +122,10 @@ const withSession = auth(async (request) => {
     }
   }
   response.headers.set(REQUEST_ID_HEADER, requestId);
+  response.headers.set("Content-Security-Policy", nonce ? pagePolicy(nonce, options) : API_POLICY);
+  for (const [name, value] of Object.entries(commonHeaders(options))) {
+    response.headers.set(name, value);
+  }
   return response;
 }) as unknown as Promise<(request: NextRequest, event: NextFetchEvent) => Promise<Response>>;
 
