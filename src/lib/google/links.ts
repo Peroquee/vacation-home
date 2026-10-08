@@ -94,15 +94,19 @@ export async function pushEvent(
         written = await insertOrAdopt(current, event, calendar);
       }
     }
-    // The lease ends either way: a newer change is due again at once.
     const done = { etag: written.etag, lastSyncedAt: new Date(), claimedUntil: null };
-    await db.calendarEventLink.updateMany({ where: { id: link.id }, data: done });
-    // Not over a pending_delete (the booking was cancelled meanwhile: the
-    // event just written must now go), nor over a newer change.
-    await db.calendarEventLink.updateMany({
+    // Synced, unless a newer change (`changeSeq`) arrived meanwhile or the
+    // booking was cancelled (pending_delete: the event just written must
+    // now go). State and lease change in one statement, so no other worker
+    // can claim the link between them.
+    const { count } = await db.calendarEventLink.updateMany({
       where: { id: link.id, changeSeq: link.changeSeq, syncState: { not: "pending_delete" } },
-      data: { syncState: "synced", lastError: null, attempts: 0, claimedUntil: null },
+      data: { ...done, syncState: "synced", lastError: null, attempts: 0 },
     });
+    // Otherwise the newer change is due again at once.
+    if (count === 0) {
+      await db.calendarEventLink.updateMany({ where: { id: link.id }, data: done });
+    }
     return await db.calendarEventLink.findUniqueOrThrow({ where: { id: link.id } });
   } catch (error) {
     await markFailed(current, error);

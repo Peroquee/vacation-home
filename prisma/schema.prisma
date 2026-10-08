@@ -43,6 +43,7 @@ model Property {
   blocks                  Block[]
   transactions            Transaction[]
   calendar                PropertyCalendar?
+  incomeAutomation        IncomeAutomation?
 
   // Target of the transactions' (property, currency) foreign key, which keeps
   // a transaction in its property's currency.
@@ -313,6 +314,39 @@ model Category {
   @@map("categories")
 }
 
+/// The parts of a confirmed booking that become income automatically.
+enum GeneratedEntry {
+  /// The total less the cleaning fee, in "Booking income".
+  booking_accommodation
+  /// The cleaning fee, in "Cleaning fees".
+  booking_cleaning
+
+  @@map("generated_entry")
+}
+
+enum CancelledIncome {
+  /// Delete the generated entries.
+  delete
+  /// Keep them, with the amount set to zero.
+  zero
+
+  @@map("cancelled_income")
+}
+
+/// Per property: whether confirmed bookings create their income entries.
+model IncomeAutomation {
+  propertyId String          @id @map("property_id") @db.Uuid
+  enabled    Boolean         @default(true)
+  /// What happens to generated entries when the booking is cancelled.
+  onCancel   CancelledIncome @default(delete) @map("on_cancel")
+  createdAt  DateTime        @default(now()) @map("created_at")
+  updatedAt  DateTime        @updatedAt @map("updated_at")
+
+  property Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+
+  @@map("income_automation")
+}
+
 /// An income or expense entry in the ledger, optionally linked to a booking.
 ///
 /// MONEY: `amountMinor` is a positive integer of minor units in `currency`;
@@ -329,6 +363,12 @@ model Transaction {
   date        DateTime        @db.Date
   description String?
   isRecurring Boolean         @default(false) @map("is_recurring")
+  /// Set on income generated from a confirmed booking (GitLab #80): which
+  /// part of it this is. At most one of each per booking.
+  generated   GeneratedEntry?
+  /// Set when someone edited a generated entry by hand: automation leaves it
+  /// alone from then on (and does not add another in its place).
+  detachedAt  DateTime?       @map("detached_at")
   createdAt   DateTime        @default(now()) @map("created_at")
   updatedAt   DateTime        @updatedAt @map("updated_at")
 
@@ -339,6 +379,7 @@ model Transaction {
   category Category @relation(fields: [categoryId, type], references: [id, type], onDelete: Restrict, onUpdate: Restrict)
   booking  Booking? @relation(fields: [bookingId, propertyId], references: [id, propertyId], onDelete: Restrict, onUpdate: Restrict)
 
+  @@unique([bookingId, generated])
   @@index([propertyId, date])
   @@index([bookingId])
   @@index([categoryId])
