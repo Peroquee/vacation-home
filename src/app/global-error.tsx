@@ -9,7 +9,7 @@ import "./globals.css";
 
 /**
  * Last-resort fallback for an error in the root layout itself (the app shell),
- * which src/app/error.tsx cannot catch because it renders inside that layout.
+ * which src/app/(app)/error.tsx cannot catch because it renders inside that layout.
  * Replaces the whole document, so it brings its own <html> and <body>.
  */
 export default function GlobalError({
@@ -20,7 +20,7 @@ export default function GlobalError({
   retry: () => void;
 }) {
   useEffect(() => {
-    // See src/app/error.tsx: server errors are reported on the server.
+    // See src/app/(app)/error.tsx: server errors are reported on the server.
     if (!error.digest) Sentry.captureException(error);
   }, [error]);
 

@@ -21,6 +21,9 @@ import { logger } from "@/lib/logger";
 
 export const SIGN_IN_PATH = "/signin";
 
+/** The session cookie's names: over https it carries the __Secure- prefix. */
+export const SESSION_COOKIES = ["authjs.session-token", "__Secure-authjs.session-token"];
+
 export const { handlers, auth, signIn, signOut } = NextAuth(() => ({
   // The adapter is typed against @prisma/client; this app's client is
   // generated elsewhere but has exactly the models the adapter uses.
@@ -50,8 +53,9 @@ export const { handlers, auth, signIn, signOut } = NextAuth(() => ({
     signIn({ profile }) {
       const allowed = profile?.email_verified === true && isAllowedEmail(profile.email);
       // Turned into /signin?error=AccessDenied, which explains it.
-      if (!allowed)
-        logger.warn({ email: profile?.email }, "sign-in refused: not on the allow-list");
+      // Not the address itself: a stranger's email is personal data we have
+      // no reason to keep.
+      if (!allowed) logger.warn("sign-in refused: account not on the allow-list");
       return allowed;
     },
     session({ session, user }) {

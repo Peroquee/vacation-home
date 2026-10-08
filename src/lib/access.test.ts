@@ -41,7 +41,15 @@ describe("safeCallbackUrl", () => {
   });
 
   it("refuses anything that could leave the site", () => {
-    for (const url of ["//evil.example", "/\\evil.example", "https://evil.example", "evil", ""]) {
+    for (const url of [
+      "//evil.example",
+      "/\\evil.example",
+      "/\t/evil.example",
+      "/\n/evil.example",
+      "https://evil.example",
+      "evil",
+      "",
+    ]) {
       expect(safeCallbackUrl(url)).toBe("/calendar");
     }
     expect(safeCallbackUrl(undefined)).toBe("/calendar");

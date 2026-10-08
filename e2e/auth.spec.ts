@@ -34,7 +34,7 @@ test.describe("signed out", () => {
     await expect(page.locator('input[name="callbackUrl"]')).toHaveValue("/calendar");
   });
 
-  test("a session for an address no longer on the allow-list does not count", async ({
+  test("a session for an address no longer on the allow-list is revoked", async ({
     page,
     context,
     baseURL,
@@ -44,6 +44,13 @@ test.describe("signed out", () => {
 
     await page.goto("/calendar");
     await expect(page).toHaveURL(/\/signin/);
+
+    const { rowCount } = await withE2eDb((db) =>
+      db.query("SELECT 1 FROM sessions WHERE session_token = $1", [token]),
+    );
+    expect(rowCount).toBe(0);
+    const cookies = await context.cookies();
+    expect(cookies.find((c) => c.name === "authjs.session-token")).toBeUndefined();
   });
 });
 
@@ -55,9 +62,13 @@ test("a signed-in user sees the app and their account", async ({ page }) => {
   ).toBeVisible();
 });
 
-test("a signed-in user is sent on from the sign-in page", async ({ page }) => {
+test("a signed-in user is sent on from the sign-in page, but never off-site", async ({ page }) => {
   await page.goto("/signin?callbackUrl=/finance");
   await expect(page).toHaveURL(/\/finance$/);
+
+  // Browsers drop tabs while parsing a URL, so this would mean //evil.example.
+  await page.goto("/signin?callbackUrl=%2F%09%2Fevil.example");
+  await expect(page).toHaveURL(/^http:\/\/localhost:3100\/calendar$/);
 });
 
 test.describe("signing out", () => {

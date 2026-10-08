@@ -25,13 +25,21 @@ export function decideAccess(
 }
 
 /**
- * A post-sign-in destination taken from the URL, kept only if it is a path on
- * this site - never `//evil.example` or `https://...`, which would make the
- * sign-in page an open redirect.
+ * A post-sign-in destination taken from the URL, kept only if it stays on
+ * this site. Resolved the way a browser would - which ignores tabs and
+ * newlines, so "/<tab>/evil.example" means "//evil.example" - and accepted
+ * only if the origin did not change. Never an open redirect.
  */
 export function safeCallbackUrl(value: string | string[] | undefined): string {
-  const url = Array.isArray(value) ? value[0] : value;
-  return url && url.startsWith("/") && !url.startsWith("//") && !url.startsWith("/\\")
-    ? url
-    : "/calendar";
+  const raw = Array.isArray(value) ? value[0] : value;
+  const fallback = "/calendar";
+  if (!raw?.startsWith("/")) return fallback;
+
+  const base = "http://app.invalid";
+  try {
+    const url = new URL(raw, base);
+    return url.origin === base ? `${url.pathname}${url.search}${url.hash}` : fallback;
+  } catch {
+    return fallback;
+  }
 }

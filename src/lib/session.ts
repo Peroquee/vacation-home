@@ -4,6 +4,8 @@
  * The proxy has already turned away requests without a valid session, so
  * inside a page or route handler this is normally non-null.
  */
+import { cache } from "react";
+
 import { auth } from "@/auth";
 import { isAllowedEmail } from "@/lib/allowed-emails";
 
@@ -15,7 +17,8 @@ export type CurrentUser = {
   image: string | null;
 };
 
-export async function getCurrentUser(): Promise<CurrentUser | null> {
+/** Cached per request, so the shell and the page share one session lookup. */
+export const getCurrentUser = cache(async function getCurrentUser(): Promise<CurrentUser | null> {
   const session = await auth();
   const user = session?.user;
   // Same rule as the proxy: a valid session for an address since removed
@@ -28,4 +31,4 @@ export async function getCurrentUser(): Promise<CurrentUser | null> {
     email: user.email,
     image: user.image ?? null,
   };
-}
+});
