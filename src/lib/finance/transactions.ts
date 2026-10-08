@@ -94,7 +94,13 @@ export function toDto({ date, createdAt, updatedAt, ...rest }: TransactionWithRe
 
 export type Invalid = { error: "invalid"; field: string; message: string };
 export type TransactionWrite =
-  { transaction: TransactionWithRelations } | { error: "not_found" } | Invalid;
+  | {
+      transaction: TransactionWithRelations;
+      /** This edit detached an entry generated from a booking from automation. */
+      detached?: boolean;
+    }
+  | { error: "not_found" }
+  | Invalid;
 
 const invalid = (field: string, message: string): Invalid => ({ error: "invalid", field, message });
 
@@ -192,10 +198,13 @@ export async function updateTransaction(
   );
   if (problem) return problem;
 
+  // Editing a generated entry by hand takes it out of the automation's hands.
+  const detaching = current.generated !== null && current.detachedAt === null;
   try {
     const transaction = await db.transaction.update({
       where: { id },
       data: {
+        ...(detaching && { detachedAt: new Date() }),
         type: input.type,
         categoryId: input.categoryId,
         amountMinor: input.amountMinor,
@@ -206,7 +215,7 @@ export async function updateTransaction(
       },
       include: withRelations,
     });
-    return { transaction };
+    return detaching ? { transaction, detached: true } : { transaction };
   } catch (error) {
     if (isPrismaError(error, "P2025")) return { error: "not_found" };
     const problem = refused(error);

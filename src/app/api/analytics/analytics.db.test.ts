@@ -65,7 +65,11 @@ const entry = async (propertyId: string, date: string, systemKey: string, amount
     },
   });
 
-afterAll(() => db.$disconnect());
+// Other files clear bookings without the ledger rows that reference them.
+afterAll(async () => {
+  await db.transaction.deleteMany();
+  await db.$disconnect();
+});
 
 describe("a fixed dataset", () => {
   beforeEach(async () => {
