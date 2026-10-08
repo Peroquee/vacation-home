@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
+import { ExpenseBreakdown } from "@/components/charts/expense-breakdown";
 import { RevenueExpensesChart } from "@/components/charts/revenue-expenses-chart";
 import { type Column, DataTable } from "@/components/data-table";
 import { PageHeader } from "@/components/page-header";
@@ -10,6 +11,7 @@ import { EmptyState, ErrorState } from "@/components/states";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatDate, formatDateRange, formatDateTime, formatMoney } from "@/lib/format";
+import { breakdownRows } from "@/lib/dashboard/breakdown";
 import { APP_LOCALE } from "@/lib/locale";
 
 import { InteractiveExamples } from "./interactive-examples";
@@ -139,6 +141,32 @@ export default function UiPrimitivesPage() {
         <Card>
           <CardContent>
             <RevenueExpensesChart currency="EUR" months={chartMonths} />
+          </CardContent>
+        </Card>
+      </Section>
+
+      <Section title="Expense breakdown">
+        <Card className="max-w-md">
+          <CardContent>
+            <ExpenseBreakdown
+              currency="EUR"
+              rows={breakdownRows(
+                [
+                  ["Cleaning", 480000, "#7c3aed"],
+                  ["Maintenance", 210000, "#db2777"],
+                  ["Utilities", 155000, "#ea580c"],
+                  ["Platform fees", 98000, "#ca8a04"],
+                  ["Supplies", 21000, "#65a30d"],
+                  ["Insurance", 14000, "#0284c7"],
+                ].map(([name, amountMinor, color]) => ({
+                  categoryId: String(name),
+                  name: String(name),
+                  color: String(color),
+                  amountMinor: Number(amountMinor),
+                  share: Number(amountMinor) / 978000,
+                })),
+              )}
+            />
           </CardContent>
         </Card>
       </Section>
