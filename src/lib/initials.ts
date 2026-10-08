@@ -6,7 +6,7 @@
  * read the Auth.js session.
  */
 export function initials(name: string): string {
-  const parts = name.trim().split(/s+/).filter(Boolean);
+  const parts = name.trim().split(/\s+/).filter(Boolean);
   if (parts.length === 0) return "?";
   return parts
     .slice(0, 2)

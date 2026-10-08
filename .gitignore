@@ -48,3 +48,11 @@ next-env.d.ts
 
 # Prisma client, generated from prisma/schema.prisma on `npm install`
 /src/generated/
+
+# Playwright output
+/test-results/
+/playwright-report/
+/blob-report/
+
+# Playwright browsers, relocated into the project in CI for caching
+/.cache/
