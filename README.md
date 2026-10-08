@@ -108,8 +108,9 @@ JSON route handlers under `src/app/api`. Errors always look like:
 { "error": { "code": "validation_failed", "message": "…", "fields": { "name": ["is required"] } } }
 ```
 
-`code` is one of `invalid_json` (400), `not_found` (404), `conflict` (409) or
-`validation_failed` (422). Under `validation_failed`, `fields` has one list of
+`code` is one of `invalid_json` (400), `not_found` (404), `conflict` (409),
+`validation_failed` (422) or `upstream_unavailable` (502, Google could not be
+reached). Under `validation_failed`, `fields` has one list of
 messages per invalid field, with problems that belong to no single field under
 `_`. Money is always an integer number of minor units (cents).
 
@@ -204,12 +205,13 @@ Dates a property cannot be booked that are not a booking: owner blocks
 
 ### Categories
 
-| Method and path              | Does                                                                     |
-| ---------------------------- | ------------------------------------------------------------------------ |
-| `GET /api/categories`        | By type and name; `?type=income\|expense`, `?includeHidden=true`         |
-| `POST /api/categories`       | Create a user category (`name`, `type`, `color`); `409` on a duplicate   |
-| `PATCH /api/categories/:id`  | Rename, recolour, hide (`hidden: true`) or show. The type never changes. |
-| `DELETE /api/categories/:id` | Delete an unused user category; `409` with `reason` otherwise            |
+| Method and path                     | Does                                                                          |
+| ----------------------------------- | ----------------------------------------------------------------------------- |
+| `GET /api/categories`               | By type and name; `?type=income\|expense`, `?includeHidden=true`              |
+| `POST /api/categories`              | Create a user category (`name`, `type`, `color`); `409` on a duplicate        |
+| `PATCH /api/categories/:id`         | Rename, recolour, hide (`hidden: true`) or show. The type never changes.      |
+| `DELETE /api/categories/:id`        | Delete an unused user category; `409` with `reason` otherwise                 |
+| `POST /api/categories/:id/reassign` | `{ "to": "<id>" }`: move all its transactions there, in one step; `{ moved }` |
 
 The default categories are **system categories**, created by the migration
 in every database: booking income, cleaning fees and other income; cleaning,
@@ -217,7 +219,9 @@ maintenance, utilities, platform fees, supplies, insurance, taxes and other
 expenses. You can rename, recolour and hide them, but the database refuses to
 delete them (`reason: "system"`). The app finds them by their fixed
 `systemKey`. A category used by transactions can't be deleted
-(`reason: "in_use"`).
+(`reason: "in_use"`): move its transactions first with `reassign`, which
+needs a different, visible category of the same type (`422` on `to` for the
+other type, `409` for the same or a hidden one, `404` for an unknown one).
 
 ### Transactions
 
@@ -247,6 +251,40 @@ pageSize, totals: [{ currency, incomeMinor, expenseMinor, netMinor }] }`, where
   `totals` covers every matching transaction, not just the page, with one entry
   per currency, since minor units of different currencies can't be added. A
   repeated parameter (`?categoryId=a&categoryId=b`) counts like a comma list.
+
+### Analytics
+
+`GET /api/analytics?from=&to=` gives the dashboard every figure it shows, from
+one tested aggregation layer ([`src/lib/analytics/rules.ts`](src/lib/analytics/rules.ts)
+defines each one).
+
+- **Query**: `from`, `to` (half-open like a stay, at most three years),
+  `propertyId` (default: all properties), `compare` (`year`, the default: the
+  same dates a year earlier; or `previous`: the same number of days right
+  before) and `excludeBlocks` (default `true`).
+- **Response**:
+  - `months`: one entry per calendar month, clipped to the range at both
+    ends. Each has `incomeMinor`, `expensesMinor` and `netMinor` from the
+    ledger, plus `bookedNights`, `blockedNights`, `availableNights` and
+    `accommodationRevenueMinor`.
+  - `totals`: the same figures for the whole range, plus `occupancyRate`
+    (0–1), `averageNightlyRateMinor` and `revenuePerAvailableNightMinor`.
+    A rate is `null` when nothing is there to divide by.
+  - `prior`: `{ compare, from, to, totals }`.
+  - `change`: `{ delta, percent }` for each total.
+  - `expensesByCategory`: `{ categoryId, name, color, amountMinor, share }`,
+    largest first.
+- **Rules**:
+  - Only confirmed bookings occupy nights.
+  - A booking's accommodation revenue (total less cleaning fee) is spread
+    evenly over its nights, so a stay across a month boundary counts in each
+    month for the nights it has there.
+  - With `excludeBlocks`, nights blocked and not booked are left out of the
+    available nights.
+  - An archived property stops counting from the day it was archived.
+- **Currencies**: amounts in different currencies are never added up. With
+  mixed currencies across all properties the answer is `409` with
+  `error.reason: "mixed_currencies"`; pass a `propertyId`.
 
 ### Calendar availability
 
@@ -389,6 +427,37 @@ sign-in ([`src/lib/google/`](src/lib/google)):
   reason `key_changed`.
 - **Disconnecting**: `DELETE /api/google/connection` revokes the grant at
   Google (best effort) and deletes it.
+
+### Outbound sync: bookings in Google Calendar
+
+Each property can push its bookings to one Google Calendar
+([`src/lib/google/outbound.ts`](src/lib/google/outbound.ts)).
+
+| Method and path                            | Does                                                                              |
+| ------------------------------------------ | --------------------------------------------------------------------------------- |
+| `GET /api/google/calendars`                | The signed-in user's calendars the app can write to (read-only ones left out)     |
+| `GET /api/properties/:id/calendar`         | `{ calendar: { calendarId, calendarName, outbound, inbound, userId } \| null }`   |
+| `PUT /api/properties/:id/calendar`         | Choose it: `{ calendarId, outbound?, inbound? }`; schedules every current booking |
+| `DELETE /api/properties/:id/calendar`      | Stop syncing (`204`); events already in Google stay as they are                   |
+| `POST /api/properties/:id/calendar/resync` | "Resync everything" (`202 { scheduled }`)                                         |
+
+- **What is pushed**: confirmed bookings, as all-day events from check-in to
+  check-out. Cancelling (or turning back into an inquiry) deletes the event.
+  The event reads "Booking · <property>" with the booking id, nights, guest
+  count, total and a link to the app, and carries the private extended
+  property `vacationHome=booking` plus `bookingId`. **No guest personal data
+  goes to Google**, so erasing a guest never has to reach it.
+- **How**: every booking write schedules its event in the same transaction
+  (the link turns `pending` and its `changeSeq` goes up). A worker in the
+  server process pushes at once after the change, and every 20 seconds
+  picks up anything still due. Rapid edits collapse into one push of the
+  latest version, a change made during a push is pushed right after, and the
+  fixed event id means a retry never adds a second event.
+- **Failures**: a failed push is `failed` with the error kind, retried after
+  30 s, doubling to at most 1 h. A disconnected or revoked Google account
+  stops all pushes until it is reconnected. An event deleted in Google is
+  created again: the app's bookings are the truth.
+- The worker runs only when `TOKEN_ENCRYPTION_KEY` is set.
 
 **Event links** ([`src/lib/google/links.ts`](src/lib/google/links.ts),
 table `calendar_event_links`) map each booking or manual block to the Google
