@@ -41,9 +41,6 @@ CREATE UNIQUE INDEX "categories_system_key_key" ON "categories"("system_key");
 CREATE UNIQUE INDEX "categories_id_type_key" ON "categories"("id", "type");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "categories_type_name_key" ON "categories"("type", "name");
-
--- CreateIndex
 CREATE INDEX "transactions_property_id_date_idx" ON "transactions"("property_id", "date");
 
 -- CreateIndex
@@ -55,15 +52,23 @@ CREATE INDEX "transactions_category_id_idx" ON "transactions"("category_id");
 -- CreateIndex
 CREATE UNIQUE INDEX "bookings_id_property_id_key" ON "bookings"("id", "property_id");
 
--- AddForeignKey
-ALTER TABLE "transactions" ADD CONSTRAINT "transactions_property_id_fkey" FOREIGN KEY ("property_id") REFERENCES "properties"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+-- CreateIndex
+CREATE UNIQUE INDEX "properties_id_currency_key" ON "properties"("id", "currency");
 
 -- AddForeignKey
-ALTER TABLE "transactions" ADD CONSTRAINT "transactions_category_id_type_fkey" FOREIGN KEY ("category_id", "type") REFERENCES "categories"("id", "type") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "transactions" ADD CONSTRAINT "transactions_property_id_currency_fkey" FOREIGN KEY ("property_id", "currency") REFERENCES "properties"("id", "currency") ON DELETE RESTRICT ON UPDATE RESTRICT;
 
 -- AddForeignKey
-ALTER TABLE "transactions" ADD CONSTRAINT "transactions_booking_id_property_id_fkey" FOREIGN KEY ("booking_id", "property_id") REFERENCES "bookings"("id", "property_id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "transactions" ADD CONSTRAINT "transactions_category_id_type_fkey" FOREIGN KEY ("category_id", "type") REFERENCES "categories"("id", "type") ON DELETE RESTRICT ON UPDATE RESTRICT;
 
+-- AddForeignKey
+ALTER TABLE "transactions" ADD CONSTRAINT "transactions_booking_id_property_id_fkey" FOREIGN KEY ("booking_id", "property_id") REFERENCES "bookings"("id", "property_id") ON DELETE RESTRICT ON UPDATE RESTRICT;
+
+
+-- Category names are unique per type, ignoring case and surrounding spaces
+-- ("Taxes" and " taxes" are the same category). Prisma cannot express an
+-- index on an expression, so it lives here only.
+CREATE UNIQUE INDEX "categories_type_name_key" ON "categories" ("type", lower(btrim("name")));
 
 -- Invariants, held by the database as well as the API.
 ALTER TABLE "categories"
@@ -92,6 +97,7 @@ INSERT INTO "categories" ("name", "type", "color", "is_system", "system_key", "u
   ('Other expenses', 'expense', '#64748b', true, 'other_expenses', now());
 
 -- System categories can be hidden, never deleted, and stay system categories.
+-- No category changes type: its transactions carry the type too.
 CREATE FUNCTION "categories_protect_system"() RETURNS trigger
 LANGUAGE plpgsql AS $$
 BEGIN

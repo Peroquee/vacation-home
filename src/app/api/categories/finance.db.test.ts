@@ -5,7 +5,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 
 import { DELETE, PATCH } from "@/app/api/categories/[id]/route";
 import { GET as list, POST as create } from "@/app/api/categories/route";
-import { DELETE as deleteProperty } from "@/app/api/properties/[id]/route";
+import { DELETE as deleteProperty, PATCH as patchProperty } from "@/app/api/properties/[id]/route";
 import type { Prisma } from "@/generated/prisma/client";
 import { toUtcDate } from "@/lib/calendar-date";
 import { db } from "@/lib/db";
@@ -128,6 +128,30 @@ describe("transactions", () => {
     await expect(transaction({ amountMinor: -5 })).rejects.toThrow(/transactions_amount_positive/);
   });
 
+  it("are in their property's currency, which then cannot change", async () => {
+    await expect(transaction({ currency: "CHF" })).rejects.toMatchObject({ code: "P2003" });
+
+    await transaction();
+    const response = await patchProperty(
+      new Request(
+        "http://localhost",
+        send("PATCH", { currency: "CHF", defaultNightlyRateMinor: 0, defaultCleaningFeeMinor: 0 }),
+      ),
+      context(lake),
+    );
+    expect(response.status).toBe(422);
+    expect((await response.json()).error.fields.currency[0]).toMatch(/transactions/);
+  });
+
+  it("are not rewritten when what they reference changes", async () => {
+    await transaction({ type: "income", bookingId: lakeBooking, amountMinor: 1_000 });
+    // Moving the booking would have dragged the transaction along with
+    // ON UPDATE CASCADE; RESTRICT refuses instead.
+    await expect(
+      db.booking.update({ where: { id: lakeBooking }, data: { propertyId: cabin } }),
+    ).rejects.toThrow();
+  });
+
   it("keep their property from being deleted", async () => {
     await transaction();
     expect((await deleteProperty(new Request("http://localhost"), context(lake))).status).toBe(409);
@@ -140,13 +164,14 @@ describe("the category API", () => {
   it("lists visible categories, and hidden ones on request", async () => {
     const cleaning = await systemCategory("cleaning");
     await PATCH(new Request(api(), send("PATCH", { hidden: true })), context(cleaning.id));
-
-    const visible = await (await list(new Request(api("?type=expense")))).json();
-    expect(visible.map((c: { name: string }) => c.name)).not.toContain("Cleaning");
-    const all = await (await list(new Request(api("?type=expense&includeHidden=true")))).json();
-    expect(all.map((c: { name: string }) => c.name)).toContain("Cleaning");
-
-    await PATCH(new Request(api(), send("PATCH", { hidden: false })), context(cleaning.id));
+    try {
+      const visible = await (await list(new Request(api("?type=expense")))).json();
+      expect(visible.map((c: { name: string }) => c.name)).not.toContain("Cleaning");
+      const all = await (await list(new Request(api("?type=expense&includeHidden=true")))).json();
+      expect(all.map((c: { name: string }) => c.name)).toContain("Cleaning");
+    } finally {
+      await db.category.update({ where: { id: cleaning.id }, data: { hidden: false } });
+    }
   });
 
   it("refuses to delete a system category, which can be hidden instead", async () => {

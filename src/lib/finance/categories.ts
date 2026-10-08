@@ -7,6 +7,7 @@
 import { z } from "zod";
 
 import type { Category } from "@/generated/prisma/client";
+import { apiError } from "@/lib/api";
 import { db } from "@/lib/db";
 import { isPrismaError, raisedByDatabase } from "@/lib/db-errors";
 
@@ -58,6 +59,13 @@ export async function listCategories({
 /** The system category with `systemKey`, e.g. "booking_income". */
 export async function systemCategory(systemKey: string): Promise<Category> {
   return db.category.findUniqueOrThrow({ where: { systemKey } });
+}
+
+/** The 409 for a name another category of the same type already has. */
+export function nameTakenResponse(): Response {
+  return apiError(409, "conflict", "A category of this type already has that name.", {
+    name: ["is already taken"],
+  });
 }
 
 export type CategoryWrite = { category: Category } | { error: "not_found" | "name_taken" };

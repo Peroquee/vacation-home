@@ -1,10 +1,11 @@
 import { z } from "zod";
 
-import { apiError, parseBody, validationError } from "@/lib/api";
+import { parseBody, validationError } from "@/lib/api";
 import {
   createCategory,
   createCategorySchema,
   listCategories,
+  nameTakenResponse,
   toDto,
   TRANSACTION_TYPES,
 } from "@/lib/finance/categories";
@@ -36,7 +37,5 @@ export async function POST(request: Request) {
       headers: { Location: `/api/categories/${result.category.id}` },
     });
   }
-  return apiError(409, "conflict", "A category of this type already has that name.", {
-    name: ["is already taken"],
-  });
+  return nameTakenResponse();
 }

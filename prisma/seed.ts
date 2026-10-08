@@ -2,9 +2,8 @@
  * `npm run seed`: replaces the app's data with the demo data planned in
  * src/lib/seed/plan.ts - the same content every run (the ids are new each
  * time). Also run by `prisma migrate reset`. Transactions are cleared too;
- * categories, users and the audit trail stay. Development databases only
- * (see src/lib/seed/guard.ts). Signed-in users and the audit trail are left
- * alone.
+ * categories, signed-in users and the audit trail stay. Development
+ * databases only (see src/lib/seed/guard.ts).
  */
 import { loadEnvConfig } from "@next/env";
 

@@ -1,6 +1,7 @@
 import { apiError, isUuid, notFound, parseBody } from "@/lib/api";
 import {
   deleteCategory,
+  nameTakenResponse,
   toDto,
   updateCategory,
   updateCategorySchema,
@@ -18,11 +19,7 @@ export async function PATCH(request: Request, { params }: Context) {
 
   const result = await updateCategory(id, body.data);
   if ("category" in result) return Response.json(toDto(result.category));
-  return result.error === "not_found"
-    ? notFound("Category")
-    : apiError(409, "conflict", "A category of this type already has that name.", {
-        name: ["is already taken"],
-      });
+  return result.error === "not_found" ? notFound("Category") : nameTakenResponse();
 }
 
 /**
