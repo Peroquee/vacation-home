@@ -40,6 +40,7 @@ const eslintConfig = defineConfig([
       "playwright.config.ts",
       "e2e/**/*.{ts,mjs}",
       "vitest.db.config.mts",
+      "prisma/seed.ts",
       "vitest.db.setup.mts",
     ],
     rules: { "no-restricted-properties": "off" },

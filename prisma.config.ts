@@ -18,6 +18,9 @@ export default defineConfig({
   schema: "prisma/schema.prisma",
   migrations: {
     path: "prisma/migrations",
+    // Run by `prisma migrate reset`, so a reset ends with demo data; guarded
+    // against anything but a development database.
+    seed: "tsx prisma/seed.ts",
   },
   datasource: {
     // Read leniently rather than through Prisma's `env()`, which throws when

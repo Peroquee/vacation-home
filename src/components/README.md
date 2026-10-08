@@ -13,6 +13,7 @@ is development-only and returns 404 in production.
 | Grouped content           | `Card` and its parts                                             | `@/components/ui/card`        |
 | List of records           | `DataTable`                                                      | `@/components/data-table`     |
 | Short focused form        | `Dialog` (modal)                                                 | `@/components/ui/dialog`      |
+| Form fields               | `Field`, `FieldLabel`, `FieldError`, `Input`, `NativeSelect`     | `@/components/ui/field`, ...  |
 | Detail view beside a list | `Sheet`                                                          | `@/components/ui/sheet`       |
 | "Are you sure?"           | `ConfirmDialog`                                                  | `@/components/confirm-dialog` |
 | Nothing to show yet       | `EmptyState`                                                     | `@/components/states`         |
@@ -117,6 +118,26 @@ their trigger through `render`:
   </SheetContent>
 </Sheet>
 ```
+
+## Form fields
+
+`Field` wraps one label, control, description and error. Mark it invalid with
+`data-invalid` and the control with `aria-invalid`, and show the API's 422
+`fields` messages through `FieldError`. Use `NativeSelect` for long standard
+lists (timezones, currencies): it is keyboard- and mobile-friendly for free.
+
+```tsx
+<Field data-invalid={errors.name ? true : undefined}>
+  <FieldLabel htmlFor="name">Name</FieldLabel>
+  <Input id="name" aria-invalid={errors.name ? true : undefined} />
+  <FieldDescription>Shown on the calendar.</FieldDescription>
+  <FieldError errors={errors.name?.map((message) => ({ message }))} />
+</Field>
+```
+
+`Input` comes from `@/components/ui/input`, `NativeSelect` and
+`NativeSelectOption` from `@/components/ui/native-select`. The property form
+(`src/app/(app)/settings/property-form-dialog.tsx`) is a complete example.
 
 ## ConfirmDialog
 

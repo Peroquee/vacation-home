@@ -13,6 +13,7 @@
  * touch booking amounts or dates.
  */
 import type { BookingSource, Prisma } from "@/generated/prisma/client";
+import { invalidateWindows } from "@/lib/availability/cache";
 import {
   type Conflict,
   isAvailable,
@@ -33,9 +34,9 @@ import {
   type UpdateBookingInput,
 } from "./schema";
 
-const toDbSource = (source: ApiBookingSource): BookingSource =>
+export const toDbSource = (source: ApiBookingSource): BookingSource =>
   source === "booking.com" ? "booking_com" : source;
-const toApiSource = (source: BookingSource): ApiBookingSource =>
+export const toApiSource = (source: BookingSource): ApiBookingSource =>
   source === "booking_com" ? "booking.com" : source;
 
 const withRelations = {
@@ -170,7 +171,7 @@ export async function createBooking(input: CreateBookingInput): Promise<WriteRes
     notes: input.notes ?? null,
   };
 
-  return locked(
+  const result = await locked(
     property.id,
     noProperty,
     async (tx) => {
@@ -182,6 +183,10 @@ export async function createBooking(input: CreateBookingInput): Promise<WriteRes
     },
     () => input,
   );
+  if ("booking" in result) {
+    invalidateWindows(property.id, [{ start: input.checkIn, end: input.checkOut }]);
+  }
+  return result;
 }
 
 export async function getBooking(id: string): Promise<BookingWithRelations | null> {
@@ -201,7 +206,8 @@ export async function updateBooking(id: string, input: UpdateBookingInput): Prom
   if (!head) return { error: "not_found" };
 
   let stay = { checkIn: "", checkOut: "" };
-  return locked(
+  let before = { start: "", end: "" };
+  const result = await locked(
     head.propertyId,
     { error: "not_found" },
     async (tx) => {
@@ -210,6 +216,7 @@ export async function updateBooking(id: string, input: UpdateBookingInput): Prom
         include: { guest: { select: { purgedAt: true } } },
       });
       if (!current) return { error: "not_found" };
+      before = { start: fromUtcDate(current.checkIn), end: fromUtcDate(current.checkOut) };
       // An erased guest's bookings keep their facts but take no new notes.
       if (current.guest.purgedAt && input.notes && input.guestId === undefined) {
         return { error: "invalid", field: "notes", message: "cannot be set: the guest was erased" };
@@ -280,6 +287,11 @@ export async function updateBooking(id: string, input: UpdateBookingInput): Prom
     },
     () => ({ ...stay, ignoreBookingId: id }),
   );
+  // Calendar windows showing the old dates or the new ones are now stale.
+  if ("booking" in result) {
+    invalidateWindows(head.propertyId, [before, { start: stay.checkIn, end: stay.checkOut }]);
+  }
+  return result;
 }
 
 /**
@@ -297,7 +309,11 @@ export async function cancelBooking(id: string): Promise<BookingWithRelations | 
     const booking = await tx.booking.findUnique({ where: { id }, include: withRelations });
     return booking ? { booking } : { error: "not_found" };
   });
-  return "booking" in result ? result.booking : null;
+  if (!("booking" in result)) return null;
+  invalidateWindows(head.propertyId, [
+    { start: fromUtcDate(result.booking.checkIn), end: fromUtcDate(result.booking.checkOut) },
+  ]);
+  return result.booking;
 }
 
 /** Bookings matching `query`, one page at a time, with the total count. */
