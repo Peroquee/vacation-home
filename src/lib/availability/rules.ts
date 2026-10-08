@@ -109,17 +109,18 @@ export function dailyAvailability(
     throw new RangeError(`at most ${MAX_DAYS} days at a time, asked for ${length}`);
   }
 
-  const live = bookings.filter((b) => b.status !== "cancelled");
+  // Validated once here; after that, canonical ISO dates compare correctly
+  // as strings, which keeps the per-day loop cheap over long ranges.
+  for (const span of [...bookings, ...blocks]) assertNonEmptyRange(span);
+  const confirmed = bookings.filter((b) => blocksDates(b.status));
+  const inquiries = bookings.filter((b) => b.status === "inquiry");
+  const covers = (span: DateRange, date: CalendarDate) => span.start <= date && date < span.end;
+
   return Array.from({ length }, (_, offset) => {
     const date = addDays(from, offset);
-    const night: DateRange = { start: date, end: addDays(date, 1) };
-
-    const confirmed = live.filter((b) => blocksDates(b.status));
-    const booking = confirmed.find((b) => rangesOverlap(night, b)) ?? null;
-    const blockIds = blocks.filter((b) => rangesOverlap(night, b)).map((b) => b.id);
-    const inquiryIds = live
-      .filter((b) => b.status === "inquiry" && rangesOverlap(night, b))
-      .map((b) => b.id);
+    const booking = confirmed.find((b) => covers(b, date)) ?? null;
+    const blockIds = blocks.filter((b) => covers(b, date)).map((b) => b.id);
+    const inquiryIds = inquiries.filter((b) => covers(b, date)).map((b) => b.id);
 
     const status: DayStatus = booking
       ? "booked"

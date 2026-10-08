@@ -5,6 +5,7 @@ import {
   getAvailability,
   isAvailable,
   isOverlapViolation,
+  UnknownPropertyError,
   withPropertyLock,
 } from "@/lib/availability/service";
 import { toUtcDate } from "@/lib/calendar-date";
@@ -123,7 +124,57 @@ describe("the database's overlap constraint", () => {
   });
 });
 
+describe("the database's booking-versus-block rule", () => {
+  const refused = async (write: Promise<unknown>) =>
+    isOverlapViolation(await write.catch((e: unknown) => e));
+
+  it("refuses a confirmed booking over a block, and a block over a confirmed booking", async () => {
+    await block("2026-07-14", "2026-07-18");
+    expect(await refused(booking("2026-07-17", "2026-07-20"))).toBe(true);
+
+    await db.block.deleteMany();
+    await booking("2026-07-14", "2026-07-18");
+    expect(await refused(block("2026-07-15", "2026-07-16"))).toBe(true);
+  });
+
+  it("refuses confirming an inquiry, or moving a block, onto taken nights", async () => {
+    await block("2026-07-14", "2026-07-18");
+    const inquiry = await booking("2026-07-15", "2026-07-17", { status: "inquiry" });
+    expect(
+      await refused(
+        db.booking.update({ where: { id: inquiry.id }, data: { status: "confirmed" } }),
+      ),
+    ).toBe(true);
+
+    await db.booking.deleteMany();
+    await booking("2026-07-20", "2026-07-22");
+    const works = await db.block.findFirstOrThrow();
+    expect(
+      await refused(
+        db.block.update({ where: { id: works.id }, data: { endDate: toUtcDate("2026-07-21") } }),
+      ),
+    ).toBe(true);
+  });
+
+  it("allows inquiries over blocks, turnovers against blocks, and other properties", async () => {
+    await block("2026-07-14", "2026-07-18");
+    await expect(booking("2026-07-14", "2026-07-18", { status: "inquiry" })).resolves.toBeDefined();
+    await expect(booking("2026-07-18", "2026-07-20")).resolves.toBeDefined();
+    await expect(booking("2026-07-10", "2026-07-14")).resolves.toBeDefined();
+    await expect(booking("2026-07-14", "2026-07-18", { propertyId: sea })).resolves.toBeDefined();
+  });
+});
+
 describe("isAvailable", () => {
+  it("refuses to call an unknown property's dates free", async () => {
+    await expect(
+      isAvailable("00000000-0000-4000-8000-000000000000", "2026-07-14", "2026-07-18"),
+    ).rejects.toThrow(UnknownPropertyError);
+    await expect(isAvailable("not-a-uuid", "2026-07-14", "2026-07-18")).rejects.toThrow(
+      UnknownPropertyError,
+    );
+  });
+
   it("reports confirmed bookings and blocks in the way, ignoring the rest", async () => {
     const confirmed = await booking("2026-07-14", "2026-07-18");
     await booking("2026-07-20", "2026-07-22", { status: "inquiry" });
@@ -163,6 +214,12 @@ describe("isAvailable", () => {
 });
 
 describe("getAvailability", () => {
+  it("shows the check-out of a stay ending on the first day of the range", async () => {
+    await booking("2026-07-10", "2026-07-14");
+    const [first] = await getAvailability(lake, "2026-07-14", "2026-08-01");
+    expect(first).toMatchObject({ date: "2026-07-14", status: "available", checkOut: true });
+  });
+
   it("lays out nights from the database, unshifted by the process timezone (UTC+14)", async () => {
     const stay = await booking("2026-12-30", "2027-01-02");
     await block("2027-01-02", "2027-01-03");
@@ -210,17 +267,24 @@ describe("withPropertyLock", () => {
     expect((await db.block.count()) + (await db.booking.count())).toBe(1);
   });
 
-  it("is what prevents it: without the lock, both get through (control)", async () => {
-    const outcomes = await race(false);
-    expect(outcomes).toEqual(["written", "written"]);
+  it("is backed by the database: without the lock, the second write is still refused", async () => {
+    // The application's check passes for both (that is the race), but the
+    // database's trigger takes the same lock and refuses the second write.
+    const outcomes = await Promise.allSettled([race(false)]);
+    const [result] = outcomes;
+    expect(result!.status).toBe("rejected");
+    expect(isOverlapViolation((result as PromiseRejectedResult).reason)).toBe(true);
+    expect((await db.block.count()) + (await db.booking.count())).toBe(1);
   });
 
-  it("does nothing for a property that does not exist", async () => {
+  it("does nothing for a property that does not exist, or an id that cannot be one", async () => {
     let ran = false;
-    const result = await withPropertyLock("00000000-0000-4000-8000-000000000000", async () => {
+    const work = async () => {
       ran = true;
       return "x";
-    });
-    expect([result, ran]).toEqual([null, false]);
+    };
+    expect(await withPropertyLock("00000000-0000-4000-8000-000000000000", work)).toBeNull();
+    expect(await withPropertyLock("not-a-uuid", work)).toBeNull();
+    expect(ran).toBe(false);
   });
 });
