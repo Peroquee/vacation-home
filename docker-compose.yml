@@ -1,0 +1,85 @@
+# Development environment: PostgreSQL plus the Next dev server.
+#
+#   docker compose up        start both (Ctrl+C stops them, data is kept)
+#   docker compose down      remove the containers, keep the data
+#   docker compose down -v   remove the containers and wipe the database
+#
+# Nothing here is for production; the production image arrives with its own
+# Dockerfile.
+
+name: vacation-home
+
+services:
+  db:
+    # Pinned to an exact minor, for the same reason CI pins Node to .nvmrc:
+    # "16" floats, and everyone (and CI) should run the same server.
+    image: postgres:16.15
+    restart: unless-stopped
+    environment:
+      # Must agree with DATABASE_URL in .env.example.
+      POSTGRES_USER: vacation
+      POSTGRES_PASSWORD: vacation
+      POSTGRES_DB: vacation_home
+    ports:
+      # Host port 5433, not 5432, so a locally installed PostgreSQL keeps its
+      # port. Tools on the host (psql, Prisma Studio, `npm run dev` outside
+      # Docker) connect via localhost:5433; containers use db:5432.
+      - "5433:5432"
+    volumes:
+      # A named volume, so the data outlives the container: `down` and `up`
+      # keep it, only `down -v` removes it.
+      - db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U vacation -d vacation_home"]
+      interval: 2s
+      timeout: 5s
+      retries: 15
+
+  app:
+    # Exactly the version .nvmrc and .gitlab-ci.yml name. Bump all three
+    # together.
+    image: node:24.20.0-bookworm
+    working_dir: /app
+    # The dependency tree lives in a volume rather than coming from the bind
+    # mount: native packages (Next's SWC binary, later Prisma's engine) must be
+    # built for Linux, not for whatever OS the host runs. `npm ci` reruns only
+    # when package-lock.json differs from the one the volume was installed from.
+    command:
+      - sh
+      - -c
+      - |
+        if ! cmp -s package-lock.json node_modules/.compose-lock; then
+          npm ci --no-audit --no-fund
+          cp package-lock.json node_modules/.compose-lock
+        fi
+        exec npm run dev
+    environment:
+      # Overrides the localhost URL from .env: inside the network the database
+      # is the `db` service on its container port. Variables set here take
+      # precedence over the .env files Next loads itself.
+      DATABASE_URL: postgresql://vacation:vacation@db:5432/vacation_home
+      # Keeps `npm ci` from pointing the bind-mounted repo's git hooks at a
+      # container path.
+      HUSKY: "0"
+    env_file:
+      # The committed placeholders are bootable on purpose, so a clean checkout
+      # starts without any setup. A local .env, if present, overrides them.
+      - path: .env.example
+      - path: .env
+        required: false
+    ports:
+      - "3000:3000"
+    volumes:
+      - .:/app
+      - app-node-modules:/app/node_modules
+      # Next's build cache stays in the container filesystem's speed class and
+      # never mixes with a host-side `npm run dev`.
+      - app-next:/app/.next
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  db-data:
+  app-node-modules:
+  app-next:

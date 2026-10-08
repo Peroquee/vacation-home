@@ -8,17 +8,56 @@ Tailwind + shadcn/ui · Auth.js (Google OAuth) · Recharts · Docker
 
 ## Requirements
 
-- Node — the version in [`.nvmrc`](.nvmrc). With [fnm](https://github.com/Schniz/fnm)
-  or nvm installed, `fnm use` / `nvm use` picks it up automatically.
-- PostgreSQL (arrives via Docker Compose in a later change).
+- [Docker](https://docs.docker.com/get-docker/) with Compose v2 — enough on
+  its own for the Docker workflow below.
+- Node — the version in [`.nvmrc`](.nvmrc), only if you run the app on the
+  host. With [fnm](https://github.com/Schniz/fnm) or nvm installed,
+  `fnm use` / `nvm use` picks it up automatically.
+
+No local PostgreSQL install is needed; Compose provides PostgreSQL 16.
 
 ## Getting started
+
+### Everything in Docker
+
+```bash
+docker compose up
+```
+
+That starts PostgreSQL and the Next dev server on <http://localhost:3000>. A
+clean checkout needs no `.env`: the app container reads the bootable
+placeholders from `.env.example`, and a local `.env` overrides them when it
+exists. The first start runs `npm ci` inside the container, so it takes a
+while; later starts reuse the installed dependencies until
+`package-lock.json` changes.
+
+| Command                  | Does                                          |
+| ------------------------ | --------------------------------------------- |
+| `docker compose up`      | Start the stack (`-d` to run it detached)     |
+| `docker compose down`    | Stop and remove the containers, keep the data |
+| `docker compose down -v` | Also delete the volumes — wipes the database  |
+| `docker compose logs -f` | Follow the logs                               |
+
+The database lives in the named volume `db-data`, so it survives stopping,
+restarting and recreating the containers; only `down -v` removes it.
+
+### App on the host, database in Docker
 
 ```bash
 npm install
 cp .env.example .env    # then fill in the blanks
+docker compose up -d db
 npm run dev
 ```
+
+PostgreSQL is published on host port **5433**, not the default 5432, so it
+cannot clash with a local install. `DATABASE_URL` in `.env.example` already
+points there (`localhost:5433`); containers on the Compose network reach the
+same server as `db:5432`.
+
+Dependencies installed inside the container live in their own volume, never in
+the host's `node_modules`, since native packages such as Next's SWC binary have
+to match the operating system they run on.
 
 ## Configuration
 
@@ -88,6 +127,6 @@ npx next dev --webpack
 npx next build --webpack
 ```
 
-Or develop inside the Docker environment, which avoids the host policy
-entirely. The same policy will block Prisma's native query engine, so Docker is
+Or develop inside the Docker environment (`docker compose up`), which avoids
+the host policy entirely. The same policy will block Prisma's native query engine, so Docker is
 the more durable answer.
