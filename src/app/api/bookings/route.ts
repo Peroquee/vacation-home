@@ -1,4 +1,5 @@
 import { parseBody, validationError } from "@/lib/api";
+import { queryParams } from "@/lib/query";
 import { writeResponse } from "@/lib/bookings/responses";
 import { createBookingSchema, listBookingsSchema } from "@/lib/bookings/schema";
 import { createBooking, listBookings, toDto } from "@/lib/bookings/service";
@@ -10,8 +11,7 @@ import { createBooking, listBookings, toDto } from "@/lib/bookings/service";
  * (`checkIn` or `-checkIn`).
  */
 export async function GET(request: Request) {
-  const params = Object.fromEntries(new URL(request.url).searchParams);
-  const parsed = listBookingsSchema.safeParse(params);
+  const parsed = listBookingsSchema.safeParse(queryParams(request));
   if (!parsed.success) return validationError(parsed.error);
 
   const { items, ...page } = await listBookings(parsed.data);

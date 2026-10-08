@@ -182,9 +182,34 @@ delete them (`reason: "system"`). The app finds them by their fixed
 `systemKey`. A category used by transactions can't be deleted
 (`reason: "in_use"`).
 
-Transactions (GitLab #77 adds their API) must use a category of their own
-type, and a linked booking must belong to the transaction's property. The
-database enforces both with composite foreign keys.
+### Transactions
+
+| Method and path                      | Does                                                   |
+| ------------------------------------ | ------------------------------------------------------ |
+| `GET /api/transactions`              | The ledger: filtered, paginated, sorted, with totals   |
+| `POST /api/transactions`             | Record one; `201`                                      |
+| `GET /api/transactions/:id`          | One transaction, with its category                     |
+| `PATCH /api/transactions/:id`        | Update any subset of fields                            |
+| `DELETE /api/transactions/:id`       | Delete one                                             |
+| `POST /api/transactions/bulk-delete` | `{ "ids": [...] }`, up to 500, e.g. after a bad import |
+
+- **Amounts** are positive integers of minor units (`amountMinor`), and the
+  `type` (`income`/`expense`) gives the direction. They're in the
+  property's currency, which a property can't change once it has
+  transactions. No amount, total included, is ever a float.
+- **References** are checked and reported per field. The category must have
+  the transaction's type and must not be hidden (for a new choice), and a
+  linked booking must belong to the same property. The database enforces the
+  same rules with composite foreign keys. Changing the type needs a category
+  of the new type in the same request; the property can't change.
+- **List filters**: `propertyId`, `type`, `categoryId` (comma-separated),
+  `from`/`to` (dates; `to` exclusive), `bookingId` or `linked=true|false`,
+  `page`, `pageSize` (≤ 200), and `sort` (`date`, `-date`, `amount`,
+  `-amount`; default `-date`). The response is `{ items, total, page,
+pageSize, totals: [{ currency, incomeMinor, expenseMinor, netMinor }] }`, where
+  `totals` covers every matching transaction, not just the page, with one entry
+  per currency, since minor units of different currencies can't be added. A
+  repeated parameter (`?categoryId=a&categoryId=b`) counts like a comma list.
 
 ### Calendar availability
 

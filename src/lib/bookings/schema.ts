@@ -2,6 +2,7 @@
 import { z } from "zod";
 
 import { daysBetween, isCalendarDate } from "@/lib/calendar-date";
+import { csv, fromBeforeTo, page, pageSize } from "@/lib/query";
 
 import { MAX_AMOUNT_MINOR } from "./pricing";
 
@@ -111,19 +112,6 @@ export const updateBookingSchema = z
   .refine((update) => Object.keys(update).length > 0, "at least one field is required")
   .superRefine(checkStay);
 
-const csv = <T extends z.ZodType>(item: T) =>
-  z.preprocess(
-    (value) =>
-      typeof value === "string" && value !== ""
-        ? value.split(",").map((part) => part.trim())
-        : undefined,
-    z.array(item).optional(),
-  );
-
-/** `?page=` with no value means the default, not zero. */
-const blankAsDefault = <T extends z.ZodType>(schema: T) =>
-  z.preprocess((value) => (value === "" ? undefined : value), schema);
-
 /** GET /api/bookings query string. */
 export const listBookingsSchema = z
   .object({
@@ -135,19 +123,11 @@ export const listBookingsSchema = z
     source: csv(fields.source),
     /** Part of the guest's name or email, any case. */
     q: z.string().trim().max(200).optional(),
-    page: blankAsDefault(z.coerce.number().int().min(1).default(1)),
-    pageSize: blankAsDefault(z.coerce.number().int().min(1).max(100).default(25)),
+    page,
+    pageSize: pageSize(100, 25),
     sort: z.enum(["checkIn", "-checkIn"]).default("checkIn"),
   })
-  .refine(
-    (query) =>
-      typeof query.from !== "string" ||
-      typeof query.to !== "string" ||
-      !isCalendarDate(query.from) ||
-      !isCalendarDate(query.to) ||
-      query.from < query.to,
-    { path: ["to"], message: "must be after from" },
-  );
+  .refine(...fromBeforeTo);
 
 export type CreateBookingInput = z.infer<typeof createBookingSchema>;
 export type UpdateBookingInput = z.infer<typeof updateBookingSchema>;
