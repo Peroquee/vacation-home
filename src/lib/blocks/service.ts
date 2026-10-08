@@ -9,7 +9,8 @@ import { assertNonEmptyRange } from "@/lib/date-range";
 import { db, type DbClient } from "@/lib/db";
 
 /**
- * Blocks on `propertyId` that share at least one night with `[start, end)`,
+ * Blocks on `propertyId` (or any of several) that share at least one night
+ * with `[start, end)`,
  * by start date. A block ending on `start`, or starting on `end`, does not
  * count. Throws for an empty or inverted range rather than reporting it free.
  *
@@ -17,16 +18,19 @@ import { db, type DbClient } from "@/lib/db";
  * out: call this inside the transaction that writes the booking, after
  * locking the property row (`SELECT ... FOR UPDATE`), and lock it as well
  * when writing blocks. The availability service (GitLab #52) does both.
+ * Writers of blocks must also call `invalidateWindows` for the cached
+ * calendar windows (src/lib/availability/cache.ts).
  */
 export async function findOverlappingBlocks(
-  propertyId: string,
+  propertyId: string | string[],
   { start, end }: { start: CalendarDate; end: CalendarDate },
   client: DbClient = db,
 ): Promise<Block[]> {
   assertNonEmptyRange({ start, end });
   return client.block.findMany({
     where: {
-      propertyId,
+      // Several at once for the calendar's batched loads.
+      propertyId: Array.isArray(propertyId) ? { in: propertyId } : propertyId,
       startDate: { lt: toUtcDate(end) },
       endDate: { gt: toUtcDate(start) },
     },

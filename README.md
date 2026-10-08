@@ -165,6 +165,26 @@ inline "new guest" relies on.
   email), `page`, `pageSize` (≤ 100), `sort` (`checkIn` or `-checkIn`). The
   response is `{ items, total, page, pageSize }`.
 
+### Calendar availability
+
+`GET /api/availability?propertyIds=<id>,<id>&from=2026-07-01&to=2026-10-01`
+returns everything a calendar view needs in one request. For each property
+(at most 20, in the order asked) it returns:
+
+- the property: name, colour, timezone, archived;
+- its non-cancelled bookings and its blocks that touch `[from, to)`;
+- `days`, night by night: `available`, `inquiry`, `booked` or `blocked`, with
+  `checkIn`/`checkOut` turnover markers.
+
+A window spans at most 366 days.
+
+Responses are cached in the server process per property and window.
+Booking writes invalidate exactly the cached windows whose dates they touch
+(both old and new dates when a booking moves). Property changes invalidate
+that property's windows, and guest renames and erasures clear the cache, since
+windows show guest names. Writes made outside the app, such as the seed or
+psql, appear within a minute.
+
 ### Erasing a guest's personal data (DSGVO Art. 17)
 
 `POST /api/guests/:id/purge` with `{ "confirm": "<the guest's id>" }`. This
