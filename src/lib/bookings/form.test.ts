@@ -2,7 +2,13 @@ import { describe, expect, it } from "vitest";
 
 import type { CalendarBlock, CalendarBooking } from "@/lib/availability/calendar";
 
-import { describeConflict, previewTotalMinor, stayConflicts, stayNights } from "./form";
+import {
+  describeConflict,
+  previewTotalMinor,
+  stayConflicts,
+  stayNights,
+  turnoverFix,
+} from "./form";
 
 const LOCALE_SAFE = /Jul 1[0-9]/;
 
@@ -112,5 +118,32 @@ describe("describeConflict", () => {
     const [google] = stayConflicts(at, { bookings: [], blocks: [block({ origin: "google" })] });
     expect(describeConflict(manual!)).toMatch(/^Blocked \(Painting\), /);
     expect(describeConflict(google!)).toMatch(/^Blocked \(Google Calendar\), /);
+  });
+});
+
+describe("turnoverFix", () => {
+  const ada = { kind: "booking", id: "b1", start: "2026-07-10", end: "2026-07-15" } as const;
+
+  it("suggests arriving on the day the previous stay leaves", () => {
+    // Arriving the 14th overlaps Ada's last night; the 15th is free.
+    expect(turnoverFix({ checkIn: "2026-07-14", checkOut: "2026-07-18" }, ada)).toMatchObject({
+      move: "checkIn",
+      to: "2026-07-15",
+      message: expect.stringMatching(/^Arrive on July 15, 2026 instead/),
+    });
+  });
+
+  it("suggests leaving on the day the next stay arrives", () => {
+    expect(turnoverFix({ checkIn: "2026-07-07", checkOut: "2026-07-11" }, ada)).toMatchObject({
+      move: "checkOut",
+      to: "2026-07-10",
+      message: expect.stringMatching(/^Leave on July 10, 2026 instead/),
+    });
+  });
+
+  it("stays out of overlaps that are not one night off a changeover", () => {
+    expect(turnoverFix({ checkIn: "2026-07-12", checkOut: "2026-07-18" }, ada)).toBeNull();
+    expect(turnoverFix({ checkIn: "2026-07-11", checkOut: "2026-07-13" }, ada)).toBeNull();
+    expect(turnoverFix({ checkIn: "2026-07-08", checkOut: "2026-07-20" }, ada)).toBeNull();
   });
 });

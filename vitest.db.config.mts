@@ -20,6 +20,8 @@ export default defineConfig({
     include: ["src/**/*.db.test.ts"],
     environment: "node",
     globalSetup: ["./vitest.db.setup.mts"],
+    // Each file starts from a clean database; see the file for why.
+    setupFiles: ["./vitest.db.each-file.mts"],
     fileParallelism: false,
     env: {
       DATABASE_URL: TEST_DATABASE_URL,

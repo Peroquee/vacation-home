@@ -205,12 +205,13 @@ Dates a property cannot be booked that are not a booking: owner blocks
 
 ### Categories
 
-| Method and path              | Does                                                                     |
-| ---------------------------- | ------------------------------------------------------------------------ |
-| `GET /api/categories`        | By type and name; `?type=income\|expense`, `?includeHidden=true`         |
-| `POST /api/categories`       | Create a user category (`name`, `type`, `color`); `409` on a duplicate   |
-| `PATCH /api/categories/:id`  | Rename, recolour, hide (`hidden: true`) or show. The type never changes. |
-| `DELETE /api/categories/:id` | Delete an unused user category; `409` with `reason` otherwise            |
+| Method and path                     | Does                                                                          |
+| ----------------------------------- | ----------------------------------------------------------------------------- |
+| `GET /api/categories`               | By type and name; `?type=income\|expense`, `?includeHidden=true`              |
+| `POST /api/categories`              | Create a user category (`name`, `type`, `color`); `409` on a duplicate        |
+| `PATCH /api/categories/:id`         | Rename, recolour, hide (`hidden: true`) or show. The type never changes.      |
+| `DELETE /api/categories/:id`        | Delete an unused user category; `409` with `reason` otherwise                 |
+| `POST /api/categories/:id/reassign` | `{ "to": "<id>" }`: move all its transactions there, in one step; `{ moved }` |
 
 The default categories are **system categories**, created by the migration
 in every database: booking income, cleaning fees and other income; cleaning,
@@ -218,7 +219,9 @@ maintenance, utilities, platform fees, supplies, insurance, taxes and other
 expenses. You can rename, recolour and hide them, but the database refuses to
 delete them (`reason: "system"`). The app finds them by their fixed
 `systemKey`. A category used by transactions can't be deleted
-(`reason: "in_use"`).
+(`reason: "in_use"`): move its transactions first with `reassign`, which
+needs a different, visible category of the same type (`422` on `to` for the
+other type, `409` for the same or a hidden one, `404` for an unknown one).
 
 ### Transactions
 
@@ -248,6 +251,83 @@ pageSize, totals: [{ currency, incomeMinor, expenseMinor, netMinor }] }`, where
   `totals` covers every matching transaction, not just the page, with one entry
   per currency, since minor units of different currencies can't be added. A
   repeated parameter (`?categoryId=a&categoryId=b`) counts like a comma list.
+
+- **Income from bookings** (per property, off by default:
+  `GET`/`PUT /api/properties/:id/income-automation` with
+  `{ enabled, onCancel: "delete" | "zero" }`):
+  - When a booking is confirmed, it creates two income entries linked to the
+    booking and marked `generated`. `booking_accommodation` holds the total
+    less the cleaning fee, in "Booking income". `booking_cleaning` holds the
+    cleaning fee, in "Cleaning fees".
+  - Both are dated on the check-in day and follow the booking's amounts and
+    dates. They're never duplicated.
+  - Cancelling deletes them, or sets them to zero, per `onCancel`.
+  - Bookings confirmed before the automation was on aren't backfilled.
+  - Editing a generated entry by hand detaches it (`detachedAt` is set) and
+    the response carries `warning.code: "detached_from_booking"`. From then
+    on the automation leaves it alone.
+
+### Recurring expenses
+
+| Method and path                           | Does                                                                                   |
+| ----------------------------------------- | -------------------------------------------------------------------------------------- |
+| `GET /api/recurring-expenses`             | Rules with `status` (`active`/`paused`/`ended`) and `nextDueDate`; filter `propertyId` |
+| `POST /api/recurring-expenses`            | Create a rule (body below); periods already due are created at once                    |
+| `GET /api/recurring-expenses/:id`         | One rule                                                                               |
+| `PATCH /api/recurring-expenses/:id`       | `amountMinor`, `categoryId`, `endDate`, `description`, for periods not created yet     |
+| `POST /api/recurring-expenses/:id/pause`  | Stop creating transactions; past ones stay                                             |
+| `POST /api/recurring-expenses/:id/resume` | Start again from the next period on or after today                                     |
+| `DELETE /api/recurring-expenses/:id`      | Delete the rule (`204`); its transactions stay                                         |
+
+- **Body**: `propertyId`, `categoryId` (an expense category), `amountMinor`,
+  `interval` (`monthly`, `quarterly` or `annual`), `startDate` (the first
+  occurrence), optional `endDate` (the last day one may fall on) and
+  `description`.
+- **Dates**: occurrence n falls on the start date plus n intervals, on the
+  same day of the month, or the month's last day when that month is shorter.
+  So 31 Jan, 28 Feb, 31 Mar, and no drift afterwards.
+- **The job** runs at server start and then hourly. It uses each property's
+  local date and creates every period due by then, so a missed run is caught
+  up by the next.
+- **Duplicates**: transactions are unique per rule and date, so a period is
+  never created twice. They're marked `isRecurring` with
+  `recurringExpenseId`.
+- **Pausing** skips the periods that fall due while the rule is paused.
+  Rules of an archived property create nothing.
+
+### Analytics
+
+`GET /api/analytics?from=&to=` gives the dashboard every figure it shows, from
+one tested aggregation layer ([`src/lib/analytics/rules.ts`](src/lib/analytics/rules.ts)
+defines each one).
+
+- **Query**: `from`, `to` (half-open like a stay, at most three years),
+  `propertyId` (default: all properties), `compare` (`year`, the default: the
+  same dates a year earlier; or `previous`: the same number of days right
+  before) and `excludeBlocks` (default `true`).
+- **Response**:
+  - `months`: one entry per calendar month, clipped to the range at both
+    ends. Each has `incomeMinor`, `expensesMinor` and `netMinor` from the
+    ledger, plus `bookedNights`, `blockedNights`, `availableNights` and
+    `accommodationRevenueMinor`.
+  - `totals`: the same figures for the whole range, plus `occupancyRate`
+    (0–1), `averageNightlyRateMinor` and `revenuePerAvailableNightMinor`.
+    A rate is `null` when nothing is there to divide by.
+  - `prior`: `{ compare, from, to, totals }`.
+  - `change`: `{ delta, percent }` for each total.
+  - `expensesByCategory`: `{ categoryId, name, color, amountMinor, share }`,
+    largest first.
+- **Rules**:
+  - Only confirmed bookings occupy nights.
+  - A booking's accommodation revenue (total less cleaning fee) is spread
+    evenly over its nights, so a stay across a month boundary counts in each
+    month for the nights it has there.
+  - With `excludeBlocks`, nights blocked and not booked are left out of the
+    available nights.
+  - An archived property stops counting from the day it was archived.
+- **Currencies**: amounts in different currencies are never added up. With
+  mixed currencies across all properties the answer is `409` with
+  `error.reason: "mixed_currencies"`; pass a `propertyId`.
 
 ### Calendar availability
 
