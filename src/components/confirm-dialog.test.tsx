@@ -62,3 +62,27 @@ describe("ConfirmDialog", () => {
     expect(screen.getByRole("button", { name: "Delete" })).toBeEnabled();
   });
 });
+
+describe("ConfirmDialog without a trigger", () => {
+  it("opens from code and reports closing", async () => {
+    const onOpenChange = vi.fn();
+    const onConfirm = vi.fn();
+    const { rerender } = render(
+      <ConfirmDialog
+        open={false}
+        onOpenChange={onOpenChange}
+        title="Hide it?"
+        onConfirm={onConfirm}
+      />,
+    );
+    expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument();
+
+    rerender(
+      <ConfirmDialog open onOpenChange={onOpenChange} title="Hide it?" onConfirm={onConfirm} />,
+    );
+    const user = userEvent.setup();
+    await user.click(screen.getByRole("button", { name: "Confirm" }));
+    await waitFor(() => expect(onOpenChange).toHaveBeenCalledWith(false));
+    expect(onConfirm).toHaveBeenCalled();
+  });
+});
