@@ -205,12 +205,13 @@ Dates a property cannot be booked that are not a booking: owner blocks
 
 ### Categories
 
-| Method and path              | Does                                                                     |
-| ---------------------------- | ------------------------------------------------------------------------ |
-| `GET /api/categories`        | By type and name; `?type=income\|expense`, `?includeHidden=true`         |
-| `POST /api/categories`       | Create a user category (`name`, `type`, `color`); `409` on a duplicate   |
-| `PATCH /api/categories/:id`  | Rename, recolour, hide (`hidden: true`) or show. The type never changes. |
-| `DELETE /api/categories/:id` | Delete an unused user category; `409` with `reason` otherwise            |
+| Method and path                     | Does                                                                          |
+| ----------------------------------- | ----------------------------------------------------------------------------- |
+| `GET /api/categories`               | By type and name; `?type=income\|expense`, `?includeHidden=true`              |
+| `POST /api/categories`              | Create a user category (`name`, `type`, `color`); `409` on a duplicate        |
+| `PATCH /api/categories/:id`         | Rename, recolour, hide (`hidden: true`) or show. The type never changes.      |
+| `DELETE /api/categories/:id`        | Delete an unused user category; `409` with `reason` otherwise                 |
+| `POST /api/categories/:id/reassign` | `{ "to": "<id>" }`: move all its transactions there, in one step; `{ moved }` |
 
 The default categories are **system categories**, created by the migration
 in every database: booking income, cleaning fees and other income; cleaning,
@@ -218,7 +219,9 @@ maintenance, utilities, platform fees, supplies, insurance, taxes and other
 expenses. You can rename, recolour and hide them, but the database refuses to
 delete them (`reason: "system"`). The app finds them by their fixed
 `systemKey`. A category used by transactions can't be deleted
-(`reason: "in_use"`).
+(`reason: "in_use"`): move its transactions first with `reassign`, which
+needs a different, visible category of the same type (`422` on `to` for the
+other type, `409` for the same or a hidden one, `404` for an unknown one).
 
 ### Transactions
 

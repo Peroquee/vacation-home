@@ -18,7 +18,13 @@ import {
   type Span,
   type Weekday,
 } from "@/lib/calendar/month";
-import { describeConflict, previewTotalMinor, stayConflicts } from "@/lib/bookings/form";
+import {
+  type Conflict,
+  describeConflict,
+  previewTotalMinor,
+  stayConflicts,
+  turnoverFix,
+} from "@/lib/bookings/form";
 import {
   hover,
   IDLE,
@@ -94,9 +100,18 @@ function barLabel(bar: Bar): string {
   return `${bar.booking.guest.name}, ${bar.property.name}, ${status}, ${when}`;
 }
 
-function BarView({ segment, href }: { segment: Segment<Bar>; href?: string }) {
+function BarView({
+  segment,
+  href,
+  inTheWay = false,
+}: {
+  segment: Segment<Bar>;
+  href?: string;
+  /** Stands in the way of the current selection: ringed in red. */
+  inTheWay?: boolean;
+}) {
   const bar = segment.span;
-  const label = barLabel(bar);
+  const label = `${barLabel(bar)}${inTheWay ? ", in the way of the selected dates" : ""}`;
   const className = cn(
     "relative z-10 mx-px flex h-5 min-w-0 items-center overflow-hidden px-1 text-[11px] leading-none whitespace-nowrap sm:text-xs",
     // Rounded only where the stay really starts or ends, so a cut at a week
@@ -105,6 +120,7 @@ function BarView({ segment, href }: { segment: Segment<Bar>; href?: string }) {
     !segment.continuesAfter && "rounded-r-full",
     href &&
       "hover:brightness-95 focus-visible:ring-ring focus-visible:ring-2 focus-visible:outline-none",
+    inTheWay && "ring-destructive z-20 ring-2 ring-offset-1 motion-safe:animate-pulse",
   );
   const style: React.CSSProperties = {
     ...barStyle(bar),
@@ -356,6 +372,8 @@ export function MonthCalendar({
   const isSelected = (date: CalendarDate) =>
     highlight !== null && date >= highlight.from && date <= highlight.to;
   const taken = conflicts.length > 0;
+  // Bar keys, so the calendar can ring what stands in the way.
+  const inTheWay = new Set(conflicts.map((c) => `${c.kind === "booking" ? "b" : "k"}-${c.id}`));
 
   return (
     <section aria-labelledby="calendar-title" aria-busy={pending}>
@@ -459,6 +477,14 @@ export function MonthCalendar({
               "Drag across days, or tap the first and last day, to start a booking."
             )}
           </p>
+          {refused && taken ? (
+            <ConflictHelp
+              stay={refused}
+              conflicts={conflicts}
+              names={guestNames(selected)}
+              bookingHref={bookingHref}
+            />
+          ) : null}
         </div>
       ) : null}
 
@@ -528,6 +554,7 @@ export function MonthCalendar({
                   <BarView
                     key={segment.span.key}
                     segment={segment}
+                    inTheWay={inTheWay.has(segment.span.key)}
                     href={
                       segment.span.kind === "booking" && bookingHref
                         ? bookingHref(segment.span.booking.id)
@@ -545,6 +572,43 @@ export function MonthCalendar({
 
       <Legend calendars={calendars} />
     </section>
+  );
+}
+
+/**
+ * What to do about a refused selection: open what is in the way, and, when
+ * it is one night off a changeover, which day would work.
+ */
+function ConflictHelp({
+  stay,
+  conflicts,
+  names,
+  bookingHref,
+}: {
+  stay: { checkIn: CalendarDate; checkOut: CalendarDate };
+  conflicts: Conflict[];
+  names: ReadonlyMap<string, string>;
+  bookingHref?: (id: string) => string;
+}) {
+  return (
+    <ul className="w-full space-y-1">
+      {conflicts.map((conflict) => {
+        const fix = turnoverFix(stay, conflict);
+        return (
+          <li key={`${conflict.kind}-${conflict.id}`} className="flex flex-wrap gap-x-2">
+            {conflict.kind === "booking" && bookingHref ? (
+              <Link href={bookingHref(conflict.id)} className="text-destructive underline">
+                Open{" "}
+                {describeConflict(conflict, names)
+                  .replace(/^Booked by /, "the booking of ")
+                  .replace(/^Booked, /, "the booking, ")}
+              </Link>
+            ) : null}
+            {fix ? <span className="text-muted-foreground">{fix.message}</span> : null}
+          </li>
+        );
+      })}
+    </ul>
   );
 }
 

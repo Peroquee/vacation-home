@@ -112,3 +112,37 @@ export async function deleteCategory(id: string): Promise<DeleteResult> {
     throw error;
   }
 }
+
+/** POST /api/categories/:id/reassign. */
+export const reassignSchema = z.strictObject({ to: z.uuid("must be a category id") });
+
+export type ReassignResult =
+  | { moved: number }
+  | { error: "not_found"; which: "from" | "to" }
+  | { error: "same" | "hidden" }
+  | { error: "wrong_type"; type: Category["type"] };
+
+/**
+ * Moves every transaction of one category to another, in one database
+ * transaction, so a category is never left half moved. The target must be a
+ * different, visible category of the same type: transactions follow their
+ * category's type, and a hidden one is not offered for transactions.
+ */
+export async function reassignCategory(fromId: string, toId: string): Promise<ReassignResult> {
+  if (fromId === toId) return { error: "same" };
+  return db.$transaction(async (tx) => {
+    const [from, to] = await Promise.all([
+      tx.category.findUnique({ where: { id: fromId } }),
+      tx.category.findUnique({ where: { id: toId } }),
+    ]);
+    if (!from) return { error: "not_found", which: "from" };
+    if (!to) return { error: "not_found", which: "to" };
+    if (to.type !== from.type) return { error: "wrong_type", type: from.type };
+    if (to.hidden) return { error: "hidden" };
+    const { count } = await tx.transaction.updateMany({
+      where: { categoryId: from.id },
+      data: { categoryId: to.id },
+    });
+    return { moved: count };
+  });
+}
