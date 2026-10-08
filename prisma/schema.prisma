@@ -43,6 +43,7 @@ model Property {
   blocks                  Block[]
   transactions            Transaction[]
   calendar                PropertyCalendar?
+  calendarWatch           CalendarWatch?
   incomeAutomation        IncomeAutomation?
   recurringExpenses       RecurringExpense[]
 
@@ -254,6 +255,39 @@ model CalendarEventLink {
   @@unique([blockId, calendarId])
   @@index([syncState, nextAttemptAt])
   @@map("calendar_event_links")
+}
+
+/// Inbound sync state for a property whose calendar is imported (GitLab
+/// #72): where the last incremental list left off, and when to look again.
+/// Changes are found by polling with Google's sync token; push notifications
+/// through a webhook are optional (they need a public URL) and only make a
+/// poll happen sooner.
+model CalendarWatch {
+  propertyId        String    @id @map("property_id") @db.Uuid
+  /// The calendar the sync token belongs to; a different one starts afresh.
+  calendarId        String    @map("calendar_id")
+  /// Google's token for the next incremental list; null means a full list.
+  syncToken         String?   @map("sync_token")
+  nextPollAt        DateTime  @default(now()) @map("next_poll_at")
+  lastPolledAt      DateTime? @map("last_polled_at")
+  lastFullSyncAt    DateTime? @map("last_full_sync_at")
+  /// Failed polls in a row; the delay before the next grows with it.
+  attempts          Int       @default(0)
+  lastError         String?   @map("last_error")
+  claimedUntil      DateTime? @map("claimed_until")
+  /// The push notification channel, when GOOGLE_WEBHOOK_URL is set.
+  channelId         String?   @unique @map("channel_id")
+  channelResourceId String?   @map("channel_resource_id")
+  /// SHA-256 of the channel's secret token, which Google echoes back.
+  channelTokenHash  String?   @map("channel_token_hash")
+  channelExpiresAt  DateTime? @map("channel_expires_at")
+  createdAt         DateTime  @default(now()) @map("created_at")
+  updatedAt         DateTime  @updatedAt @map("updated_at")
+
+  property Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+
+  @@index([nextPollAt])
+  @@map("calendar_watches")
 }
 
 /// The Google Calendar a property's bookings are pushed to (outbound sync,
