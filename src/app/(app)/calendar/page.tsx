@@ -48,6 +48,8 @@ export default async function CalendarPage({ searchParams }: PageProps<"/calenda
     gridRange(monthWeeks(month, weekStart)),
   );
 
+  const byId = new Map(properties.map((p) => [p.id, p]));
+
   return (
     <>
       <PageHeader
@@ -62,11 +64,22 @@ export default async function CalendarPage({ searchParams }: PageProps<"/calenda
         month={month}
         weekStart={weekStart}
         today={today}
-        calendars={calendars.map(({ property, bookings, blocks }) => ({
-          property: { id: property.id, name: property.name, color: property.color },
-          bookings,
-          blocks,
-        }))}
+        calendars={calendars.map(({ property, bookings, blocks }) => {
+          // The selection's price hint uses the defaults a new booking gets.
+          const rates = byId.get(property.id);
+          return {
+            property: {
+              id: property.id,
+              name: property.name,
+              color: property.color,
+              currency: rates?.currency,
+              defaultNightlyRateMinor: rates?.defaultNightlyRateMinor,
+              defaultCleaningFeeMinor: rates?.defaultCleaningFeeMinor,
+            },
+            bookings,
+            blocks,
+          };
+        })}
       />
     </>
   );
