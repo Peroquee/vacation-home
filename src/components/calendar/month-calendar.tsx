@@ -2,7 +2,7 @@
 
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import Link from "next/link";
-import { useMemo } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { NativeSelect, NativeSelectOption } from "@/components/ui/native-select";
@@ -18,13 +18,34 @@ import {
   type Span,
   type Weekday,
 } from "@/lib/calendar/month";
-import { formatDateRange } from "@/lib/format";
+import { describeConflict, previewTotalMinor, stayConflicts } from "@/lib/bookings/form";
+import {
+  hover,
+  IDLE,
+  key as keyPress,
+  nightsOf,
+  type Outcome,
+  press,
+  release,
+  type Selection,
+  selectedDays,
+  stayFrom,
+} from "@/lib/calendar/selection";
+import { formatDateRange, formatMoney } from "@/lib/format";
 import { APP_LOCALE } from "@/lib/locale";
 import { cn } from "@/lib/utils";
 
 /** What the calendar needs of one property: who it is, and what is booked. */
 export type CalendarProperty = {
-  property: { id: string; name: string; color: string };
+  property: {
+    id: string;
+    name: string;
+    color: string;
+    /** For the selection's price hint; without them it shows nights only. */
+    currency?: string;
+    defaultNightlyRateMinor?: number;
+    defaultCleaningFeeMinor?: number;
+  };
   bookings: CalendarBooking[];
   blocks: CalendarBlock[];
 };
@@ -130,17 +151,32 @@ export type MonthCalendarProps = {
   onMonthChange: (month: MonthKey) => void;
   /** Where a booking's bar leads; without it, bars are not links. */
   bookingHref?: (bookingId: string) => string;
+  /**
+   * Called with a selected range that is free; without it, days cannot be
+   * selected. A range that overlaps a stay or block is shown in red instead
+   * and never reported.
+   */
+  onSelectRange?: (stay: {
+    propertyId: string;
+    checkIn: CalendarDate;
+    checkOut: CalendarDate;
+  }) => void;
   /** Shown while the next month's data is on its way. */
   pending?: boolean;
 };
 
 /**
  * A month of stays: a controlled component that draws what it is given and
- * reports navigation through `onMonthChange`, fetching nothing itself.
- * Stays are bars from mid check-in to mid check-out, so a turnover day shows
- * one stay leaving in the morning half and the next arriving in the
- * afternoon half. Confirmed stays are solid in the property's colour,
- * inquiries dashed, blocks hatched.
+ * reports navigation through `onMonthChange` and selections through
+ * `onSelectRange`, fetching nothing itself. Stays are bars from mid check-in
+ * to mid check-out, so a turnover day shows one stay leaving in the morning
+ * half and the next arriving in the afternoon half. Confirmed stays are
+ * solid in the property's colour, inquiries dashed, blocks hatched.
+ *
+ * Selecting: drag across days with a mouse, tap the first and last day on a
+ * touch screen, or use the keyboard (arrows move, Shift+arrows extend,
+ * Enter sets the start and the end, Escape cancels). The selection shows
+ * its nights and total, and turns red if it overlaps a stay or block.
  */
 export function MonthCalendar({
   month,
@@ -149,6 +185,7 @@ export function MonthCalendar({
   calendars,
   onMonthChange,
   bookingHref,
+  onSelectRange,
   pending = false,
 }: MonthCalendarProps) {
   const weeks = useMemo(() => monthWeeks(month, weekStart), [month, weekStart]);
@@ -176,6 +213,133 @@ export function MonthCalendar({
     return layoutWeeks(weeks, bars);
   }, [weeks, calendars]);
 
+  // --- Selection ------------------------------------------------------------
+  const selectable = onSelectRange !== undefined && calendars.length > 0;
+  const [selection, setSelection] = useState<Selection>(IDLE);
+  /** A finished range that was refused, kept on screen until the next action. */
+  const [refused, setRefused] = useState<{ checkIn: CalendarDate; checkOut: CalendarDate } | null>(
+    null,
+  );
+  const [chosenPropertyId, setPropertyId] = useState<string | null>(null);
+  const selected =
+    calendars.find((c) => c.property.id === chosenPropertyId) ?? calendars[0] ?? null;
+  const inGrid = (date: CalendarDate) => date >= weeks[0]![0]! && date <= weeks.at(-1)![6]!;
+  const [focusedDay, setFocusedDay] = useState<CalendarDate | null>(null);
+  const focusDay =
+    focusedDay && inGrid(focusedDay)
+      ? focusedDay
+      : monthOf(today) === month
+        ? today
+        : `${month}-01`;
+  const gridRef = useRef<HTMLDivElement>(null);
+
+  const stay =
+    refused ?? (selection.phase === "idle" ? null : stayFrom(selection.anchor, selection.focus));
+  const conflicts = stay && selected ? stayConflicts(stay, selected) : [];
+  const highlight = refused
+    ? { from: refused.checkIn, to: refused.checkOut }
+    : selectedDays(selection);
+  const property = selected?.property;
+  const total =
+    stay && property?.currency
+      ? previewTotalMinor({
+          ...stay,
+          nightlyRateMinor: property.defaultNightlyRateMinor ?? null,
+          cleaningFeeMinor: property.defaultCleaningFeeMinor ?? null,
+        })
+      : null;
+
+  function apply(outcome: Outcome) {
+    setSelection(outcome.selection);
+    if (outcome.selection.phase !== "idle") setRefused(null);
+    if (!outcome.done || !selected) return;
+    if (stayConflicts(outcome.done, selected).length > 0) {
+      // Shown in red; the booking form is not opened for taken dates.
+      setRefused(outcome.done);
+      return;
+    }
+    setRefused(null);
+    onSelectRange?.({ propertyId: selected.property.id, ...outcome.done });
+  }
+
+  // Escape abandons a selection wherever focus is.
+  useEffect(() => {
+    if (selection.phase === "idle" && !refused) return;
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key !== "Escape") return;
+      setSelection(IDLE);
+      setRefused(null);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [selection.phase, refused]);
+
+  // Keyboard focus follows the focused day, also into the next month.
+  const wantFocus = useRef(false);
+  useEffect(() => {
+    if (!wantFocus.current) return;
+    gridRef.current?.querySelector<HTMLElement>(`[data-date="${focusDay}"]`)?.focus();
+    wantFocus.current = false;
+  }, [focusDay]);
+
+  /** The day under a pointer: the day button it is on, or by position in its week row. */
+  function dayAt(event: React.PointerEvent): CalendarDate | null {
+    const target =
+      document.elementFromPoint?.(event.clientX, event.clientY) ?? (event.target as Element);
+    const button = target?.closest<HTMLElement>("[data-date]");
+    if (button) return button.dataset.date!;
+    const row = target?.closest<HTMLElement>("[data-week]");
+    if (!row) return null;
+    const rect = row.getBoundingClientRect();
+    const index = Math.min(
+      6,
+      Math.max(0, Math.floor(((event.clientX - rect.left) / rect.width) * 7)),
+    );
+    return weeks[Number(row.dataset.week)]?.[index] ?? null;
+  }
+
+  const pointer = selectable
+    ? {
+        onPointerDown(event: React.PointerEvent<HTMLDivElement>) {
+          if (event.button !== 0) return;
+          // A bar is a link to its booking; let it be one.
+          if ((event.target as Element).closest("a,[role=img]")) return;
+          const day = dayAt(event);
+          if (!day) return;
+          // Touch keeps scrolling; only a mouse or pen drags.
+          if (event.pointerType !== "touch")
+            event.currentTarget.setPointerCapture?.(event.pointerId);
+          apply(press(selection, day));
+        },
+        onPointerMove(event: React.PointerEvent<HTMLDivElement>) {
+          if (event.pointerType === "touch" || selection.phase === "idle") return;
+          const day = dayAt(event);
+          if (day && day !== selection.focus) apply(hover(selection, day));
+        },
+        onPointerUp(event: React.PointerEvent<HTMLDivElement>) {
+          if (selection.phase === "idle") return;
+          apply(release(selection, dayAt(event) ?? selection.focus));
+        },
+        onPointerCancel() {
+          // The browser took the gesture over (a scroll): drop a drag, keep a waiting start.
+          if (selection.phase === "dragging") setSelection(IDLE);
+        },
+      }
+    : {};
+
+  function onDayKeyDown(event: React.KeyboardEvent, date: CalendarDate) {
+    const result = keyPress(selection, date, event);
+    if (!result) return;
+    event.preventDefault();
+    if (result.focusDay !== date) {
+      wantFocus.current = true;
+      setFocusedDay(result.focusDay);
+      if (!inGrid(result.focusDay)) onMonthChange(monthOf(result.focusDay));
+    }
+    if (selectable) apply(result);
+  }
+
+  // --- Rendering --------------------------------------------------------------
   const title = new Intl.DateTimeFormat(APP_LOCALE, {
     month: "long",
     year: "numeric",
@@ -183,11 +347,15 @@ export function MonthCalendar({
   }).format(new Date(`${month}-01T00:00:00Z`));
   const weekday = new Intl.DateTimeFormat(APP_LOCALE, { weekday: "short", timeZone: "UTC" });
   const monthName = new Intl.DateTimeFormat(APP_LOCALE, { month: "long", timeZone: "UTC" });
+  const fullDate = new Intl.DateTimeFormat(APP_LOCALE, { dateStyle: "full", timeZone: "UTC" });
   const [year, monthNumber] = month.split("-").map(Number) as [number, number];
   const thisYear = Number(today.slice(0, 4));
   const years = Array.from(
     new Set([...Array.from({ length: 6 }, (_, i) => thisYear - 2 + i), year]),
   ).sort((a, b) => a - b);
+  const isSelected = (date: CalendarDate) =>
+    highlight !== null && date >= highlight.from && date <= highlight.to;
+  const taken = conflicts.length > 0;
 
   return (
     <section aria-labelledby="calendar-title" aria-busy={pending}>
@@ -246,7 +414,62 @@ export function MonthCalendar({
         </div>
       </div>
 
-      <div className={cn("rounded-card border", pending && "opacity-60 transition-opacity")}>
+      {selectable ? (
+        <div className="mb-2 flex flex-wrap items-center gap-x-3 gap-y-2 text-sm">
+          {calendars.length > 1 ? (
+            <NativeSelect
+              aria-label="Property to book"
+              size="sm"
+              value={selected?.property.id}
+              onChange={(event) => {
+                setPropertyId(event.target.value);
+                setRefused(null);
+              }}
+            >
+              {calendars.map(({ property }) => (
+                <NativeSelectOption key={property.id} value={property.id}>
+                  {property.name}
+                </NativeSelectOption>
+              ))}
+            </NativeSelect>
+          ) : null}
+          <p
+            aria-live="polite"
+            className={cn(
+              "min-h-5",
+              taken ? "text-destructive font-medium" : "text-muted-foreground",
+            )}
+          >
+            {stay ? (
+              <>
+                {formatDateRange(stay.checkIn, stay.checkOut)}
+                {" · "}
+                {nightsOf(stay)} {nightsOf(stay) === 1 ? "night" : "nights"}
+                {total !== null && property?.currency
+                  ? ` · ${formatMoney(total, property.currency)}`
+                  : null}
+                {taken
+                  ? ` · Not available: ${conflicts.map((c) => describeConflict(c, guestNames(selected))).join("; ")}`
+                  : null}
+                {refused ? ". Change the dates, or press Escape." : null}
+              </>
+            ) : selection.phase !== "idle" ? (
+              "Now pick the last day (the check-out day), or press Escape."
+            ) : (
+              "Drag across days, or tap the first and last day, to start a booking."
+            )}
+          </p>
+        </div>
+      ) : null}
+
+      <div
+        ref={gridRef}
+        className={cn(
+          "rounded-card touch-manipulation border select-none",
+          pending && "opacity-60 transition-opacity",
+        )}
+        {...pointer}
+      >
         <div className="grid grid-cols-7 border-b" aria-hidden>
           {weeks[0]!.map((date) => (
             <div key={date} className="text-muted-foreground px-1 py-1.5 text-center text-xs">
@@ -258,8 +481,8 @@ export function MonthCalendar({
         {weeks.map((week, w) => {
           const lanes = Math.max(0, ...layout[w]!.map((s) => s.lane + 1));
           return (
-            <div key={week[0]} className="relative border-b last:border-b-0">
-              {/* Day cells behind the bars: borders, shading, today. */}
+            <div key={week[0]} data-week={w} className="relative border-b last:border-b-0">
+              {/* Day cells behind the bars: borders, shading, selection. */}
               <div className="absolute inset-0 grid grid-cols-7" aria-hidden>
                 {week.map((date) => (
                   <div
@@ -267,6 +490,7 @@ export function MonthCalendar({
                     className={cn(
                       "border-r last:border-r-0",
                       monthOf(date) !== month && "bg-muted/40",
+                      isSelected(date) && (taken ? "bg-destructive/15" : "bg-primary/15"),
                     )}
                   />
                 ))}
@@ -281,17 +505,23 @@ export function MonthCalendar({
                     className="px-1 pt-1 text-xs sm:text-sm"
                     style={{ gridColumn: `${d * 2 + 1} / span 2`, gridRow: 1 }}
                   >
-                    <time
-                      dateTime={date}
+                    <button
+                      type="button"
+                      data-date={date}
+                      tabIndex={date === focusDay ? 0 : -1}
+                      aria-label={fullDate.format(new Date(`${date}T00:00:00Z`))}
+                      aria-current={date === today ? "date" : undefined}
+                      onFocus={() => setFocusedDay(date)}
+                      onKeyDown={(event) => onDayKeyDown(event, date)}
                       className={cn(
-                        "inline-flex size-6 items-center justify-center rounded-full tabular-nums",
+                        "focus-visible:ring-ring inline-flex size-6 items-center justify-center rounded-full tabular-nums outline-none focus-visible:ring-2",
                         monthOf(date) !== month && "text-muted-foreground",
                         date === today && "bg-primary text-primary-foreground font-medium",
+                        !selectable && "cursor-default",
                       )}
-                      aria-current={date === today ? "date" : undefined}
                     >
-                      {Number(date.slice(8))}
-                    </time>
+                      <time dateTime={date}>{Number(date.slice(8))}</time>
+                    </button>
                   </div>
                 ))}
                 {layout[w]!.map((segment) => (
@@ -316,6 +546,11 @@ export function MonthCalendar({
       <Legend calendars={calendars} />
     </section>
   );
+}
+
+/** Guest names by booking id, for naming what a selection overlaps. */
+function guestNames(calendar: CalendarProperty | null): ReadonlyMap<string, string> {
+  return new Map(calendar?.bookings.map((b) => [b.id, b.guest.name]) ?? []);
 }
 
 function Legend({ calendars }: { calendars: CalendarProperty[] }) {
