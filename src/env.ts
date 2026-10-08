@@ -101,6 +101,15 @@ const envSchema = z.object({
   ).default(300),
 
   /**
+   * Inbound sync imports a timed Google event (one with times, not all-day)
+   * as a block only if it lasts at least this many hours, so ordinary
+   * meetings do not block nights. Default 12.
+   */
+  GOOGLE_IMPORT_MIN_TIMED_HOURS: optional(z.coerce.number().min(0, "cannot be negative")).default(
+    12,
+  ),
+
+  /**
    * Optional: the public https base URL at which Google can reach this app,
    * e.g. https://vacation.example.com. When set, Google pushes change
    * notifications to <url>/api/google/webhook, so changes arrive in seconds;

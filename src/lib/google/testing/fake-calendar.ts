@@ -50,6 +50,20 @@ export function fakeInboundCalendar() {
       }
       return { items: query.pageToken ? live.slice(1) : live, nextSyncToken: token };
     },
+    // Writes, as outbound sync makes them: they show up in later lists too.
+    async insertEvent(_calendarId: string, input: { id: string }) {
+      put(input as CalendarEvent);
+      return events.get(input.id)!;
+    },
+    async updateEvent(_calendarId: string, eventId: string, input: object) {
+      put({ ...(input as CalendarEvent), id: eventId });
+      return events.get(eventId)!;
+    },
+    async deleteEvent(_calendarId: string, eventId: string) {
+      if (!events.has(eventId)) return "already_gone" as const;
+      put({ ...events.get(eventId)!, status: "cancelled" });
+      return "deleted" as const;
+    },
     async watchEvents(
       _calendarId: string,
       channel: { id: string; token: string; address: string },
