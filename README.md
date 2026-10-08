@@ -117,6 +117,14 @@ Playwright then builds the app and serves it with `next start` on port 3100,
 with test-only credentials, so it runs alongside `npm run dev` without
 conflict. It does overwrite any production build of your own in `.next`. The tests share the one database and so run serially.
 
+## UI
+
+Pages are built from a small set of shared primitives (page header, card, data
+table, dialogs, empty, error and loading states, toasts) and the money and date
+formatting helpers. [`src/components/README.md`](src/components/README.md)
+documents each with usage examples, and `/dev/ui` renders them all while
+`npm run dev` is running.
+
 ## Configuration
 
 Every environment variable is documented in [`.env.example`](.env.example) and

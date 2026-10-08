@@ -22,3 +22,8 @@ test("the API reads what is in the database", async ({ request }) => {
   const properties: { name: string }[] = await response.json();
   expect(properties.map((p) => p.name)).toEqual(["Seaside Cottage"]);
 });
+
+test("the development-only UI gallery is not served in production", async ({ request }) => {
+  const response = await request.get("/dev/ui");
+  expect(response.status()).toBe(404);
+});

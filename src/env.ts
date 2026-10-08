@@ -22,6 +22,7 @@ import { PHASE_PRODUCTION_BUILD } from "next/constants";
 import { z } from "zod";
 
 import { EnvValidationError } from "./env-error";
+import { canonicalLocale, DEFAULT_LOCALE } from "./lib/locale";
 
 const envSchema = z.object({
   /** PostgreSQL connection string used by Prisma. */
@@ -42,6 +43,18 @@ const envSchema = z.object({
     protocol: /^https?$/,
     error: "must be an http(s) URL, e.g. http://localhost:3000",
   }),
+
+  /**
+   * Locale for formatting money and dates. Validated here so a typo stops the
+   * boot; src/lib/locale.ts is what the UI actually reads.
+   */
+  NEXT_PUBLIC_APP_LOCALE: z
+    .string()
+    .trim()
+    .default(DEFAULT_LOCALE)
+    .refine((tag) => canonicalLocale(tag) !== null, {
+      error: "must be a BCP 47 locale tag, e.g. en-US or de-DE",
+    }),
 });
 
 export type Env = z.infer<typeof envSchema>;
