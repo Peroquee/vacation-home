@@ -31,7 +31,9 @@ ALTER TABLE "blocks"
   -- An imported block always names its event; a manual one never does.
   ADD CONSTRAINT "blocks_external_event_matches_origin" CHECK (
     ("origin" = 'google') = ("external_event_id" IS NOT NULL)
-  );
+  ),
+  -- An empty id would make every id-less event "the same" event on re-import.
+  ADD CONSTRAINT "blocks_external_event_not_blank" CHECK (btrim("external_event_id") <> '');
 
 COMMENT ON COLUMN "blocks"."end_date" IS
   'EXCLUSIVE, like bookings.check_out: the block covers [start_date, end_date).';

@@ -149,8 +149,9 @@ enum BlockOrigin {
 /// DATES follow the booking rule: calendar dates in the property's timezone,
 /// half-open. The block covers the nights from `startDate` up to but not
 /// including `endDate`, so a block ending on the 18th leaves the 18th free for
-/// an arrival. This is also how Google Calendar ends all-day events, so an
-/// imported event's dates are taken as they are.
+/// an arrival. Google Calendar ends all-day events the same way, so their
+/// dates map directly. A timed event must first be converted to calendar
+/// dates in the property's timezone by the importer: every night it touches.
 model Block {
   id              String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   propertyId      String      @map("property_id") @db.Uuid

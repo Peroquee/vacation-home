@@ -31,6 +31,8 @@ beforeEach(async () => {
 });
 
 afterAll(async () => {
+  await db.block.deleteMany();
+  await db.property.deleteMany({ where: { id: { in: [propertyId, otherPropertyId] } } });
   await db.$disconnect();
 });
 
@@ -48,6 +50,15 @@ describe("overlapping blocks", () => {
     // day it starts.
     expect(await overlapping("2026-07-18", "2026-07-21")).toEqual([]);
     expect(await overlapping("2026-07-10", "2026-07-14")).toEqual([]);
+  });
+
+  it("refuse an empty or inverted range instead of reporting it free", async () => {
+    await expect(
+      findOverlappingBlocks(propertyId, { start: "2026-07-18", end: "2026-07-14" }),
+    ).rejects.toThrow(RangeError);
+    await expect(
+      findOverlappingBlocks(propertyId, { start: "2026-07-14", end: "2026-07-14" }),
+    ).rejects.toThrow(RangeError);
   });
 
   it("belong to their own property only", async () => {
@@ -88,6 +99,12 @@ describe("block constraints", () => {
     await expect(
       block("2026-07-14", "2026-07-15", { origin: "manual", externalEventId: "evt_1" }),
     ).rejects.toThrow(/blocks_external_event_matches_origin/);
+  });
+
+  it("refuse a blank event id", async () => {
+    await expect(
+      block("2026-07-14", "2026-07-15", { origin: "google", externalEventId: " " }),
+    ).rejects.toThrow(/blocks_external_event_not_blank/);
   });
 
   it("allow one block per Google event per property", async () => {

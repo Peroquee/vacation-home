@@ -24,6 +24,10 @@ describe("rangesOverlap", () => {
     expect(both(stay, { start: "2026-08-01", end: "2026-08-05" })).toEqual([false, false]);
   });
 
+  it("refuses malformed dates rather than comparing them as text", () => {
+    expect(() => rangesOverlap({ start: "2026-7-9", end: "2026-07-12" }, stay)).toThrow(RangeError);
+  });
+
   it("compares across months and years", () => {
     expect(
       rangesOverlap(
