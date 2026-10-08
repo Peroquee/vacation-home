@@ -63,3 +63,6 @@ next-env.d.ts
 # Local backups from the `backup` compose service, when BACKUP_HOST_DIR is
 # left at its default
 /backups/
+
+# Guest ids saved by scripts/backup/restore.sh for re-erasure after a restore
+/backups-restore/

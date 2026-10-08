@@ -217,15 +217,21 @@ The script:
 
 1. checks that the backup file is complete;
 2. saves the list of guests erased so far (see step 5);
-3. stops the app, so nothing is written meanwhile;
-4. replaces the database with the backup and counts what it restored;
-5. lists any erased guests the backup brought back;
+3. restores the backup into a separate staging database,
+   `vacation_home_restoring`, and counts what it restored. The app keeps
+   running and the live database is not touched yet;
+4. lists any erased guests the backup brought back;
+5. stops the app, renames the current database to
+   `vacation_home_pre_restore_<date>_<time>` (kept, not deleted) and gives
+   the restored one its name;
 6. starts the app again, which brings the database structure up to date if
    the backup is older than the app.
 
-If it fails halfway, it says so and leaves the app stopped. Fix what it
-reports and run the same command again. It always starts over cleanly. To
-just get the app running again without restoring:
+So a damaged backup never costs you the current data: if the restore fails
+in step 3, the script says the live database was not touched. Fix what it
+reports and run the same command again; it starts over cleanly. If anything
+fails later, the message says exactly what to do. To get the app running
+again in any case:
 
 ```bash
 docker compose start app                              # start the app with whatever is in the database now
@@ -234,6 +240,18 @@ docker compose start app                              # start the app with whate
 Then open the app in the browser and check that recent bookings are there.
 
 **Do step 5 now** if the script listed any guests.
+
+When the restored app works, **drop the kept copy**. It still holds the data
+from before the restore, including guests erased since the backup, so it must
+not linger. The script prints the exact command at the end, for example:
+
+```bash
+docker compose exec db dropdb -U vacation vacation_home_pre_restore_20261008_194002
+                                                      # delete the copy of the old data; use the name the script printed
+```
+
+If the restore turned out wrong instead, the kept copy is your way back. Stop
+the app and swap the names back (ask for help with this one).
 
 ### 4.2 The Docker host is gone
 
@@ -263,25 +281,37 @@ record of the erasure disappears with it. Those guests must be erased again
 **right after the restore**, before anyone uses the app.
 
 - **Restored over a working database** (4.1): the script saved the erased
-  guests' ids before restoring, and at the end it lists those that are back,
-  under "Erase them again NOW". The saved list stays in the file it names
-  (in `/tmp`), in case you need it again.
+  guests' ids before restoring. If any of them are back, it writes their ids
+  to `backups-restore/erase-again-<date>_<time>.txt` in the app folder and
+  ends with "ERASE THESE GUESTS AGAIN NOW" and the command to run. The full
+  list of erasures on record is saved beside it as `erased-guests-...txt`.
+  The files hold ids only, no personal data.
 - **The database was lost** (4.2), or the script could not read it: the
   erasures since the backup can only come from your own records. Erasure
   requests should therefore also be noted outside the app, for example in
   the GDPR request log you keep anyway.
 
-To erase a guest again, use the guest's erase action in the app. Until the
-app has one (GitLab #55), sign in to the app in the browser, open the
-developer console (F12, then the _Console_ tab), and run this once per guest
-id, replacing both `GUEST_ID`s:
+To erase them again, run the command the script printed, in the app folder:
+
+```bash
+npm run guests:repurge -- backups-restore/erase-again-20261008_194002.txt
+                                                      # erase every guest listed in the file again; use the file name the script printed
+```
+
+That command is still being added to the app. Until it exists, erase each
+guest by hand. Use the guest's erase action in the app, or, until the app has
+one (GitLab #55), sign in to the app in the browser, open the developer
+console (F12, then the _Console_ tab), and run this once per id in the file,
+replacing both `GUEST_ID`s:
 
 ```js
 fetch("/api/guests/GUEST_ID/purge", {
   method: "POST",
   headers: { "Content-Type": "application/json" },
   body: JSON.stringify({ confirm: "GUEST_ID" }),
-}).then((r) => r.json()).then(console.log);
+})
+  .then((r) => r.json())
+  .then(console.log);
 ```
 
 It answers `{ outcome: "anonymised", ... }` or `{ outcome: "deleted" }`.

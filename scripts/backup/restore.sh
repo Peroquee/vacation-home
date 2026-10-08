@@ -9,19 +9,24 @@
 # By default it restores into a separate scratch database,
 # vacation_home_restore_test, and leaves the live one alone: that is the
 # rehearsal docs/backup-and-restore.md asks for. Restoring over the live
-# database needs `--target vacation_home` and a typed confirmation (or
-# --yes); the app is stopped for it and started again afterwards.
+# database needs `--target vacation_home` and a typed confirmation (or --yes).
 #
-# Safe to re-run: the target database is dropped and created afresh each
-# time, so a run that failed halfway is simply repeated. --dry-run checks the
-# file and prints every command that would change something, changing nothing.
+# The backup is always restored into a staging database, <target>_restoring,
+# and checked there first. Only then is it swapped in: the app is stopped,
+# the live database is renamed to <target>_pre_restore_<UTC time> and kept,
+# the staging one takes its name, and the app is started again. A dump that
+# does not restore cleanly therefore never touches the live database.
+#
+# Safe to re-run: the staging database is dropped and created afresh each
+# time, so a run that failed is simply repeated. --dry-run checks the file and
+# prints every command that would change something, changing nothing.
 #
 # Guests erased (DSGVO) after the backup was taken come back with it. Before
-# restoring over the live database the script saves the ids of every erased
-# guest, and afterwards lists those the restore brought back, to be erased
-# again. See "After a restore" in docs/backup-and-restore.md.
+# a live restore the script saves the ids of every erased guest, and writes
+# those the restore brought back to a file, to be erased again. See "After a
+# restore" in docs/backup-and-restore.md.
 
-set -Eeuo pipefail
+set -euo pipefail
 
 LIVE_DB="vacation_home"
 SCRATCH_DB="vacation_home_restore_test"
@@ -65,8 +70,15 @@ while [ $# -gt 0 ]; do
 done
 
 [ -n "$file" ] || { usage >&2; exit 2; }
-# A database name goes into SQL below; allow only plain identifiers.
-[[ "$target" =~ ^[a-z_][a-z0-9_]*$ ]] || { echo "Not a valid database name: $target" >&2; exit 2; }
+# Database names go into SQL below; allow only plain identifiers, short
+# enough to take the suffixes (PostgreSQL's limit is 63 characters).
+[[ "$target" =~ ^[a-z_][a-z0-9_]{0,30}$ ]] || { echo "Not a valid database name: $target" >&2; exit 2; }
+
+stamp="$(date -u +%Y%m%d_%H%M%S)"
+staging="${target}_restoring"
+kept="${target}_pre_restore_${stamp}"
+live=false
+[ "$target" = "$LIVE_DB" ] && live=true
 
 step() { printf '\n==> %s\n' "$*"; }
 # Runs a command that changes something, or only shows it on --dry-run.
@@ -86,11 +98,20 @@ psql_in() {
   shift
   compose exec -T db psql -v ON_ERROR_STOP=1 -X -q -U "$DB_USER" -d "$db" "$@"
 }
+sql() { psql_in postgres -c "$1"; }
+exists() {
+  [ "$(psql_in postgres -A -t -c "SELECT 1 FROM pg_database WHERE datname = '$1'")" = "1" ]
+}
+
+# What to say if a step fails, set once the first change is near and updated
+# as the run goes on. Empty while failing changes nothing (bad arguments, a
+# refused confirmation).
+on_failure=""
+trap 'status=$?; [ "$status" -eq 0 ] || [ -z "$on_failure" ] || printf "\nRestore FAILED. %s\n" "$on_failure" >&2' EXIT
 
 step "Checking the backup file"
 [ -f "$file" ] || { echo "No such file: $file" >&2; exit 1; }
-# Reading it end to end catches a truncated or corrupt file before anything
-# is dropped.
+# Reading it end to end catches a truncated or corrupt file early.
 gzip -t "$file"
 echo "    $file: $(du -h "$file" | cut -f1), intact"
 
@@ -101,83 +122,82 @@ if ! compose exec -T db pg_isready -q -U "$DB_USER"; then
 fi
 echo "    db is up"
 
-live=false
-[ "$target" = "$LIVE_DB" ] && live=true
+if $live && ! $assume_yes && ! $dry_run; then
+  echo
+  echo "This REPLACES all data in the live database '$LIVE_DB' with the backup."
+  echo "The current data is kept as '$kept' until you drop it."
+  read -r -p "Type the database name to continue: " answer
+  [ "$answer" = "$LIVE_DB" ] || { echo "Not confirmed; nothing changed."; exit 1; }
+fi
 
-erasures=""
+# Ids only, no personal data: kept beside the checkout, not in /tmp, so they
+# survive a reboot.
+erasure_dir="backups-restore"
+erased_file=""
 if $live; then
-  if ! $assume_yes && ! $dry_run; then
-    echo
-    echo "This REPLACES all data in the live database '$LIVE_DB' with the backup."
-    read -r -p "Type the database name to continue: " answer
-    [ "$answer" = "$LIVE_DB" ] || { echo "Not confirmed; nothing changed."; exit 1; }
-  fi
-
   step "Saving the ids of erased guests (DSGVO) from the current database"
-  erasures="$(mktemp "${TMPDIR:-/tmp}/vacation-home-erasures.XXXXXX")"
-  # Read-only, so it runs on --dry-run too. Ids only: no personal data.
-  if psql_in "$LIVE_DB" -A -t -c \
+  if exists "$LIVE_DB" && records="$(psql_in "$LIVE_DB" -A -t -c \
     "SELECT DISTINCT subject_id FROM audit_events
-     WHERE subject_type = 'guest' AND action IN ('guest.purged', 'guest.deleted')" \
-    >"$erasures" 2>/dev/null; then
-    echo "    $(wc -l <"$erasures") erased guest(s) on record, saved to $erasures"
+     WHERE subject_type = 'guest' AND action IN ('guest.purged', 'guest.deleted')" 2>/dev/null)"; then
+    erased_file="$erasure_dir/erased-guests-$stamp.txt"
+    if $dry_run; then
+      echo "    [dry-run] would save $(grep -c . <<<"$records" || true) id(s) to $erased_file"
+    else
+      mkdir -p "$erasure_dir"
+      printf '%s\n' "$records" | grep . >"$erased_file" || true
+      echo "    $(wc -l <"$erased_file") erased guest(s) on record, saved to $erased_file"
+    fi
   else
     echo "    The current database could not be read, so erasures cannot be"
     echo "    carried over automatically. Follow 'After a restore' in the docs."
-    rm -f "$erasures"
-    erasures=""
   fi
-
-  step "Stopping the app, so nothing writes while the data is replaced"
-  change compose stop app
-  # If anything below fails, say so plainly: the app stays stopped until the
-  # restore succeeds or someone starts it.
-  $dry_run || trap 'echo >&2; echo "Restore FAILED. The app is stopped. Fix the problem and run this again, or start the app with: docker compose start app" >&2' ERR
 fi
 
-step "Recreating the database '$target'"
-# WITH (FORCE) ends any session still connected; the server is PostgreSQL 16.
-change psql_in postgres -c "DROP DATABASE IF EXISTS \"$target\" WITH (FORCE)"
-change psql_in postgres -c "CREATE DATABASE \"$target\" OWNER \"$DB_USER\""
+on_failure="The live database was not touched. Fix the problem and run this again."
 
-step "Restoring $file into '$target'"
+step "Creating the staging database '$staging'"
+# WITH (FORCE) ends any session still connected; the server is PostgreSQL 16.
+change sql "DROP DATABASE IF EXISTS \"$staging\" WITH (FORCE)"
+change sql "CREATE DATABASE \"$staging\" OWNER \"$DB_USER\""
+
+step "Restoring $file into '$staging' (the app keeps running meanwhile)"
 if $dry_run; then
-  printf '    [dry-run] gunzip -c %q | psql -d %s\n' "$file" "$target"
+  printf '    [dry-run] gunzip -c %q | psql -d %s\n' "$file" "$staging"
 else
-  gunzip -c "$file" | psql_in "$target"
+  gunzip -c "$file" | psql_in "$staging"
 fi
 
 step "Checking the restored data"
 if $dry_run; then
-  echo "    [dry-run] would count properties, guests and bookings in '$target'"
+  echo "    [dry-run] would count properties, guests and bookings in '$staging'"
 else
-  psql_in "$target" -c \
+  psql_in "$staging" -c \
     "SELECT (SELECT count(*) FROM properties) AS properties,
             (SELECT count(*) FROM guests) AS guests,
             (SELECT count(*) FROM bookings) AS bookings,
             (SELECT max(finished_at) FROM _prisma_migrations) AS last_migration"
 fi
 
-if [ -n "$erasures" ]; then
+back_file=""
+if [ -n "$erased_file" ]; then
   step "Looking for erased guests the backup brought back"
   if $dry_run; then
-    echo "    [dry-run] would compare $erasures with the restored guests"
+    echo "    [dry-run] would compare $erased_file with the restored guests"
   else
     back="$(
       # The saved ids, against guests that exist again un-erased.
       { echo "CREATE TEMP TABLE erased (id uuid);"
         echo "COPY erased FROM STDIN;"
-        cat "$erasures"
+        cat "$erased_file"
         printf '\\.\n'
         echo "SELECT g.id FROM guests g JOIN erased e ON e.id = g.id WHERE g.purged_at IS NULL;"
-      } | psql_in "$target" -A -t
+      } | psql_in "$staging" -A -t
     )"
     if [ -n "$back" ]; then
-      echo "    These guests were erased after the backup was taken and are back."
-      echo "    Erase them again NOW (docs: 'After a restore'):"
-      # One id per line; word splitting is intended.
-      # shellcheck disable=SC2086
-      printf '      %s\n' $back
+      back_file="$erasure_dir/erase-again-$stamp.txt"
+      printf '%s\n' "$back" >"$back_file"
+      echo "    $(wc -l <"$back_file") guest(s) were erased after the backup was taken and are"
+      echo "    back. Their ids are in $back_file."
     else
       echo "    None. Every erasure on record is still in effect."
     fi
@@ -185,14 +205,46 @@ if [ -n "$erasures" ]; then
 fi
 
 if $live; then
+  step "Stopping the app, so nothing writes during the swap"
+  change compose stop app
+  on_failure="The app is stopped. If the live database is still '$target', start the app again with: docker compose start app. If it was already renamed, rename it back first: docker compose exec db psql -U $DB_USER -d postgres -c 'ALTER DATABASE \"$kept\" RENAME TO \"$target\"'"
+fi
+
+step "Swapping in the restored database"
+if $dry_run || exists "$target"; then
+  # A rename needs the database to itself; the app is stopped, end anything else.
+  change sql "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = '$target' AND pid <> pg_backend_pid()"
+  if $live; then
+    change sql "ALTER DATABASE \"$target\" RENAME TO \"$kept\""
+  else
+    # A rehearsal's previous copy is worth nothing.
+    change sql "DROP DATABASE \"$target\" WITH (FORCE)"
+  fi
+fi
+change sql "ALTER DATABASE \"$staging\" RENAME TO \"$target\""
+
+if $live; then
   step "Starting the app again (it applies any newer migrations on start)"
+  on_failure="The restored database is in place as '$target'; the app did not start. Try: docker compose start app"
   change compose start app
 fi
 
 if $dry_run; then
   printf '\nDry run finished: nothing was changed.\n'
-elif $live; then
+  exit 0
+fi
+
+if $live; then
   printf '\nRestore finished. Check the app in the browser.\n'
+  if [ -n "$back_file" ]; then
+    printf '\nERASE THESE GUESTS AGAIN NOW, before anyone uses the app:\n'
+    printf '  npm run guests:repurge -- %s\n' "$back_file"
+    printf '(or by hand: docs/backup-and-restore.md, "After a restore")\n'
+  fi
+  printf '\nThe previous data is kept as the database "%s".\n' "$kept"
+  printf 'It holds personal data, including guests erased since the backup.\n'
+  printf 'Drop it as soon as the restored app is confirmed working:\n'
+  printf '  docker compose exec db dropdb -U %s %s\n' "$DB_USER" "$kept"
 else
   printf '\nRehearsal finished. Remove the scratch database when done with:\n'
   printf '  docker compose exec db dropdb -U %s %s\n' "$DB_USER" "$target"
