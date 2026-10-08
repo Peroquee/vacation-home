@@ -313,6 +313,30 @@ request bodies, user details or local variables.
   request's id and with the guest email in its message masked. In development,
   `/dev/ui` also has a button that throws a client-side error.
 
+## Demo data
+
+```bash
+npm run seed                          # app on the host
+docker compose exec app npm run seed  # everything in Docker
+```
+
+`npm run seed` **replaces** the properties, guests, bookings and blocks with
+demo data:
+
+- two properties, 20 guests, about 60 bookings over 18 months (October 2025 to
+  March 2027);
+- mostly confirmed bookings, plus inquiries and cancellations, from every
+  source, with some same-day turnovers;
+- a few owner blocks and Google Calendar blocks.
+
+The content is identical on every run (fixed seed and fixed dates); the ids
+are new each time. `prisma migrate reset` runs it too. Signed-in users and
+the audit trail are left alone.
+
+It refuses to run against anything but a development database: never with
+`NODE_ENV=production`, only on a local or Compose host, and never on the test
+databases (`*_test`, `*_e2e`).
+
 ## Configuration
 
 Every environment variable is documented in [`.env.example`](.env.example) and
@@ -332,24 +356,25 @@ else imports the typed `env` object from `@/env`. An ESLint rule enforces this.
 
 ## Scripts
 
-| Script                   | Does                                       |
-| ------------------------ | ------------------------------------------ |
-| `npm run dev`            | Development server                         |
-| `npm run build`          | Production build                           |
-| `npm start`              | Serve a production build                   |
-| `npm run lint`           | ESLint                                     |
-| `npm run lint:fix`       | ESLint with autofix                        |
-| `npm run format`         | Prettier, writing changes                  |
-| `npm run format:check`   | Prettier, check only (used by CI)          |
-| `npm run typecheck`      | `next typegen`, then `tsc --noEmit`        |
-| `npm test`               | Unit tests (Vitest), once                  |
-| `npm run test:watch`     | Unit tests, re-running on change           |
-| `npm run test:db`        | Database tests against PostgreSQL          |
-| `npm run test:e2e`       | End-to-end tests (Playwright)              |
-| `npm run migrate:dev`    | Create and apply a migration (development) |
-| `npm run migrate:deploy` | Apply committed migrations                 |
-| `npm run studio`         | Prisma Studio, a browser UI for the data   |
-| `npm run db:generate`    | Regenerate the Prisma client               |
+| Script                   | Does                                          |
+| ------------------------ | --------------------------------------------- |
+| `npm run dev`            | Development server                            |
+| `npm run build`          | Production build                              |
+| `npm start`              | Serve a production build                      |
+| `npm run lint`           | ESLint                                        |
+| `npm run lint:fix`       | ESLint with autofix                           |
+| `npm run format`         | Prettier, writing changes                     |
+| `npm run format:check`   | Prettier, check only (used by CI)             |
+| `npm run typecheck`      | `next typegen`, then `tsc --noEmit`           |
+| `npm test`               | Unit tests (Vitest), once                     |
+| `npm run test:watch`     | Unit tests, re-running on change              |
+| `npm run test:db`        | Database tests against PostgreSQL             |
+| `npm run test:e2e`       | End-to-end tests (Playwright)                 |
+| `npm run migrate:dev`    | Create and apply a migration (development)    |
+| `npm run migrate:deploy` | Apply committed migrations                    |
+| `npm run studio`         | Prisma Studio, a browser UI for the data      |
+| `npm run seed`           | Replace the data with deterministic demo data |
+| `npm run db:generate`    | Regenerate the Prisma client                  |
 
 ## Continuous integration
 
