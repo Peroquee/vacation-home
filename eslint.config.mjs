@@ -33,7 +33,13 @@ const eslintConfig = defineConfig([
     // cannot use `@/env`.
     // Neither do the test tooling configs and the e2e harness, which run in
     // Node outside the app.
-    files: ["src/env.ts", "prisma.config.ts", "playwright.config.ts", "e2e/**/*.{ts,mjs}"],
+    files: [
+      "src/env.ts",
+      "prisma.config.ts",
+      "next.config.ts",
+      "playwright.config.ts",
+      "e2e/**/*.{ts,mjs}",
+    ],
     rules: { "no-restricted-properties": "off" },
   },
   // Override default ignores of eslint-config-next.
