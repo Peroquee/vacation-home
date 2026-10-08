@@ -252,6 +252,49 @@ pageSize, totals: [{ currency, incomeMinor, expenseMinor, netMinor }] }`, where
   per currency, since minor units of different currencies can't be added. A
   repeated parameter (`?categoryId=a&categoryId=b`) counts like a comma list.
 
+- **Income from bookings** (per property, off by default:
+  `GET`/`PUT /api/properties/:id/income-automation` with
+  `{ enabled, onCancel: "delete" | "zero" }`):
+  - When a booking is confirmed, it creates two income entries linked to the
+    booking and marked `generated`. `booking_accommodation` holds the total
+    less the cleaning fee, in "Booking income". `booking_cleaning` holds the
+    cleaning fee, in "Cleaning fees".
+  - Both are dated on the check-in day and follow the booking's amounts and
+    dates. They're never duplicated.
+  - Cancelling deletes them, or sets them to zero, per `onCancel`.
+  - Bookings confirmed before the automation was on aren't backfilled.
+  - Editing a generated entry by hand detaches it (`detachedAt` is set) and
+    the response carries `warning.code: "detached_from_booking"`. From then
+    on the automation leaves it alone.
+
+### Recurring expenses
+
+| Method and path                           | Does                                                                                   |
+| ----------------------------------------- | -------------------------------------------------------------------------------------- |
+| `GET /api/recurring-expenses`             | Rules with `status` (`active`/`paused`/`ended`) and `nextDueDate`; filter `propertyId` |
+| `POST /api/recurring-expenses`            | Create a rule (body below); periods already due are created at once                    |
+| `GET /api/recurring-expenses/:id`         | One rule                                                                               |
+| `PATCH /api/recurring-expenses/:id`       | `amountMinor`, `categoryId`, `endDate`, `description`, for periods not created yet     |
+| `POST /api/recurring-expenses/:id/pause`  | Stop creating transactions; past ones stay                                             |
+| `POST /api/recurring-expenses/:id/resume` | Start again from the next period on or after today                                     |
+| `DELETE /api/recurring-expenses/:id`      | Delete the rule (`204`); its transactions stay                                         |
+
+- **Body**: `propertyId`, `categoryId` (an expense category), `amountMinor`,
+  `interval` (`monthly`, `quarterly` or `annual`), `startDate` (the first
+  occurrence), optional `endDate` (the last day one may fall on) and
+  `description`.
+- **Dates**: occurrence n falls on the start date plus n intervals, on the
+  same day of the month, or the month's last day when that month is shorter.
+  So 31 Jan, 28 Feb, 31 Mar, and no drift afterwards.
+- **The job** runs at server start and then hourly. It uses each property's
+  local date and creates every period due by then, so a missed run is caught
+  up by the next.
+- **Duplicates**: transactions are unique per rule and date, so a period is
+  never created twice. They're marked `isRecurring` with
+  `recurringExpenseId`.
+- **Pausing** skips the periods that fall due while the rule is paused.
+  Rules of an archived property create nothing.
+
 ### Analytics
 
 `GET /api/analytics?from=&to=` gives the dashboard every figure it shows, from

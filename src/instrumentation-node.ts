@@ -29,12 +29,15 @@ export async function bootstrap(): Promise<void> {
     // After validation, so a misconfigured process never reports as healthy.
     Sentry.init(sentryOptions());
 
-    // Google Calendar outbound sync. Not while `next build` loads the app;
+    // Background jobs: Google Calendar outbound sync and recurring
+    // expenses. Not while `next build` loads the app;
     // NEXT_PHASE is Next's own, not part of the validated schema.
     // eslint-disable-next-line no-restricted-properties
     if (process.env.NEXT_PHASE !== PHASE_PRODUCTION_BUILD) {
       const { startOutboundSyncWorker } = await import("./lib/google/sync-worker");
       startOutboundSyncWorker();
+      const { startRecurringExpenseWorker } = await import("./lib/finance/recurring-worker");
+      startRecurringExpenseWorker();
     }
   } catch (error) {
     // A configuration failure is already a formatted, readable report, so its
