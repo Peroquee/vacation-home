@@ -3,6 +3,7 @@
  * ./schema and translate the results below into HTTP responses.
  */
 import type { Property } from "@/generated/prisma/client";
+import { invalidateWindows } from "@/lib/availability/cache";
 import { db } from "@/lib/db";
 import { isPrismaError, orNullIfMissing } from "@/lib/db-errors";
 
@@ -50,7 +51,10 @@ export async function updateProperty(
   id: string,
   input: UpdatePropertyInput,
 ): Promise<Property | null> {
-  return orNullIfMissing(db.property.update({ where: { id }, data: input }));
+  const property = await orNullIfMissing(db.property.update({ where: { id }, data: input }));
+  // Name and colour show in every calendar window of the property.
+  invalidateWindows(id);
+  return property;
 }
 
 /**
@@ -63,6 +67,7 @@ export async function setArchived(id: string, archived: boolean): Promise<Proper
     where: { id, archivedAt: archived ? null : { not: null } },
     data: { archivedAt: archived ? new Date() : null },
   });
+  invalidateWindows(id);
   return getProperty(id);
 }
 
@@ -76,6 +81,7 @@ export type DeleteResult = "deleted" | "not_found" | "has_history";
 export async function deleteProperty(id: string): Promise<DeleteResult> {
   try {
     await db.property.delete({ where: { id } });
+    invalidateWindows(id);
     return "deleted";
   } catch (error) {
     if (isPrismaError(error, "P2025")) return "not_found";

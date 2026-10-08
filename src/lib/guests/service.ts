@@ -1,5 +1,6 @@
 /** Guest persistence. Server-side only. */
 import type { Guest } from "@/generated/prisma/client";
+import { clearWindows } from "@/lib/availability/cache";
 import { db } from "@/lib/db";
 import { isPrismaError } from "@/lib/db-errors";
 import { escapeLike } from "@/lib/like";
@@ -85,7 +86,10 @@ export async function updateGuest(id: string, input: UpdateGuestInput): Promise<
   try {
     // Conditional on not being purged, so a purge cannot be undone by an
     // edit that raced it.
-    return { guest: await db.guest.update({ where: { id, purgedAt: null }, data: input }) };
+    const guest = await db.guest.update({ where: { id, purgedAt: null }, data: input });
+    // Calendar windows show guest names; which windows is not worth working out.
+    if (input.name !== undefined) clearWindows();
+    return { guest };
   } catch (error) {
     if (isPrismaError(error, "P2025")) {
       const exists = await db.guest.findUnique({ where: { id }, select: { id: true } });

@@ -28,6 +28,7 @@
  */
 import type { Guest } from "@/generated/prisma/client";
 import { recordAudit } from "@/lib/audit";
+import { clearWindows } from "@/lib/availability/cache";
 import { db } from "@/lib/db";
 
 /** The name a purged guest is shown with. Not personal data by design. */
@@ -40,6 +41,13 @@ export type PurgeResult =
   | { outcome: "not_found" };
 
 export async function purgeGuest(id: string, actorUserId: string | null): Promise<PurgeResult> {
+  const result = await purgeInTransaction(id, actorUserId);
+  // Cached calendar windows show guest names: none may outlive the erasure.
+  if (result.outcome === "anonymised") clearWindows();
+  return result;
+}
+
+async function purgeInTransaction(id: string, actorUserId: string | null): Promise<PurgeResult> {
   return db.$transaction(async (tx) => {
     // Locked, so no edit or new booking can slip in while the purge runs: the
     // bookings trigger share-locks the guest row before attaching anything to
