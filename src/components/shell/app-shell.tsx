@@ -1,9 +1,11 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { Home } from "lucide-react";
 
 import { MobileNav } from "@/components/shell/mobile-nav";
 import { SidebarNav } from "@/components/shell/sidebar-nav";
 import { UserMenu } from "@/components/shell/user-menu";
+import { SIGN_IN_PATH } from "@/auth";
 import { getCurrentUser } from "@/lib/session";
 
 /**
@@ -14,7 +16,10 @@ import { getCurrentUser } from "@/lib/session";
  * bottom bar for navigation, so the primary destinations stay thumb-reachable.
  */
 export async function AppShell({ children }: { children: React.ReactNode }) {
+  // The proxy only lets signed-in requests through; this covers a session
+  // that ended in between.
   const user = await getCurrentUser();
+  if (!user) redirect(SIGN_IN_PATH);
 
   return (
     <div className="min-h-dvh">
@@ -22,25 +27,17 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
       <aside className="bg-sidebar text-sidebar-foreground fixed inset-y-0 left-0 z-40 hidden w-64 flex-col border-r md:flex">
         <Brand />
         <SidebarNav />
-        {user ? (
-          <div className="border-t p-2">
-            <UserMenu user={user} />
-          </div>
-        ) : (
-          <SignInPrompt />
-        )}
+        <div className="border-t p-2">
+          <UserMenu user={user} />
+        </div>
       </aside>
 
       {/* Mobile top bar */}
       <header className="bg-sidebar text-sidebar-foreground sticky top-0 z-30 flex h-14 items-center justify-between border-b px-2 md:hidden">
         <Brand />
-        {user ? (
-          <div className="w-auto max-w-[60%]">
-            <UserMenu user={user} />
-          </div>
-        ) : (
-          <SignInPrompt />
-        )}
+        <div className="w-auto max-w-[60%]">
+          <UserMenu user={user} />
+        </div>
       </header>
 
       {/* pb-16 clears the fixed bottom bar. pl-68 is 17rem: the 16rem
@@ -58,18 +55,5 @@ function Brand() {
       <Home aria-hidden className="text-brand-500 size-5" />
       <span className="truncate">Vacation Rental</span>
     </Link>
-  );
-}
-
-function SignInPrompt() {
-  return (
-    <div className="p-2">
-      <Link
-        href="/api/auth/signin"
-        className="hover:bg-sidebar-accent/50 block rounded-control px-3 py-2 text-sm"
-      >
-        Sign in
-      </Link>
-    </div>
   );
 }

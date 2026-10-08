@@ -48,6 +48,25 @@ const envSchema = z.object({
   AUTH_GOOGLE_ID: z.string().trim().min(1, "is required"),
   AUTH_GOOGLE_SECRET: z.string().trim().min(1, "is required"),
 
+  /**
+   * The Google accounts allowed to sign in, comma-separated. Checked at
+   * sign-in and on every request, so removing an address locks it out at
+   * once. Compared case-insensitively.
+   */
+  AUTH_ALLOWED_EMAILS: z
+    .string()
+    .transform((value) =>
+      value
+        .split(",")
+        .map((email) => email.trim().toLowerCase())
+        .filter(Boolean),
+    )
+    .pipe(
+      z
+        .array(z.email("must be a comma-separated list of email addresses"))
+        .min(1, "must list at least one email address"),
+    ),
+
   /** Public base URL of this app; OAuth redirect URIs are built from it. */
   APP_URL: z.url({
     protocol: /^https?$/,
@@ -90,7 +109,7 @@ function loadEnv(): Env {
   // deployed environment: a known AUTH_SECRET means forgeable sessions.
   if (process.env.NODE_ENV === "production") {
     const unreplaced = Object.entries(parsed.data)
-      .filter(([, value]) => typeof value === "string" && value.includes("replace-me"))
+      .filter(([, value]) => JSON.stringify(value ?? "").includes("replace-me"))
       .map(([name]) => `  ${name}: still set to the .env.example placeholder`);
 
     if (unreplaced.length > 0) {

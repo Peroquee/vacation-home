@@ -7,7 +7,8 @@
  */
 import { z } from "zod";
 
-export type ApiErrorCode = "invalid_json" | "validation_failed" | "not_found" | "conflict";
+export type ApiErrorCode =
+  "invalid_json" | "unauthorized" | "validation_failed" | "not_found" | "conflict";
 
 export function apiError(
   status: number,

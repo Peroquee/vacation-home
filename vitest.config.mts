@@ -20,6 +20,7 @@ export default defineConfig({
       AUTH_SECRET: "unit-test-secret-unit-test-secret-1234",
       AUTH_GOOGLE_ID: "unit-test.apps.googleusercontent.com",
       AUTH_GOOGLE_SECRET: "unit-test-google-secret",
+      AUTH_ALLOWED_EMAILS: "owner@example.test, Partner@Example.test",
       APP_URL: "http://localhost:3000",
     },
   },
