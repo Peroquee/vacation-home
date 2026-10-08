@@ -40,6 +40,8 @@ const property: PropertyChoice = {
   defaultCleaningFeeMinor: 6000,
 };
 
+const CREATED_ID = "9d2f8a51-3c4b-4e6f-8a7b-1c2d3e4f5a6b";
+
 type Calendar = { bookings: unknown[]; blocks: unknown[] };
 const free: Calendar = { bookings: [], blocks: [] };
 
@@ -49,7 +51,7 @@ function serve(calendar: Calendar, save?: Response) {
     if (String(input).startsWith("/api/availability")) {
       return Response.json({ properties: [{ ...calendar, days: [] }] });
     }
-    return save ?? Response.json({}, { status: 201 });
+    return save ?? Response.json({ id: CREATED_ID }, { status: 201 });
   });
   vi.stubGlobal("fetch", fetchMock);
   return fetchMock;
@@ -124,7 +126,8 @@ describe("BookingForm", () => {
     await user.type(screen.getByLabelText("Nightly rate"), "199.5");
     await user.click(screen.getByRole("button", { name: "Add booking" }));
 
-    await waitFor(() => expect(push).toHaveBeenCalledWith("/bookings"));
+    // Straight to the new booking's detail page.
+    await waitFor(() => expect(push).toHaveBeenCalledWith(`/bookings/${CREATED_ID}`));
     const save = saveCall(fetchMock)!;
     expect(save.url).toBe("/api/bookings");
     expect(save.init.method).toBe("POST");
@@ -241,7 +244,7 @@ describe("BookingForm", () => {
     await user.click(screen.getByRole("checkbox", { name: "Set the total by hand" }));
     await user.click(screen.getByRole("button", { name: "Save booking" }));
 
-    await waitFor(() => expect(push).toHaveBeenCalled());
+    await waitFor(() => expect(push).toHaveBeenCalledWith(`/bookings/${booking.id}`));
     const save = saveCall(fetchMock)!;
     expect(save.url).toBe(`/api/bookings/${booking.id}`);
     expect(save.init.method).toBe("PATCH");

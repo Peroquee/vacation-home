@@ -226,7 +226,7 @@ export function BookingForm({
         throw new Error(result?.error?.message ?? `The server answered ${response.status}.`);
       }
       toastSuccess(booking ? "Booking saved" : "Booking added");
-      router.push("/bookings");
+      router.push(`/bookings/${booking?.id ?? result.id}`);
       router.refresh();
     } catch (error) {
       toastError(error, "Could not save the booking");
