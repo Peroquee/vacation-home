@@ -54,15 +54,15 @@ export async function updateProperty(
 
 /**
  * Archives or restores. Archiving keeps the original time when repeated, so
- * "archived since" stays true.
+ * "archived since" stays true. A single conditional update, so concurrent
+ * calls cannot overwrite each other's archive time.
  */
 export async function setArchived(id: string, archived: boolean): Promise<Property | null> {
-  const property = await getProperty(id);
-  if (!property) return null;
-  if (archived === (property.archivedAt !== null)) return property;
-  return orNullIfMissing(
-    db.property.update({ where: { id }, data: { archivedAt: archived ? new Date() : null } }),
-  );
+  await db.property.updateMany({
+    where: { id, archivedAt: archived ? null : { not: null } },
+    data: { archivedAt: archived ? new Date() : null },
+  });
+  return getProperty(id);
 }
 
 export type DeleteResult = "deleted" | "not_found" | "has_history";

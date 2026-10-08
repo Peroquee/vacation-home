@@ -8,23 +8,58 @@ test("a property goes through create, read, update, archive and delete", async (
   });
   expect(created.status()).toBe(201);
   const property = await created.json();
-  expect(property).toMatchObject({ currency: "CHF", color: "#0f766e", archived: false });
 
-  const read = await request.get(`/api/properties/${property.id}`);
-  expect(await read.json()).toEqual(property);
+  try {
+    expect(property).toMatchObject({ currency: "CHF", color: "#0f766e", archived: false });
 
-  const updated = await request.patch(`/api/properties/${property.id}`, {
-    data: { defaultNightlyRateMinor: 18000 },
-  });
-  expect((await updated.json()).defaultNightlyRateMinor).toBe(18000);
+    const read = await request.get(`/api/properties/${property.id}`);
+    expect(await read.json()).toEqual(property);
 
-  const archived = await request.post(`/api/properties/${property.id}/archive`);
-  expect((await archived.json()).archived).toBe(true);
-  const active = await (await request.get("/api/properties")).json();
-  expect(active.map((p: { id: string }) => p.id)).not.toContain(property.id);
+    const updated = await request.patch(`/api/properties/${property.id}`, {
+      data: { defaultNightlyRateMinor: 18000 },
+    });
+    expect((await updated.json()).defaultNightlyRateMinor).toBe(18000);
 
-  expect((await request.delete(`/api/properties/${property.id}`)).status()).toBe(204);
-  expect((await request.get(`/api/properties/${property.id}`)).status()).toBe(404);
+    const archived = await request.post(`/api/properties/${property.id}/archive`);
+    expect((await archived.json()).archived).toBe(true);
+    const active = await (await request.get("/api/properties")).json();
+    expect(active.map((p: { id: string }) => p.id)).not.toContain(property.id);
+
+    expect((await request.delete(`/api/properties/${property.id}`)).status()).toBe(204);
+    expect((await request.get(`/api/properties/${property.id}`)).status()).toBe(404);
+  } finally {
+    // Other specs share this database; never leave the row behind.
+    await withE2eDb((db) => db.query("DELETE FROM properties WHERE id = $1", [property.id]));
+  }
+});
+
+test("a property with dependent records cannot be deleted, only archived", async ({ request }) => {
+  // Stands in for bookings until they exist: any relation declared with
+  // ON DELETE RESTRICT must turn a delete into a 409 through the real driver.
+  const property = await (
+    await request.post("/api/properties", {
+      data: { name: "Booked House", timezone: "UTC", currency: "EUR" },
+    })
+  ).json();
+
+  try {
+    await withE2eDb(async (db) => {
+      await db.query(
+        "CREATE TABLE e2e_restrict_probe (property_id uuid REFERENCES properties(id) ON DELETE RESTRICT)",
+      );
+      await db.query("INSERT INTO e2e_restrict_probe VALUES ($1)", [property.id]);
+    });
+
+    const response = await request.delete(`/api/properties/${property.id}`);
+    expect(response.status()).toBe(409);
+    expect((await response.json()).error.message).toMatch(/Archive it instead/);
+    expect((await request.get(`/api/properties/${property.id}`)).status()).toBe(200);
+  } finally {
+    await withE2eDb(async (db) => {
+      await db.query("DROP TABLE IF EXISTS e2e_restrict_probe");
+      await db.query("DELETE FROM properties WHERE id = $1", [property.id]);
+    });
+  }
 });
 
 test("invalid input is a 422 with per-field messages", async ({ request }) => {

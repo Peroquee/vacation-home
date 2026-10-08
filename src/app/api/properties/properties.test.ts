@@ -24,7 +24,11 @@ vi.mock("@/lib/db", () => {
         findMany: async ({ where }: { where?: { archivedAt: null } }) =>
           [...store.rows.values()]
             .filter((row) => !where || row.archivedAt === null)
-            .sort((a, b) => String(a.name).localeCompare(String(b.name))),
+            .sort(
+              (a, b) =>
+                String(a.name).localeCompare(String(b.name)) ||
+                (a.createdAt as Date).getTime() - (b.createdAt as Date).getTime(),
+            ),
         findUnique: async ({ where }: { where: { id: string } }) =>
           store.rows.get(where.id) ?? null,
         create: async ({ data }: { data: Record<string, unknown> }) => {
@@ -44,6 +48,19 @@ vi.mock("@/lib/db", () => {
           const row = { ...existing(where.id), ...data, updatedAt: new Date() };
           store.rows.set(where.id, row);
           return row;
+        },
+        updateMany: async ({
+          where,
+          data,
+        }: {
+          where: { id: string; archivedAt: null | { not: null } };
+          data: object;
+        }) => {
+          const row = store.rows.get(where.id);
+          const matches =
+            row && (where.archivedAt === null ? row.archivedAt === null : row.archivedAt !== null);
+          if (matches) store.rows.set(where.id, { ...row, ...data, updatedAt: new Date() });
+          return { count: matches ? 1 : 0 };
         },
         delete: async ({ where }: { where: { id: string } }) => {
           const row = existing(where.id);
@@ -137,6 +154,14 @@ describe("create", () => {
     expect(error.fields.timezone).toEqual(["must be an IANA timezone, e.g. Europe/Lisbon"]);
   });
 
+  it("stores the canonical timezone name and refuses bare UTC offsets", async () => {
+    const { property } = await createOne({ timezone: "us/eastern" });
+    expect(property.timezone).toBe("America/New_York");
+
+    const { response } = await createOne({ timezone: "+05:30" });
+    expect(response.status).toBe(422);
+  });
+
   it("reports missing required fields", async () => {
     const response = await create(new Request(URL_BASE, json({})));
     const { error } = await response.json();
@@ -208,6 +233,29 @@ describe("update", () => {
 
     const invalid = await patch({ currency: "XYZ1" });
     expect((await invalid.json()).error.fields.currency).toBeDefined();
+  });
+
+  it("changes the currency only with both defaults restated in it", async () => {
+    const { property } = await createOne({ defaultNightlyRateMinor: 18000 });
+    const patch = (body: unknown) =>
+      PATCH(new Request(URL_BASE, { ...json(body), method: "PATCH" }), context(property.id));
+
+    const alone = await patch({ currency: "JPY" });
+    expect(alone.status).toBe(422);
+    expect((await alone.json()).error.fields.currency[0]).toMatch(/in the same request/);
+
+    const restated = await patch({
+      currency: "JPY",
+      defaultNightlyRateMinor: 25000,
+      defaultCleaningFeeMinor: 5000,
+    });
+    expect(await restated.json()).toMatchObject({
+      currency: "JPY",
+      defaultNightlyRateMinor: 25000,
+    });
+
+    // Restating the current currency is not a change.
+    expect((await patch({ currency: "jpy" })).status).toBe(200);
   });
 
   it("returns 404 for an unknown property", async () => {

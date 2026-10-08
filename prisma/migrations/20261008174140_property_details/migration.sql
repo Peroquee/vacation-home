@@ -16,6 +16,10 @@ ALTER TABLE "properties" ALTER COLUMN "color" DROP DEFAULT,
 ALTER COLUMN "currency" DROP DEFAULT,
 ALTER COLUMN "timezone" DROP DEFAULT;
 
+-- Rows written before names were validated may be blank; give them a name
+-- the constraint below accepts rather than failing the migration.
+UPDATE "properties" SET "name" = 'Untitled property' WHERE btrim("name") = '';
+
 -- Invariants the API validates, held by the database too, so a row written
 -- any other way cannot break them. Prisma does not model CHECK constraints;
 -- it leaves them alone.

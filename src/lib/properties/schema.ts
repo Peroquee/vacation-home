@@ -11,12 +11,18 @@ export const DEFAULT_PROPERTY_COLOR = "#0f766e";
 /** Upper bound for a default rate or fee, in minor units: 1,000,000.00. */
 const MAX_AMOUNT_MINOR = 100_000_000;
 
-function isTimeZone(value: string): boolean {
+/**
+ * The canonical IANA name for a zone ("europe/lisbon" -> "Europe/Lisbon",
+ * "US/Eastern" -> "America/New_York"), or null. Bare UTC offsets such as
+ * "+05:30" are refused: Intl accepts them, but they are not IANA zones, have
+ * no daylight-saving rules, and PostgreSQL reads their sign the other way.
+ */
+export function canonicalTimeZone(value: string): string | null {
   try {
-    new Intl.DateTimeFormat("en", { timeZone: value });
-    return true;
+    const zone = new Intl.DateTimeFormat("en", { timeZone: value }).resolvedOptions().timeZone;
+    return /^[+-]/.test(zone) ? null : zone;
   } catch {
-    return false;
+    return null;
   }
 }
 
@@ -36,7 +42,15 @@ const fields = {
     .nullable()
     // A blank address means none.
     .transform((value) => value || null),
-  timezone: z.string().trim().refine(isTimeZone, "must be an IANA timezone, e.g. Europe/Lisbon"),
+  timezone: z
+    .string()
+    .trim()
+    .transform((value, context) => {
+      const zone = canonicalTimeZone(value);
+      if (zone) return zone;
+      context.addIssue({ code: "custom", message: "must be an IANA timezone, e.g. Europe/Lisbon" });
+      return z.NEVER;
+    }),
   currency: z
     .string()
     .trim()
