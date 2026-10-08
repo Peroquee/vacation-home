@@ -15,6 +15,7 @@ is development-only and returns 404 in production.
 | Short focused form        | `Dialog` (modal)                                                 | `@/components/ui/dialog`      |
 | Form fields               | `Field`, `FieldLabel`, `FieldError`, `Input`, `NativeSelect`     | `@/components/ui/field`, ...  |
 | Search and pick a record  | `Combobox`                                                       | `@/components/ui/combobox`    |
+| Month of stays            | `MonthCalendar` (controlled: data and callbacks in props)        | `@/components/calendar/...`   |
 | Detail view beside a list | `Sheet`                                                          | `@/components/ui/sheet`       |
 | "Are you sure?"           | `ConfirmDialog`                                                  | `@/components/confirm-dialog` |
 | Nothing to show yet       | `EmptyState`                                                     | `@/components/states`         |

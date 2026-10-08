@@ -171,7 +171,8 @@ inline "new guest" relies on.
   they hold under concurrency.
 - **List filters**: `propertyId`, `from`/`to` (stays overlapping that range),
   `status` and `source` (comma-separated), `q` (part of the guest's name or
-  email), `page`, `pageSize` (≤ 100), `sort` (`checkIn` or `-checkIn`). The
+  email), `page`, `pageSize` (≤ 100), `sort` (`checkIn`, `guest`, `property`,
+  `status`, `source` or `total`; a leading `-` sorts descending). The
   response is `{ items, total, page, pageSize }`.
 
 ### Blocks
