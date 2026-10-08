@@ -17,7 +17,8 @@ import {
   type PropertyChoice,
   stayNights,
 } from "@/lib/bookings/form";
-import { type ApiBookingSource, BOOKING_SOURCES } from "@/lib/bookings/schema";
+import { SOURCE_LABELS, STATUS_LABELS } from "@/lib/bookings/labels";
+import { BOOKING_SOURCES } from "@/lib/bookings/schema";
 import type { BookingDto } from "@/lib/bookings/service";
 import { addDays, isCalendarDate } from "@/lib/calendar-date";
 import { formatMoney } from "@/lib/format";
@@ -30,15 +31,6 @@ import { useStayAvailability } from "./use-stay-availability";
 export type EditableBooking = Omit<BookingDto, "guest"> & { guest: GuestOption };
 
 type FieldErrors = Record<string, string[] | undefined>;
-
-const SOURCE_LABELS: Record<ApiBookingSource, string> = {
-  direct: "Direct",
-  airbnb: "Airbnb",
-  "booking.com": "Booking.com",
-  other: "Other",
-};
-
-const STATUS_LABELS = { inquiry: "Inquiry", confirmed: "Confirmed", cancelled: "Cancelled" };
 
 /** The order fields appear in, to focus the first invalid one. */
 const FIELD_ORDER = [

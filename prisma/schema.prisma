@@ -131,9 +131,10 @@ model Booking {
 
   // Restrict: a property or guest with bookings cannot be deleted (their
   // APIs answer 409 and suggest archiving instead).
-  property     Property      @relation(fields: [propertyId], references: [id], onDelete: Restrict)
-  guest        Guest         @relation(fields: [guestId], references: [id], onDelete: Restrict)
-  transactions Transaction[]
+  property      Property            @relation(fields: [propertyId], references: [id], onDelete: Restrict)
+  guest         Guest               @relation(fields: [guestId], references: [id], onDelete: Restrict)
+  transactions  Transaction[]
+  calendarLinks CalendarEventLink[]
 
   // Target of the transactions' (booking, property) foreign key, which keeps
   // a transaction's booking on the transaction's own property.
@@ -180,11 +181,63 @@ model Block {
   updatedAt       DateTime    @updatedAt @map("updated_at")
 
   // Blocks have no life without their property.
-  property Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  property      Property            @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  calendarLinks CalendarEventLink[]
 
   @@unique([propertyId, externalEventId])
   @@index([propertyId, startDate, endDate])
   @@map("blocks")
+}
+
+// --- Google Calendar event links ----------------------------------------------
+
+enum CalendarSyncState {
+  /// The event needs creating or updating in Google.
+  pending
+  /// Google has the current version (`etag`).
+  synced
+  /// The last attempt failed; `lastError` says why, and it will be retried.
+  failed
+  /// The booking or block is gone: the Google event still needs deleting.
+  pending_delete
+
+  @@map("calendar_sync_state")
+}
+
+/// The identity mapping between a booking (or a manual block) and the Google
+/// Calendar event pushed for it, so a re-run updates that event instead of
+/// creating another.
+///
+/// `googleEventId` is chosen by the app before the first insert (see
+/// src/lib/google/links.ts), so even a retried insert cannot duplicate.
+///
+/// DELETION: deleting the booking or block keeps the link, with its target
+/// set to null and the state forced to `pending_delete` by a trigger, so the
+/// remote event can still be cleaned up; the row is deleted once it is.
+model CalendarEventLink {
+  id            String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  bookingId     String?           @map("booking_id") @db.Uuid
+  blockId       String?           @map("block_id") @db.Uuid
+  calendarId    String            @map("calendar_id")
+  googleEventId String            @map("google_event_id")
+  /// Google's version of the event as last written, for `If-Match`.
+  etag          String?
+  lastSyncedAt  DateTime?         @map("last_synced_at")
+  syncState     CalendarSyncState @default(pending) @map("sync_state")
+  /// A short, data-free description of the last failure (an error kind).
+  lastError     String?           @map("last_error")
+  createdAt     DateTime          @default(now()) @map("created_at")
+  updatedAt     DateTime          @updatedAt @map("updated_at")
+
+  booking Booking? @relation(fields: [bookingId], references: [id], onDelete: SetNull)
+  block   Block?   @relation(fields: [blockId], references: [id], onDelete: SetNull)
+
+  @@unique([calendarId, googleEventId])
+  /// One event per booking (or block) per calendar.
+  @@unique([bookingId, calendarId])
+  @@unique([blockId, calendarId])
+  @@index([syncState])
+  @@map("calendar_event_links")
 }
 
 // --- Finance ------------------------------------------------------------------
