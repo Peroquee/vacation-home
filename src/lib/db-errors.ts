@@ -19,3 +19,21 @@ export async function orNullIfMissing<T>(operation: Promise<T>): Promise<T | nul
     throw error;
   }
 }
+
+/**
+ * Whether `error` is PostgreSQL refusing a row under the exclusion constraint
+ * `constraint` (SQLSTATE 23P01). Prisma has no code of its own for this; the
+ * pg driver adapter passes the original error along in `meta`, though not the
+ * constraint field, so the name is looked for in the message - unquoted,
+ * since the quote marks depend on the server's language (»name« in German).
+ */
+export function isExclusionViolation(error: unknown, constraint: string): boolean {
+  if (!(error instanceof Prisma.PrismaClientKnownRequestError)) return false;
+  const cause = (error.meta?.driverAdapterError as { cause?: Record<string, unknown> } | undefined)
+    ?.cause;
+  return (
+    cause?.originalCode === "23P01" &&
+    typeof cause.originalMessage === "string" &&
+    new RegExp(`\\b${constraint}\\b`).test(cause.originalMessage)
+  );
+}
