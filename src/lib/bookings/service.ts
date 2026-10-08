@@ -1,10 +1,12 @@
 /**
  * Booking persistence with availability enforcement. Server-side only.
  *
- * A booking that holds dates (status `confirmed`) is written inside
- * `withPropertyLock` after `isAvailable` has found nothing in the way, so a
- * refusal can name what is in the way. The database's own overlap rules
- * back this up; should one fire anyway, it is reported the same way.
+ * Every write happens inside `withPropertyLock`: it reads the current state
+ * and writes without anyone changing the property's bookings in between. A
+ * booking that holds dates (status `confirmed`) is written only after
+ * `isAvailable` has found nothing in the way, so a refusal can name what is
+ * in the way. The database's own overlap rules back this up; should one fire
+ * anyway, it is reported the same way.
  *
  * Bookings hold no guest personal data except free-text `notes`: the guest
  * is referenced by id only, so purging a guest (GitLab #100) never needs to
@@ -19,14 +21,16 @@ import {
 } from "@/lib/availability/service";
 import { type CalendarDate, fromUtcDate, toUtcDate } from "@/lib/calendar-date";
 import { db, type DbClient } from "@/lib/db";
+import { isPrismaError } from "@/lib/db-errors";
 import { escapeLike } from "@/lib/like";
 
 import { calculateTotalMinor, nights } from "./pricing";
-import type {
-  ApiBookingSource,
-  CreateBookingInput,
-  ListBookingsQuery,
-  UpdateBookingInput,
+import {
+  type ApiBookingSource,
+  type CreateBookingInput,
+  type ListBookingsQuery,
+  stayProblem,
+  type UpdateBookingInput,
 } from "./schema";
 
 const toDbSource = (source: ApiBookingSource): BookingSource =>
@@ -64,39 +68,37 @@ export type WriteResult =
   | { error: "conflict"; conflicts: Conflict[] };
 
 /**
- * Writes a booking, first making sure its dates are free when it will hold
- * them. `write` runs inside the property lock when a check is needed.
+ * Runs a booking write holding the property's lock, so it reads the current
+ * state and writes without anyone changing the property's bookings in
+ * between - no lost updates, and an availability check that stays true.
+ * Database refusals are translated: an overlap into the conflicts now in the
+ * way, a vanished guest into a field error. `ifMissing` answers for a
+ * property that no longer exists.
  */
-async function writeChecked(
-  stay: { propertyId: string; checkIn: CalendarDate; checkOut: CalendarDate },
-  options: { needsCheck: boolean; ignoreBookingId?: string },
-  write: (client: DbClient) => Promise<BookingWithRelations>,
+async function locked(
+  propertyId: string,
+  ifMissing: WriteResult,
+  work: (tx: DbClient) => Promise<WriteResult>,
+  stay?: () => { checkIn: CalendarDate; checkOut: CalendarDate; ignoreBookingId?: string },
 ): Promise<WriteResult> {
   try {
-    if (!options.needsCheck) return { booking: await write(db) };
-
-    const result = await withPropertyLock(stay.propertyId, async (tx) => {
-      const { available, conflicts } = await isAvailable(
-        stay.propertyId,
-        stay.checkIn,
-        stay.checkOut,
-        { client: tx, ignoreBookingId: options.ignoreBookingId },
-      );
-      return available ? { booking: await write(tx) } : { error: "conflict" as const, conflicts };
-    });
-    return result ?? { error: "not_found" };
+    return (await withPropertyLock(propertyId, work)) ?? ifMissing;
   } catch (error) {
-    if (!isOverlapViolation(error)) throw error;
-    // The database refused it after all: report what is in the way now.
-    const { conflicts } = await isAvailable(stay.propertyId, stay.checkIn, stay.checkOut, {
-      ignoreBookingId: options.ignoreBookingId,
-    });
-    return { error: "conflict", conflicts };
+    if (isOverlapViolation(error) && stay) {
+      const { checkIn, checkOut, ignoreBookingId } = stay();
+      const { conflicts } = await isAvailable(propertyId, checkIn, checkOut, { ignoreBookingId });
+      return { error: "conflict", conflicts };
+    }
+    // P2003: the guest was deleted between our check and the write.
+    if (isPrismaError(error, "P2003")) {
+      return { error: "invalid", field: "guestId", message: "does not exist" };
+    }
+    throw error;
   }
 }
 
-/** The total, or a field error when it could not be stored. */
-function total(
+/** The calculated total, or a field error when it could not be stored. */
+function calculatedTotal(
   stay: { checkIn: CalendarDate; checkOut: CalendarDate },
   rates: { nightlyRateMinor: number; cleaningFeeMinor: number },
 ): { totalAmountMinor: number } | { error: "invalid"; field: string; message: string } {
@@ -105,10 +107,23 @@ function total(
   } catch {
     return {
       error: "invalid",
-      field: "nightlyRateMinor",
-      message: "makes the total too large to store",
+      field: "totalAmountMinor",
+      message: "the calculated total is too large to store",
     };
   }
+}
+
+/** Whether a booking may take its dates, or what is in the way. */
+async function check(
+  tx: DbClient,
+  stay: { propertyId: string; checkIn: CalendarDate; checkOut: CalendarDate },
+  ignoreBookingId?: string,
+): Promise<WriteResult | null> {
+  const { available, conflicts } = await isAvailable(stay.propertyId, stay.checkIn, stay.checkOut, {
+    client: tx,
+    ignoreBookingId,
+  });
+  return available ? null : { error: "conflict", conflicts };
 }
 
 export async function createBooking(input: CreateBookingInput): Promise<WriteResult> {
@@ -116,7 +131,8 @@ export async function createBooking(input: CreateBookingInput): Promise<WriteRes
     db.property.findUnique({ where: { id: input.propertyId } }),
     db.guest.findUnique({ where: { id: input.guestId }, select: { id: true } }),
   ]);
-  if (!property) return { error: "invalid", field: "propertyId", message: "does not exist" };
+  const noProperty = { error: "invalid", field: "propertyId", message: "does not exist" } as const;
+  if (!property) return noProperty;
   if (property.archivedAt) {
     return { error: "invalid", field: "propertyId", message: "is archived" };
   }
@@ -128,8 +144,10 @@ export async function createBooking(input: CreateBookingInput): Promise<WriteRes
     cleaningFeeMinor: input.cleaningFeeMinor ?? property.defaultCleaningFeeMinor,
   };
   const manual = input.totalAmountMinor !== undefined;
-  const calculated = manual ? { totalAmountMinor: input.totalAmountMinor! } : total(input, rates);
-  if ("error" in calculated) return calculated;
+  const amount = manual
+    ? { totalAmountMinor: input.totalAmountMinor! }
+    : calculatedTotal(input, rates);
+  if ("error" in amount) return amount;
 
   const data: Prisma.BookingUncheckedCreateInput = {
     propertyId: property.id,
@@ -140,14 +158,23 @@ export async function createBooking(input: CreateBookingInput): Promise<WriteRes
     source: toDbSource(input.source),
     guestCount: input.guestCount,
     ...rates,
-    totalAmountMinor: calculated.totalAmountMinor,
+    totalAmountMinor: amount.totalAmountMinor,
     totalIsManual: manual,
     currency: property.currency,
     notes: input.notes ?? null,
   };
 
-  return writeChecked(input, { needsCheck: input.status === "confirmed" }, (client) =>
-    client.booking.create({ data, include: withRelations }),
+  return locked(
+    property.id,
+    noProperty,
+    async (tx) => {
+      if (input.status === "confirmed") {
+        const conflict = await check(tx, input);
+        if (conflict) return conflict;
+      }
+      return { booking: await tx.booking.create({ data, include: withRelations }) };
+    },
+    () => input,
   );
 }
 
@@ -156,72 +183,105 @@ export async function getBooking(id: string): Promise<BookingWithRelations | nul
 }
 
 /**
- * Applies a partial update. The total follows the dates and rates unless it
- * was set by hand (`totalAmountMinor: null` hands it back). When the result
- * holds dates and its dates or status changed, availability is checked again,
- * ignoring the booking itself.
+ * Applies a partial update, reading the booking afresh under the property
+ * lock. The total follows the dates and rates unless it was set by hand
+ * (`totalAmountMinor: null` hands it back). When the result holds dates and
+ * its dates or status changed, availability is checked again, ignoring the
+ * booking itself.
  */
 export async function updateBooking(id: string, input: UpdateBookingInput): Promise<WriteResult> {
-  const current = await db.booking.findUnique({ where: { id } });
-  if (!current) return { error: "not_found" };
+  // The property never changes, so it can be read before taking its lock.
+  const head = await db.booking.findUnique({ where: { id }, select: { propertyId: true } });
+  if (!head) return { error: "not_found" };
 
-  if (input.guestId && input.guestId !== current.guestId) {
-    const guest = await db.guest.findUnique({ where: { id: input.guestId }, select: { id: true } });
-    if (!guest) return { error: "invalid", field: "guestId", message: "does not exist" };
-  }
+  let stay = { checkIn: "", checkOut: "" };
+  return locked(
+    head.propertyId,
+    { error: "not_found" },
+    async (tx) => {
+      const current = await tx.booking.findUnique({ where: { id } });
+      if (!current) return { error: "not_found" };
 
-  const stay = {
-    propertyId: current.propertyId,
-    checkIn: input.checkIn ?? fromUtcDate(current.checkIn),
-    checkOut: input.checkOut ?? fromUtcDate(current.checkOut),
-  };
-  // Only one end given: the schema could not compare it with the stored one.
-  if (stay.checkOut <= stay.checkIn) {
-    return { error: "invalid", field: "checkOut", message: "must be after check-in" };
-  }
+      if (input.guestId && input.guestId !== current.guestId) {
+        const guest = await tx.guest.findUnique({
+          where: { id: input.guestId },
+          select: { id: true },
+        });
+        if (!guest) return { error: "invalid", field: "guestId", message: "does not exist" };
+      }
 
-  const rates = {
-    nightlyRateMinor: input.nightlyRateMinor ?? current.nightlyRateMinor,
-    cleaningFeeMinor: input.cleaningFeeMinor ?? current.cleaningFeeMinor,
-  };
-  const manual =
-    input.totalAmountMinor === undefined ? current.totalIsManual : input.totalAmountMinor !== null;
-  const totalAmount = manual
-    ? { totalAmountMinor: input.totalAmountMinor ?? current.totalAmountMinor }
-    : total(stay, rates);
-  if ("error" in totalAmount) return totalAmount;
+      stay = {
+        checkIn: input.checkIn ?? fromUtcDate(current.checkIn),
+        checkOut: input.checkOut ?? fromUtcDate(current.checkOut),
+      };
+      // With one end given, the schema could not judge the stay; judge the
+      // merged one, reporting on the end that was sent.
+      const problem = stayProblem(stay.checkIn, stay.checkOut);
+      if (problem) {
+        const field = input.checkOut === undefined ? "checkIn" : "checkOut";
+        return { error: "invalid", field, message: problem };
+      }
 
-  const status = input.status ?? current.status;
-  const datesChanged =
-    stay.checkIn !== fromUtcDate(current.checkIn) ||
-    stay.checkOut !== fromUtcDate(current.checkOut);
-  const needsCheck = status === "confirmed" && (datesChanged || current.status !== "confirmed");
+      const rates = {
+        nightlyRateMinor: input.nightlyRateMinor ?? current.nightlyRateMinor,
+        cleaningFeeMinor: input.cleaningFeeMinor ?? current.cleaningFeeMinor,
+      };
+      const manual =
+        input.totalAmountMinor === undefined
+          ? current.totalIsManual
+          : input.totalAmountMinor !== null;
+      const amount = manual
+        ? { totalAmountMinor: input.totalAmountMinor ?? current.totalAmountMinor }
+        : calculatedTotal(stay, rates);
+      if ("error" in amount) return amount;
 
-  const data: Prisma.BookingUncheckedUpdateInput = {
-    guestId: input.guestId,
-    checkIn: toUtcDate(stay.checkIn),
-    checkOut: toUtcDate(stay.checkOut),
-    status,
-    source: input.source && toDbSource(input.source),
-    guestCount: input.guestCount,
-    ...rates,
-    totalAmountMinor: totalAmount.totalAmountMinor,
-    totalIsManual: manual,
-    notes: input.notes,
-  };
+      const status = input.status ?? current.status;
+      const datesChanged =
+        stay.checkIn !== fromUtcDate(current.checkIn) ||
+        stay.checkOut !== fromUtcDate(current.checkOut);
+      if (status === "confirmed" && (datesChanged || current.status !== "confirmed")) {
+        const conflict = await check(tx, { propertyId: current.propertyId, ...stay }, id);
+        if (conflict) return conflict;
+      }
 
-  return writeChecked(stay, { needsCheck, ignoreBookingId: id }, (client) =>
-    client.booking.update({ where: { id }, data, include: withRelations }),
+      const booking = await tx.booking.update({
+        where: { id },
+        data: {
+          guestId: input.guestId,
+          checkIn: toUtcDate(stay.checkIn),
+          checkOut: toUtcDate(stay.checkOut),
+          status,
+          source: input.source && toDbSource(input.source),
+          guestCount: input.guestCount,
+          ...rates,
+          totalAmountMinor: amount.totalAmountMinor,
+          totalIsManual: manual,
+          notes: input.notes,
+        },
+        include: withRelations,
+      });
+      return { booking };
+    },
+    () => ({ ...stay, ignoreBookingId: id }),
   );
 }
 
-/** Cancels a booking, keeping it for history. Cancelling twice is harmless. */
+/**
+ * Cancels a booking, keeping it for history, under the property lock so it
+ * cannot interleave with an update. Cancelling twice is harmless.
+ */
 export async function cancelBooking(id: string): Promise<BookingWithRelations | null> {
-  await db.booking.updateMany({
-    where: { id, status: { not: "cancelled" } },
-    data: { status: "cancelled" },
+  const head = await db.booking.findUnique({ where: { id }, select: { propertyId: true } });
+  if (!head) return null;
+  const result = await locked(head.propertyId, { error: "not_found" }, async (tx) => {
+    await tx.booking.updateMany({
+      where: { id, status: { not: "cancelled" } },
+      data: { status: "cancelled" },
+    });
+    const booking = await tx.booking.findUnique({ where: { id }, include: withRelations });
+    return booking ? { booking } : { error: "not_found" };
   });
-  return getBooking(id);
+  return "booking" in result ? result.booking : null;
 }
 
 /** Bookings matching `query`, one page at a time, with the total count. */
@@ -244,7 +304,7 @@ export async function listBookings(query: ListBookingsQuery) {
   };
   const direction = query.sort === "-checkIn" ? "desc" : "asc";
 
-  const [items, total] = await db.$transaction([
+  const [items, count] = await db.$transaction([
     db.booking.findMany({
       where,
       include: withRelations,
@@ -254,5 +314,5 @@ export async function listBookings(query: ListBookingsQuery) {
     }),
     db.booking.count({ where }),
   ]);
-  return { items, total, page: query.page, pageSize: query.pageSize };
+  return { items, total: count, page: query.page, pageSize: query.pageSize };
 }

@@ -8,6 +8,18 @@ import { MAX_AMOUNT_MINOR } from "./pricing";
 /** The longest stay accepted, in nights. */
 export const MAX_NIGHTS = 365;
 
+/**
+ * What is wrong with a stay, or null: check-out must follow check-in, within
+ * MAX_NIGHTS. The one statement of the rule - the schema applies it to a
+ * request, the service to a stored stay merged with a one-sided change.
+ */
+export function stayProblem(checkIn: string, checkOut: string): string | null {
+  const nights = daysBetween(checkIn, checkOut);
+  if (nights < 1) return "must be after check-in";
+  if (nights > MAX_NIGHTS) return `a stay can be at most ${MAX_NIGHTS} nights`;
+  return null;
+}
+
 export const BOOKING_STATUSES = ["inquiry", "confirmed", "cancelled"] as const;
 /** As the API speaks them; stored as the BookingSource enum. */
 export const BOOKING_SOURCES = ["direct", "airbnb", "booking.com", "other"] as const;
@@ -52,16 +64,8 @@ function checkStay(
   const { checkIn, checkOut } = stay;
   if (typeof checkIn !== "string" || typeof checkOut !== "string") return;
   if (!isCalendarDate(checkIn) || !isCalendarDate(checkOut)) return;
-  const nights = daysBetween(checkIn, checkOut);
-  if (nights < 1) {
-    context.addIssue({ code: "custom", path: ["checkOut"], message: "must be after check-in" });
-  } else if (nights > MAX_NIGHTS) {
-    context.addIssue({
-      code: "custom",
-      path: ["checkOut"],
-      message: `a stay can be at most ${MAX_NIGHTS} nights`,
-    });
-  }
+  const problem = stayProblem(checkIn, checkOut);
+  if (problem) context.addIssue({ code: "custom", path: ["checkOut"], message: problem });
 }
 
 /**
@@ -116,6 +120,10 @@ const csv = <T extends z.ZodType>(item: T) =>
     z.array(item).optional(),
   );
 
+/** `?page=` with no value means the default, not zero. */
+const blankAsDefault = <T extends z.ZodType>(schema: T) =>
+  z.preprocess((value) => (value === "" ? undefined : value), schema);
+
 /** GET /api/bookings query string. */
 export const listBookingsSchema = z
   .object({
@@ -127,8 +135,8 @@ export const listBookingsSchema = z
     source: csv(fields.source),
     /** Part of the guest's name or email, any case. */
     q: z.string().trim().max(200).optional(),
-    page: z.coerce.number().int().min(1).default(1),
-    pageSize: z.coerce.number().int().min(1).max(100).default(25),
+    page: blankAsDefault(z.coerce.number().int().min(1).default(1)),
+    pageSize: blankAsDefault(z.coerce.number().int().min(1).max(100).default(25)),
     sort: z.enum(["checkIn", "-checkIn"]).default("checkIn"),
   })
   .refine(

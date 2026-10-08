@@ -284,13 +284,45 @@ describe("PATCH /api/bookings/:id", () => {
   it("validates a single changed end against the stored one, and other fields", async () => {
     const { body } = await post({ checkIn: "2026-07-14", checkOut: "2026-07-18" });
     expect((await patch(body.id, { checkIn: "2026-07-20" })).body.error.fields).toEqual({
-      checkOut: ["must be after check-in"],
+      checkIn: ["must be after check-in"],
+    });
+    expect((await patch(body.id, { checkOut: "2030-01-01" })).body.error.fields).toEqual({
+      checkOut: ["a stay can be at most 365 nights"],
     });
     expect((await patch(body.id, { guestId: "00000000-0000-4000-8000-000000000000" })).status).toBe(
       422,
     );
     expect((await patch(body.id, { propertyId: sea.id })).status).toBe(422);
     expect((await patch("00000000-0000-4000-8000-000000000000", { notes: "x" })).status).toBe(404);
+  });
+});
+
+describe("concurrent changes to one booking", () => {
+  it("never lose a cancellation to a simultaneous edit", async () => {
+    for (let round = 0; round < 5; round++) {
+      const stay = await confirmed("2026-07-14", "2026-07-18");
+      await Promise.all([
+        patch(stay.id, { notes: `edit ${round}` }),
+        cancel(new Request(BASE), context(stay.id)),
+      ]);
+      const final = await (await getOne(new Request(BASE), context(stay.id))).json();
+      expect(final.status).toBe("cancelled");
+      await db.booking.deleteMany();
+    }
+  });
+});
+
+describe("totals that cannot be stored", () => {
+  it("are reported on the total, whichever change caused them", async () => {
+    const { body } = await post({
+      checkIn: "2026-07-14",
+      checkOut: "2026-07-15",
+      nightlyRateMinor: 100_000_000,
+    });
+    const longer = await patch(body.id, { checkOut: "2026-08-14" });
+    expect(longer.body.error.fields).toEqual({
+      totalAmountMinor: ["the calculated total is too large to store"],
+    });
   });
 });
 
@@ -350,6 +382,11 @@ describe("GET /api/bookings", () => {
     expect(ids(await listing(`propertyId=${lake.id}&from=2026-07-05&to=2026-07-06`))).toEqual([]);
     expect(ids(await listing("q=HOPPER"))).toEqual(["Lake 2026-07-20"]);
     expect(ids(await listing("q=navy.ex"))).toEqual(["Lake 2026-07-20"]);
+  });
+
+  it("treats an empty page or page size as the default", async () => {
+    const page = await listing("page=&pageSize=");
+    expect([page.page, page.pageSize]).toEqual([1, 25]);
   });
 
   it("paginates with a total, and sorts either way", async () => {

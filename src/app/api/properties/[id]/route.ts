@@ -1,4 +1,4 @@
-import { apiError, isUuid, notFound, parseBody } from "@/lib/api";
+import { apiError, fieldError, isUuid, notFound, parseBody } from "@/lib/api";
 import { updatePropertySchema } from "@/lib/properties/schema";
 import { deleteProperty, getProperty, toDto, updateProperty } from "@/lib/properties/service";
 
@@ -30,11 +30,10 @@ export async function PATCH(request: Request, { params }: Context) {
       currency !== current.currency &&
       (defaultNightlyRateMinor === undefined || defaultCleaningFeeMinor === undefined)
     ) {
-      return apiError(422, "validation_failed", "The request has invalid fields.", {
-        currency: [
-          "changing the currency requires defaultNightlyRateMinor and defaultCleaningFeeMinor in the new currency in the same request",
-        ],
-      });
+      return fieldError(
+        "currency",
+        "changing the currency requires defaultNightlyRateMinor and defaultCleaningFeeMinor in the new currency in the same request",
+      );
     }
   }
 
