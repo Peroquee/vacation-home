@@ -14,6 +14,7 @@ is development-only and returns 404 in production.
 | List of records           | `DataTable`                                                      | `@/components/data-table`     |
 | Short focused form        | `Dialog` (modal)                                                 | `@/components/ui/dialog`      |
 | Form fields               | `Field`, `FieldLabel`, `FieldError`, `Input`, `NativeSelect`     | `@/components/ui/field`, ...  |
+| Search and pick a record  | `Combobox`                                                       | `@/components/ui/combobox`    |
 | Detail view beside a list | `Sheet`                                                          | `@/components/ui/sheet`       |
 | "Are you sure?"           | `ConfirmDialog`                                                  | `@/components/confirm-dialog` |
 | Nothing to show yet       | `EmptyState`                                                     | `@/components/states`         |
@@ -138,6 +139,12 @@ lists (timezones, currencies): it is keyboard- and mobile-friendly for free.
 `Input` comes from `@/components/ui/input`, `NativeSelect` and
 `NativeSelectOption` from `@/components/ui/native-select`. The property form
 (`src/app/(app)/settings/property-form-dialog.tsx`) is a complete example.
+
+Also in `components/ui/`: `Textarea` for free text, `Checkbox` for a yes/no
+option (label it with a `FieldLabel` in a horizontal `Field`), and `Combobox`
+for picking a record from a server-side search, with `filter={null}` so the
+server's results are shown as they are. The guest picker in the booking form
+(`src/app/(app)/bookings/guest-picker.tsx`) shows the async pattern.
 
 ## ConfirmDialog
 
