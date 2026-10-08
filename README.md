@@ -91,6 +91,51 @@ Application code imports the shared instance from
 a new connection pool on each one. The Prisma CLI reads `.env` files through
 Next's own loader, so it sees the same variables `npm run dev` does.
 
+## API
+
+JSON route handlers under `src/app/api`. Errors always look like:
+
+```json
+{ "error": { "code": "validation_failed", "message": "…", "fields": { "name": ["is required"] } } }
+```
+
+`code` is one of `invalid_json` (400), `not_found` (404), `conflict` (409) or
+`validation_failed` (422). Under `validation_failed`, `fields` has one list of
+messages per invalid field, with problems that belong to no single field under
+`_`. Money is always an integer number of minor units (cents).
+
+### Properties
+
+| Method and path                      | Does                                                       |
+| ------------------------------------ | ---------------------------------------------------------- |
+| `GET /api/properties`                | Active properties by name; `?includeArchived=true` for all |
+| `POST /api/properties`               | Create; `201` with a `Location` header                     |
+| `GET /api/properties/:id`            | One property                                               |
+| `PATCH /api/properties/:id`          | Update any subset of fields                                |
+| `POST /api/properties/:id/archive`   | Archive: hidden from selectors, history kept               |
+| `POST /api/properties/:id/unarchive` | Restore                                                    |
+| `DELETE /api/properties/:id`         | Delete, only without history; `409` if it has bookings     |
+
+Fields: `name`, `address` (optional), `timezone` (IANA, e.g. `Europe/Lisbon`),
+`currency` (ISO 4217), `defaultNightlyRateMinor` and `defaultCleaningFeeMinor`
+(default 0), and `color` (`#rrggbb`, default the brand teal). Responses add
+`id`, `archived`, `archivedAt`, `createdAt` and `updatedAt`.
+
+### Guests
+
+| Method and path          | Does                                                                       |
+| ------------------------ | -------------------------------------------------------------------------- |
+| `GET /api/guests`        | Search: `?q=` matches part of the name or email, any case; `?limit=` ≤ 100 |
+| `POST /api/guests`       | Create; `201`, or `200` with the existing guest if the email is known      |
+| `GET /api/guests/:id`    | One guest                                                                  |
+| `PATCH /api/guests/:id`  | Update; `409` if the email belongs to another guest                        |
+| `DELETE /api/guests/:id` | Delete, only without bookings; `409` otherwise                             |
+
+Fields: `name`, and optional `email` (stored lower-cased, so it is unique in
+any case), `phone` and `notes`. Creating with a known email never makes a
+duplicate, even when two requests race. That is what the booking form's
+inline "new guest" relies on.
+
 ## Testing
 
 **Unit tests** use [Vitest](https://vitest.dev) and live next to the code they
@@ -116,6 +161,87 @@ than the local and Compose/CI service names. Set
 Playwright then builds the app and serves it with `next start` on port 3100,
 with test-only credentials, so it runs alongside `npm run dev` without
 conflict. It does overwrite any production build of your own in `.next`. The tests share the one database and so run serially.
+
+## UI
+
+Pages are built from a small set of shared primitives (page header, card, data
+table, dialogs, empty, error and loading states, toasts) and the money and date
+formatting helpers. [`src/components/README.md`](src/components/README.md)
+documents each with usage examples, and `/dev/ui` renders them all while
+`npm run dev` is running.
+
+## Authentication
+
+Sign-in is Google only, through [Auth.js](https://authjs.dev) with sessions
+stored in the database ([`src/auth.ts`](src/auth.ts)).
+
+- **Who can sign in**: verified Google accounts listed in `AUTH_ALLOWED_EMAILS`.
+  Anyone else is sent back to the sign-in page with an explanation. The list
+  is checked again on every request, so removing an address signs that
+  account out on its next request.
+- **Everything is private**: [`src/proxy.ts`](src/proxy.ts) requires a session
+  on every route except `/signin` and Auth.js's own `/api/auth/*`. Pages
+  redirect to sign-in and come back afterwards. API calls get a `401` instead.
+- **Google client setup**: create an OAuth client of type "Web application"
+  and add `<APP_URL>/api/auth/callback/google` as an authorised redirect URI.
+  The same client will later request Calendar access, so sign-in already asks
+  for offline access. The refresh token is stored on the account and replaced
+  on every sign-in.
+- **Signing out** deletes the session row.
+
+End-to-end tests sign in by inserting a real session into their own test
+database and sending its cookie. The app has no test-only login path that a
+production deployment could have switched on.
+
+## Logging and error tracking
+
+**Logs** are JSON, one object per line on stdout, from
+[`src/lib/logger.ts`](src/lib/logger.ts). Pipe through `npx pino-pretty` to read
+them in development.
+
+```ts
+const log = await requestLogger(); // in a route handler, action or server component
+log.info({ bookingId }, "booking saved");
+log.error({ err }, "could not save booking");
+```
+
+**Request ids.** [`src/proxy.ts`](src/proxy.ts) gives every request an
+`x-request-id`. It keeps a well-formed one from upstream and otherwise
+generates one, and returns it in the response so a user can quote it.
+`requestLogger()` stamps it on every line, and failed requests are logged
+with it by the `onRequestError` hook. Background jobs run through `runJob()`
+([`src/lib/jobs.ts`](src/lib/jobs.ts)), which carries the enqueuing request's id
+into every line the job writes, alongside `job` and `jobId`. So a failed sync can
+be traced back to the request that started it.
+
+**No personal data or credentials in logs or error reports.**
+[`src/lib/scrub.ts`](src/lib/scrub.ts) masks email addresses, OAuth and bearer
+tokens, JWTs and token-bearing query parameters inside any string. It also
+replaces the value of any field whose name marks it as sensitive (`email`,
+`phone`, `token`, `secret`, `authorization`, `cookie`, …). It runs on every
+logger call, on everything written through `console` on the server
+(including Next's own error output), and on every event sent to the error
+tracker.
+
+**Error tracking** uses the Sentry SDK, which also talks to
+[GlitchTip](https://glitchtip.com), an open-source, self-hostable tracker, and
+to self-hosted Sentry. No hosted account is needed. It catches server errors
+(via `onRequestError` in [`src/instrumentation.ts`](src/instrumentation.ts),
+tagged with the request id), client errors (via `error.tsx`, `global-error.tsx`
+and [`src/instrumentation-client.ts`](src/instrumentation-client.ts)) and failed
+jobs. It is off until `NEXT_PUBLIC_SENTRY_DSN` is set. Events carry no cookies,
+request bodies, user details or local variables.
+
+- **Releases**: every event is tagged with a release, which is `SENTRY_RELEASE`,
+  else the commit SHA (`CI_COMMIT_SHA` on GitLab), baked in at build time.
+- **Source maps**: when `SENTRY_AUTH_TOKEN` (plus `SENTRY_URL`, `SENTRY_ORG`
+  and `SENTRY_PROJECT`) is set at build time, source maps are uploaded and then
+  deleted from the build output, so production stack traces resolve to the
+  original source. Without a token the build skips this and needs no network.
+- **Checking it works**: start the app with `ENABLE_ERROR_TEST_ROUTE=true` and
+  open `/api/debug/error`. The error should show up in the tracker with the
+  request's id and with the guest email in its message masked. In development,
+  `/dev/ui` also has a button that throws a client-side error.
 
 ## Configuration
 

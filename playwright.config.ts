@@ -1,6 +1,6 @@
 import { defineConfig, devices } from "@playwright/test";
 
-import { E2E_DATABASE_URL } from "./e2e/database";
+import { E2E_DATABASE_URL, E2E_USER, STORAGE_STATE } from "./e2e/database";
 
 const PORT = 3100;
 const baseURL = `http://localhost:${PORT}`;
@@ -20,7 +20,16 @@ export default defineConfig({
     baseURL,
     trace: "retain-on-failure",
   },
-  projects: [{ name: "chromium", use: { ...devices["Desktop Chrome"] } }],
+  projects: [
+    { name: "setup", testMatch: /auth\.setup\.ts/ },
+    {
+      name: "chromium",
+      dependencies: ["setup"],
+      // Signed in as the e2e user; a test that needs to be signed out says so
+      // with test.use({ storageState: { cookies: [], origins: [] } }).
+      use: { ...devices["Desktop Chrome"], storageState: STORAGE_STATE },
+    },
+  ],
   webServer: {
     // Reset the database first, so a refused or failed reset stops the run
     // before the build. Then a production build rather than `next dev`: it is
@@ -36,6 +45,7 @@ export default defineConfig({
       AUTH_SECRET: "e2e-only-secret-not-used-anywhere-else",
       AUTH_GOOGLE_ID: "e2e.apps.googleusercontent.com",
       AUTH_GOOGLE_SECRET: "e2e-google-secret",
+      AUTH_ALLOWED_EMAILS: E2E_USER.email,
       APP_URL: baseURL,
     },
   },

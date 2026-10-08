@@ -1,7 +1,25 @@
-import { db } from "@/lib/db";
+import { parseBody } from "@/lib/api";
+import { createPropertySchema } from "@/lib/properties/schema";
+import { createProperty, listProperties, toDto } from "@/lib/properties/service";
 
-/** Lists properties. The write endpoints arrive with the full property model. */
-export async function GET() {
-  const properties = await db.property.findMany({ orderBy: { name: "asc" } });
-  return Response.json(properties);
+/**
+ * Lists properties, active ones only unless `?includeArchived=true`.
+ * Archived properties drop out of selectors but keep their history.
+ */
+export async function GET(request: Request) {
+  const includeArchived = new URL(request.url).searchParams.get("includeArchived") === "true";
+  const properties = await listProperties({ includeArchived });
+  return Response.json(properties.map(toDto));
+}
+
+/** Creates a property. 422 with per-field messages when the input is invalid. */
+export async function POST(request: Request) {
+  const body = await parseBody(request, createPropertySchema);
+  if ("response" in body) return body.response;
+
+  const property = await createProperty(body.data);
+  return Response.json(toDto(property), {
+    status: 201,
+    headers: { Location: `/api/properties/${property.id}` },
+  });
 }
