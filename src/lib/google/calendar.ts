@@ -133,6 +133,11 @@ export type ListEventsQuery = {
   syncToken?: string;
   pageToken?: string;
   showDeleted?: boolean;
+  /**
+   * Expand recurring events into their instances. Must be the same in the
+   * full list and every incremental list that uses its sync token.
+   */
+  singleEvents?: boolean;
   /** `key=value` filters on private extended properties. */
   privateExtendedProperty?: string[];
   maxResults?: number;
@@ -331,6 +336,7 @@ export function createCalendarClient(options: CalendarClientOptions) {
         if (list[key]) query.set(key, list[key]);
       }
       if (list.showDeleted !== undefined) query.set("showDeleted", String(list.showDeleted));
+      if (list.singleEvents !== undefined) query.set("singleEvents", String(list.singleEvents));
       if (list.maxResults) query.set("maxResults", String(list.maxResults));
       for (const filter of list.privateExtendedProperty ?? []) {
         query.append("privateExtendedProperty", filter);
@@ -427,6 +433,46 @@ export function createCalendarClient(options: CalendarClientOptions) {
         ) {
           return "already_gone";
         }
+        throw error;
+      }
+    },
+
+    /**
+     * Asks Google to push a notification to `address` whenever an event in
+     * the calendar changes (a push channel). Google echoes `token` in the
+     * `X-Goog-Channel-Token` header of every notification.
+     */
+    async watchEvents(
+      calendarId: string,
+      channel: { id: string; token: string; address: string; ttlSeconds: number },
+    ): Promise<{ resourceId: string; expiresAt: Date }> {
+      const { data } = await request<{ resourceId: string; expiration: string }>({
+        op: "events.watch",
+        method: "POST",
+        path: `${calendarPath(calendarId)}/events/watch`,
+        calendarId,
+        body: {
+          id: channel.id,
+          type: "web_hook",
+          address: channel.address,
+          token: channel.token,
+          params: { ttl: String(channel.ttlSeconds) },
+        },
+      });
+      return { resourceId: data!.resourceId, expiresAt: new Date(Number(data!.expiration)) };
+    },
+
+    /** Stops a push channel. One Google no longer knows counts as stopped. */
+    async stopChannel(channel: { id: string; resourceId: string }): Promise<void> {
+      try {
+        await request({
+          op: "channels.stop",
+          method: "POST",
+          path: "/channels/stop",
+          body: { id: channel.id, resourceId: channel.resourceId },
+        });
+      } catch (error) {
+        if (error instanceof GoogleCalendarError && error.kind === "not_found") return;
         throw error;
       }
     },

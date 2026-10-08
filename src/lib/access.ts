@@ -3,9 +3,18 @@
  * applies it to every request.
  */
 
-/** Reachable without a session: the sign-in page and Auth.js's own routes. */
+/**
+ * Reachable without a session: the sign-in page, Auth.js's own routes, and
+ * Google's push notifications, which carry their own secret (checked by
+ * the route against the stored channel).
+ */
 export function isPublicPath(pathname: string): boolean {
-  return pathname === "/signin" || pathname === "/api/auth" || pathname.startsWith("/api/auth/");
+  return (
+    pathname === "/signin" ||
+    pathname === "/api/auth" ||
+    pathname.startsWith("/api/auth/") ||
+    pathname === "/api/google/webhook"
+  );
 }
 
 export type AccessDecision =

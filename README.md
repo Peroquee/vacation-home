@@ -502,6 +502,32 @@ Each property can push its bookings to one Google Calendar
   created again: the app's bookings are the truth.
 - The worker runs only when `TOKEN_ENCRYPTION_KEY` is set.
 
+### Inbound sync: changes in Google Calendar
+
+For properties with `inbound: true` in their calendar settings, the app finds
+out what changed in Google ([`src/lib/google/inbound.ts`](src/lib/google/inbound.ts)).
+Turning those changes into blocks is GitLab #73.
+
+- **Polling, the default.** A LAN-only app can't receive Google's webhooks,
+  so each calendar is checked every `GOOGLE_CALENDAR_POLL_SECONDS` (default
+  300, minimum 60) with an incremental list. Google's sync token returns
+  only what changed, deletions included. A worker in the server process
+  runs the due checks every 30 seconds. A failed check backs off (30 s,
+  doubling to 1 h), and a disconnected Google account pauses it.
+- **No data lost.** The new sync token is stored only after the changes have
+  been handled, so a failure is retried from the same point. An expired
+  token (Google's `410`) triggers a full list instead.
+- **Push notifications, optional.** With `GOOGLE_WEBHOOK_URL` set to a
+  public https URL, each calendar also gets a Google push channel to
+  `<url>/api/google/webhook`. Channels last a week and are renewed a day
+  before they expire. A notification makes the next check happen at once,
+  so changes arrive in seconds, and polling drops to hourly as a safety net.
+- **The webhook route** is the one API path open without a session. It
+  accepts only a notification naming a channel this app created, with that
+  channel's secret token (stored as a SHA-256 hash) and resource id;
+  anything else gets `401`. A notification carries no data: it only makes
+  the next check happen sooner.
+
 **Event links** ([`src/lib/google/links.ts`](src/lib/google/links.ts),
 table `calendar_event_links`) map each booking or manual block to the Google
 event pushed for it, one per calendar. The event id is chosen by the app
