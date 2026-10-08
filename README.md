@@ -121,6 +121,21 @@ Fields: `name`, `address` (optional), `timezone` (IANA, e.g. `Europe/Lisbon`),
 (default 0), and `color` (`#rrggbb`, default the brand teal). Responses add
 `id`, `archived`, `archivedAt`, `createdAt` and `updatedAt`.
 
+### Guests
+
+| Method and path          | Does                                                                       |
+| ------------------------ | -------------------------------------------------------------------------- |
+| `GET /api/guests`        | Search: `?q=` matches part of the name or email, any case; `?limit=` ≤ 100 |
+| `POST /api/guests`       | Create; `201`, or `200` with the existing guest if the email is known      |
+| `GET /api/guests/:id`    | One guest                                                                  |
+| `PATCH /api/guests/:id`  | Update; `409` if the email belongs to another guest                        |
+| `DELETE /api/guests/:id` | Delete, only without bookings; `409` otherwise                             |
+
+Fields: `name`, and optional `email` (stored lower-cased, so it is unique in
+any case), `phone` and `notes`. Creating with a known email never makes a
+duplicate, even when two requests race. That is what the booking form's
+inline "new guest" relies on.
+
 ## Testing
 
 **Unit tests** use [Vitest](https://vitest.dev) and live next to the code they
