@@ -35,6 +35,7 @@ import { logger } from "@/lib/logger";
 import type { CalendarEvent } from "./calendar";
 import type { InboundBatch } from "./inbound";
 import { APP_EVENT_MARKER } from "./outbound";
+import { kickOutboundSync } from "./sync-worker";
 
 /** The local calendar date of an instant in `timezone`. */
 function localDate(instant: string, timezone: string): CalendarDate {
@@ -75,13 +76,15 @@ export type ImportResult = {
   created: number;
   updated: number;
   deleted: number;
-  /** Events not imported because they overlap a confirmed booking. */
+  /** Events not imported because they overlap a confirmed booking (each an open issue). */
   conflicts: string[];
+  /** App events edited or deleted in Google, queued to be written back. */
+  repushed: number;
 };
 
 /** Applies a batch of Google changes to the property's `google` blocks. */
 export async function importInboundEvents(batch: InboundBatch): Promise<ImportResult> {
-  const result: ImportResult = { created: 0, updated: 0, deleted: 0, conflicts: [] };
+  const result: ImportResult = { created: 0, updated: 0, deleted: 0, conflicts: [], repushed: 0 };
   const touched: DateRange[] = [];
 
   await withPropertyLock(batch.propertyId, async (tx) => {
@@ -96,6 +99,10 @@ export async function importInboundEvents(batch: InboundBatch): Promise<ImportRe
     const byEvent = new Map(existing.map((b) => [b.externalEventId, b]));
 
     for (const event of batch.events) {
+      if (event.extendedProperties?.private?.[APP_EVENT_MARKER]) {
+        if (await repushIfChanged(tx, batch.calendarId, event)) result.repushed++;
+        continue;
+      }
       const nights = blockedNights(event, property.timezone);
       const block = byEvent.get(event.id);
       if (!nights) {
@@ -115,6 +122,7 @@ export async function importInboundEvents(batch: InboundBatch): Promise<ImportRe
       }
       const written = await writeBlock(tx, batch.propertyId, event.id, nights, reason, block?.id);
       if (!written) {
+        await raiseOverlapIssue(tx, batch, event.id, nights);
         result.conflicts.push(event.id);
         continue;
       }
@@ -126,6 +134,22 @@ export async function importInboundEvents(batch: InboundBatch): Promise<ImportRe
         result.created++;
       }
     }
+
+    // Overlap issues whose event no longer conflicts - moved, deleted, no
+    // longer blocking, or no longer in a full list - resolve themselves.
+    const conflicted = new Set(result.conflicts);
+    const listed = batch.events.map((e) => e.id).filter((id) => !conflicted.has(id));
+    await tx.calendarSyncIssue.updateMany({
+      where: {
+        propertyId: batch.propertyId,
+        kind: "inbound_overlap",
+        resolvedAt: null,
+        ...(batch.full
+          ? { googleEventId: { notIn: [...conflicted] } }
+          : { googleEventId: { in: listed } }),
+      },
+      data: { resolvedAt: new Date(), resolution: "gone" },
+    });
 
     // A full list is the whole truth: blocks of events no longer in it go.
     if (batch.full) {
@@ -140,6 +164,7 @@ export async function importInboundEvents(batch: InboundBatch): Promise<ImportRe
   });
 
   if (touched.length > 0) invalidateWindows(batch.propertyId, touched);
+  if (result.repushed > 0) kickOutboundSync();
   if (result.conflicts.length > 0) {
     logger.warn(
       { propertyId: batch.propertyId, events: result.conflicts.length },
@@ -147,6 +172,78 @@ export async function importInboundEvents(batch: InboundBatch): Promise<ImportRe
     );
   }
   return result;
+}
+
+/**
+ * An app event that comes back changed - edited in Google, or deleted there
+ * - is queued to be written again: the booking wins. Compared by etag: the
+ * app's own write comes back with the etag it stored, so it causes nothing,
+ * and the two sides cannot keep updating each other.
+ */
+async function repushIfChanged(tx: DbClient, calendarId: string, event: CalendarEvent) {
+  const link = await tx.calendarEventLink.findUnique({
+    where: { calendarId_googleEventId: { calendarId, googleEventId: event.id } },
+  });
+  if (!link || link.syncState !== "synced" || link.etag === event.etag) return false;
+  await tx.calendarEventLink.update({
+    where: { id: link.id },
+    data: {
+      syncState: "pending",
+      changeSeq: { increment: 1 },
+      attempts: 0,
+      nextAttemptAt: new Date(),
+    },
+  });
+  logger.info(
+    { linkId: link.id, bookingId: link.bookingId, deletedInGoogle: event.status === "cancelled" },
+    "app event changed in Google; writing the booking's version back",
+  );
+  return true;
+}
+
+/** Opens (or refreshes) the review issue for an event that overlaps confirmed bookings. */
+async function raiseOverlapIssue(
+  tx: DbClient,
+  batch: InboundBatch,
+  eventId: string,
+  nights: DateRange,
+) {
+  const bookings = await tx.booking.findMany({
+    where: {
+      propertyId: batch.propertyId,
+      status: "confirmed",
+      checkIn: { lt: toUtcDate(nights.end) },
+      checkOut: { gt: toUtcDate(nights.start) },
+    },
+    select: { id: true },
+    orderBy: { checkIn: "asc" },
+  });
+  const facts = {
+    calendarId: batch.calendarId,
+    bookingIds: bookings.map((b) => b.id),
+    startDate: toUtcDate(nights.start),
+    endDate: toUtcDate(nights.end),
+  };
+  const open = await tx.calendarSyncIssue.findFirst({
+    where: {
+      propertyId: batch.propertyId,
+      googleEventId: eventId,
+      kind: "inbound_overlap",
+      resolvedAt: null,
+    },
+  });
+  if (open) {
+    await tx.calendarSyncIssue.update({ where: { id: open.id }, data: facts });
+  } else {
+    await tx.calendarSyncIssue.create({
+      data: {
+        propertyId: batch.propertyId,
+        googleEventId: eventId,
+        kind: "inbound_overlap",
+        ...facts,
+      },
+    });
+  }
 }
 
 const span = (block: { startDate: Date; endDate: Date }): DateRange => ({

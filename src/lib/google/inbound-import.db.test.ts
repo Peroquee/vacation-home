@@ -190,7 +190,13 @@ describe("importing", () => {
         },
       ],
     });
-    expect(result).toEqual({ created: 1, updated: 0, deleted: 0, conflicts: ["clash"] });
+    expect(result).toEqual({
+      created: 1,
+      updated: 0,
+      deleted: 0,
+      conflicts: ["clash"],
+      repushed: 0,
+    });
     expect((await dates()).map(([id]) => id)).toEqual(["fine"]);
   });
 
