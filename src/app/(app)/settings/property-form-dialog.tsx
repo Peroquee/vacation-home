@@ -18,9 +18,9 @@ import { Field, FieldDescription, FieldError, FieldGroup, FieldLabel } from "@/c
 import { Input } from "@/components/ui/input";
 import { NativeSelect, NativeSelectOption } from "@/components/ui/native-select";
 import {
+  amountHint,
   currencyOptions,
   inputToMinor,
-  minorDigits,
   minorToInput,
   timeZoneOptions,
 } from "@/lib/properties/form";
@@ -105,7 +105,7 @@ export function PropertyFormDialog({
     event.preventDefault();
     const nightly = inputToMinor(values.nightlyRate, values.currency);
     const cleaning = inputToMinor(values.cleaningFee, values.currency);
-    const amountError = `must be an amount like ${minorToInput(18050, values.currency)}`;
+    const amountError = amountHint(values.currency);
     if (nightly === null || cleaning === null) {
       setErrors({
         defaultNightlyRateMinor: nightly === null ? [amountError] : undefined,

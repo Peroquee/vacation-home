@@ -41,6 +41,16 @@ export function inputToMinor(text: string, currency: string): number | null {
   return Number.isSafeInteger(minor) ? minor : null;
 }
 
+/**
+ * The message for an amount `inputToMinor` refused. Thousands separators are
+ * the usual cause ("1.000,50" in German), so it says to leave them out.
+ */
+export function amountHint(currency: string): string {
+  const example = minorToInput(100050, currency);
+  const examples = example.includes(".") ? `${example} or ${example.replace(".", ",")}` : example;
+  return `must be an amount like ${examples}, without thousands separators`;
+}
+
 /** IANA timezones for the selector, e.g. "Europe/Lisbon". */
 export function timeZoneOptions(): string[] {
   return Intl.supportedValuesOf("timeZone");
