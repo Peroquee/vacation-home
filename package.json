@@ -13,6 +13,7 @@
     "typecheck": "next typegen && tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
+    "test:db": "vitest run -c vitest.db.config.mts",
     "test:e2e": "playwright test",
     "migrate:dev": "prisma migrate dev",
     "postmigrate:dev": "prisma generate",
