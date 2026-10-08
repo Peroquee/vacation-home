@@ -18,6 +18,7 @@
 import { headers } from "next/headers";
 import pino, { type DestinationStream, type Logger } from "pino";
 
+import { env } from "@/env";
 import { getLogContext } from "@/lib/log-context";
 import { REQUEST_ID_HEADER } from "@/lib/request-id";
 import { scrub } from "@/lib/scrub";
@@ -38,7 +39,14 @@ export function createLogger(destination?: DestinationStream, level = "info"): L
         // Scrubs the arguments of every call, so a message string with an
         // email in it is caught as well as a field.
         logMethod(args, method) {
-          method.apply(this, scrub(args) as typeof args);
+          // `log.error(err)` / `log.error(err, "msg")`: file the error under
+          // `err`, defaulting the message to its own, as pino would.
+          const [first, ...rest] = args as unknown[];
+          const normalised =
+            first instanceof Error
+              ? [{ err: first }, ...(rest.length > 0 ? rest : [first.message])]
+              : args;
+          method.apply(this, scrub(normalised) as typeof args);
         },
       },
       // `scrub` has already turned errors into plain objects; keep pino from
@@ -49,14 +57,27 @@ export function createLogger(destination?: DestinationStream, level = "info"): L
   );
 }
 
+let instance: Logger | undefined;
+
 /**
  * The process-wide logger. Prefer `requestLogger()` inside a request.
  *
- * Its level is set from LOG_LEVEL at boot, in src/instrumentation-node.ts,
- * rather than read here: `next build` imports this module, and must not need
- * the runtime configuration to do so.
+ * Created on first use, with the level from LOG_LEVEL. Not on import: Next
+ * bundles this module separately for instrumentation and for the app, and
+ * `next build` imports it without any runtime configuration, so neither a
+ * level read at import nor one set once from the boot hook would hold.
  */
-export const logger = createLogger();
+export const logger: Logger = new Proxy({} as Logger, {
+  get: (_target, name) => {
+    instance ??= createLogger(undefined, env.LOG_LEVEL);
+    const value = Reflect.get(instance, name, instance);
+    return typeof value === "function" ? value.bind(instance) : value;
+  },
+  set: (_target, name, value) => {
+    instance ??= createLogger(undefined, env.LOG_LEVEL);
+    return Reflect.set(instance, name, value, instance);
+  },
+});
 
 /**
  * A logger bound to the current request's id, for route handlers, server

@@ -9,7 +9,11 @@
 import { AsyncLocalStorage } from "node:async_hooks";
 
 export type LogContext = {
-  /** Set by src/proxy.ts on every request; echoed as `x-request-id`. */
+  /**
+   * Inside a job: the id of the request that enqueued it. (Inside a request
+   * the id is a header, set by src/proxy.ts; `requestLogger()` reads it from
+   * there, since Next gives no hook to wrap a whole request in a context.)
+   */
   requestId?: string;
   job?: string;
   jobId?: string;

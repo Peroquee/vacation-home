@@ -29,6 +29,15 @@ describe("scrubString", () => {
     );
   });
 
+  it("masks OAuth secrets inside JSON quoted in a message", () => {
+    const body =
+      'token exchange failed: {"client_id":"abc.apps","client_secret":"GOCSPX-s3cr3t","refresh_token":"x"}';
+    expect(scrubString(body)).toBe(
+      `token exchange failed: {"client_id":"abc.apps","client_secret":"${REDACTED}","refresh_token":"${REDACTED}"}`,
+    );
+    expect(scrubString("secret is GOCSPX-AbC_123-xyz")).toBe(`secret is ${REDACTED}`);
+  });
+
   it("leaves ordinary text alone", () => {
     const text = "Synced 3 events for property 42 at 2026-07-14T10:00:00Z";
     expect(scrubString(text)).toBe(text);
@@ -57,6 +66,15 @@ describe("scrub", () => {
     expect(scrubbed.err.message).toBe("Guest [email] not found");
     expect(scrubbed.err.stack).toContain("Guest [email] not found");
     expect(JSON.stringify(scrubbed)).not.toContain("ada@example.com");
+  });
+
+  it("copies an object that is shared but not cyclic every time it appears", () => {
+    const booking = { id: "b1" };
+    expect(scrub({ booking, previous: booking, list: [booking, booking] })).toEqual({
+      booking: { id: "b1" },
+      previous: { id: "b1" },
+      list: [{ id: "b1" }, { id: "b1" }],
+    });
   });
 
   it("does not modify its input, and survives cycles", () => {

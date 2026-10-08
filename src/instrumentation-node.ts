@@ -23,9 +23,7 @@ export async function bootstrap(): Promise<void> {
   try {
     // Dynamic, so that validation happens when this runs rather than when the
     // module is loaded.
-    const { env } = await import("./env");
-    const { logger } = await import("./lib/logger");
-    logger.level = env.LOG_LEVEL;
+    await import("./env");
 
     // After validation, so a misconfigured process never reports as healthy.
     Sentry.init(sentryOptions());

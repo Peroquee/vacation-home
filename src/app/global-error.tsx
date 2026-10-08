@@ -20,7 +20,8 @@ export default function GlobalError({
   retry: () => void;
 }) {
   useEffect(() => {
-    Sentry.captureException(error);
+    // See src/app/error.tsx: server errors are reported on the server.
+    if (!error.digest) Sentry.captureException(error);
   }, [error]);
 
   return (

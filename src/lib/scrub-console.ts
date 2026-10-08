@@ -14,13 +14,29 @@ const METHODS = ["log", "info", "warn", "error", "debug", "trace"] as const;
 function scrubArgument(arg: unknown): unknown {
   if (typeof arg === "string") return scrubString(arg);
   if (arg instanceof Error) {
-    const copy = new Error(scrubString(arg.message));
-    copy.name = arg.name;
-    copy.stack = arg.stack === undefined ? undefined : scrubString(arg.stack);
-    // Own properties such as Next's `digest`.
-    return Object.assign(copy, scrub({ ...arg }));
+    // Same prototype, so it still prints as (and is) a PrismaClientKnownRequestError
+    // or whatever it was, with its `cause` chain.
+    const copy = Object.create(Object.getPrototypeOf(arg)) as Error;
+    for (const key of Object.getOwnPropertyNames(arg)) {
+      const { enumerable } = Object.getOwnPropertyDescriptor(arg, key)!;
+      // Read through the original: `stack` is an accessor in current V8,
+      // and its getter only works on the error it belongs to.
+      const value = (arg as unknown as Record<string, unknown>)[key];
+      Object.defineProperty(copy, key, {
+        value:
+          key === "cause" || key === "errors" ? scrubArgumentDeep(value) : scrubArgument(value),
+        enumerable,
+        writable: true,
+        configurable: true,
+      });
+    }
+    return copy;
   }
   return scrub(arg);
+}
+
+function scrubArgumentDeep(value: unknown): unknown {
+  return Array.isArray(value) ? value.map(scrubArgument) : scrubArgument(value);
 }
 
 let installed = false;

@@ -20,9 +20,16 @@ export const REDACTED = "[redacted]";
 const SENSITIVE_KEY =
   /email|phone|password|passwd|secret|token|authorization|cookie|apikey|credential|dsn/;
 
+const SECRET_FIELDS = "access_token|refresh_token|id_token|client_secret|code|password";
+
 const SENSITIVE_STRINGS: [RegExp, string][] = [
+  // OAuth secrets as fields of JSON embedded in a string, such as a token
+  // endpoint's response quoted in an exception message.
+  [new RegExp(`("(?:${SECRET_FIELDS})"\\s*:\\s*)"[^"]*"`, "gi"), `$1"${REDACTED}"`],
+  // Google OAuth client secrets.
+  [/\bGOCSPX-[\w-]+/g, REDACTED],
   // OAuth tokens and codes passed in a URL or form body.
-  [/\b(access_token|refresh_token|id_token|client_secret|code)=[^&\s"']+/gi, `$1=${REDACTED}`],
+  [new RegExp(`\\b(${SECRET_FIELDS})=[^&\\s"']+`, "gi"), `$1=${REDACTED}`],
   [/\b(Bearer|Basic)\s+[\w.~+/=-]+/gi, `$1 ${REDACTED}`],
   // JSON Web Tokens, e.g. Google ID tokens.
   [/\beyJ[\w-]+\.[\w-]+\.[\w-]+/g, REDACTED],
@@ -54,10 +61,20 @@ export function scrub(value: unknown): unknown {
 function scrubValue(value: unknown, depth: number, seen: WeakSet<object>): unknown {
   if (typeof value === "string") return scrubString(value);
   if (value === null || typeof value !== "object") return value;
+  // `seen` holds only the current path from the root, so an object that is
+  // merely shared (`{ a: x, b: x }`) is copied twice, and only a true cycle
+  // is cut.
   if (seen.has(value)) return "[circular]";
   if (depth >= MAX_DEPTH) return "[too deep]";
   seen.add(value);
+  try {
+    return scrubContainer(value, depth, seen);
+  } finally {
+    seen.delete(value);
+  }
+}
 
+function scrubContainer(value: object, depth: number, seen: WeakSet<object>): unknown {
   if (value instanceof Date) return value;
 
   if (value instanceof Error) {

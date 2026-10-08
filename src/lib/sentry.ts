@@ -39,7 +39,12 @@ export function sentryOptions(): BrowserOptions & NodeOptions {
       databaseQueryData: false,
       stackFrameVariables: false,
     },
-    beforeSend: (event) => scrub(event) as typeof event,
+    // `sdkProcessingMetadata` is SDK-internal (scopes, the client) and never
+    // sent; copying it would be wasted work and could break what reads it.
+    beforeSend: ({ sdkProcessingMetadata, ...event }) => ({
+      ...(scrub(event) as typeof event),
+      sdkProcessingMetadata,
+    }),
     beforeBreadcrumb: (breadcrumb) => scrub(breadcrumb) as typeof breadcrumb,
   };
 }

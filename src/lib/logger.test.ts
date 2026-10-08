@@ -67,6 +67,16 @@ describe("logger", () => {
     expect(output).not.toContain("ya29.");
   });
 
+  it("files an error passed first under `err`, as pino does", () => {
+    const { log, lines } = capture();
+    log.error(new Error(`bad guest ${EMAIL}`));
+    log.error(new Error("second"), "with a message");
+
+    const [bare, withMessage] = lines();
+    expect(bare).toMatchObject({ msg: "bad guest [email]", err: { message: "bad guest [email]" } });
+    expect(withMessage).toMatchObject({ msg: "with a message", err: { message: "second" } });
+  });
+
   it("keeps an error's type, message and stack, scrubbed", () => {
     const { log, lines } = capture();
     log.error({ err: new TypeError(`bad guest ${EMAIL}`) }, "failed");

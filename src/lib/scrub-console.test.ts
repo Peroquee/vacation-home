@@ -40,6 +40,19 @@ describe("scrubConsole", () => {
     expect(error.message).toBe("No guest ada@example.com");
   });
 
+  it("keeps an error's class and its cause chain", () => {
+    class SyncError extends Error {}
+    const { target, calls } = fakeConsole();
+    const cause = new Error("token ya29.a0AfB_byC1x2Y3z4-AbCdEfGh rejected");
+    target.error(new SyncError("sync failed for ada@example.com", { cause }));
+
+    const printed = calls[0]![0] as SyncError & { cause: Error };
+    expect(printed).toBeInstanceOf(SyncError);
+    expect(printed.message).toBe("sync failed for [email]");
+    expect(printed.cause).toBeInstanceOf(Error);
+    expect(printed.cause.message).toBe("token [redacted] rejected");
+  });
+
   it("passes non-sensitive values through unchanged", () => {
     const { target, calls } = fakeConsole();
     const spy = vi.fn();

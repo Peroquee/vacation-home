@@ -21,7 +21,10 @@ export default function Error({
   retry: () => void;
 }) {
   useEffect(() => {
-    Sentry.captureException(error);
+    // An error with a digest came from the server, where onRequestError has
+    // already reported it in full; this copy would only be a duplicate with
+    // the message redacted.
+    if (!error.digest) Sentry.captureException(error);
   }, [error]);
 
   return <ErrorState reference={error.digest} onRetry={retry} />;
