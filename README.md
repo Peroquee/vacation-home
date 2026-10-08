@@ -91,6 +91,15 @@ Application code imports the shared instance from
 a new connection pool on each one. The Prisma CLI reads `.env` files through
 Next's own loader, so it sees the same variables `npm run dev` does.
 
+### Backups
+
+The `backup` service in `docker-compose.yml` dumps the database daily to
+off-host storage, keeps a rotating set and reports to a monitor that alerts
+after 48 hours without a backup. It is off in development; start it with
+`docker compose --profile backup up -d backup`. Setup, the restore procedure
+(`scripts/backup/restore.sh`) and how erased guests age out of backups are in
+[docs/backup-and-restore.md](docs/backup-and-restore.md).
+
 ## API
 
 JSON route handlers under `src/app/api`. Errors always look like:
