@@ -91,6 +91,36 @@ Application code imports the shared instance from
 a new connection pool on each one. The Prisma CLI reads `.env` files through
 Next's own loader, so it sees the same variables `npm run dev` does.
 
+## API
+
+JSON route handlers under `src/app/api`. Errors always look like:
+
+```json
+{ "error": { "code": "validation_failed", "message": "…", "fields": { "name": ["is required"] } } }
+```
+
+`code` is one of `invalid_json` (400), `not_found` (404), `conflict` (409) or
+`validation_failed` (422). Under `validation_failed`, `fields` has one list of
+messages per invalid field, with problems that belong to no single field under
+`_`. Money is always an integer number of minor units (cents).
+
+### Properties
+
+| Method and path                      | Does                                                       |
+| ------------------------------------ | ---------------------------------------------------------- |
+| `GET /api/properties`                | Active properties by name; `?includeArchived=true` for all |
+| `POST /api/properties`               | Create; `201` with a `Location` header                     |
+| `GET /api/properties/:id`            | One property                                               |
+| `PATCH /api/properties/:id`          | Update any subset of fields                                |
+| `POST /api/properties/:id/archive`   | Archive: hidden from selectors, history kept               |
+| `POST /api/properties/:id/unarchive` | Restore                                                    |
+| `DELETE /api/properties/:id`         | Delete, only without history; `409` if it has bookings     |
+
+Fields: `name`, `address` (optional), `timezone` (IANA, e.g. `Europe/Lisbon`),
+`currency` (ISO 4217), `defaultNightlyRateMinor` and `defaultCleaningFeeMinor`
+(default 0), and `color` (`#rrggbb`, default the brand teal). Responses add
+`id`, `archived`, `archivedAt`, `createdAt` and `updatedAt`.
+
 ## Testing
 
 **Unit tests** use [Vitest](https://vitest.dev) and live next to the code they
