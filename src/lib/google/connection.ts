@@ -141,6 +141,17 @@ export async function getAccessToken(userId: string, options: TokenOptions = {})
 }
 
 /**
+ * Drops the stored access token, so the next getAccessToken refreshes: for
+ * when Google rejects a token that had not yet expired (401).
+ */
+export async function invalidateAccessToken(userId: string): Promise<void> {
+  await db.googleConnection.updateMany({
+    where: { userId },
+    data: { accessTokenEncrypted: null, accessTokenExpiresAt: null },
+  });
+}
+
+/**
  * Marks the connection disconnected - only if it still holds the grant
  * `row` read: if the user reconnected or disconnected meanwhile, that newer
  * state wins.

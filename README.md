@@ -362,6 +362,24 @@ sign-in ([`src/lib/google/`](src/lib/google)):
 - **Disconnecting**: `DELETE /api/google/connection` revokes the grant at
   Google (best effort) and deletes it.
 
+**Calling the API**: `createCalendarClient({ userId })`
+([`src/lib/google/calendar.ts`](src/lib/google/calendar.ts)) wraps calendar
+list and event list/get/insert/update/delete:
+
+- Rate limits (429, 403 `rateLimitExceeded`/`userRateLimitExceeded`), 5xx,
+  network failures and timeouts are retried with exponential backoff and full
+  jitter, honouring `Retry-After`, up to 5 attempts. A 401 refreshes the
+  token once. One user's requests are spaced at least 100 ms apart.
+- Every failure is a `GoogleCalendarError` with a `kind` (`rate_limited`,
+  `quota_exceeded`, `not_found`, `gone`, `precondition_failed`, ...) and a
+  `transient` flag that says whether a job should retry later. A revoked grant
+  is a `CalendarNotConnectedError`.
+- Inserting with a caller-chosen event id survives a retried insert that
+  had already reached Google. Updates can pass an `etag` (`If-Match`).
+  Deleting an event that is already gone counts as done.
+- Every call is logged with its operation, calendar id, event id, status,
+  attempt and duration, never a body.
+
 End-to-end tests sign in by inserting a real session into their own test
 database and sending its cookie. The app has no test-only login path that a
 production deployment could have switched on.
