@@ -91,6 +91,31 @@ Application code imports the shared instance from
 a new connection pool on each one. The Prisma CLI reads `.env` files through
 Next's own loader, so it sees the same variables `npm run dev` does.
 
+## Testing
+
+**Unit tests** use [Vitest](https://vitest.dev) and live next to the code they
+cover as `*.test.ts`. They resolve `@/…` from `tsconfig.json`, exactly as the
+app does, and need no database.
+
+**End-to-end tests** use [Playwright](https://playwright.dev) and live in
+[`e2e/`](e2e). They need the Compose database running:
+
+```bash
+docker compose up -d db
+npx playwright install chromium   # once, and after a Playwright upgrade
+npm run test:e2e
+```
+
+Each run first drops and recreates a separate database, `vacation_home_e2e`, on
+the same server and applies the committed migrations, so every run starts
+empty and your development data is never touched. The harness refuses to reset
+a database whose name does not end in `_test` or `_e2e`. Set
+`E2E_DATABASE_URL` to point it elsewhere.
+
+Playwright then builds the app and serves it with `next start` on port 3100,
+with test-only credentials, so it runs alongside `npm run dev` without
+conflict. The tests share the one database and so run serially.
+
 ## Configuration
 
 Every environment variable is documented in [`.env.example`](.env.example) and
@@ -120,6 +145,9 @@ else imports the typed `env` object from `@/env`. An ESLint rule enforces this.
 | `npm run format`         | Prettier, writing changes                  |
 | `npm run format:check`   | Prettier, check only (used by CI)          |
 | `npm run typecheck`      | `next typegen`, then `tsc --noEmit`        |
+| `npm test`               | Unit tests (Vitest), once                  |
+| `npm run test:watch`     | Unit tests, re-running on change           |
+| `npm run test:e2e`       | End-to-end tests (Playwright)              |
 | `npm run migrate:dev`    | Create and apply a migration (development) |
 | `npm run migrate:deploy` | Apply committed migrations                 |
 | `npm run studio`         | Prisma Studio, a browser UI for the data   |
@@ -135,7 +163,8 @@ branch; a push to a branch with no open merge request builds nothing.
   hash, since that tree is valid only for the lockfile that produced it.
 - `quality` runs lint, typecheck and the Prettier check as parallel jobs, so a
   lint error and a type error are both reported instead of one masking the other.
-- `test` is wired up but empty until the suites in #44 land.
+- `test` runs the Vitest suite; `e2e` runs Playwright against a PostgreSQL
+  16 service container, building and starting the app itself.
 - `build` runs a production build with no environment variables, because
   validation happens at server boot rather than at build time.
 

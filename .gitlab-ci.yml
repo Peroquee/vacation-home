@@ -113,12 +113,35 @@ test:
   stage: test
   extends: .node
   script:
-    # Wired up but empty until #44 adds Vitest and Playwright.
-    # `npm run test --if-present` exits 0 when no `test` script exists, so the
-    # stage exists without implying coverage does. Note the stage order comes
-    # from #43; Playwright needs a built app, so #44's e2e job will have to
-    # build or run the dev server itself rather than rely on `build` below.
-    - npm run test --if-present
+    - npm test
+
+e2e:
+  stage: test
+  extends: .node
+  # The same server version as docker-compose.yml. The harness drops and
+  # recreates its own database on it before the run, so no state survives
+  # between pipelines - or between retries.
+  services:
+    - name: postgres:16.15
+      alias: postgres
+  variables:
+    POSTGRES_USER: vacation
+    POSTGRES_PASSWORD: vacation
+    POSTGRES_DB: vacation_home
+    E2E_DATABASE_URL: postgresql://vacation:vacation@postgres:5432/vacation_home_e2e
+  script:
+    # The browser has to match the installed @playwright/test exactly, and the
+    # Node image ships neither it nor its system libraries.
+    - npx playwright install --with-deps chromium
+    # Builds and starts the app itself (see webServer in playwright.config.ts),
+    # so this does not depend on the build job below.
+    - npm run test:e2e
+  artifacts:
+    when: on_failure
+    expire_in: 1 week
+    paths:
+      - playwright-report/
+      - test-results/
 
 build:
   stage: build
