@@ -8,6 +8,9 @@
  * in the way. The database's own overlap rules back this up; should one fire
  * anyway, it is reported the same way.
  *
+ * Every write also schedules the booking's Google Calendar event, in the same
+ * transaction (src/lib/google/outbound.ts).
+ *
  * Bookings hold no guest personal data except free-text `notes`: the guest
  * is referenced by id only, so purging a guest (GitLab #100) never needs to
  * touch booking amounts or dates.
@@ -23,6 +26,8 @@ import {
 import { type CalendarDate, fromUtcDate, toUtcDate } from "@/lib/calendar-date";
 import { db, type DbClient } from "@/lib/db";
 import { isPrismaError, raisedByDatabase } from "@/lib/db-errors";
+import { scheduleBookingSync } from "@/lib/google/outbound";
+import { kickOutboundSync } from "@/lib/google/sync-worker";
 import { escapeLike } from "@/lib/like";
 
 import { calculateTotalMinor, nights } from "./pricing";
@@ -180,12 +185,15 @@ export async function createBooking(input: CreateBookingInput): Promise<WriteRes
         const conflict = await check(tx, input);
         if (conflict) return conflict;
       }
-      return { booking: await tx.booking.create({ data, include: withRelations }) };
+      const booking = await tx.booking.create({ data, include: withRelations });
+      await scheduleBookingSync(booking.id, tx);
+      return { booking };
     },
     () => input,
   );
   if ("booking" in result) {
     invalidateWindows(property.id, [{ start: input.checkIn, end: input.checkOut }]);
+    kickOutboundSync();
   }
   return result;
 }
@@ -284,6 +292,7 @@ export async function updateBooking(id: string, input: UpdateBookingInput): Prom
         },
         include: withRelations,
       });
+      await scheduleBookingSync(id, tx);
       return { booking };
     },
     () => ({ ...stay, ignoreBookingId: id }),
@@ -291,6 +300,7 @@ export async function updateBooking(id: string, input: UpdateBookingInput): Prom
   // Calendar windows showing the old dates or the new ones are now stale.
   if ("booking" in result) {
     invalidateWindows(head.propertyId, [before, { start: stay.checkIn, end: stay.checkOut }]);
+    kickOutboundSync();
   }
   return result;
 }
@@ -303,14 +313,16 @@ export async function cancelBooking(id: string): Promise<BookingWithRelations | 
   const head = await db.booking.findUnique({ where: { id }, select: { propertyId: true } });
   if (!head) return null;
   const result = await locked(head.propertyId, { error: "not_found" }, async (tx) => {
-    await tx.booking.updateMany({
+    const { count } = await tx.booking.updateMany({
       where: { id, status: { not: "cancelled" } },
       data: { status: "cancelled" },
     });
+    if (count > 0) await scheduleBookingSync(id, tx);
     const booking = await tx.booking.findUnique({ where: { id }, include: withRelations });
     return booking ? { booking } : { error: "not_found" };
   });
   if (!("booking" in result)) return null;
+  kickOutboundSync();
   invalidateWindows(head.propertyId, [
     { start: fromUtcDate(result.booking.checkIn), end: fromUtcDate(result.booking.checkOut) },
   ]);

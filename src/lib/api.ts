@@ -9,7 +9,13 @@
 import { z } from "zod";
 
 export type ApiErrorCode =
-  "invalid_json" | "unauthorized" | "validation_failed" | "not_found" | "conflict";
+  | "invalid_json"
+  | "unauthorized"
+  | "validation_failed"
+  | "not_found"
+  | "conflict"
+  /** A service the request needs (Google) failed; try again later. 502. */
+  | "upstream_unavailable";
 
 export function apiError(
   status: number,

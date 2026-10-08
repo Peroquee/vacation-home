@@ -1,5 +1,6 @@
 import * as Sentry from "@sentry/nextjs";
 import type { Instrumentation } from "next";
+import { PHASE_PRODUCTION_BUILD } from "next/constants";
 
 import { EnvValidationError } from "./env-error";
 import { REQUEST_ID_HEADER } from "./lib/request-id";
@@ -27,6 +28,14 @@ export async function bootstrap(): Promise<void> {
 
     // After validation, so a misconfigured process never reports as healthy.
     Sentry.init(sentryOptions());
+
+    // Google Calendar outbound sync. Not while `next build` loads the app;
+    // NEXT_PHASE is Next's own, not part of the validated schema.
+    // eslint-disable-next-line no-restricted-properties
+    if (process.env.NEXT_PHASE !== PHASE_PRODUCTION_BUILD) {
+      const { startOutboundSyncWorker } = await import("./lib/google/sync-worker");
+      startOutboundSyncWorker();
+    }
   } catch (error) {
     // A configuration failure is already a formatted, readable report, so its
     // stack would only be noise. Anything else (a broken import, a typo in the
