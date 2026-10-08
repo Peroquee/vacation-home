@@ -4,7 +4,7 @@
  * Use these rather than `toLocaleString` or `Intl` directly, so every page
  * shows amounts and dates the same way.
  */
-import { type CalendarDate, toUtcDate as parseCalendarDate } from "@/lib/calendar-date";
+import { type CalendarDate, toUtcDate } from "@/lib/calendar-date";
 import { APP_LOCALE } from "@/lib/locale";
 
 type FormatOptions = {
@@ -71,7 +71,7 @@ export function formatDate(
   { style = "medium", locale = APP_LOCALE }: FormatOptions & { style?: DateStyle } = {},
 ): string {
   return new Intl.DateTimeFormat(locale, { dateStyle: style, timeZone: "UTC" }).format(
-    parseCalendarDate(value),
+    toUtcDate(value),
   );
 }
 
@@ -84,8 +84,8 @@ export function formatDateRange(
   end: CalendarDate,
   { style = "medium", locale = APP_LOCALE }: FormatOptions & { style?: DateStyle } = {},
 ): string {
-  const from = parseCalendarDate(start);
-  const to = parseCalendarDate(end);
+  const from = toUtcDate(start);
+  const to = toUtcDate(end);
   // A check-out before the check-in is bad data; showing it as a plausible
   // stay would hide that.
   if (to < from) {

@@ -12,8 +12,9 @@
  * Plain JavaScript so Node runs it directly, with no TypeScript loader.
  */
 import { execFileSync } from "node:child_process";
+import { realpathSync } from "node:fs";
 import { createRequire } from "node:module";
-import { pathToFileURL } from "node:url";
+import { fileURLToPath } from "node:url";
 
 import pg from "pg";
 
@@ -57,7 +58,14 @@ export async function resetDatabase(databaseUrl) {
   });
 }
 
-if (import.meta.url === pathToFileURL(process.argv[1] ?? "").href) {
+// Run directly? Compared as real paths: Node resolves symlinks for
+// import.meta.url but not for argv, and a mismatch here would silently skip
+// the reset while the caller carried on against a stale database.
+const isMain =
+  process.argv[1] !== undefined &&
+  realpathSync(process.argv[1]) === realpathSync(fileURLToPath(import.meta.url));
+
+if (isMain) {
   try {
     await resetDatabase(process.env.DATABASE_URL);
   } catch (error) {

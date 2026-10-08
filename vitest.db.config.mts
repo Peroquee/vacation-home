@@ -8,9 +8,11 @@ import { defineConfig } from "vitest/config";
  * Needs the Compose database (`docker compose up -d db`) locally; in CI the
  * e2e job's postgres service. TEST_DATABASE_URL overrides the target.
  */
-const TEST_DATABASE_URL =
-  process.env.TEST_DATABASE_URL ??
+// Resolved once, here: vitest.db.setup.mts runs in this same process and
+// resets exactly this database.
+process.env.TEST_DATABASE_URL ??=
   "postgresql://vacation:vacation@localhost:5433/vacation_home_test";
+const TEST_DATABASE_URL = process.env.TEST_DATABASE_URL;
 
 export default defineConfig({
   resolve: { tsconfigPaths: true },

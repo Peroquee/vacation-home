@@ -73,7 +73,10 @@ describe("booking money", () => {
   });
 
   it("refuses amounts the column cannot hold, rather than wrapping them", async () => {
-    await expect(booking({ totalAmountMinor: MAX_AMOUNT_MINOR + 1 })).rejects.toThrow();
+    await expect(booking({ totalAmountMinor: MAX_AMOUNT_MINOR + 1 })).rejects.toMatchObject({
+      code: "P2020",
+      message: expect.stringMatching(/out of range for type integer/),
+    });
   });
 
   it("refuses negative amounts", async () => {
