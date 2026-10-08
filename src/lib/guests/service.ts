@@ -2,6 +2,7 @@
 import type { Guest } from "@/generated/prisma/client";
 import { db } from "@/lib/db";
 import { isPrismaError } from "@/lib/db-errors";
+import { escapeLike } from "@/lib/like";
 
 import type { CreateGuestInput, UpdateGuestInput } from "./schema";
 
@@ -22,7 +23,7 @@ export function toDto({ createdAt, updatedAt, ...rest }: Guest): GuestDto {
 export async function searchGuests(query: string | undefined, limit: number): Promise<Guest[]> {
   // Prisma's `contains` becomes SQL LIKE without escaping, so `%` and `_`
   // in what the user typed would act as wildcards.
-  const text = query?.replace(/[\\%_]/g, "\\$&");
+  const text = query === undefined ? undefined : escapeLike(query);
   return db.guest.findMany({
     where: text
       ? {
