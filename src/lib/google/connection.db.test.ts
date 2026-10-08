@@ -10,6 +10,7 @@ import {
   disconnect,
   getAccessToken,
   getConnectionStatus,
+  invalidateAccessToken,
   saveConnection,
 } from "./connection";
 import { CALENDAR_SCOPE, type Fetch } from "./oauth";
@@ -82,6 +83,14 @@ describe("getAccessToken", () => {
     expect(await getAccessToken(userId, { fetch: fetchFn, now: () => NOW })).toBe("access-new");
     expect(calls[0].body.get("refresh_token")).toBe("refresh-1");
     // Now cached: no second refresh.
+    expect(await getAccessToken(userId, { fetch: fetchFn, now: () => NOW })).toBe("access-new");
+    expect(calls).toHaveLength(1);
+  });
+
+  it("refreshes a token Google rejected before it expired", async () => {
+    await saveConnection(userId, grant("refresh-1", new Date(NOW + 30 * 60_000)));
+    await invalidateAccessToken(userId);
+    const { fetchFn, calls } = google(tokens("access-new"));
     expect(await getAccessToken(userId, { fetch: fetchFn, now: () => NOW })).toBe("access-new");
     expect(calls).toHaveLength(1);
   });
