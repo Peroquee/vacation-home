@@ -165,6 +165,27 @@ inline "new guest" relies on.
   email), `page`, `pageSize` (≤ 100), `sort` (`checkIn` or `-checkIn`). The
   response is `{ items, total, page, pageSize }`.
 
+### Categories
+
+| Method and path              | Does                                                                     |
+| ---------------------------- | ------------------------------------------------------------------------ |
+| `GET /api/categories`        | By type and name; `?type=income\|expense`, `?includeHidden=true`         |
+| `POST /api/categories`       | Create a user category (`name`, `type`, `color`); `409` on a duplicate   |
+| `PATCH /api/categories/:id`  | Rename, recolour, hide (`hidden: true`) or show. The type never changes. |
+| `DELETE /api/categories/:id` | Delete an unused user category; `409` with `reason` otherwise            |
+
+The default categories are **system categories**, created by the migration
+in every database: booking income, cleaning fees and other income; cleaning,
+maintenance, utilities, platform fees, supplies, insurance, taxes and other
+expenses. You can rename, recolour and hide them, but the database refuses to
+delete them (`reason: "system"`). The app finds them by their fixed
+`systemKey`. A category used by transactions can't be deleted
+(`reason: "in_use"`).
+
+Transactions (GitLab #77 adds their API) must use a category of their own
+type, and a linked booking must belong to the transaction's property. The
+database enforces both with composite foreign keys.
+
 ### Calendar availability
 
 `GET /api/availability?propertyIds=<id>,<id>&from=2026-07-01&to=2026-10-01`

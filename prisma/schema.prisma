@@ -41,6 +41,7 @@ model Property {
   updatedAt               DateTime  @updatedAt @map("updated_at")
   bookings                Booking[]
   blocks                  Block[]
+  transactions            Transaction[]
 
   @@map("properties")
 }
@@ -127,9 +128,13 @@ model Booking {
 
   // Restrict: a property or guest with bookings cannot be deleted (their
   // APIs answer 409 and suggest archiving instead).
-  property Property @relation(fields: [propertyId], references: [id], onDelete: Restrict)
-  guest    Guest    @relation(fields: [guestId], references: [id], onDelete: Restrict)
+  property     Property      @relation(fields: [propertyId], references: [id], onDelete: Restrict)
+  guest        Guest         @relation(fields: [guestId], references: [id], onDelete: Restrict)
+  transactions Transaction[]
 
+  // Target of the transactions' (booking, property) foreign key, which keeps
+  // a transaction's booking on the transaction's own property.
+  @@unique([id, propertyId])
   @@index([propertyId, checkIn, checkOut])
   @@index([guestId])
   @@map("bookings")
@@ -177,6 +182,74 @@ model Block {
   @@unique([propertyId, externalEventId])
   @@index([propertyId, startDate, endDate])
   @@map("blocks")
+}
+
+// --- Finance ------------------------------------------------------------------
+
+enum TransactionType {
+  income
+  expense
+
+  @@map("transaction_type")
+}
+
+/// A ledger category. The defaults are created by the migration as system
+/// categories: they can be renamed, recoloured and hidden, but never deleted,
+/// since the app relies on them (booking income automation finds its category
+/// by `systemKey`). User categories may be deleted when unused.
+model Category {
+  id           String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name         String
+  type         TransactionType
+  /// "#rrggbb", used by the expense breakdown chart.
+  color        String          @db.Char(7)
+  isSystem     Boolean         @default(false) @map("is_system")
+  /// Stable identifier of a system category, e.g. "booking_income"; null for
+  /// user categories.
+  systemKey    String?         @unique @map("system_key")
+  /// Hidden categories are not offered for new transactions; existing ones
+  /// keep them.
+  hidden       Boolean         @default(false)
+  createdAt    DateTime        @default(now()) @map("created_at")
+  updatedAt    DateTime        @updatedAt @map("updated_at")
+  transactions Transaction[]
+
+  // Target of the transactions' (category, type) foreign key, which keeps a
+  // transaction's category of the transaction's own type.
+  @@unique([id, type])
+  @@unique([type, name])
+  @@map("categories")
+}
+
+/// An income or expense entry in the ledger, optionally linked to a booking.
+///
+/// MONEY: `amountMinor` is a positive integer of minor units in `currency`;
+/// `type` gives the direction. DATE: a calendar date, like booking dates.
+model Transaction {
+  id          String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  propertyId  String          @map("property_id") @db.Uuid
+  /// Optional. When set, the booking belongs to the same property (enforced).
+  bookingId   String?         @map("booking_id") @db.Uuid
+  type        TransactionType
+  categoryId  String          @map("category_id") @db.Uuid
+  amountMinor Int             @map("amount_minor")
+  currency    String          @db.Char(3)
+  date        DateTime        @db.Date
+  description String?
+  isRecurring Boolean         @default(false) @map("is_recurring")
+  createdAt   DateTime        @default(now()) @map("created_at")
+  updatedAt   DateTime        @updatedAt @map("updated_at")
+
+  property Property @relation(fields: [propertyId], references: [id], onDelete: Restrict)
+  // Composite: the category must have the transaction's type.
+  category Category @relation(fields: [categoryId, type], references: [id, type], onDelete: Restrict)
+  // Composite: the booking must be on the transaction's property.
+  booking  Booking? @relation(fields: [bookingId, propertyId], references: [id, propertyId], onDelete: Restrict)
+
+  @@index([propertyId, date])
+  @@index([bookingId])
+  @@index([categoryId])
+  @@map("transactions")
 }
 
 // --- Audit ----------------------------------------------------------------------
