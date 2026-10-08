@@ -73,6 +73,24 @@ const envSchema = z.object({
     error: "must be an http(s) URL, e.g. http://localhost:3000",
   }),
 
+  /**
+   * 32 random bytes, base64: the key that encrypts Google tokens at rest
+   * (src/lib/secrets.ts). Optional - without it, connecting Google Calendar
+   * is unavailable. Generate one with:
+   *   node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"
+   */
+  TOKEN_ENCRYPTION_KEY: z.preprocess(
+    // Blank means unset; case is kept - this is base64.
+    (value) => (typeof value === "string" ? value.trim() || undefined : value),
+    z
+      .string()
+      .refine(
+        (value) => Buffer.from(value, "base64").length === 32,
+        "must be 32 random bytes, base64-encoded",
+      )
+      .optional(),
+  ),
+
   /** Minimum level written by the logger in src/lib/logger.ts. */
   LOG_LEVEL: optional(z.enum(["trace", "debug", "info", "warn", "error", "fatal"])).default("info"),
 

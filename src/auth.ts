@@ -3,20 +3,22 @@
  *
  * - Only verified Google accounts on AUTH_ALLOWED_EMAILS may sign in; the
  *   proxy re-checks the list on every request.
- * - The Google client is the one Calendar sync will reuse, so sign-in asks
- *   for offline access and the refresh token is stored on the account, and
- *   refreshed on every later sign-in.
+ * - Sign-in asks Google for identity only. Calendar access is a separate,
+ *   incremental grant made from settings (src/lib/google/connection.ts), so
+ *   no OAuth token from sign-in is ever stored.
  *
  * The configuration is a function so that it is read per request, never at
  * import: `next build` imports this module without any configuration.
  */
 import { PrismaAdapter } from "@auth/prisma-adapter";
 import NextAuth from "next-auth";
+import type { Adapter } from "next-auth/adapters";
 import Google from "next-auth/providers/google";
 
 import { env } from "@/env";
 import { isAllowedEmail } from "@/lib/allowed-emails";
 import { db } from "@/lib/db";
+import { SIGN_IN_SCOPES } from "@/lib/google/oauth";
 import { logger } from "@/lib/logger";
 
 export const SIGN_IN_PATH = "/signin";
@@ -24,10 +26,29 @@ export const SIGN_IN_PATH = "/signin";
 /** The session cookie's names: over https it carries the __Secure- prefix. */
 export const SESSION_COOKIES = ["authjs.session-token", "__Secure-authjs.session-token"];
 
+/**
+ * The Prisma adapter, minus the tokens: sign-in tokens are never used, and a
+ * token not kept cannot leak. The account row only links Google to the user.
+ */
+function adapter(): Adapter {
+  // Typed against @prisma/client; this app's client is generated elsewhere
+  // but has exactly the models the adapter uses.
+  const base = PrismaAdapter(db as unknown as Parameters<typeof PrismaAdapter>[0]);
+  return {
+    ...base,
+    linkAccount: (account) =>
+      base.linkAccount!({
+        ...account,
+        access_token: undefined,
+        refresh_token: undefined,
+        id_token: undefined,
+        expires_at: undefined,
+      }),
+  };
+}
+
 export const { handlers, auth, signIn, signOut } = NextAuth(() => ({
-  // The adapter is typed against @prisma/client; this app's client is
-  // generated elsewhere but has exactly the models the adapter uses.
-  adapter: PrismaAdapter(db as unknown as Parameters<typeof PrismaAdapter>[0]),
+  adapter: adapter(),
   secret: env.AUTH_SECRET,
   // Self-hosted behind our own reverse proxy, not on a platform Auth.js
   // recognises; APP_URL is where it is served.
@@ -38,15 +59,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth(() => ({
     Google({
       clientId: env.AUTH_GOOGLE_ID,
       clientSecret: env.AUTH_GOOGLE_SECRET,
-      authorization: {
-        params: {
-          scope: "openid email profile",
-          // A refresh token, and a fresh one on every consent, so the stored
-          // token can always be replaced with a working one.
-          access_type: "offline",
-          prompt: "consent",
-        },
-      },
+      // Identity only: no calendar, no offline access (see the top of this file).
+      authorization: { params: { scope: SIGN_IN_SCOPES } },
     }),
   ],
   callbacks: {
@@ -61,24 +75,6 @@ export const { handlers, auth, signIn, signOut } = NextAuth(() => ({
     session({ session, user }) {
       session.user.id = user.id;
       return session;
-    },
-  },
-  events: {
-    // The adapter stores tokens only when an account is first linked. Keep
-    // them current on later sign-ins, so the refresh token is never stale.
-    async signIn({ account }) {
-      if (account?.provider !== "google" || !account.refresh_token) return;
-      await db.account.updateMany({
-        where: { provider: "google", providerAccountId: account.providerAccountId },
-        data: {
-          refresh_token: account.refresh_token,
-          access_token: account.access_token,
-          expires_at: account.expires_at,
-          scope: account.scope,
-          id_token: account.id_token,
-          token_type: account.token_type,
-        },
-      });
     },
   },
   // Through the scrubbing logger: Auth.js errors can carry tokens.
