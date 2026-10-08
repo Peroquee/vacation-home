@@ -3,7 +3,7 @@ import Form from "next/form";
 import { Suspense } from "react";
 
 import { PageHeader } from "@/components/page-header";
-import { StatTilesSkeleton } from "@/components/skeletons";
+import { CardSkeleton, StatTilesSkeleton } from "@/components/skeletons";
 import { Button } from "@/components/ui/button";
 import { Field, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
@@ -14,6 +14,7 @@ import { formatDateRange } from "@/lib/format";
 import { listProperties } from "@/lib/properties/service";
 
 import { Kpis } from "./kpis";
+import { RevenueChart } from "./revenue-chart";
 
 export const metadata: Metadata = { title: "Dashboard" };
 
@@ -69,9 +70,14 @@ export default async function DashboardPage({ searchParams }: PageProps<"/dashbo
       </Form>
 
       {/* Keyed by the filters, so a new range shows the skeleton again. */}
-      <Suspense key={JSON.stringify(state)} fallback={<StatTilesSkeleton />}>
-        <Kpis state={state} today={today} />
-      </Suspense>
+      <div className="space-y-6">
+        <Suspense key={JSON.stringify(state)} fallback={<StatTilesSkeleton />}>
+          <Kpis state={state} today={today} />
+        </Suspense>
+        <Suspense key={`chart-${JSON.stringify(state)}`} fallback={<CardSkeleton lines={8} />}>
+          <RevenueChart state={state} />
+        </Suspense>
+      </div>
     </>
   );
 }

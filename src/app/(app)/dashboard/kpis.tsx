@@ -3,29 +3,32 @@ import Link from "next/link";
 import { StatTile } from "@/components/stat-tile";
 import { EmptyState, ErrorState } from "@/components/states";
 import { buttonVariants } from "@/components/ui/button";
-import { analyticsQuerySchema, getAnalytics } from "@/lib/analytics/service";
 import { buildKpis } from "@/lib/dashboard/kpis";
-import { analyticsQuery, type DashboardState } from "@/lib/dashboard/params";
+import type { DashboardState } from "@/lib/dashboard/params";
 import { countUpcoming } from "@/lib/dashboard/upcoming";
+
+import { loadReport } from "./data";
 
 /** How far ahead "upcoming bookings" looks. */
 export const UPCOMING_DAYS = 30;
 
 /** The headline figures for the range, streamed in behind a skeleton. */
 export async function Kpis({ state, today }: { state: DashboardState; today: string }) {
-  const query = analyticsQuerySchema.safeParse(analyticsQuery(state));
-  if (!query.success) {
+  const [loaded, upcoming] = await Promise.all([
+    loadReport(state),
+    countUpcoming(today, UPCOMING_DAYS, state.propertyId),
+  ]);
+  if (!loaded.ok) {
     return (
       <ErrorState
         title="These dates can't be shown"
-        description={query.error.issues.map((i) => `${i.path.join(".")} ${i.message}`).join("; ")}
+        description={loaded.invalid.issues
+          .map((i) => `${i.path.join(".")} ${i.message}`)
+          .join("; ")}
       />
     );
   }
-  const [result, upcoming] = await Promise.all([
-    getAnalytics(query.data),
-    countUpcoming(today, UPCOMING_DAYS, state.propertyId),
-  ]);
+  const { result } = loaded;
 
   if ("error" in result) {
     return result.error === "mixed_currencies" ? (
