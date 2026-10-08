@@ -67,9 +67,10 @@ describe("MonthCalendar", () => {
     const days = document.querySelectorAll("time");
     expect(days[0]).toHaveAttribute("dateTime", "2026-06-29");
     expect(days[days.length - 1]).toHaveAttribute("dateTime", "2026-08-02");
-    expect(document.querySelector('[aria-current="date"]')).toHaveAttribute(
-      "dateTime",
-      "2026-07-08",
+    // Today's day button is marked as the current date.
+    expect(screen.getByRole("button", { name: "Wednesday, July 8, 2026" })).toHaveAttribute(
+      "aria-current",
+      "date",
     );
   });
 
