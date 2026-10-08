@@ -249,6 +249,40 @@ pageSize, totals: [{ currency, incomeMinor, expenseMinor, netMinor }] }`, where
   per currency, since minor units of different currencies can't be added. A
   repeated parameter (`?categoryId=a&categoryId=b`) counts like a comma list.
 
+### Analytics
+
+`GET /api/analytics?from=&to=` gives the dashboard every figure it shows, from
+one tested aggregation layer ([`src/lib/analytics/rules.ts`](src/lib/analytics/rules.ts)
+defines each one).
+
+- **Query**: `from`, `to` (half-open like a stay, at most three years),
+  `propertyId` (default: all properties), `compare` (`year`, the default: the
+  same dates a year earlier; or `previous`: the same number of days right
+  before) and `excludeBlocks` (default `true`).
+- **Response**:
+  - `months`: one entry per calendar month, clipped to the range at both
+    ends. Each has `incomeMinor`, `expensesMinor` and `netMinor` from the
+    ledger, plus `bookedNights`, `blockedNights`, `availableNights` and
+    `accommodationRevenueMinor`.
+  - `totals`: the same figures for the whole range, plus `occupancyRate`
+    (0–1), `averageNightlyRateMinor` and `revenuePerAvailableNightMinor`.
+    A rate is `null` when nothing is there to divide by.
+  - `prior`: `{ compare, from, to, totals }`.
+  - `change`: `{ delta, percent }` for each total.
+  - `expensesByCategory`: `{ categoryId, name, color, amountMinor, share }`,
+    largest first.
+- **Rules**:
+  - Only confirmed bookings occupy nights.
+  - A booking's accommodation revenue (total less cleaning fee) is spread
+    evenly over its nights, so a stay across a month boundary counts in each
+    month for the nights it has there.
+  - With `excludeBlocks`, nights blocked and not booked are left out of the
+    available nights.
+  - An archived property stops counting from the day it was archived.
+- **Currencies**: amounts in different currencies are never added up. With
+  mixed currencies across all properties the answer is `409` with
+  `error.reason: "mixed_currencies"`; pass a `propertyId`.
+
 ### Calendar availability
 
 `GET /api/availability?propertyIds=<id>,<id>&from=2026-07-01&to=2026-10-01`
