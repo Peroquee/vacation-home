@@ -13,6 +13,7 @@
  * touch booking amounts or dates.
  */
 import type { BookingSource, Prisma } from "@/generated/prisma/client";
+import { invalidateWindows } from "@/lib/availability/cache";
 import {
   type Conflict,
   isAvailable,
@@ -23,8 +24,6 @@ import { type CalendarDate, fromUtcDate, toUtcDate } from "@/lib/calendar-date";
 import { db, type DbClient } from "@/lib/db";
 import { isPrismaError, raisedByDatabase } from "@/lib/db-errors";
 import { escapeLike } from "@/lib/like";
-
-import { invalidateWindows } from "@/lib/availability/cache";
 
 import { calculateTotalMinor, nights } from "./pricing";
 import {
@@ -37,7 +36,7 @@ import {
 
 export const toDbSource = (source: ApiBookingSource): BookingSource =>
   source === "booking.com" ? "booking_com" : source;
-const toApiSource = (source: BookingSource): ApiBookingSource =>
+export const toApiSource = (source: BookingSource): ApiBookingSource =>
   source === "booking_com" ? "booking.com" : source;
 
 const withRelations = {

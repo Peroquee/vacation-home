@@ -53,7 +53,7 @@ export async function updateProperty(
 ): Promise<Property | null> {
   const property = await orNullIfMissing(db.property.update({ where: { id }, data: input }));
   // Name and colour show in every calendar window of the property.
-  invalidateWindows(id);
+  if (property) invalidateWindows(id);
   return property;
 }
 
@@ -63,11 +63,11 @@ export async function updateProperty(
  * calls cannot overwrite each other's archive time.
  */
 export async function setArchived(id: string, archived: boolean): Promise<Property | null> {
-  await db.property.updateMany({
+  const { count } = await db.property.updateMany({
     where: { id, archivedAt: archived ? null : { not: null } },
     data: { archivedAt: archived ? new Date() : null },
   });
-  invalidateWindows(id);
+  if (count > 0) invalidateWindows(id);
   return getProperty(id);
 }
 

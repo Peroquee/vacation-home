@@ -103,6 +103,22 @@ describe("GET /api/availability", () => {
     );
   });
 
+  it("loads several uncached properties together and keeps the order asked for", async () => {
+    const both = await calendar([cabin, lake], "2026-07-01", "2026-08-01");
+    expect(both.body.properties.map((p: { property: { id: string } }) => p.property.id)).toEqual([
+      cabin,
+      lake,
+    ]);
+    // One cached, one not: still in order.
+    clearWindows();
+    await calendar([lake], "2026-07-01", "2026-08-01");
+    const mixed = await calendar([cabin, lake], "2026-07-01", "2026-08-01");
+    expect(mixed.body.properties.map((p: { property: { id: string } }) => p.property.id)).toEqual([
+      cabin,
+      lake,
+    ]);
+  });
+
   it("serves a repeated window from the cache", async () => {
     await calendar([lake], "2026-07-01", "2026-10-01");
     await insertDirectly(lake, "2026-07-20", "2026-07-22");
@@ -199,5 +215,8 @@ describe("GET /api/availability", () => {
       /366/,
     );
     expect((await calendar(["nope"], "2026-07-01", "2026-08-01")).status).toBe(422);
+    const malformed = await calendar([lake], "2026-7-1", "2026-08-01");
+    expect(malformed.status).toBe(422);
+    expect(malformed.body.error.fields.from).toEqual(["must be a date as YYYY-MM-DD"]);
   });
 });

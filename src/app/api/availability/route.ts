@@ -22,6 +22,9 @@ const query = z
     to: z.string().refine(isCalendarDate, "must be a date as YYYY-MM-DD"),
   })
   .superRefine(({ from, to }, context) => {
+    // Runs even when a date failed its own check (Zod continues after a
+    // refinement); those are reported already.
+    if (!isCalendarDate(from) || !isCalendarDate(to)) return;
     const days = daysBetween(from, to);
     if (days < 1) context.addIssue({ code: "custom", path: ["to"], message: "must be after from" });
     else if (days > MAX_WINDOW_DAYS) {
@@ -41,8 +44,9 @@ const query = z
  * For each property, in the order asked: the property, its non-cancelled
  * bookings and its blocks touching [from, to), and a night-by-night `days`
  * map (available / inquiry / booked / blocked, with turnover markers).
- * Cached per property and window; every booking, block, property or guest
- * change invalidates the windows it affects.
+ * Cached per property and window. Booking, property and guest changes
+ * invalidate the windows they affect; block writers must too (there is no
+ * block API yet), and a one-minute TTL covers writes made outside the app.
  */
 export async function GET(request: Request) {
   const parsed = query.safeParse(Object.fromEntries(new URL(request.url).searchParams));
