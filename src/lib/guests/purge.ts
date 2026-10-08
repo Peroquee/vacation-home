@@ -15,10 +15,10 @@
  * Afterwards the guest is read-only, never found by search, and cannot be
  * given new bookings. Purging again is harmless.
  *
- * NOT REACHED by a purge (yet):
- * - Google Calendar: events created by outbound sync (GitLab #70) live in
- *   Google. Their titles and descriptions must not carry guest personal
- *   data, or the purge must update them - #70 has to settle this.
+ * NOT REACHED by a purge, by design:
+ * - Google Calendar: events pushed by outbound sync (src/lib/google/outbound.ts)
+ *   carry no guest personal data - only the property, booking id, nights,
+ *   guest count and total - so there is nothing in Google to erase.
  * - Logs and error reports: the app does not log guest records; email
  *   addresses and phone fields are masked anyway (src/lib/scrub.ts), and
  *   request bodies are never sent to the error tracker. A guest's NAME is

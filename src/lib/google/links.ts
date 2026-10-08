@@ -37,13 +37,15 @@ export async function ensureLink(
   target: LinkTarget,
   calendarId: string,
   client: DbClient = db,
+  /** Whose Google connection will write the event. */
+  userId?: string,
 ): Promise<CalendarEventLink> {
   const where = targetWhere(target, calendarId);
   const existing = await client.calendarEventLink.findUnique({ where });
   if (existing) return existing;
   try {
     return await client.calendarEventLink.create({
-      data: { ...target, calendarId, googleEventId: newEventId() },
+      data: { ...target, calendarId, googleEventId: newEventId(), userId },
     });
   } catch (error) {
     // Another sync created it first: use theirs.
@@ -54,34 +56,62 @@ export async function ensureLink(
   }
 }
 
+/** Delay before retrying a link after `attempts` failures in a row: 30 s doubling, at most 1 h. */
+export function retryDelayMs(attempts: number): number {
+  return Math.min(30_000 * 2 ** Math.max(attempts - 1, 0), 60 * 60_000);
+}
+
 /**
  * Writes the event for a link to Google: inserted the first time, updated
- * after that. Records the outcome on the link - `synced` with Google's etag,
- * or `failed` with the error kind (never Google's text) - and rethrows a
- * failure so the job can decide whether to retry.
+ * after that. An event deleted in Google meanwhile is created afresh, under
+ * a new id (Google never reuses a deleted one): the app's bookings are the
+ * truth.
+ *
+ * Records the outcome: the etag always, and `synced` only if no newer change
+ * (`changeSeq`) arrived meanwhile - otherwise the link stays due, and the
+ * next run writes the newer version. A failure is recorded as `failed` with
+ * the error kind (never Google's text) and a backoff, and rethrown.
  */
 export async function pushEvent(
   link: CalendarEventLink,
   event: Omit<EventInput, "id">,
   calendar: CalendarClient,
 ): Promise<CalendarEventLink> {
+  let current = link;
   try {
-    const written =
-      link.lastSyncedAt === null
-        ? await insertOrAdopt(link, event, calendar)
-        : await calendar.updateEvent(link.calendarId, link.googleEventId, event);
-    // Not over a pending_delete: the booking was deleted meanwhile, and the
-    // event just written must now go.
+    let written;
+    if (current.lastSyncedAt === null) {
+      written = await insertOrAdopt(current, event, calendar);
+    } else {
+      try {
+        written = await calendar.updateEvent(current.calendarId, current.googleEventId, event);
+      } catch (error) {
+        if (!isGone(error)) throw error;
+        current = await db.calendarEventLink.update({
+          where: { id: current.id },
+          data: { googleEventId: newEventId(), lastSyncedAt: null, etag: null },
+        });
+        written = await insertOrAdopt(current, event, calendar);
+      }
+    }
+    // The lease ends either way: a newer change is due again at once.
+    const done = { etag: written.etag, lastSyncedAt: new Date(), claimedUntil: null };
+    await db.calendarEventLink.updateMany({ where: { id: link.id }, data: done });
+    // Not over a pending_delete (the booking was cancelled meanwhile: the
+    // event just written must now go), nor over a newer change.
     await db.calendarEventLink.updateMany({
-      where: { id: link.id, syncState: { not: "pending_delete" } },
-      data: { syncState: "synced", etag: written.etag, lastSyncedAt: new Date(), lastError: null },
+      where: { id: link.id, changeSeq: link.changeSeq, syncState: { not: "pending_delete" } },
+      data: { syncState: "synced", lastError: null, attempts: 0, claimedUntil: null },
     });
     return await db.calendarEventLink.findUniqueOrThrow({ where: { id: link.id } });
   } catch (error) {
-    await markFailed(link.id, error);
+    await markFailed(current, error);
     throw error;
   }
 }
+
+const isGone = (error: unknown) =>
+  error instanceof GoogleCalendarError && (error.kind === "not_found" || error.kind === "gone");
 
 /**
  * Inserts the link's event. If it already exists - an earlier run created
@@ -102,8 +132,10 @@ async function insertOrAdopt(
 }
 
 /**
- * Deletes the Google event of a link whose booking or block is gone, then
- * the link itself. An event already deleted in Google counts as done.
+ * Deletes the Google event of a `pending_delete` link, then the link. An
+ * event already deleted in Google counts as done. If the booking was
+ * re-confirmed meanwhile (a newer change), the link stays, under a fresh
+ * event id, so the next run creates the event again.
  */
 export async function deleteRemoteEvent(
   link: CalendarEventLink,
@@ -112,10 +144,18 @@ export async function deleteRemoteEvent(
   try {
     await calendar.deleteEvent(link.calendarId, link.googleEventId);
   } catch (error) {
-    await markFailed(link.id, error);
+    await markFailed(link, error);
     throw error;
   }
-  await db.calendarEventLink.deleteMany({ where: { id: link.id } });
+  const { count } = await db.calendarEventLink.deleteMany({
+    where: { id: link.id, changeSeq: link.changeSeq },
+  });
+  if (count === 0) {
+    await db.calendarEventLink.updateMany({
+      where: { id: link.id },
+      data: { googleEventId: newEventId(), lastSyncedAt: null, etag: null, claimedUntil: null },
+    });
+  }
 }
 
 /** Links whose Google event still has to be deleted. */
@@ -126,21 +166,37 @@ export function pendingDeletes(client: DbClient = db): Promise<CalendarEventLink
   });
 }
 
-async function markFailed(linkId: string, error: unknown): Promise<void> {
-  const kind =
-    error instanceof GoogleCalendarError
-      ? error.kind
-      : error instanceof CalendarNotConnectedError
-        ? "not_connected"
-        : "unexpected_error";
+/** The data-free name of what went wrong. */
+export function errorKind(error: unknown): string {
+  return error instanceof GoogleCalendarError
+    ? error.kind
+    : error instanceof CalendarNotConnectedError
+      ? "not_connected"
+      : "unexpected_error";
+}
+
+async function markFailed(link: CalendarEventLink, error: unknown): Promise<void> {
+  const attempts = link.attempts + 1;
+  const retry = {
+    lastError: errorKind(error),
+    attempts,
+    nextAttemptAt: new Date(Date.now() + retryDelayMs(attempts)),
+    claimedUntil: null,
+  };
   // A link waiting for its remote delete stays pending_delete: that is what
   // remains to be done, and a booking-less link must not be anything else.
+  // A newer change that arrived meanwhile is not held back by the backoff.
+  const same = { id: link.id, changeSeq: link.changeSeq };
   await db.calendarEventLink.updateMany({
-    where: { id: linkId, syncState: { not: "pending_delete" } },
-    data: { syncState: "failed", lastError: kind },
+    where: { ...same, syncState: { not: "pending_delete" } },
+    data: { syncState: "failed", ...retry },
   });
   await db.calendarEventLink.updateMany({
-    where: { id: linkId, syncState: "pending_delete" },
-    data: { lastError: kind },
+    where: { ...same, syncState: "pending_delete" },
+    data: retry,
+  });
+  await db.calendarEventLink.updateMany({
+    where: { id: link.id, changeSeq: { not: link.changeSeq } },
+    data: { lastError: retry.lastError, claimedUntil: null },
   });
 }
