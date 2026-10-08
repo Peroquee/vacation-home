@@ -1,6 +1,7 @@
 /**
  * `npm run seed`: replaces the app's data with the demo data planned in
- * src/lib/seed/plan.ts - the same every run. Development databases only
+ * src/lib/seed/plan.ts - the same content every run (the ids are new each
+ * time). Also run by `prisma migrate reset`. Development databases only
  * (see src/lib/seed/guard.ts). Signed-in users and the audit trail are left
  * alone.
  */
@@ -14,7 +15,7 @@ import { buildSeedPlan } from "../src/lib/seed/plan";
 loadEnvConfig(process.cwd(), true);
 
 async function main() {
-  // eslint-disable-next-line no-restricted-properties -- checked before anything loads @/env
+  // Checked before anything loads @/env, which would validate the rest.
   const refusal = seedRefusal(process.env.DATABASE_URL, process.env.NODE_ENV);
   if (refusal) {
     console.error(`Refusing to seed: ${refusal}.`);
@@ -22,6 +23,7 @@ async function main() {
   }
 
   const { db } = await import("../src/lib/db");
+  const { toDbSource } = await import("../src/lib/bookings/service");
   const plan = buildSeedPlan();
 
   await db.$transaction(
@@ -31,6 +33,8 @@ async function main() {
       await tx.guest.deleteMany();
       await tx.property.deleteMany();
 
+      // Row by row, to key each id to its plan entry: a bulk insert's
+      // RETURNING order is not guaranteed, and guest names may repeat.
       const propertyIds = new Map<string, string>();
       for (const { key, ...property } of plan.properties) {
         propertyIds.set(key, (await tx.property.create({ data: property })).id);
@@ -58,7 +62,7 @@ async function main() {
             guestId: guestIds.get(guest)!,
             checkIn: toUtcDate(checkIn),
             checkOut: toUtcDate(checkOut),
-            source: source === "booking.com" ? "booking_com" : source,
+            source: toDbSource(source),
           },
         });
       }

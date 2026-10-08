@@ -25,6 +25,9 @@ describe("seedRefusal", () => {
       /test database/,
     );
     expect(seedRefusal(undefined, undefined)).toMatch(/not set/);
+    // Looks local, but the driver would connect where the parameter says.
+    expect(seedRefusal(`${dev}?host=prod.example.com`, undefined)).toMatch(/overrides/);
+    expect(seedRefusal(`${dev}?dbname=vacation_home_test`, undefined)).toMatch(/overrides/);
     expect(seedRefusal("not a url", undefined)).toMatch(/not a valid URL/);
   });
 });

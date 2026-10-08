@@ -329,7 +329,8 @@ demo data:
   source, with some same-day turnovers;
 - a few owner blocks and Google Calendar blocks.
 
-It's identical on every run (fixed seed and fixed dates). Signed-in users and
+The content is identical on every run (fixed seed and fixed dates); the ids
+are new each time. `prisma migrate reset` runs it too. Signed-in users and
 the audit trail are left alone.
 
 It refuses to run against anything but a development database: never with

@@ -64,6 +64,10 @@ describe("the seed plan", () => {
       }
     }
 
+    for (const k of plan.blocks) {
+      expect(k.startDate >= WINDOW.start && k.endDate <= WINDOW.end).toBe(true);
+      expect(k.endDate > k.startDate).toBe(true);
+    }
     for (const b of plan.bookings) {
       expect(b.checkIn >= WINDOW.start && b.checkOut <= WINDOW.end).toBe(true);
       const calculated = calculateTotalMinor(b);

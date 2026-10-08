@@ -33,7 +33,7 @@ import {
   type UpdateBookingInput,
 } from "./schema";
 
-const toDbSource = (source: ApiBookingSource): BookingSource =>
+export const toDbSource = (source: ApiBookingSource): BookingSource =>
   source === "booking.com" ? "booking_com" : source;
 const toApiSource = (source: BookingSource): ApiBookingSource =>
   source === "booking_com" ? "booking.com" : source;

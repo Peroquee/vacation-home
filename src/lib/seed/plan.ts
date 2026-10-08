@@ -9,6 +9,7 @@
  * turnovers - and a few owner and Google blocks in the gaps.
  */
 import { addDays, type CalendarDate, daysBetween } from "@/lib/calendar-date";
+import type { BlockSpan, BookingStatus } from "@/lib/availability/rules";
 import type { ApiBookingSource } from "@/lib/bookings/schema";
 import { calculateTotalMinor } from "@/lib/bookings/pricing";
 
@@ -39,7 +40,7 @@ export type PlannedBooking = {
   guest: string;
   checkIn: CalendarDate;
   checkOut: CalendarDate;
-  status: "inquiry" | "confirmed" | "cancelled";
+  status: BookingStatus;
   source: ApiBookingSource;
   guestCount: number;
   nightlyRateMinor: number;
@@ -54,7 +55,7 @@ export type PlannedBlock = {
   startDate: CalendarDate;
   endDate: CalendarDate;
   reason: string;
-  origin: "manual" | "google";
+  origin: BlockSpan["origin"];
   externalEventId: string | null;
 };
 export type SeedPlan = {
@@ -142,7 +143,8 @@ export function buildSeedPlan(seed = SEED): SeedPlan {
       const roll = random.next();
 
       if (roll < 0.08) {
-        const length = random.int(2, 6);
+        // Kept inside the window, like every stay.
+        const length = Math.min(random.int(2, 6), daysBetween(cursor, WINDOW.end));
         const fromGoogle = googleEvents < 2 && random.next() < 0.5;
         if (fromGoogle) googleEvents++;
         blocks.push({

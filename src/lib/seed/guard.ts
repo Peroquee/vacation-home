@@ -19,6 +19,14 @@ export function seedRefusal(
   } catch {
     return "DATABASE_URL is not a valid URL";
   }
+  // The pg driver lets these query parameters override the host and database
+  // in the URL, which would let a URL look local while connecting elsewhere.
+  const overrides = ["host", "hostaddr", "dbname", "database"].filter((p) =>
+    url.searchParams.has(p),
+  );
+  if (overrides.length > 0) {
+    return `DATABASE_URL overrides the connection with ?${overrides.join(", ?")}`;
+  }
   if (!LOCAL_HOSTS.includes(url.hostname)) {
     return `the database host "${url.hostname}" is not local (${LOCAL_HOSTS.join(", ")})`;
   }
