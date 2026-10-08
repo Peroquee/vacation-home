@@ -20,6 +20,7 @@
     "migrate:deploy": "prisma migrate deploy",
     "studio": "prisma studio",
     "seed": "tsx prisma/seed.ts",
+    "guests:repurge": "tsx scripts/guests-repurge.ts",
     "db:generate": "prisma generate",
     "prepare": "husky || echo \"husky not installed, skipping git hooks\"",
     "postinstall": "prisma generate"

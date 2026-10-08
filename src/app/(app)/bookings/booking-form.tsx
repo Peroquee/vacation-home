@@ -22,7 +22,7 @@ import { BOOKING_SOURCES } from "@/lib/bookings/schema";
 import type { BookingDto } from "@/lib/bookings/service";
 import { addDays, isCalendarDate } from "@/lib/calendar-date";
 import { formatMoney } from "@/lib/format";
-import { inputToMinor, minorToInput } from "@/lib/properties/form";
+import { amountHint, inputToMinor, minorToInput } from "@/lib/properties/form";
 
 import { type GuestOption, GuestPicker } from "./guest-picker";
 import { useStayAvailability } from "./use-stay-availability";
@@ -176,12 +176,12 @@ export function BookingForm({
     if (!values.guest) local.guestId = ["is required: pick a guest or add a new one"];
     if (!values.checkIn) local.checkIn = ["is required"];
     if (!values.checkOut) local.checkOut = ["is required"];
-    const amountHint = currency ? `must be an amount like ${minorToInput(18050, currency)}` : "";
-    if (currency && nightlyRateMinor === null) local.nightlyRateMinor = [amountHint];
-    if (currency && cleaningFeeMinor === null) local.cleaningFeeMinor = [amountHint];
+    const amountError = currency ? amountHint(currency) : "";
+    if (currency && nightlyRateMinor === null) local.nightlyRateMinor = [amountError];
+    if (currency && cleaningFeeMinor === null) local.cleaningFeeMinor = [amountError];
     const totalMinor =
       currency && values.overrideTotal ? inputToMinor(values.total, currency) : null;
-    if (values.overrideTotal && totalMinor === null) local.totalAmountMinor = [amountHint];
+    if (values.overrideTotal && totalMinor === null) local.totalAmountMinor = [amountError];
     const guestCount = Number(values.guestCount);
     if (!Number.isInteger(guestCount)) local.guestCount = ["must be a whole number"];
     if (Object.keys(local).length > 0) return showErrors(local);
@@ -226,7 +226,7 @@ export function BookingForm({
         throw new Error(result?.error?.message ?? `The server answered ${response.status}.`);
       }
       toastSuccess(booking ? "Booking saved" : "Booking added");
-      router.push("/bookings");
+      router.push(`/bookings/${booking?.id ?? result.id}`);
       router.refresh();
     } catch (error) {
       toastError(error, "Could not save the booking");

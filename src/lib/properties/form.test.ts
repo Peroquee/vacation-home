@@ -1,7 +1,14 @@
 import { describe, expect, it } from "vitest";
 
 import { canonicalTimeZone } from "./schema";
-import { currencyOptions, inputToMinor, minorDigits, minorToInput, timeZoneOptions } from "./form";
+import {
+  amountHint,
+  currencyOptions,
+  inputToMinor,
+  minorDigits,
+  minorToInput,
+  timeZoneOptions,
+} from "./form";
 
 describe("minorDigits", () => {
   it("comes from the currency", () => {
@@ -65,5 +72,19 @@ describe("options", () => {
 
   it("names currencies", () => {
     expect(currencyOptions()).toContainEqual({ code: "EUR", name: "Euro" });
+  });
+});
+
+describe("amountHint", () => {
+  it("shows both decimal marks and warns about thousands separators", () => {
+    expect(amountHint("EUR")).toBe(
+      "must be an amount like 1000.50 or 1000,50, without thousands separators",
+    );
+    expect(amountHint("JPY")).toBe("must be an amount like 100050, without thousands separators");
+  });
+
+  it("describes what inputToMinor accepts", () => {
+    expect(inputToMinor("1000,50", "EUR")).toBe(100050);
+    expect(inputToMinor("1.000,50", "EUR")).toBeNull();
   });
 });
