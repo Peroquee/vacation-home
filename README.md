@@ -486,25 +486,26 @@ else imports the typed `env` object from `@/env`. An ESLint rule enforces this.
 
 ## Scripts
 
-| Script                   | Does                                          |
-| ------------------------ | --------------------------------------------- |
-| `npm run dev`            | Development server                            |
-| `npm run build`          | Production build                              |
-| `npm start`              | Serve a production build                      |
-| `npm run lint`           | ESLint                                        |
-| `npm run lint:fix`       | ESLint with autofix                           |
-| `npm run format`         | Prettier, writing changes                     |
-| `npm run format:check`   | Prettier, check only (used by CI)             |
-| `npm run typecheck`      | `next typegen`, then `tsc --noEmit`           |
-| `npm test`               | Unit tests (Vitest), once                     |
-| `npm run test:watch`     | Unit tests, re-running on change              |
-| `npm run test:db`        | Database tests against PostgreSQL             |
-| `npm run test:e2e`       | End-to-end tests (Playwright)                 |
-| `npm run migrate:dev`    | Create and apply a migration (development)    |
-| `npm run migrate:deploy` | Apply committed migrations                    |
-| `npm run studio`         | Prisma Studio, a browser UI for the data      |
-| `npm run seed`           | Replace the data with deterministic demo data |
-| `npm run db:generate`    | Regenerate the Prisma client                  |
+| Script                             | Does                                                                                                                    |
+| ---------------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| `npm run dev`                      | Development server                                                                                                      |
+| `npm run build`                    | Production build                                                                                                        |
+| `npm start`                        | Serve a production build                                                                                                |
+| `npm run lint`                     | ESLint                                                                                                                  |
+| `npm run lint:fix`                 | ESLint with autofix                                                                                                     |
+| `npm run format`                   | Prettier, writing changes                                                                                               |
+| `npm run format:check`             | Prettier, check only (used by CI)                                                                                       |
+| `npm run typecheck`                | `next typegen`, then `tsc --noEmit`                                                                                     |
+| `npm test`                         | Unit tests (Vitest), once                                                                                               |
+| `npm run test:watch`               | Unit tests, re-running on change                                                                                        |
+| `npm run test:db`                  | Database tests against PostgreSQL                                                                                       |
+| `npm run test:e2e`                 | End-to-end tests (Playwright)                                                                                           |
+| `npm run migrate:dev`              | Create and apply a migration (development)                                                                              |
+| `npm run migrate:deploy`           | Apply committed migrations                                                                                              |
+| `npm run studio`                   | Prisma Studio, a browser UI for the data                                                                                |
+| `npm run seed`                     | Replace the data with deterministic demo data                                                                           |
+| `npm run db:generate`              | Regenerate the Prisma client                                                                                            |
+| `npm run guests:repurge -- <file>` | Erase again the guests a restore brought back ([docs](docs/backup-and-restore.md#5-after-a-restore-erase-guests-again)) |
 
 ## Continuous integration
 

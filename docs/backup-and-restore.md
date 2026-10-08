@@ -291,31 +291,35 @@ record of the erasure disappears with it. Those guests must be erased again
   requests should therefore also be noted outside the app, for example in
   the GDPR request log you keep anyway.
 
-To erase them again, run the command the script printed, in the app folder:
+To erase them again, run the command the script printed, in the app folder
+on the Docker host. It runs inside the app container, which the script has
+just started again:
 
 ```bash
-npm run guests:repurge -- backups-restore/erase-again-20261008_194002.txt
+docker compose exec app npm run guests:repurge -- backups-restore/erase-again-20261008_194002.txt
                                                       # erase every guest listed in the file again; use the file name the script printed
 ```
 
-That command is still being added to the app. Until it exists, erase each
-guest by hand. Use the guest's erase action in the app, or, until the app has
-one (GitLab #55), sign in to the app in the browser, open the developer
-console (F12, then the _Console_ tab), and run this once per id in the file,
-replacing both `GUEST_ID`s:
+It erases each guest exactly as the app's erase action does, and prints
+counts only, no names:
 
-```js
-fetch("/api/guests/GUEST_ID/purge", {
-  method: "POST",
-  headers: { "Content-Type": "application/json" },
-  body: JSON.stringify({ confirm: "GUEST_ID" }),
-})
-  .then((r) => r.json())
-  .then(console.log);
+```text
+Guests in backups-restore/erase-again-20261008_194002.txt: 3
+  erased again:    3
+  already erased:  0
+  not found:       0 (not in this database; nothing to erase)
 ```
 
-It answers `{ outcome: "anonymised", ... }` or `{ outcome: "deleted" }`.
-Repeating it for a guest who is already erased is harmless.
+- **erased again**: the restore had brought them back, and they are erased
+  now. Their bookings stay, as with any erasure.
+- **already erased**: nothing to do. Running the command a second time shows
+  every guest here, so repeating it is harmless.
+- **not found**: the guest is not in the restored database at all (for
+  example, created after the backup was taken), so there is nothing to erase.
+
+For the lost-database case (4.2), write the ids from your own records into a
+file in `backups-restore/`, one per line, and run the same command with that
+file.
 
 ## 6. Erased guests and backups (DSGVO)
 
