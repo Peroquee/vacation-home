@@ -1,5 +1,6 @@
 "use client";
 
+import * as Sentry from "@sentry/nextjs";
 import { useEffect } from "react";
 
 import { ErrorState } from "@/components/states";
@@ -20,8 +21,7 @@ export default function Error({
   retry: () => void;
 }) {
   useEffect(() => {
-    // Until error tracking exists, the browser console is where this lands.
-    console.error(error);
+    Sentry.captureException(error);
   }, [error]);
 
   return <ErrorState reference={error.digest} onRetry={retry} />;

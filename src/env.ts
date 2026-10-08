@@ -42,6 +42,18 @@ const envSchema = z.object({
     protocol: /^https?$/,
     error: "must be an http(s) URL, e.g. http://localhost:3000",
   }),
+
+  /** Minimum level written by the logger in src/lib/logger.ts. */
+  LOG_LEVEL: z.enum(["trace", "debug", "info", "warn", "error", "fatal"]).default("info"),
+
+  /**
+   * Enables GET /api/debug/error, which throws on purpose so the error
+   * tracker can be checked end to end. Off unless set to "true".
+   */
+  ENABLE_ERROR_TEST_ROUTE: z
+    .enum(["true", "false"])
+    .default("false")
+    .transform((value) => value === "true"),
 });
 
 export type Env = z.infer<typeof envSchema>;
@@ -68,7 +80,7 @@ function loadEnv(): Env {
   // deployed environment: a known AUTH_SECRET means forgeable sessions.
   if (process.env.NODE_ENV === "production") {
     const unreplaced = Object.entries(parsed.data)
-      .filter(([, value]) => value.includes("replace-me"))
+      .filter(([, value]) => typeof value === "string" && value.includes("replace-me"))
       .map(([name]) => `  ${name}: still set to the .env.example placeholder`);
 
     if (unreplaced.length > 0) {

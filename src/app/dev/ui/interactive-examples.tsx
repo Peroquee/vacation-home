@@ -1,5 +1,7 @@
 "use client";
 
+import { useState } from "react";
+
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { toastError, toastSuccess } from "@/components/toast";
 import { Button } from "@/components/ui/button";
@@ -23,6 +25,11 @@ import {
 const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 export function InteractiveExamples() {
+  const [crash, setCrash] = useState(false);
+  // Thrown during render, so it reaches src/app/error.tsx and the error
+  // tracker exactly as a real rendering bug would.
+  if (crash) throw new Error("Deliberate client-side test error");
+
   return (
     <div className="flex flex-wrap gap-2">
       <Dialog>
@@ -76,6 +83,9 @@ export function InteractiveExamples() {
         onClick={() => toastError(new Error("The server did not respond."), "Could not save")}
       >
         Error toast
+      </Button>
+      <Button variant="ghost" onClick={() => setCrash(true)}>
+        Throw a client error
       </Button>
     </div>
   );

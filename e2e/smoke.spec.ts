@@ -27,3 +27,25 @@ test("the development-only UI gallery is not served in production", async ({ req
   const response = await request.get("/dev/ui");
   expect(response.status()).toBe(404);
 });
+
+test("every response carries a request id, keeping a well-formed upstream one", async ({
+  request,
+}) => {
+  const generated = await request.get("/calendar");
+  expect(generated.headers()["x-request-id"]).toMatch(/^[0-9a-f-]{36}$/);
+
+  const forwarded = await request.get("/calendar", {
+    headers: { "x-request-id": "upstream-12345678" },
+  });
+  expect(forwarded.headers()["x-request-id"]).toBe("upstream-12345678");
+
+  const injected = await request.get("/calendar", {
+    headers: { "x-request-id": 'bad", "level": "fatal' },
+  });
+  expect(injected.headers()["x-request-id"]).toMatch(/^[0-9a-f-]{36}$/);
+});
+
+test("the error test route is off unless explicitly enabled", async ({ request }) => {
+  const response = await request.get("/api/debug/error");
+  expect(response.status()).toBe(404);
+});
