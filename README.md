@@ -505,8 +505,28 @@ Each property can push its bookings to one Google Calendar
 ### Inbound sync: changes in Google Calendar
 
 For properties with `inbound: true` in their calendar settings, the app finds
-out what changed in Google ([`src/lib/google/inbound.ts`](src/lib/google/inbound.ts)).
-Turning those changes into blocks is GitLab #73.
+out what changed in Google ([`src/lib/google/inbound.ts`](src/lib/google/inbound.ts))
+and imports it as read-only blocks with `origin: "google"`
+([`src/lib/google/inbound-import.ts`](src/lib/google/inbound-import.ts)).
+
+- **What becomes a block:**
+  - All-day events, on their own dates.
+  - Timed events lasting at least `GOOGLE_IMPORT_MIN_TIMED_HOURS` (default
+    12). They block every night they touch, in the property's timezone, so
+    a meeting blocks nothing.
+  - Never the app's own booking events: they carry its extended property,
+    so a booking doesn't come back as a block. Never "free" events either.
+- **Following Google:** moving an event moves its block. Deleting it, making
+  it free or shortening it below the threshold removes the block. A full
+  list removes the blocks of events that are no longer there.
+- **No personal data:** a block keeps the Google event id and the dates, and
+  its reason names only the source ("Google Calendar · <calendar name>").
+  The event's title, description, location and attendees are never stored.
+- **Conflicts:** an event over a confirmed booking isn't imported (the
+  database refuses the overlap). It's logged, and GitLab #74 raises it for
+  review.
+
+How changes are found:
 
 - **Polling, the default.** A LAN-only app can't receive Google's webhooks,
   so each calendar is checked every `GOOGLE_CALENDAR_POLL_SECONDS` (default
