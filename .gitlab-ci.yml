@@ -64,6 +64,11 @@ default:
         echo "cache miss - installing dependencies"
         npm ci --prefer-offline --no-audit --no-fund
       fi
+    # The Prisma client is generated into src/, which no cache carries. `npm
+    # ci` generates it via postinstall, but a cache hit skips the install, so
+    # generate it explicitly. It needs no database and takes well under a
+    # second.
+    - npm run db:generate
 
 install:
   stage: install
@@ -108,12 +113,51 @@ test:
   stage: test
   extends: .node
   script:
-    # Wired up but empty until #44 adds Vitest and Playwright.
-    # `npm run test --if-present` exits 0 when no `test` script exists, so the
-    # stage exists without implying coverage does. Note the stage order comes
-    # from #43; Playwright needs a built app, so #44's e2e job will have to
-    # build or run the dev server itself rather than rely on `build` below.
-    - npm run test --if-present
+    - npm test
+
+e2e:
+  stage: test
+  extends: .node
+  # The same server version as docker-compose.yml. The harness drops and
+  # recreates its own database on it before the run, so no state survives
+  # between pipelines.
+  services:
+    - name: postgres:16.15
+      alias: postgres
+  variables:
+    POSTGRES_USER: vacation
+    POSTGRES_PASSWORD: vacation
+    POSTGRES_DB: vacation_home
+    E2E_DATABASE_URL: postgresql://vacation:vacation@postgres:5432/vacation_home_e2e
+    # Inside the project directory so the cache below can carry the browser.
+    PLAYWRIGHT_BROWSERS_PATH: "$CI_PROJECT_DIR/.cache/ms-playwright"
+  cache:
+    - <<: *npm_store
+      policy: pull
+    - <<: *node_modules
+      policy: pull
+    # Keyed on the lockfile, since the browser build is tied to the exact
+    # @playwright/test version.
+    - key:
+        prefix: playwright
+        files:
+          - package-lock.json
+      paths:
+        - .cache/ms-playwright/
+  script:
+    # The browser has to match the installed @playwright/test exactly. On a
+    # cache hit only the system libraries are installed; the Node image ships
+    # neither them nor the browser.
+    - npx playwright install --with-deps chromium
+    # Builds and starts the app itself (see webServer in playwright.config.ts),
+    # so this does not depend on the build job below.
+    - npm run test:e2e
+  artifacts:
+    when: on_failure
+    expire_in: 1 week
+    paths:
+      - playwright-report/
+      - test-results/
 
 build:
   stage: build
