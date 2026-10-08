@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useId, useState } from "react";
 
@@ -16,6 +17,7 @@ import {
   previewTotalMinor,
   type PropertyChoice,
   stayNights,
+  turnoverFix,
 } from "@/lib/bookings/form";
 import { SOURCE_LABELS, STATUS_LABELS } from "@/lib/bookings/labels";
 import { BOOKING_SOURCES } from "@/lib/bookings/schema";
@@ -338,6 +340,9 @@ export function BookingForm({
           guestNames={guestNames}
           blocking={serverConflicts !== null || conflictBlocks}
           nights={nights}
+          stay={{ checkIn: values.checkIn, checkOut: values.checkOut }}
+          ignoreBookingId={booking?.id}
+          onFix={(field, date) => set(field, date)}
         />
 
         <div className="grid gap-5 sm:grid-cols-3">
@@ -502,12 +507,19 @@ function AvailabilityNotice({
   guestNames,
   blocking,
   nights,
+  stay,
+  ignoreBookingId,
+  onFix,
 }: {
   state: "idle" | "checking" | "failed" | "checked";
   conflicts: Conflict[];
   guestNames: ReadonlyMap<string, string>;
   blocking: boolean;
   nights: number | null;
+  stay: { checkIn: string; checkOut: string };
+  ignoreBookingId?: string;
+  /** Applies a suggested changeover date. */
+  onFix: (field: "checkIn" | "checkOut", date: string) => void;
 }) {
   if (state === "idle" || nights === null) return null;
   if (state === "checked" && conflicts.length > 0) {
@@ -528,10 +540,35 @@ function AvailabilityNotice({
         <ul className="mt-1 list-disc pl-5">
           {conflicts.map((conflict) => (
             <li key={`${conflict.kind}-${conflict.id}`}>
-              {describeConflict(conflict, guestNames)}
+              {conflict.kind === "booking" && conflict.id !== ignoreBookingId ? (
+                <Link href={`/bookings/${conflict.id}`} target="_blank" className="underline">
+                  {describeConflict(conflict, guestNames)}
+                </Link>
+              ) : (
+                describeConflict(conflict, guestNames)
+              )}
             </li>
           ))}
         </ul>
+        {conflicts.map((conflict) => {
+          const fix = turnoverFix(stay, conflict);
+          return fix ? (
+            <div
+              key={`fix-${conflict.kind}-${conflict.id}`}
+              className="mt-2 flex flex-wrap items-center gap-2"
+            >
+              <p>{fix.message}</p>
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                onClick={() => onFix(fix.move, fix.to)}
+              >
+                Use {fix.move === "checkIn" ? "this check-in" : "this check-out"}
+              </Button>
+            </div>
+          ) : null;
+        })}
       </div>
     );
   }

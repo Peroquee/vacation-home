@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
@@ -114,6 +114,36 @@ describe("BookingForm", () => {
     const alert = await screen.findByRole("alert");
     expect(alert).toHaveTextContent("These dates are not available.");
     expect(alert).toHaveTextContent("Booked by Grace Hopper");
+  });
+
+  it("explains a changeover missed by one night and applies the fix", async () => {
+    serve({
+      bookings: [
+        {
+          id: "b1",
+          checkIn: "2026-07-10",
+          checkOut: "2026-07-15",
+          status: "confirmed",
+          source: "direct",
+          guest: { id: "g2", name: "Grace Hopper" },
+        },
+      ],
+      blocks: [],
+    });
+    const user = userEvent.setup();
+    render(<BookingForm properties={[property]} />);
+    await user.selectOptions(screen.getByLabelText("Status"), "confirmed");
+    await fillStay(user, "2026-07-14", "2026-07-18");
+
+    const alert = await screen.findByRole("alert");
+    expect(alert).toHaveTextContent(/Arrive on July 15, 2026 instead/);
+    expect(within(alert).getByRole("link", { name: /Booked by Grace Hopper/ })).toHaveAttribute(
+      "href",
+      "/bookings/b1",
+    );
+    await user.click(within(alert).getByRole("button", { name: "Use this check-in" }));
+    expect(screen.getByLabelText("Check-in")).toHaveValue("2026-07-15");
+    expect(await screen.findByText("These dates are available.")).toBeInTheDocument();
   });
 
   it("creates a booking in minor units", async () => {

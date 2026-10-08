@@ -8,8 +8,8 @@
 // Types only: the calendar module itself is server-side.
 import type { CalendarBlock, CalendarBooking } from "@/lib/availability/calendar";
 import { type Conflict, findConflicts } from "@/lib/availability/rules";
-import { daysBetween, isCalendarDate } from "@/lib/calendar-date";
-import { formatDateRange } from "@/lib/format";
+import { addDays, daysBetween, isCalendarDate } from "@/lib/calendar-date";
+import { formatDate, formatDateRange } from "@/lib/format";
 
 import { calculateTotalMinor } from "./pricing";
 import { stayProblem } from "./schema";
@@ -99,4 +99,33 @@ export function describeConflict(
   }
   const why = conflict.reason ?? (conflict.origin === "google" ? "Google Calendar" : null);
   return why ? `Blocked (${why}), ${when}` : `Blocked, ${when}`;
+}
+
+/**
+ * When a stay misses a changeover by one night, how to fix it. Check-out is
+ * exclusive: a guest may arrive on the day another leaves, so a stay
+ * starting the night before someone's check-out day, or ending the morning
+ * after someone's check-in day, is one night off a valid changeover.
+ * Null for any other overlap.
+ */
+export function turnoverFix(
+  stay: { checkIn: string; checkOut: string },
+  conflict: Conflict,
+): { move: "checkIn" | "checkOut"; to: string; message: string } | null {
+  const day = (date: string) => formatDate(date, { style: "long" });
+  if (conflict.start < stay.checkIn && conflict.end === addDays(stay.checkIn, 1)) {
+    return {
+      move: "checkIn",
+      to: conflict.end,
+      message: `Arrive on ${day(conflict.end)} instead: guests can arrive on the day the previous stay checks out, but not the day before.`,
+    };
+  }
+  if (conflict.end > stay.checkOut && conflict.start === addDays(stay.checkOut, -1)) {
+    return {
+      move: "checkOut",
+      to: conflict.start,
+      message: `Leave on ${day(conflict.start)} instead: a stay can check out on the day the next one checks in, but not the day after.`,
+    };
+  }
+  return null;
 }
