@@ -319,11 +319,39 @@ stored in the database ([`src/auth.ts`](src/auth.ts)).
   on every route except `/signin` and Auth.js's own `/api/auth/*`. Pages
   redirect to sign-in and come back afterwards. API calls get a `401` instead.
 - **Google client setup**: create an OAuth client of type "Web application"
-  and add `<APP_URL>/api/auth/callback/google` as an authorised redirect URI.
-  The same client will later request Calendar access, so sign-in already asks
-  for offline access. The refresh token is stored on the account and replaced
-  on every sign-in.
+  and add `<APP_URL>/api/auth/callback/google` and
+  `<APP_URL>/api/google/callback` as authorised redirect URIs.
+- **Sign-in asks for identity only** (`openid email profile`): no calendar
+  access and no offline access, and no token from sign-in is stored.
 - **Signing out** deletes the session row.
+
+### Google Calendar access
+
+Calendar access is a separate grant the user makes from settings, on top of
+sign-in ([`src/lib/google/`](src/lib/google)):
+
+- **Connecting**: `GET /api/google/connect` sends the browser to Google's
+  consent screen with incremental authorisation (`include_granted_scopes`)
+  for the `calendar` scope and offline access. Google returns to
+  `/api/google/callback`, which checks the CSRF `state` (an httpOnly cookie
+  bound to the user), stores the grant and redirects to
+  `/settings?google=connected` (or `denied`, `scope_missing`, `unavailable`,
+  `error`).
+- **Tokens at rest** are encrypted with AES-256-GCM under
+  `TOKEN_ENCRYPTION_KEY` ([`src/lib/secrets.ts`](src/lib/secrets.ts)). Without
+  that key, connecting is unavailable; the rest of the app works.
+- **Using it**: `getAccessToken(userId)` returns a valid access token,
+  refreshing it when it is within a minute of expiry. Concurrent callers share
+  one refresh.
+- **Revoked access**: when Google answers a refresh with `invalid_grant`
+  (access removed in the Google account, or the grant expired), the
+  connection is marked `disconnected` with reason `revoked`, and callers get
+  a `CalendarNotConnectedError`. `GET /api/google/connection` reports it so
+  settings can show a "reconnect" prompt; reconnecting replaces the grant.
+  Tokens sealed under an earlier `TOKEN_ENCRYPTION_KEY` do the same, with
+  reason `key_changed`.
+- **Disconnecting**: `DELETE /api/google/connection` revokes the grant at
+  Google (best effort) and deletes it.
 
 End-to-end tests sign in by inserting a real session into their own test
 database and sending its cookie. The app has no test-only login path that a
