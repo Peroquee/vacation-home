@@ -7,22 +7,23 @@ here, add it here rather than in the feature.
 See them all rendered at **`/dev/ui`** while `npm run dev` is running. That page
 is development-only and returns 404 in production.
 
-| Need                      | Use                                                              | From                          |
-| ------------------------- | ---------------------------------------------------------------- | ----------------------------- |
-| Page title and actions    | `PageHeader`                                                     | `@/components/page-header`    |
-| Grouped content           | `Card` and its parts                                             | `@/components/ui/card`        |
-| List of records           | `DataTable`                                                      | `@/components/data-table`     |
-| Short focused form        | `Dialog` (modal)                                                 | `@/components/ui/dialog`      |
-| Form fields               | `Field`, `FieldLabel`, `FieldError`, `Input`, `NativeSelect`     | `@/components/ui/field`, ...  |
-| Search and pick a record  | `Combobox`                                                       | `@/components/ui/combobox`    |
-| Month of stays            | `MonthCalendar` (controlled: data and callbacks in props)        | `@/components/calendar/...`   |
-| Detail view beside a list | `Sheet`                                                          | `@/components/ui/sheet`       |
-| "Are you sure?"           | `ConfirmDialog`                                                  | `@/components/confirm-dialog` |
-| Nothing to show yet       | `EmptyState`                                                     | `@/components/states`         |
-| Loading failed            | `ErrorState`                                                     | `@/components/states`         |
-| Still loading             | `PageSkeleton`, `TableSkeleton`, `CardSkeleton`                  | `@/components/skeletons`      |
-| Feedback after an action  | `toastSuccess`, `toastError`                                     | `@/components/toast`          |
-| Money and dates           | `formatMoney`, `formatDate`, `formatDateRange`, `formatDateTime` | `@/lib/format`                |
+| Need                      | Use                                                               | From                          |
+| ------------------------- | ----------------------------------------------------------------- | ----------------------------- |
+| Page title and actions    | `PageHeader`                                                      | `@/components/page-header`    |
+| Grouped content           | `Card` and its parts                                              | `@/components/ui/card`        |
+| List of records           | `DataTable`                                                       | `@/components/data-table`     |
+| Short focused form        | `Dialog` (modal)                                                  | `@/components/ui/dialog`      |
+| Form fields               | `Field`, `FieldLabel`, `FieldError`, `Input`, `NativeSelect`      | `@/components/ui/field`, ...  |
+| Search and pick a record  | `Combobox`                                                        | `@/components/ui/combobox`    |
+| Month of stays            | `MonthCalendar` (controlled: data and callbacks in props)         | `@/components/calendar/...`   |
+| Detail view beside a list | `Sheet`                                                           | `@/components/ui/sheet`       |
+| "Are you sure?"           | `ConfirmDialog`                                                   | `@/components/confirm-dialog` |
+| Nothing to show yet       | `EmptyState`                                                      | `@/components/states`         |
+| Loading failed            | `ErrorState`                                                      | `@/components/states`         |
+| Still loading             | `PageSkeleton`, `TableSkeleton`, `CardSkeleton`                   | `@/components/skeletons`      |
+| Feedback after an action  | `toastSuccess`, `toastError`                                      | `@/components/toast`          |
+| A headline figure         | `StatTile` (value, change vs a named period); `StatTilesSkeleton` | `@/components/stat-tile`      |
+| Money and dates           | `formatMoney`, `formatDate`, `formatDateRange`, `formatDateTime`  | `@/lib/format`                |
 
 `components/ui/` holds the shadcn/ui building blocks (on Base UI), added with
 `npx shadcn add <name>`. The files one level up compose them into the
