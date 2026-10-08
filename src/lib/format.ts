@@ -4,6 +4,7 @@
  * Use these rather than `toLocaleString` or `Intl` directly, so every page
  * shows amounts and dates the same way.
  */
+import { type CalendarDate, toUtcDate } from "@/lib/calendar-date";
 import { APP_LOCALE } from "@/lib/locale";
 
 type FormatOptions = {
@@ -57,29 +58,7 @@ function currencyFormat(locale: string, currency: string): Intl.NumberFormat {
 
 // --- Dates ------------------------------------------------------------------
 
-/**
- * A calendar date, "YYYY-MM-DD", with no time and no timezone: what a check-in
- * or check-out is. Kept apart from instants on purpose: rendering a calendar
- * date through a `Date` in the viewer's timezone shows the wrong day for
- * anyone west of UTC.
- */
-export type CalendarDate = string;
-
-const CALENDAR_DATE = /^(\d{4})-(\d{2})-(\d{2})$/;
-
-/** Parses a calendar date to midnight UTC, rejecting impossible dates. */
-function parseCalendarDate(value: CalendarDate): Date {
-  const match = CALENDAR_DATE.exec(value);
-  if (match) {
-    const [, y, m, d] = match.map(Number);
-    const date = new Date(Date.UTC(y!, m! - 1, d!));
-    // Date.UTC rolls 2026-02-30 over into March; refuse instead.
-    if (date.getUTCFullYear() === y && date.getUTCMonth() === m! - 1 && date.getUTCDate() === d) {
-      return date;
-    }
-  }
-  throw new RangeError(`Expected a calendar date as YYYY-MM-DD, got "${value}"`);
-}
+export type { CalendarDate } from "@/lib/calendar-date";
 
 type DateStyle = "short" | "medium" | "long" | "full";
 
@@ -92,7 +71,7 @@ export function formatDate(
   { style = "medium", locale = APP_LOCALE }: FormatOptions & { style?: DateStyle } = {},
 ): string {
   return new Intl.DateTimeFormat(locale, { dateStyle: style, timeZone: "UTC" }).format(
-    parseCalendarDate(value),
+    toUtcDate(value),
   );
 }
 
@@ -105,8 +84,8 @@ export function formatDateRange(
   end: CalendarDate,
   { style = "medium", locale = APP_LOCALE }: FormatOptions & { style?: DateStyle } = {},
 ): string {
-  const from = parseCalendarDate(start);
-  const to = parseCalendarDate(end);
+  const from = toUtcDate(start);
+  const to = toUtcDate(end);
   // A check-out before the check-in is bad data; showing it as a plausible
   // stay would hide that.
   if (to < from) {

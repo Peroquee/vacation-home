@@ -129,6 +129,7 @@ e2e:
     POSTGRES_PASSWORD: vacation
     POSTGRES_DB: vacation_home
     E2E_DATABASE_URL: postgresql://vacation:vacation@postgres:5432/vacation_home_e2e
+    TEST_DATABASE_URL: postgresql://vacation:vacation@postgres:5432/vacation_home_test
     # Inside the project directory so the cache below can carry the browser.
     PLAYWRIGHT_BROWSERS_PATH: "$CI_PROJECT_DIR/.cache/ms-playwright"
   cache:
@@ -149,6 +150,9 @@ e2e:
     # cache hit only the system libraries are installed; the Node image ships
     # neither them nor the browser.
     - npx playwright install --with-deps chromium
+    # Database tests share this job for its postgres service; each suite
+    # resets its own database, so they do not interfere.
+    - npm run test:db
     # Builds and starts the app itself (see webServer in playwright.config.ts),
     # so this does not depend on the build job below.
     - npm run test:e2e
