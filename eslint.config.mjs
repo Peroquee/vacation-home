@@ -39,6 +39,8 @@ const eslintConfig = defineConfig([
       "next.config.ts",
       "playwright.config.ts",
       "e2e/**/*.{ts,mjs}",
+      "vitest.db.config.mts",
+      "vitest.db.setup.mts",
     ],
     rules: { "no-restricted-properties": "off" },
   },

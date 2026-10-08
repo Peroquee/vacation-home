@@ -142,6 +142,18 @@ inline "new guest" relies on.
 cover as `*.test.ts`. They resolve `@/…` from `tsconfig.json`, exactly as the
 app does, and need no database.
 
+**Database tests** (`npm run test:db`) are Vitest files named `*.db.test.ts`,
+run against a real PostgreSQL: the Compose `db` service, in a database of
+their own (`vacation_home_test`), dropped and re-migrated before each run. They
+cover what only the database can prove: constraints, exact money round-trips,
+dates. They run with the process clock at UTC+14, so a calendar date pushed
+through local time by mistake fails loudly.
+
+```bash
+docker compose up -d db
+npm run test:db
+```
+
 **End-to-end tests** use [Playwright](https://playwright.dev) and live in
 [`e2e/`](e2e). They need the Compose database running:
 
@@ -274,6 +286,7 @@ else imports the typed `env` object from `@/env`. An ESLint rule enforces this.
 | `npm run typecheck`      | `next typegen`, then `tsc --noEmit`        |
 | `npm test`               | Unit tests (Vitest), once                  |
 | `npm run test:watch`     | Unit tests, re-running on change           |
+| `npm run test:db`        | Database tests against PostgreSQL          |
 | `npm run test:e2e`       | End-to-end tests (Playwright)              |
 | `npm run migrate:dev`    | Create and apply a migration (development) |
 | `npm run migrate:deploy` | Apply committed migrations                 |

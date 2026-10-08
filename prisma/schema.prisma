@@ -39,6 +39,7 @@ model Property {
   archivedAt              DateTime? @map("archived_at")
   createdAt               DateTime  @default(now()) @map("created_at")
   updatedAt               DateTime  @updatedAt @map("updated_at")
+  bookings                Booking[]
 
   @@map("properties")
 }
@@ -54,11 +55,79 @@ model Guest {
   email     String?  @unique
   phone     String?
   notes     String?
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  bookings  Booking[]
 
   @@index([name])
   @@map("guests")
+}
+
+// --- Bookings -----------------------------------------------------------------
+
+enum BookingStatus {
+  /// Asked about, not committed: does not block the dates.
+  inquiry
+  /// Committed: blocks the dates (see the availability rules).
+  confirmed
+  /// Kept for history; never blocks.
+  cancelled
+
+  @@map("booking_status")
+}
+
+enum BookingSource {
+  direct
+  airbnb
+  booking_com @map("booking.com")
+  other
+
+  @@map("booking_source")
+}
+
+/// A stay at a property.
+///
+/// DATES: `checkIn` and `checkOut` are calendar dates in the property's
+/// timezone, with no time of day. `checkOut` is EXCLUSIVE: the stay occupies
+/// the nights from `checkIn` up to but not including `checkOut`, so the
+/// departure day is free for the next guest to arrive. A stay from 14 to 18
+/// July is 4 nights (14, 15, 16, 17) and does not overlap a stay starting on
+/// 18 July. In SQL terms the stay is `daterange(check_in, check_out, '[)')`.
+///
+/// MONEY: integer minor units (cents) in `currency`, never floats. The
+/// currency is copied from the property when the booking is made, so later
+/// changes to the property never reinterpret existing amounts; likewise the
+/// rate and fee are copied from the property's defaults and then belong to
+/// the booking.
+model Booking {
+  id               String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  propertyId       String        @map("property_id") @db.Uuid
+  guestId          String        @map("guest_id") @db.Uuid
+  checkIn          DateTime      @map("check_in") @db.Date
+  /// Exclusive: the departure day, when the stay no longer occupies the night.
+  checkOut         DateTime      @map("check_out") @db.Date
+  status           BookingStatus @default(inquiry)
+  source           BookingSource @default(direct)
+  guestCount       Int           @default(1) @map("guest_count")
+  nightlyRateMinor Int           @map("nightly_rate_minor")
+  cleaningFeeMinor Int           @map("cleaning_fee_minor")
+  /// Normally nights x nightly rate + cleaning fee, kept up to date by the
+  /// API; `totalIsManual` marks a total set by hand, which is then left alone.
+  totalAmountMinor Int           @map("total_amount_minor")
+  totalIsManual    Boolean       @default(false) @map("total_is_manual")
+  currency         String        @db.Char(3)
+  notes            String?
+  createdAt        DateTime      @default(now()) @map("created_at")
+  updatedAt        DateTime      @updatedAt @map("updated_at")
+
+  // Restrict: a property or guest with bookings cannot be deleted (their
+  // APIs answer 409 and suggest archiving instead).
+  property Property @relation(fields: [propertyId], references: [id], onDelete: Restrict)
+  guest    Guest    @relation(fields: [guestId], references: [id], onDelete: Restrict)
+
+  @@index([propertyId, checkIn, checkOut])
+  @@index([guestId])
+  @@map("bookings")
 }
 
 // --- Authentication (Auth.js) ------------------------------------------------
