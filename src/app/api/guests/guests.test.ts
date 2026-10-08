@@ -35,6 +35,11 @@ vi.mock("@/lib/db", () => {
           where.id
             ? (store.rows.get(where.id) ?? null)
             : ([...store.rows.values()].find((row) => row.email === where.email) ?? null),
+        findUniqueOrThrow: async ({ where }: { where: { id: string } }) => {
+          const row = store.rows.get(where.id);
+          if (!row) throw knownError("P2025");
+          return row;
+        },
         create: async ({ data }: { data: Record<string, unknown> }) => {
           if (store.raceWith) {
             store.rows.set(String(store.raceWith.id), store.raceWith);
@@ -47,6 +52,7 @@ vi.mock("@/lib/db", () => {
             email: null,
             phone: null,
             notes: null,
+            purgedAt: null,
             createdAt: now,
             updatedAt: now,
             ...data,
@@ -58,11 +64,11 @@ vi.mock("@/lib/db", () => {
           where,
           data,
         }: {
-          where: { id: string };
+          where: { id: string; purgedAt?: null };
           data: Record<string, unknown>;
         }) => {
           const row = store.rows.get(where.id);
-          if (!row) throw knownError("P2025");
+          if (!row || (where.purgedAt === null && row.purgedAt)) throw knownError("P2025");
           if ("email" in data && emailTaken(data.email, where.id)) throw knownError("P2002");
           const updated = { ...row, ...data, updatedAt: new Date() };
           store.rows.set(where.id, updated);

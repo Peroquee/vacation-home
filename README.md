@@ -136,6 +136,64 @@ any case), `phone` and `notes`. Creating with a known email never makes a
 duplicate, even when two requests race. That is what the booking form's
 inline "new guest" relies on.
 
+### Bookings
+
+| Method and path                 | Does                                                              |
+| ------------------------------- | ----------------------------------------------------------------- |
+| `GET /api/bookings`             | List, paginated, with filters (below)                             |
+| `POST /api/bookings`            | Create; `409` if a confirmed booking's dates are taken            |
+| `GET /api/bookings/:id`         | One booking, with its property and guest                          |
+| `PATCH /api/bookings/:id`       | Update; new dates or confirming re-check availability             |
+| `POST /api/bookings/:id/cancel` | Cancel: frees the dates, keeps the record. Bookings never delete. |
+
+- **Dates**: `checkIn`/`checkOut` are `YYYY-MM-DD`; check-out is exclusive,
+  so a guest may arrive on another's departure day. At most 365 nights.
+- **Status**: `inquiry` (default; holds nothing), `confirmed` (holds the
+  dates), `cancelled`. **Source**: `direct`, `airbnb`, `booking.com`, `other`.
+- **Money**: rates default to the property's and the currency is copied
+  from it. `totalAmountMinor` is nights × `nightlyRateMinor` +
+  `cleaningFeeMinor`, kept up to date as dates and rates change, unless set by
+  hand (`totalIsManual`); `PATCH` with `totalAmountMinor: null` hands it back
+  to the calculation.
+- **Conflicts**: a confirmed booking overlapping another confirmed booking or
+  a block gets a `409` whose `error.conflicts` lists what is in the way
+  (`kind`, `id`, `start`, `end`, and for blocks `reason`/`origin`). Moving a
+  booking ignores its own old dates. PostgreSQL enforces the same rules, so
+  they hold under concurrency.
+- **List filters**: `propertyId`, `from`/`to` (stays overlapping that range),
+  `status` and `source` (comma-separated), `q` (part of the guest's name or
+  email), `page`, `pageSize` (≤ 100), `sort` (`checkIn` or `-checkIn`). The
+  response is `{ items, total, page, pageSize }`.
+
+### Erasing a guest's personal data (DSGVO Art. 17)
+
+`POST /api/guests/:id/purge` with `{ "confirm": "<the guest's id>" }`. This
+cannot be undone, which is why the id has to be repeated.
+
+- **A guest with bookings is anonymised, not deleted.** Bookings are
+  accounting records that must be kept (AO §147; Art. 17(3)(b) DSGVO).
+  - Name becomes "Deleted guest"; email, phone and notes are cleared.
+  - The notes on their bookings are cleared too. A booking references its
+    guest by id only, so booking dates and amounts are untouched.
+  - An audit event records that a purge happened, when and by whom, without
+    any of the removed data. The audit trail is append-only in the database.
+- **A guest without bookings is deleted** outright, with the same audit event.
+- **Afterwards** the guest is read-only (`409` on edit), never appears in
+  search or the typeahead, and can't be given new bookings. Purging again is
+  harmless.
+
+What a purge does **not** reach yet (details in
+[`src/lib/guests/purge.ts`](src/lib/guests/purge.ts)):
+
+- **Google Calendar events from outbound sync** (GitLab #70). Their titles and
+  descriptions must not carry guest personal data, or the purge must update
+  them.
+- **Logs and error reports.** The app doesn't log guest records. Emails and
+  phone fields are masked anyway, and request bodies never reach the error
+  tracker. A guest's _name_ isn't pattern-masked, so it must never be logged.
+- **Backups.** The data disappears from them once backup retention passes; the
+  backup procedure (GitLab #95) documents that period.
+
 ## Testing
 
 **Unit tests** use [Vitest](https://vitest.dev) and live next to the code they
