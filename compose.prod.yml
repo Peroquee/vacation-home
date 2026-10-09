@@ -130,6 +130,10 @@ services:
       - ./scripts/backup:/opt/backup:ro
     # The backup directory's owner, like the `backup` service.
     user: "999:999"
+    # The app first: a fresh volume takes its owner from the first container
+    # that mounts it, and the app must be able to write to it.
+    depends_on:
+      - app
     # Once at start, then every 24 hours.
     command: ["sh", "-c", "while :; do /opt/backup/receipts-mirror.sh; sleep 86400; done"]
 

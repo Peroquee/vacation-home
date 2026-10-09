@@ -182,6 +182,7 @@ export function ReceiptsSection({ transactionId }: { transactionId: string }) {
         ref={input}
         id={`${id}-file`}
         type="file"
+        aria-label={t("add")}
         accept={ACCEPT}
         multiple
         className="sr-only"

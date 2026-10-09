@@ -1,3 +1,7 @@
+import { mkdtempSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+
 import { defineConfig } from "vitest/config";
 
 /**
@@ -32,6 +36,8 @@ export default defineConfig({
       APP_URL: "http://localhost:3000",
       // 32 bytes, base64: Google tokens are stored encrypted.
       TOKEN_ENCRYPTION_KEY: "ZGItdGVzdC1rZXktZGItdGVzdC1rZXktZGItdGVzdC0=",
+      // Receipts go to a fresh temporary folder, never into the checkout.
+      RECEIPTS_DIR: mkdtempSync(join(tmpdir(), "vacation-home-receipts-")),
       // Run as far from UTC as possible, so any calendar date that is
       // accidentally pushed through local time shifts and fails loudly.
       TZ: "Pacific/Kiritimati",
