@@ -14,6 +14,7 @@ vi.mock("@/components/toast", () => ({ toastSuccess: vi.fn(), toastError: vi.fn(
 afterEach(() => {
   vi.unstubAllGlobals();
   vi.clearAllMocks();
+  failures.list = [];
 });
 
 const lake: PropertySync = { property: { id: "p1", name: "Lake House" }, calendar: null };
@@ -27,17 +28,23 @@ const calendars = [
   { id: "rentals@group", summary: "Rentals", primary: false },
 ];
 
-/** Answers the calendar list, then each further request in turn. */
+/** The panel's own lookups, answered on the side and left out of the recorded calls. */
+const failures = vi.hoisted(() => ({ list: [] as unknown[] }));
+const background = (url: string) =>
+  url === "/api/google/calendars" || url === "/api/calendar-sync/failures";
+
+/** Answers the calendar list and the failures, then each further request in turn. */
 function serve(...answers: Response[]) {
-  const fetchMock = vi.fn<typeof fetch>(async (input) =>
-    String(input) === "/api/google/calendars"
-      ? Response.json(calendars)
-      : (answers.shift() ?? new Response(null, { status: 204 })),
-  );
+  const fetchMock = vi.fn<typeof fetch>(async (input) => {
+    const url = String(input);
+    if (url === "/api/google/calendars") return Response.json(calendars);
+    if (url === "/api/calendar-sync/failures") return Response.json(failures.list);
+    return answers.shift() ?? new Response(null, { status: 204 });
+  });
   vi.stubGlobal("fetch", fetchMock);
   return () =>
     fetchMock.mock.calls
-      .filter(([url]) => String(url) !== "/api/google/calendars")
+      .filter(([url]) => !background(String(url)))
       .map(([url, init]) => [
         init?.method,
         String(url),
@@ -173,6 +180,53 @@ describe("GoogleCalendarSection", () => {
     expect(calls()).toEqual([
       ["POST", "/api/properties/p1/calendar/resync", undefined],
       ["DELETE", "/api/properties/p1/calendar", undefined],
+    ]);
+  });
+});
+
+describe("Sync problems panel", () => {
+  const failure = (linkId: string, state: string, attempts: number) => ({
+    linkId,
+    state,
+    error: "Google could not be reached; the app retries automatically.",
+    attempts,
+    failingSince: "2026-10-08T06:00:00.000Z",
+    nextAttemptAt: state === "dead" ? null : "2026-10-08T08:00:00.000Z",
+    booking: {
+      id: `b-${linkId}`,
+      checkIn: "2026-07-14",
+      checkOut: "2026-07-18",
+      property: { id: "p1", name: "Lake House" },
+    },
+  });
+
+  it("says when everything is in sync", async () => {
+    serve();
+    render(<GoogleCalendarSection connection={connected} properties={[lake]} />);
+    expect(await screen.findByText(/No sync problems/)).toBeInTheDocument();
+  });
+
+  it("lists failures with the reason and retries one or all", async () => {
+    failures.list = [failure("l1", "failed", 2), failure("l2", "dead", 8)];
+    const calls = serve(Response.json({ queued: 1 }), Response.json({ queued: 2 }));
+    const user = userEvent.setup();
+    render(<GoogleCalendarSection connection={connected} properties={[lake]} />);
+
+    const panel = await screen.findByRole("region", { name: "Sync problems" });
+    expect(await within(panel).findByText("2 bookings could not be synced")).toBeInTheDocument();
+    expect(within(panel).getAllByText(/Google could not be reached/)).toHaveLength(2);
+    expect(within(panel).getByText(/Stopped after 8 attempts; retry by hand/)).toBeInTheDocument();
+    expect(within(panel).getAllByRole("link")[0]).toHaveAttribute("href", "/bookings/b-l1");
+
+    await user.click(within(panel).getAllByRole("button", { name: "Retry" })[0]!);
+    await waitFor(() =>
+      expect(toastSuccess).toHaveBeenCalledWith("Retrying 1 event", expect.any(String)),
+    );
+    await user.click(within(panel).getByRole("button", { name: "Retry all" }));
+    await waitFor(() => expect(calls()).toHaveLength(2));
+    expect(calls()).toEqual([
+      ["POST", "/api/calendar-sync/retry", { linkId: "l1" }],
+      ["POST", "/api/calendar-sync/retry", {}],
     ]);
   });
 });
