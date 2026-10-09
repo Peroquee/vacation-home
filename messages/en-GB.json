@@ -761,6 +761,23 @@
       "doneSummary": "{imported} imported, {skipped} skipped as duplicates, {invalid} left out with problems.",
       "toLedger": "Go to the ledger",
       "another": "Import another file"
+    },
+    "receipts": {
+      "title": "Receipts",
+      "loading": "Loading receipts…",
+      "loadFailed": "The receipts could not be loaded.",
+      "none": "No receipts yet.",
+      "open": "Open {name}",
+      "remove": "Remove {name}",
+      "removeTitle": "Remove {name}?",
+      "removeDescription": "The file is deleted. Keep receipts as long as tax law requires: in Germany, 8 years.",
+      "add": "Add receipts",
+      "uploading": "Uploading…",
+      "uploadFailed": "Could not add the receipt",
+      "hint": "PDF, JPEG, PNG, WebP or HEIC, up to 10 MB each, {max} per transaction. Location data is removed from JPEG photos; HEIC and WebP photos keep theirs.",
+      "full": "This transaction has the most receipts it can hold ({max}).",
+      "saveFirst": "Receipts can be added once the transaction is saved.",
+      "count": "{count, plural, one {# receipt} other {# receipts}}"
     }
   },
   "dashboard": {
@@ -981,6 +998,13 @@
     "feedUrl": "must be an http(s) link to the platform's calendar export",
     "blockFromFeed": "This block comes from a booking platform's calendar. Change the stay on the platform; the feed updates the block.",
     "icalOverlap": "A booking platform has a stay on dates of a confirmed booking: a double booking. Cancel one of them, on the platform or here.",
-    "googleOverlap": "A Google Calendar event overlaps a confirmed booking, so it was not imported as a block. Check the dates in Google or in the booking."
+    "googleOverlap": "A Google Calendar event overlaps a confirmed booking, so it was not imported as a block. Check the dates in Google or in the booking.",
+    "fileTooLarge": "is larger than 10 MB",
+    "fileType": "must be a PDF, JPEG, PNG, WebP or HEIC file",
+    "jpegUnreadable": "is not a readable JPEG",
+    "thumbnailJpeg": "must be a small JPEG",
+    "tooManyReceipts": "is one too many: at most {max} receipts per transaction",
+    "receiptNotFound": "Receipt not found.",
+    "notFormData": "The request body is not valid form data."
   }
 }

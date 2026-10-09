@@ -761,6 +761,23 @@
       "doneSummary": "{imported} importiert, {skipped} als Duplikate übersprungen, {invalid} wegen Problemen ausgelassen.",
       "toLedger": "Zum Kassenbuch",
       "another": "Weitere Datei importieren"
+    },
+    "receipts": {
+      "title": "Belege",
+      "loading": "Belege werden geladen…",
+      "loadFailed": "Die Belege konnten nicht geladen werden.",
+      "none": "Noch keine Belege.",
+      "open": "{name} öffnen",
+      "remove": "{name} entfernen",
+      "removeTitle": "{name} entfernen?",
+      "removeDescription": "Die Datei wird gelöscht. Bewahren Sie Belege so lange auf, wie das Steuerrecht verlangt: in Deutschland 8 Jahre.",
+      "add": "Belege hinzufügen",
+      "uploading": "Wird hochgeladen…",
+      "uploadFailed": "Der Beleg konnte nicht hinzugefügt werden",
+      "hint": "PDF, JPEG, PNG, WebP oder HEIC, je bis 10 MB, {max} pro Posten. Aus JPEG-Fotos werden Standortdaten entfernt; HEIC- und WebP-Fotos behalten ihre.",
+      "full": "Dieser Posten hat schon die meisten Belege, die er haben kann ({max}).",
+      "saveFirst": "Belege können hinzugefügt werden, sobald der Posten gespeichert ist.",
+      "count": "{count, plural, one {# Beleg} other {# Belege}}"
     }
   },
   "dashboard": {
@@ -981,6 +998,13 @@
     "feedUrl": "muss ein http(s)-Link zum Kalender-Export der Plattform sein",
     "blockFromFeed": "Diese Blockierung stammt aus dem Kalender einer Buchungsplattform. Ändern Sie den Aufenthalt auf der Plattform; der Feed aktualisiert die Blockierung.",
     "icalOverlap": "Eine Buchungsplattform hat einen Aufenthalt an Tagen einer bestätigten Buchung: eine Doppelbuchung. Stornieren Sie einen davon, auf der Plattform oder hier.",
-    "googleOverlap": "Ein Termin im Google Kalender überschneidet sich mit einer bestätigten Buchung und wurde daher nicht als Blockierung übernommen. Prüfen Sie die Daten in Google oder in der Buchung."
+    "googleOverlap": "Ein Termin im Google Kalender überschneidet sich mit einer bestätigten Buchung und wurde daher nicht als Blockierung übernommen. Prüfen Sie die Daten in Google oder in der Buchung.",
+    "fileTooLarge": "ist größer als 10 MB",
+    "fileType": "muss eine PDF-, JPEG-, PNG-, WebP- oder HEIC-Datei sein",
+    "jpegUnreadable": "ist kein lesbares JPEG",
+    "thumbnailJpeg": "muss ein kleines JPEG sein",
+    "tooManyReceipts": "ist einer zu viel: höchstens {max} Belege pro Posten",
+    "receiptNotFound": "Beleg nicht gefunden.",
+    "notFormData": "Der Inhalt der Anfrage sind keine gültigen Formulardaten."
   }
 }

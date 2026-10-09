@@ -1,6 +1,6 @@
 "use client";
 
-import { Plus } from "lucide-react";
+import { Paperclip, Plus } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
@@ -24,6 +24,8 @@ import {
 export type LedgerRow = EditableTransaction & {
   currency: string;
   category: { id: string; name: string; color: string };
+  /** How many receipts it has (GitLab #82). */
+  receipts: number;
 };
 
 export type PeriodTotal = {
@@ -60,6 +62,8 @@ export function LedgerView({
   const searchParams = useSearchParams();
   const [editing, setEditing] = useState<EditableTransaction | null>(null);
   const text = useTranslations("finance.ledger");
+  const tReceipts = useTranslations("finance.receipts");
+  const receiptsText = (count: number) => tReceipts("count", { count });
   const format = useFormat();
   const adding = searchParams.get("add") === "1";
 
@@ -89,6 +93,12 @@ export function LedgerView({
           })}
         >
           {t.description || <span className="text-muted-foreground">{t.category.name}</span>}
+          {t.receipts > 0 ? (
+            <span className="text-muted-foreground ml-1.5 inline-flex items-center align-middle">
+              <Paperclip aria-hidden className="size-3.5" />
+              <span className="sr-only">, {receiptsText(t.receipts)}</span>
+            </span>
+          ) : null}
         </button>
       ),
     },

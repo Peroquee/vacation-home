@@ -27,16 +27,23 @@ const categories = [
 ];
 const defaults = { propertyId: PROPERTY, date: "2026-10-08" };
 
-/** Answers bookings lookups with none, and saves with `save`. */
+/** The dialog's own lookups: bookings to link, and an edited transaction's receipts. */
+const lookup = (url: string) => url.startsWith("/api/bookings") || url.endsWith("/attachments");
+
+/** Answers the lookups with nothing, and saves with `save`. */
 function serve(save: Response = Response.json({}, { status: 201 })) {
   const fetchMock = vi.fn<typeof fetch>(async (input) =>
-    String(input).startsWith("/api/bookings") ? Response.json({ items: [] }) : save,
+    String(input).startsWith("/api/bookings")
+      ? Response.json({ items: [] })
+      : String(input).endsWith("/attachments")
+        ? Response.json([])
+        : save,
   );
   vi.stubGlobal("fetch", fetchMock);
   return fetchMock;
 }
 const saved = (fetchMock: ReturnType<typeof serve>) => {
-  const call = fetchMock.mock.calls.find(([url]) => !String(url).startsWith("/api/bookings"));
+  const call = fetchMock.mock.calls.find(([url]) => !lookup(String(url)));
   return (
     call && {
       url: String(call[0]),
@@ -176,6 +183,7 @@ describe("LedgerView", () => {
       bookingId: "b1",
       currency: "EUR",
       category: { id: "c-other", name: "Other income", color: "#10b981" },
+      receipts: 2,
     },
     {
       id: "b",
@@ -188,6 +196,7 @@ describe("LedgerView", () => {
       bookingId: null,
       currency: "EUR",
       category: { id: "c-clean", name: "Cleaning", color: "#0ea5e9" },
+      receipts: 0,
     },
   ];
 

@@ -45,6 +45,10 @@ ENV NODE_ENV=production \
     NEXT_TELEMETRY_DISABLED=1
 COPY --from=build --chown=node:node /app/.next/standalone ./
 COPY --from=build --chown=node:node /app/.next/static ./.next/static
+# Receipts (GitLab #82): the `receipts` volume is mounted here. Created as
+# the app's user, so a fresh named volume starts out writable by it.
+RUN mkdir -p /data/receipts && chown node:node /data/receipts
+ENV RECEIPTS_DIR=/data/receipts
 USER node
 EXPOSE 3000
 # Liveness only (/api/health): a database outage must not restart the app in

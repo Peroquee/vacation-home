@@ -1,7 +1,8 @@
 /**
  * Rate limits for the endpoints worth abusing, applied by src/proxy.ts:
  * sign-in, the Google webhook and calendar connect flow, the public iCal
- * export feed, guest erasure, category reassignment and bulk deletion. A fixed window per key, in
+ * export feed, receipt uploads, guest erasure, category reassignment and bulk
+ * deletion. A fixed window per key, in
  * memory: the app runs as one process, and a restart forgetting the counts
  * is harmless.
  *
@@ -53,6 +54,15 @@ export const RULES: Rule[] = [
     name: "google-connect",
     matches: (_method, path) => path === "/api/google/connect" || path === "/api/google/callback",
     limit: 20,
+    windowMs: 10 * MINUTE,
+    by: "user",
+  },
+  {
+    // Each upload writes up to 10 MB to disk.
+    name: "receipt-upload",
+    matches: (method, path) =>
+      method === "POST" && new RegExp(`^/api/transactions/${UUID}/attachments$`).test(path),
+    limit: 60,
     windowMs: 10 * MINUTE,
     by: "user",
   },

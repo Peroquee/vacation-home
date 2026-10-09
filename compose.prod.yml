@@ -53,6 +53,9 @@ services:
     environment:
       # The database is the `db` service, whatever .env says.
       DATABASE_URL: postgresql://vacation:${POSTGRES_PASSWORD}@db:5432/vacation_home
+    volumes:
+      # Receipts on transactions (GitLab #82); backed up by `receipts-backup`.
+      - receipts:/data/receipts
     ports:
       # Reachable from this machine only: Caddy is the way in from the LAN,
       # and this port is what an SSH tunnel uses (docs/deployment.md, option B).
@@ -109,7 +112,33 @@ services:
       db:
         condition: service_healthy
 
+  # The receipts, mirrored next to the database backups once a day:
+  # scripts/backup/receipts-mirror.sh. Files never change (they are named by
+  # their content), so each run copies only new ones.
+  receipts-backup:
+    image: alpine:3.24
+    profiles: [backup]
+    restart: unless-stopped
+    environment:
+      RECEIPTS_DIR: /data/receipts
+      MIRROR_DIR: /backups/receipts
+      # Files deleted in the app stay this long, like the monthly dumps.
+      KEEP_DAYS: ${BACKUP_RECEIPTS_KEEP_DAYS:-186}
+    volumes:
+      - receipts:/data/receipts:ro
+      - ${BACKUP_HOST_DIR:-./backups}:/backups
+      - ./scripts/backup:/opt/backup:ro
+    # The backup directory's owner, like the `backup` service.
+    user: "999:999"
+    # The app first: a fresh volume takes its owner from the first container
+    # that mounts it, and the app must be able to write to it.
+    depends_on:
+      - app
+    # Once at start, then every 24 hours.
+    command: ["sh", "-c", "while :; do /opt/backup/receipts-mirror.sh; sleep 86400; done"]
+
 volumes:
   db-data:
+  receipts:
   caddy-data:
   caddy-config:
