@@ -2,8 +2,9 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useMemo, useState, useTransition } from "react";
+import { useCallback, useMemo, useRef, useState, useTransition } from "react";
 
+import { Agenda } from "@/components/calendar/agenda";
 import {
   type CalendarProperty,
   MonthCalendar,
@@ -24,6 +25,8 @@ import { Input } from "@/components/ui/input";
 import { NativeSelect, NativeSelectOption } from "@/components/ui/native-select";
 import type { CalendarBlock } from "@/lib/availability/calendar";
 import { type Conflict, describeConflict } from "@/lib/bookings/form";
+import { type AgendaItem, agendaItems, monthWindow } from "@/lib/calendar/agenda";
+import { addMonths } from "@/lib/calendar/month";
 import type { CalendarDate } from "@/lib/calendar-date";
 import {
   CALENDAR_PROPERTY_COOKIE,
@@ -33,6 +36,7 @@ import {
 import { formatDateRange } from "@/lib/format";
 
 import { BlockDialog, type EditableBlock } from "./block-dialog";
+import { BookingSheet } from "./booking-sheet";
 
 type Range = { propertyId: string; checkIn: CalendarDate; checkOut: CalendarDate };
 
@@ -76,6 +80,7 @@ export function CalendarView({
   const [optimistic, setOptimistic] = useState<PendingBlock[]>([]);
   const [refusal, setRefusal] = useState<{ range: Range; conflicts: Conflict[] } | null>(null);
   const [editing, setEditing] = useState<EditableBlock | null>(null);
+  const [sheetBooking, setSheetBooking] = useState<string | null>(null);
 
   const calendars: CalendarProperty[] = useMemo(
     () =>
@@ -221,6 +226,19 @@ export function CalendarView({
         onBlockClick={setEditing}
       />
 
+      {/* Below the tablet breakpoint the month grid gets an agenda list underneath. */}
+      <AgendaPanel
+        key={`${props.month}-${propertyChoice}`}
+        month={props.month}
+        calendars={calendars}
+        onOpen={(item) =>
+          item.kind === "booking"
+            ? setSheetBooking(item.booking.id)
+            : setEditing({ ...item.block, propertyId: item.property.id })
+        }
+      />
+      <BookingSheet bookingId={sheetBooking} onClose={() => setSheetBooking(null)} />
+
       <RangeChoice
         range={choice}
         propertyName={
@@ -231,6 +249,65 @@ export function CalendarView({
       />
       <BlockDialog block={editing} onClose={() => setEditing(null)} onChanged={reload} />
     </>
+  );
+}
+
+/**
+ * The agenda for phones: the month on screen, then each further month as the
+ * list scrolls to its end, loaded from the availability API.
+ */
+function AgendaPanel({
+  month,
+  calendars,
+  onOpen,
+}: {
+  month: string;
+  calendars: CalendarProperty[];
+  onOpen: (item: AgendaItem) => void;
+}) {
+  const [later, setLater] = useState<{ month: string; calendars: CalendarProperty[] }[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [failed, setFailed] = useState(false);
+  const loadingRef = useRef(false);
+
+  const loadMore = useCallback(async () => {
+    if (loadingRef.current) return;
+    loadingRef.current = true;
+    setLoading(true);
+    const next = addMonths(later.at(-1)?.month ?? month, 1);
+    const { start, end } = monthWindow(next);
+    const params = new URLSearchParams({
+      propertyIds: calendars.map((c) => c.property.id).join(","),
+      from: start,
+      to: end,
+    });
+    try {
+      const response = await fetch(`/api/availability?${params}`);
+      if (!response.ok) throw new Error(`The server answered ${response.status}.`);
+      const body: { properties: CalendarProperty[] } = await response.json();
+      setLater((list) => [...list, { month: next, calendars: body.properties }]);
+      setFailed(false);
+    } catch {
+      setFailed(true);
+    } finally {
+      loadingRef.current = false;
+      setLoading(false);
+    }
+  }, [calendars, later, month]);
+
+  const months = [
+    { month, items: agendaItems(month, calendars) },
+    ...later.map((m) => ({ month: m.month, items: agendaItems(m.month, m.calendars) })),
+  ];
+  return (
+    <div className="mt-6 md:hidden">
+      <Agenda months={months} onOpen={onOpen} onLoadMore={loadMore} loading={loading} />
+      {failed ? (
+        <p role="alert" className="text-destructive mt-2 text-center text-sm">
+          The next month could not be loaded. Try again.
+        </p>
+      ) : null}
+    </div>
   );
 }
 
