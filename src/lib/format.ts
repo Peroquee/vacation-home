@@ -1,15 +1,15 @@
 /**
- * Money and date formatting, in the configured locale (see ./locale).
+ * Money and date formatting in a given locale. Pages use them bound to the
+ * request's language: useFormat() and getFormat() in src/i18n.
  *
  * Use these rather than `toLocaleString` or `Intl` directly, so every page
  * shows amounts and dates the same way.
  */
 import { type CalendarDate, toUtcDate } from "@/lib/calendar-date";
-import { APP_LOCALE } from "@/lib/locale";
 
 type FormatOptions = {
-  /** Override the configured locale, e.g. in tests or for an export. */
-  locale?: string;
+  /** A BCP 47 tag, e.g. "de-DE". */
+  locale: string;
 };
 
 // --- Money ------------------------------------------------------------------
@@ -26,7 +26,7 @@ type FormatOptions = {
 export function formatMoney(
   amountMinor: number,
   currency: string,
-  { locale = APP_LOCALE }: FormatOptions = {},
+  { locale }: FormatOptions,
 ): string {
   if (!Number.isSafeInteger(amountMinor)) {
     throw new RangeError(`formatMoney expects integer minor units, got ${amountMinor}`);
@@ -68,7 +68,7 @@ type DateStyle = "short" | "medium" | "long" | "full";
  */
 export function formatDate(
   value: CalendarDate,
-  { style = "medium", locale = APP_LOCALE }: FormatOptions & { style?: DateStyle } = {},
+  { style = "medium", locale }: FormatOptions & { style?: DateStyle },
 ): string {
   return new Intl.DateTimeFormat(locale, { dateStyle: style, timeZone: "UTC" }).format(
     toUtcDate(value),
@@ -82,7 +82,7 @@ export function formatDate(
 export function formatDateRange(
   start: CalendarDate,
   end: CalendarDate,
-  { style = "medium", locale = APP_LOCALE }: FormatOptions & { style?: DateStyle } = {},
+  { style = "medium", locale }: FormatOptions & { style?: DateStyle },
 ): string {
   const from = toUtcDate(start);
   const to = toUtcDate(end);
@@ -106,7 +106,7 @@ export function formatDateRange(
 export function formatDateTime(
   value: Date | string,
   timeZone: string,
-  { locale = APP_LOCALE }: FormatOptions = {},
+  { locale }: FormatOptions,
 ): string {
   const date = typeof value === "string" ? new Date(value) : value;
   if (Number.isNaN(date.getTime())) {

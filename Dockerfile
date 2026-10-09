@@ -26,7 +26,6 @@ FROM deps AS build
 COPY . .
 # Inlined into the browser bundles when building, so they are build arguments
 # rather than runtime settings (see .env.example).
-ARG NEXT_PUBLIC_APP_LOCALE=""
 ARG NEXT_PUBLIC_SENTRY_DSN=""
 ARG NEXT_PUBLIC_SENTRY_ENVIRONMENT=""
 ARG SENTRY_RELEASE=""

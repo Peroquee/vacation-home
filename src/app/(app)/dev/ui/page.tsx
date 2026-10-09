@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
+import { useLocale } from "next-intl";
 
 import { ExpenseBreakdown } from "@/components/charts/expense-breakdown";
 import { OccupancyChart } from "@/components/charts/occupancy-chart";
@@ -12,16 +13,18 @@ import { StatTile } from "@/components/stat-tile";
 import { EmptyState, ErrorState } from "@/components/states";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { formatDate, formatDateRange, formatDateTime, formatMoney } from "@/lib/format";
+import { formattersFor } from "@/i18n/format";
 import { breakdownRows } from "@/lib/dashboard/breakdown";
 import { heatmap } from "@/lib/dashboard/occupancy";
-import { APP_LOCALE } from "@/lib/locale";
 
 import { InteractiveExamples } from "./interactive-examples";
 
 export const metadata: Metadata = { title: "UI primitives" };
 
 type Stay = { id: string; guest: string; checkIn: string; checkOut: string; totalMinor: number };
+
+/** Formatters for the module-level examples; the page itself uses the request's language. */
+const sample = formattersFor("en-GB");
 
 const stays: Stay[] = [
   {
@@ -54,8 +57,8 @@ const chartMonths = Array.from({ length: 12 }, (_, i) => {
 
 const columns: Column<Stay>[] = [
   { id: "guest", header: "Guest", cell: (s) => s.guest },
-  { id: "dates", header: "Stay", cell: (s) => formatDateRange(s.checkIn, s.checkOut) },
-  { id: "total", header: "Total", cell: (s) => formatMoney(s.totalMinor, "EUR"), align: "end" },
+  { id: "dates", header: "Stay", cell: (s) => sample.dateRange(s.checkIn, s.checkOut) },
+  { id: "total", header: "Total", cell: (s) => sample.money(s.totalMinor, "EUR"), align: "end" },
 ];
 
 /**
@@ -63,6 +66,8 @@ const columns: Column<Stay>[] = [
  * written guide with copyable examples is src/components/README.md.
  */
 export default function UiPrimitivesPage() {
+  const locale = useLocale();
+  const format = formattersFor(locale);
   // A literal read, so the gallery never ships: see eslint.config.mjs.
   // eslint-disable-next-line no-restricted-properties
   if (process.env.NODE_ENV === "production") notFound();
@@ -117,7 +122,7 @@ export default function UiPrimitivesPage() {
         <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
           <StatTile
             label="Revenue"
-            value={formatMoney(1284000, "EUR")}
+            value={sample.money(1284000, "EUR")}
             delta={{
               text: "+12.5%",
               direction: "up",
@@ -127,7 +132,7 @@ export default function UiPrimitivesPage() {
           />
           <StatTile
             label="Expenses"
-            value={formatMoney(312000, "EUR")}
+            value={sample.money(312000, "EUR")}
             delta={{
               text: "+8%",
               direction: "up",
@@ -209,18 +214,18 @@ export default function UiPrimitivesPage() {
         <InteractiveExamples />
       </Section>
 
-      <Section title={`Formatting (${APP_LOCALE})`}>
+      <Section title={`Formatting (${locale})`}>
         <dl className="grid max-w-md gap-x-6 gap-y-1 text-sm sm:grid-cols-[auto_1fr]">
-          <dt className="text-muted-foreground">formatMoney(123450, &quot;EUR&quot;)</dt>
-          <dd>{formatMoney(123450, "EUR")}</dd>
-          <dt className="text-muted-foreground">formatMoney(1500, &quot;JPY&quot;)</dt>
-          <dd>{formatMoney(1500, "JPY")}</dd>
-          <dt className="text-muted-foreground">formatDate(&quot;2026-07-14&quot;)</dt>
-          <dd>{formatDate("2026-07-14")}</dd>
-          <dt className="text-muted-foreground">formatDateRange(…)</dt>
-          <dd>{formatDateRange("2026-07-14", "2026-07-18")}</dd>
-          <dt className="text-muted-foreground">formatDateTime(…, &quot;Europe/Lisbon&quot;)</dt>
-          <dd>{formatDateTime("2026-07-14T22:30:00Z", "Europe/Lisbon")}</dd>
+          <dt className="text-muted-foreground">format.money(123450, &quot;EUR&quot;)</dt>
+          <dd>{format.money(123450, "EUR")}</dd>
+          <dt className="text-muted-foreground">format.money(1500, &quot;JPY&quot;)</dt>
+          <dd>{format.money(1500, "JPY")}</dd>
+          <dt className="text-muted-foreground">format.date(&quot;2026-07-14&quot;)</dt>
+          <dd>{format.date("2026-07-14")}</dd>
+          <dt className="text-muted-foreground">format.dateRange(…)</dt>
+          <dd>{format.dateRange("2026-07-14", "2026-07-18")}</dd>
+          <dt className="text-muted-foreground">format.dateTime(…, &quot;Europe/Lisbon&quot;)</dt>
+          <dd>{format.dateTime("2026-07-14T22:30:00Z", "Europe/Lisbon")}</dd>
         </dl>
       </Section>
     </div>
