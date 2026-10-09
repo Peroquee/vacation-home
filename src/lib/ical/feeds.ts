@@ -75,7 +75,7 @@ export async function deleteFeed(id: string): Promise<boolean> {
 export type ExportDto = { enabled: false; url: null } | { enabled: true; url: string };
 
 export function exportUrl(token: string): string {
-  return new URL(`/api/ical/${token}.ics`, env.APP_URL).toString();
+  return new URL(`/api/ical/${token}.ics`, env.ICAL_PUBLIC_URL ?? env.APP_URL).toString();
 }
 
 const toExportDto = (token: string | null): ExportDto =>
