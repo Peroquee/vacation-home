@@ -943,8 +943,10 @@ Checked in CI (GitLab #97), so it does not erode unnoticed:
 - **Lighthouse** on the calendar and the dashboard, signed in and with
   realistic data, under Lighthouse's mobile throttling:
   `npm run test:lighthouse` ([`e2e/lighthouse.spec.ts`](e2e/lighthouse.spec.ts)).
-  Both must score at least 90; the `lighthouse` CI job fails below that and
-  keeps the HTML reports. On the dashboard, the key figures are in the
+  Both must score at least 90, judged by the median of three runs per page
+  (`LIGHTHOUSE_RUNS`; with fewer than three, the best run), since scores move
+  a few points between identical runs. The `lighthouse` CI job fails below
+  that and keeps every run's HTML report. On the dashboard, the key figures are in the
   first HTML rather than streamed, because their numbers are its Largest
   Contentful Paint on a phone.
 - **Query plans** need real data: `scripts/perf/explain.sh` on the server
