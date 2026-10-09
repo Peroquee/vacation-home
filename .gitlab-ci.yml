@@ -9,6 +9,7 @@ stages:
   - quality
   - test
   - build
+  - deploy
 
 workflow:
   rules:
@@ -179,3 +180,29 @@ build:
     # src/instrumentation.ts at server boot, not at build time, so a build
     # never needs production secrets.
     - npm run build
+
+# Deploys main to your own server once everything above has passed: over SSH,
+# it runs scripts/deploy/deploy.sh on the Docker host, which builds the new
+# version there and swaps it in (docs/deployment.md, "Automatic deploys").
+#
+# Off until it is configured: it runs only when the project has the CI/CD
+# variables DEPLOY_HOST (e.g. deploy@192.168.178.50), DEPLOY_SSH_KEY (a
+# "File" variable with the private key) and DEPLOY_KNOWN_HOSTS (the host's
+# line from ~/.ssh/known_hosts), and DEPLOY_PATH if the checkout is not at
+# /opt/vacation-home. Rolling back is a manual step, documented there.
+deploy:
+  stage: deploy
+  image: alpine:3.24
+  # Never two deploys at once; a newer one waits for the running one.
+  resource_group: production
+  interruptible: false
+  cache: []
+  needs: [lint, audit, typecheck, format, test, e2e, build]
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH && $DEPLOY_HOST && $DEPLOY_SSH_KEY
+  before_script:
+    - apk add --no-cache openssh-client
+    - chmod 600 "$DEPLOY_SSH_KEY"
+    - mkdir -p ~/.ssh && printf '%s\n' "$DEPLOY_KNOWN_HOSTS" > ~/.ssh/known_hosts
+  script:
+    - ssh -i "$DEPLOY_SSH_KEY" "$DEPLOY_HOST" "${DEPLOY_PATH:-/opt/vacation-home}/scripts/deploy/deploy.sh --ref $CI_COMMIT_SHA"

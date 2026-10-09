@@ -4,16 +4,19 @@
  */
 
 /**
- * Reachable without a session: the sign-in page, Auth.js's own routes, and
+ * Reachable without a session: the sign-in page, Auth.js's own routes,
  * Google's push notifications, which carry their own secret (checked by
- * the route against the stored channel).
+ * the route against the stored channel), and the health checks.
  */
 export function isPublicPath(pathname: string): boolean {
   return (
     pathname === "/signin" ||
     pathname === "/api/auth" ||
     pathname.startsWith("/api/auth/") ||
-    pathname === "/api/google/webhook"
+    pathname === "/api/google/webhook" ||
+    // Health checks for Docker and the reverse proxy; they reveal nothing.
+    pathname === "/api/health" ||
+    pathname === "/api/ready"
   );
 }
 
