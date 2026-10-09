@@ -11,7 +11,8 @@
 
 {$APP_DOMAIN} {
 	tls {
-		# Cloudflare; see docker/caddy/Dockerfile for other providers.
+		# Cloudflare; for another provider see "Another DNS provider" in
+		# docs/deployment.md.
 		dns cloudflare {env.CLOUDFLARE_API_TOKEN}
 		# Check the challenge record on a public resolver, not the LAN's.
 		resolvers 1.1.1.1 9.9.9.9

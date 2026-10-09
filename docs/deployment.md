@@ -173,7 +173,7 @@ and it renews the certificate by itself.
 Cloudflare (free). In the Cloudflare dashboard: **My Profile → API Tokens →
 Create Token → "Edit zone DNS"** template, limited to your domain's zone.
 Put the token in `.env` as `CLOUDFLARE_API_TOKEN`. For another DNS provider,
-see the comments in `docker/caddy/Dockerfile`.
+see [Another DNS provider](#another-dns-provider) below.
 
 **The name, pointing to your server.** `vacation.example.com` must resolve to
 the server's LAN address (192.168.178.50 in these examples) for every device
@@ -196,6 +196,37 @@ nslookup vacation.example.com                                 # should answer 19
 
 Caddy starts with everything else in step 9. The first certificate takes up
 to a minute.
+
+### Another DNS provider
+
+Cloudflare is only the worked example: Caddy needs a plugin for whichever
+provider hosts your domain's DNS, and there is one for most of them (Hetzner,
+deSEC, Porkbun, IONOS, Route 53, …) at
+[github.com/caddy-dns](https://github.com/caddy-dns). Each plugin's README
+names its module path, its newest release and the `dns` line it expects. To
+switch, change three places and rebuild Caddy:
+
+1. **`docker/caddy/Dockerfile`**: set `DNS_MODULE` to the plugin, pinned to
+   a release, e.g. `github.com/caddy-dns/<provider>@<version>`.
+2. **`docker/caddy/Caddyfile`**: replace the line
+   `dns cloudflare {env.CLOUDFLARE_API_TOKEN}` with the plugin's own, e.g.
+   `dns <provider> {env.<PROVIDER>_API_TOKEN}`. Keep the `resolvers` line.
+3. **`compose.prod.yml`** (service `caddy`, `environment`) and **`.env`**:
+   replace `CLOUDFLARE_API_TOKEN` with the variable(s) the new `dns` line
+   reads, and create the token at your provider with permission to edit
+   that one zone's DNS records.
+
+Then rebuild and restart only Caddy:
+
+```bash
+docker compose build caddy                                    # builds Caddy with the new plugin
+docker compose up -d caddy                                    # restarts Caddy; it requests a certificate
+docker compose logs -f caddy                                  # watch for "certificate obtained"; Ctrl+C to stop
+```
+
+If the logs show the challenge failing, the token usually lacks the right to
+edit the zone's records, or the `dns` line's options do not match the
+plugin's README.
 
 ## 8. Option B: no domain, through an SSH tunnel
 
