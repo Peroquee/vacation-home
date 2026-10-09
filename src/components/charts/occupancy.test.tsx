@@ -65,13 +65,13 @@ describe("OccupancyHeatmap", () => {
     expect(
       screen.getByRole("listitem", { name: "Jul 2026: booked on 10 of 31 nights" }),
     ).toBeInTheDocument();
-    expect(screen.getByTitle("Jul 1, 2026: booked")).toBeInTheDocument();
-    expect(screen.getByTitle("Jul 31, 2026: free")).toBeInTheDocument();
+    expect(screen.getByTitle("1 Jul 2026: booked")).toBeInTheDocument();
+    expect(screen.getByTitle("31 Jul 2026: free")).toBeInTheDocument();
   });
 
   it("counts properties when there are several", () => {
     render(<OccupancyHeatmap months={data} properties={3} />);
-    expect(screen.getByTitle("Jul 1, 2026: 1 of 3 properties booked")).toBeInTheDocument();
+    expect(screen.getByTitle("1 Jul 2026: 1 of 3 properties booked")).toBeInTheDocument();
     expect(screen.getByText("All 3 booked")).toBeInTheDocument();
   });
 });

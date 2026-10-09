@@ -624,5 +624,106 @@
       "otherCategory": "the other category",
       "moved": "{count, plural, one {# transaction moved to {target}.} other {# transactions moved to {target}.}}"
     }
+  },
+  "dashboard": {
+    "title": "Dashboard",
+    "description": "{range}, all properties",
+    "descriptionFor": "{range}, {property}",
+    "oneProperty": "one property",
+    "kpis": {
+      "labels": {
+        "revenue": "Revenue",
+        "expenses": "Expenses",
+        "net": "Net profit",
+        "margin": "Profit margin",
+        "occupancy": "Occupancy rate",
+        "upcoming": "Upcoming bookings"
+      },
+      "againstYear": "vs the same dates last year",
+      "againstPrevious": "vs the previous period",
+      "points": "{value} pts",
+      "upcomingNote": "arriving in the next {days} days",
+      "badDates": "These dates can't be shown",
+      "chooseProperty": "Choose a property",
+      "mixedCurrencies": "Your properties use different currencies ({currencies}), and amounts in different currencies can't be added up.",
+      "notFound": "Property not found",
+      "showAll": "Show all properties",
+      "label": "Key figures"
+    },
+    "expenses": {
+      "title": "Where the money goes",
+      "description": "Expenses by category, in {currency}.",
+      "empty": "No expenses in this period"
+    },
+    "revenue": {
+      "title": "Revenue and expenses",
+      "description": "Per month, with net profit, in {currency}."
+    },
+    "occupancy": {
+      "title": "Occupancy",
+      "description": "Booked nights as a share of available nights. Only confirmed bookings count, and nights you blocked that no guest booked are left out of the available nights.",
+      "heatmapTitle": "Booked nights over the last twelve months"
+    },
+    "filters": {
+      "period": "Period",
+      "from": "From",
+      "until": "Until",
+      "show": "Show",
+      "property": "Property",
+      "allProperties": "All properties",
+      "presets": {
+        "this-month": "This month",
+        "last-month": "Last month",
+        "year-to-date": "Year to date",
+        "last-12-months": "Last 12 months",
+        "custom": "Custom"
+      }
+    }
+  },
+  "charts": {
+    "heatmap": {
+      "booked": "booked",
+      "free": "free",
+      "bookedOf": "{booked} of {properties} properties booked",
+      "label": "Booked nights by month",
+      "month": "{month} {year}: booked on {booked} of {nights} nights",
+      "night": "{date}: {state}",
+      "legendFree": "Free",
+      "legendBooked": "Booked",
+      "legendAll": "All {properties} booked"
+    },
+    "breakdown": {
+      "label": "Expenses by category",
+      "otherList": "Other ({count} categories: {names})",
+      "other": "Other ({count} categories)",
+      "link": "{name}: {amount}. Show in the ledger",
+      "linkShare": "{name}: {amount}, {share} of expenses. Show in the ledger"
+    },
+    "occupancy": {
+      "legend": "Legend",
+      "occupancy": "Occupancy",
+      "yearBefore": "The year before",
+      "compare": "Compare with the year before",
+      "chartLabel": "Chart of occupancy by month. The figures are in the table below.",
+      "nightsOf": "({booked} of {available} nights)",
+      "yearBeforeSuffix": "the year before",
+      "showTable": "Show the figures as a table",
+      "caption": "Occupancy by month",
+      "month": "Month",
+      "bookedNights": "Booked nights",
+      "bookedOf": "{booked} of {available}"
+    },
+    "revenue": {
+      "series": {
+        "incomeMinor": "Income",
+        "expensesMinor": "Expenses",
+        "netMinor": "Net profit"
+      },
+      "legend": "Legend",
+      "chartLabel": "Chart of income, expenses and net profit by month. The figures are in the table below.",
+      "showTable": "Show the figures as a table",
+      "caption": "Income, expenses and net profit by month",
+      "month": "Month"
+    }
   }
 }

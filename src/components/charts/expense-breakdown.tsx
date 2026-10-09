@@ -1,10 +1,8 @@
 import Link from "next/link";
+import { useLocale, useTranslations } from "next-intl";
 
+import { formattersFor } from "@/i18n/format";
 import type { BreakdownRow } from "@/lib/dashboard/breakdown";
-import { formatMoney } from "@/lib/format";
-import { APP_LOCALE } from "@/lib/locale";
-
-const percent = new Intl.NumberFormat(APP_LOCALE, { style: "percent", maximumFractionDigits: 1 });
 
 /**
  * Where the money goes: one horizontal bar per category, largest first, in
@@ -26,22 +24,29 @@ export function ExpenseBreakdown({
 }) {
   // Bars are scaled to the largest, so the top one spans the track.
   const largest = Math.max(...rows.map((r) => r.amountMinor), 1);
+  const t = useTranslations("charts.breakdown");
+  const locale = useLocale();
+  const money = (minor: number) => formattersFor(locale).money(minor, currency);
+  const percent = new Intl.NumberFormat(locale, { style: "percent", maximumFractionDigits: 1 });
   return (
-    <ul className="space-y-3" aria-label="Expenses by category">
+    <ul className="space-y-3" aria-label={t("label")}>
       {rows.map((row) => {
         const width = `${(row.amountMinor / largest) * 100}%`;
         const label =
           row.kind === "other"
-            ? `Other (${row.categories.length} categories: ${row.categories.map((c) => c.name).join(", ")})`
+            ? t("otherList", {
+                count: row.categories.length,
+                names: row.categories.map((c) => c.name).join(", "),
+              })
             : row.name;
         const content = (
           <>
             <div className="flex items-baseline justify-between gap-3 text-sm">
               <span className="min-w-0 truncate">
-                {row.kind === "other" ? `Other (${row.categories.length} categories)` : row.name}
+                {row.kind === "other" ? t("other", { count: row.categories.length }) : row.name}
               </span>
               <span className="shrink-0 tabular-nums">
-                <span className="font-medium">{formatMoney(row.amountMinor, currency)}</span>{" "}
+                <span className="font-medium">{money(row.amountMinor)}</span>{" "}
                 <span className="text-muted-foreground">
                   {row.share === null ? "" : percent.format(row.share)}
                 </span>
@@ -66,9 +71,15 @@ export function ExpenseBreakdown({
               <Link
                 href={categoryHref(row.categoryId)}
                 className="hover:bg-muted/60 focus-visible:ring-ring -mx-2 block rounded-md px-2 py-1 outline-none focus-visible:ring-2"
-                aria-label={`${row.name}: ${formatMoney(row.amountMinor, currency)}${
-                  row.share === null ? "" : `, ${percent.format(row.share)} of expenses`
-                }. Show in the ledger`}
+                aria-label={
+                  row.share === null
+                    ? t("link", { name: row.name, amount: money(row.amountMinor) })
+                    : t("linkShare", {
+                        name: row.name,
+                        amount: money(row.amountMinor),
+                        share: percent.format(row.share),
+                      })
+                }
               >
                 {content}
               </Link>

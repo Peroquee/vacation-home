@@ -1,6 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { useState, useTransition } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -28,6 +29,7 @@ export function DashboardFilters({
   children: React.ReactNode;
 }) {
   const router = useRouter();
+  const t = useTranslations("dashboard.filters");
   const [pending, startTransition] = useTransition();
   const [custom, setCustom] = useState(state.preset === "custom");
   const [dates, setDates] = useState({ from: state.from, until: state.until });
@@ -40,22 +42,22 @@ export function DashboardFilters({
   return (
     <>
       <div className="mb-6 flex flex-wrap items-end gap-3">
-        <div role="radiogroup" aria-label="Period" className="flex flex-wrap gap-1">
-          {[...PRESETS, { id: "custom" as const, label: "Custom" }].map((preset) => (
+        <div role="radiogroup" aria-label={t("period")} className="flex flex-wrap gap-1">
+          {[...PRESETS, "custom" as const].map((preset) => (
             <Button
-              key={preset.id}
+              key={preset}
               type="button"
               role="radio"
               size="sm"
-              aria-checked={choice === preset.id}
-              variant={choice === preset.id ? "secondary" : "ghost"}
+              aria-checked={choice === preset}
+              variant={choice === preset ? "secondary" : "ghost"}
               onClick={() => {
-                if (preset.id === "custom") return setCustom(true);
+                if (preset === "custom") return setCustom(true);
                 setCustom(false);
-                go({ preset: preset.id });
+                go({ preset });
               }}
             >
-              {preset.label}
+              {t(`presets.${preset}`)}
             </Button>
           ))}
         </div>
@@ -71,7 +73,7 @@ export function DashboardFilters({
             }}
           >
             <Field className="w-auto">
-              <FieldLabel htmlFor="dashboard-from">From</FieldLabel>
+              <FieldLabel htmlFor="dashboard-from">{t("from")}</FieldLabel>
               <Input
                 id="dashboard-from"
                 type="date"
@@ -81,7 +83,7 @@ export function DashboardFilters({
               />
             </Field>
             <Field className="w-auto">
-              <FieldLabel htmlFor="dashboard-until">Until</FieldLabel>
+              <FieldLabel htmlFor="dashboard-until">{t("until")}</FieldLabel>
               <Input
                 id="dashboard-until"
                 type="date"
@@ -95,19 +97,19 @@ export function DashboardFilters({
               size="sm"
               disabled={!dates.from || !dates.until || dates.from > dates.until}
             >
-              Show
+              {t("show")}
             </Button>
           </form>
         ) : null}
 
         <Field className="w-auto sm:ml-auto">
-          <FieldLabel htmlFor="dashboard-property">Property</FieldLabel>
+          <FieldLabel htmlFor="dashboard-property">{t("property")}</FieldLabel>
           <NativeSelect
             id="dashboard-property"
             value={state.propertyId ?? ""}
             onChange={(event) => go({ propertyId: event.target.value || undefined })}
           >
-            <NativeSelectOption value="">All properties</NativeSelectOption>
+            <NativeSelectOption value="">{t("allProperties")}</NativeSelectOption>
             {properties.map((p) => (
               <NativeSelectOption key={p.id} value={p.id}>
                 {p.name}

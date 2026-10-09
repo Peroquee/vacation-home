@@ -624,5 +624,106 @@
       "otherCategory": "die andere Kategorie",
       "moved": "{count, plural, one {# Posten nach {target} verschoben.} other {# Posten nach {target} verschoben.}}"
     }
+  },
+  "dashboard": {
+    "title": "Übersicht",
+    "description": "{range}, alle Unterkünfte",
+    "descriptionFor": "{range}, {property}",
+    "oneProperty": "eine Unterkunft",
+    "kpis": {
+      "labels": {
+        "revenue": "Umsatz",
+        "expenses": "Ausgaben",
+        "net": "Gewinn",
+        "margin": "Gewinnmarge",
+        "occupancy": "Auslastung",
+        "upcoming": "Kommende Buchungen"
+      },
+      "againstYear": "ggü. denselben Tagen im Vorjahr",
+      "againstPrevious": "ggü. dem vorherigen Zeitraum",
+      "points": "{value} Pkt.",
+      "upcomingNote": "Anreise in den nächsten {days} Tagen",
+      "badDates": "Diese Daten können nicht angezeigt werden",
+      "chooseProperty": "Unterkunft wählen",
+      "mixedCurrencies": "Ihre Unterkünfte verwenden verschiedene Währungen ({currencies}), und Beträge in verschiedenen Währungen lassen sich nicht addieren.",
+      "notFound": "Unterkunft nicht gefunden",
+      "showAll": "Alle Unterkünfte anzeigen",
+      "label": "Kennzahlen"
+    },
+    "expenses": {
+      "title": "Wohin das Geld geht",
+      "description": "Ausgaben nach Kategorie, in {currency}.",
+      "empty": "Keine Ausgaben in diesem Zeitraum"
+    },
+    "revenue": {
+      "title": "Umsatz und Ausgaben",
+      "description": "Pro Monat, mit Gewinn, in {currency}."
+    },
+    "occupancy": {
+      "title": "Auslastung",
+      "description": "Gebuchte Nächte als Anteil der verfügbaren Nächte. Nur bestätigte Buchungen zählen, und von Ihnen blockierte Nächte, die kein Gast gebucht hat, zählen nicht zu den verfügbaren Nächten.",
+      "heatmapTitle": "Gebuchte Nächte der letzten zwölf Monate"
+    },
+    "filters": {
+      "period": "Zeitraum",
+      "from": "Von",
+      "until": "Bis",
+      "show": "Anzeigen",
+      "property": "Unterkunft",
+      "allProperties": "Alle Unterkünfte",
+      "presets": {
+        "this-month": "Dieser Monat",
+        "last-month": "Letzter Monat",
+        "year-to-date": "Seit Jahresbeginn",
+        "last-12-months": "Letzte 12 Monate",
+        "custom": "Eigener"
+      }
+    }
+  },
+  "charts": {
+    "heatmap": {
+      "booked": "gebucht",
+      "free": "frei",
+      "bookedOf": "{booked} von {properties} Unterkünften gebucht",
+      "label": "Gebuchte Nächte nach Monat",
+      "month": "{month} {year}: an {booked} von {nights} Nächten gebucht",
+      "night": "{date}: {state}",
+      "legendFree": "Frei",
+      "legendBooked": "Gebucht",
+      "legendAll": "Alle {properties} gebucht"
+    },
+    "breakdown": {
+      "label": "Ausgaben nach Kategorie",
+      "otherList": "Sonstige ({count} Kategorien: {names})",
+      "other": "Sonstige ({count} Kategorien)",
+      "link": "{name}: {amount}. Im Kassenbuch anzeigen",
+      "linkShare": "{name}: {amount}, {share} der Ausgaben. Im Kassenbuch anzeigen"
+    },
+    "occupancy": {
+      "legend": "Legende",
+      "occupancy": "Auslastung",
+      "yearBefore": "Das Jahr davor",
+      "compare": "Mit dem Jahr davor vergleichen",
+      "chartLabel": "Diagramm der Auslastung nach Monat. Die Zahlen stehen in der Tabelle darunter.",
+      "nightsOf": "({booked} von {available} Nächten)",
+      "yearBeforeSuffix": "im Jahr davor",
+      "showTable": "Zahlen als Tabelle anzeigen",
+      "caption": "Auslastung nach Monat",
+      "month": "Monat",
+      "bookedNights": "Gebuchte Nächte",
+      "bookedOf": "{booked} von {available}"
+    },
+    "revenue": {
+      "series": {
+        "incomeMinor": "Einnahmen",
+        "expensesMinor": "Ausgaben",
+        "netMinor": "Gewinn"
+      },
+      "legend": "Legende",
+      "chartLabel": "Diagramm der Einnahmen, Ausgaben und des Gewinns nach Monat. Die Zahlen stehen in der Tabelle darunter.",
+      "showTable": "Zahlen als Tabelle anzeigen",
+      "caption": "Einnahmen, Ausgaben und Gewinn nach Monat",
+      "month": "Monat"
+    }
   }
 }

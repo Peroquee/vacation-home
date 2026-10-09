@@ -1,3 +1,5 @@
+import { getTranslations } from "next-intl/server";
+
 import { ExpenseBreakdown } from "@/components/charts/expense-breakdown";
 import { EmptyState } from "@/components/states";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -17,6 +19,7 @@ export async function ExpenseChart({ state }: { state: DashboardState }) {
   const currency = report.currency;
   if (!currency) return null;
   const rows = breakdownRows(report.expensesByCategory);
+  const t = await getTranslations("dashboard.expenses");
 
   const ledger = (categoryId: string) => {
     const params = new URLSearchParams({
@@ -32,12 +35,12 @@ export async function ExpenseChart({ state }: { state: DashboardState }) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Where the money goes</CardTitle>
-        <CardDescription>Expenses by category, in {currency}.</CardDescription>
+        <CardTitle>{t("title")}</CardTitle>
+        <CardDescription>{t("description", { currency })}</CardDescription>
       </CardHeader>
       <CardContent>
         {rows.length === 0 ? (
-          <EmptyState title="No expenses in this period" />
+          <EmptyState title={t("empty")} />
         ) : (
           <ExpenseBreakdown rows={rows} currency={currency} categoryHref={ledger} />
         )}
