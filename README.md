@@ -100,6 +100,16 @@ after 48 hours without a backup. It is off in development; start it with
 (`scripts/backup/restore.sh`) and how erased guests age out of backups are in
 [docs/backup-and-restore.md](docs/backup-and-restore.md).
 
+### Production
+
+Production runs on your own server with `compose.prod.yml`: the app built by
+the `Dockerfile`, PostgreSQL, Caddy for https (a Let's Encrypt certificate
+through DNS-01, so nothing is exposed to the internet) and the backups.
+`scripts/deploy/deploy.sh` deploys and rolls back; GitLab CI runs it after
+every merge to `main` once configured. `GET /api/health` (alive) and
+`GET /api/ready` (database reachable) are public, for Docker and the proxy.
+The whole procedure, step by step: [docs/deployment.md](docs/deployment.md).
+
 ## API
 
 JSON route handlers under `src/app/api`. Errors always look like:
