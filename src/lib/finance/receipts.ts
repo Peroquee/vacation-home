@@ -54,7 +54,8 @@ async function storeFile(bytes: Uint8Array): Promise<string> {
   }
   await mkdir(join(env.RECEIPTS_DIR, sha256.slice(0, 2)), { recursive: true });
   const temporary = `${path}.${randomUUID()}.tmp`;
-  await writeFile(temporary, bytes, { mode: 0o640 });
+  // Readable by the backup service (another user), writable by the app only.
+  await writeFile(temporary, bytes, { mode: 0o644 });
   await rename(temporary, path);
   return sha256;
 }
