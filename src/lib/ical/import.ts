@@ -8,9 +8,12 @@
  * - **Removal**: a block whose event is gone from the feed goes, but only
  *   while it is current (ends after today, where the property is). Past
  *   ones stay as history, since platforms drop old stays from their feeds.
- * - **Conflicts**: like Google's blocks, an event may not overlap a confirmed
- *   booking (the database refuses it). It is skipped and counted on the feed
- *   (`conflictCount`), so settings can say so; the booking wins.
+ * - **Double bookings**: a block may not overlap a confirmed booking (the
+ *   database refuses it), but a platform's stay there is real: the dates were
+ *   sold twice. Such an event opens an `ical_overlap` issue (GitLab #74's
+ *   review list) naming the bookings in the way, shown on the calendar, in
+ *   settings and as a banner. It resolves itself once the stay is gone from
+ *   the feed or no longer overlaps (it is imported as a block then).
  * - **Failures** leave the blocks as they were and record a code on the feed.
  *
  * Writes for one feed happen under the property's lock, like every other
@@ -50,7 +53,13 @@ export async function importFeed(
   if (!feed) return null;
   const next = new Date(now.getTime() + env.ICAL_POLL_MINUTES * 60_000);
 
-  const fetched = await fetchFeed(feed.url, feed, fetcher);
+  // While a double booking is open, fetch in full: the clash may be gone on
+  // our side (a booking cancelled here) although the feed has not changed.
+  const openIssues = await db.calendarSyncIssue.count({
+    where: { feedId: feed.id, resolvedAt: null },
+  });
+  const validators = openIssues > 0 ? { etag: null, lastModified: null } : feed;
+  const fetched = await fetchFeed(feed.url, validators, fetcher);
   if (fetched.kind !== "fetched") {
     const failed = fetched.kind === "failed";
     await db.icalFeed.update({
@@ -82,6 +91,7 @@ export async function importFeed(
   const oldest = addDays(today, -HISTORY_DAYS);
   const wanted = events.filter((e) => e.end > oldest);
   const result = { created: 0, updated: 0, deleted: 0, conflicts: 0 };
+  const conflicted: string[] = [];
   const touched: DateRange[] = [];
 
   await withPropertyLock(feed.propertyId, async (tx) => {
@@ -101,6 +111,8 @@ export async function importFeed(
       }
       const written = await writeBlock(tx, feed, id, event, block?.id);
       if (!written) {
+        await raiseOverlapIssue(tx, feed, event);
+        conflicted.push(event.uid);
         result.conflicts++;
         continue;
       }
@@ -124,6 +136,12 @@ export async function importFeed(
       result.deleted += gone.length;
     }
 
+    // Double bookings whose stay is gone or imported now resolve themselves.
+    await tx.calendarSyncIssue.updateMany({
+      where: { feedId: feed.id, resolvedAt: null, eventUid: { notIn: conflicted } },
+      data: { resolvedAt: now, resolution: "gone" },
+    });
+
     await tx.icalFeed.update({
       where: { id: feed.id },
       data: {
@@ -143,10 +161,49 @@ export async function importFeed(
   if (result.conflicts > 0) {
     logger.warn(
       { feedId: feed.id, events: result.conflicts },
-      "ical events overlapping confirmed bookings were not imported",
+      "ical stays overlap confirmed bookings: double bookings raised for review",
     );
   }
   return { kind: "imported", ...result };
+}
+
+/** Opens (or refreshes) the double-booking issue for a stay over confirmed bookings. */
+async function raiseOverlapIssue(
+  tx: DbClient,
+  feed: { id: string; propertyId: string },
+  event: FeedEvent,
+) {
+  const bookings = await tx.booking.findMany({
+    where: {
+      propertyId: feed.propertyId,
+      status: "confirmed",
+      checkIn: { lt: toUtcDate(event.end) },
+      checkOut: { gt: toUtcDate(event.start) },
+    },
+    select: { id: true },
+    orderBy: { checkIn: "asc" },
+  });
+  const facts = {
+    bookingIds: bookings.map((b) => b.id),
+    startDate: toUtcDate(event.start),
+    endDate: toUtcDate(event.end),
+  };
+  const open = await tx.calendarSyncIssue.findFirst({
+    where: { feedId: feed.id, eventUid: event.uid, resolvedAt: null },
+  });
+  if (open) {
+    await tx.calendarSyncIssue.update({ where: { id: open.id }, data: facts });
+  } else {
+    await tx.calendarSyncIssue.create({
+      data: {
+        propertyId: feed.propertyId,
+        kind: "ical_overlap",
+        feedId: feed.id,
+        eventUid: event.uid,
+        ...facts,
+      },
+    });
+  }
 }
 
 const span = (block: { startDate: Date; endDate: Date }): DateRange => ({
@@ -201,6 +258,7 @@ async function writeBlock(
  */
 export async function importDueFeeds(
   now = new Date(),
+  fetcher: typeof fetch = fetch,
 ): Promise<{ fetched: number; failed: number }> {
   const due = await db.icalFeed.findMany({
     where: { nextFetchAt: { lte: now }, property: { archivedAt: null } },
@@ -216,7 +274,7 @@ export async function importDueFeeds(
     });
     if (claimed.count === 0) continue;
     try {
-      const outcome = await importFeed(id, { now });
+      const outcome = await importFeed(id, { now, fetcher });
       if (outcome?.kind === "failed") run.failed++;
       else run.fetched++;
     } catch (err) {

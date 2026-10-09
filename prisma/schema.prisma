@@ -310,6 +310,9 @@ enum CalendarSyncIssueKind {
   /// A Google event overlaps a confirmed booking, so it was not imported
   /// as a block: someone should look at it.
   inbound_overlap
+  /// A booking platform's stay (iCal feed) overlaps a confirmed booking: a
+  /// double booking, sold on the platform and here.
+  ical_overlap
 
   @@map("calendar_sync_issue_kind")
 }
@@ -321,8 +324,12 @@ model CalendarSyncIssue {
   id            String                @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   propertyId    String                @map("property_id") @db.Uuid
   kind          CalendarSyncIssueKind
-  calendarId    String                @map("calendar_id")
-  googleEventId String                @map("google_event_id")
+  /// For `inbound_overlap`: the Google calendar and event.
+  calendarId    String?               @map("calendar_id")
+  googleEventId String?               @map("google_event_id")
+  /// For `ical_overlap`: the feed and the event's UID in it.
+  feedId        String?               @map("feed_id") @db.Uuid
+  eventUid      String?               @map("event_uid")
   /// The confirmed bookings in the way, by id only.
   bookingIds    String[]              @map("booking_ids") @db.Uuid
   /// The nights the event would block.
@@ -334,7 +341,8 @@ model CalendarSyncIssue {
   resolution    String?
   updatedAt     DateTime              @updatedAt @map("updated_at")
 
-  property Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  property Property  @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  feed     IcalFeed? @relation(fields: [feedId], references: [id], onDelete: Cascade)
 
   @@index([propertyId, resolvedAt])
   @@map("calendar_sync_issues")
@@ -672,7 +680,8 @@ model IcalFeed {
   lastError     String?   @map("last_error")
   /// Events in the last successful fetch that block dates.
   eventCount    Int       @default(0) @map("event_count")
-  /// Of those, the ones not imported because they overlap a confirmed booking.
+  /// Of those, the ones that overlap a confirmed booking: each is an open
+  /// `ical_overlap` issue instead of a block.
   conflictCount Int       @default(0) @map("conflict_count")
   /// HTTP validators, so an unchanged feed costs a 304.
   etag          String?
@@ -680,8 +689,9 @@ model IcalFeed {
   createdAt     DateTime  @default(now()) @map("created_at")
   updatedAt     DateTime  @updatedAt @map("updated_at")
 
-  property Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  property Property            @relation(fields: [propertyId], references: [id], onDelete: Cascade)
   blocks   Block[]
+  issues   CalendarSyncIssue[]
 
   @@index([propertyId])
   @@index([nextFetchAt])

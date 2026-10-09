@@ -53,3 +53,21 @@ ALTER TABLE "blocks"
 ALTER TABLE "ical_feeds"
   ADD CONSTRAINT "ical_feeds_name_not_blank" CHECK (btrim("name") <> ''),
   ADD CONSTRAINT "ical_feeds_url_is_http" CHECK ("url" ~ '^https?://');
+
+-- AlterTable
+ALTER TABLE "calendar_sync_issues" ADD COLUMN     "event_uid" TEXT,
+ADD COLUMN     "feed_id" UUID,
+ALTER COLUMN "calendar_id" DROP NOT NULL,
+ALTER COLUMN "google_event_id" DROP NOT NULL;
+
+-- AddForeignKey
+ALTER TABLE "calendar_sync_issues" ADD CONSTRAINT "calendar_sync_issues_feed_id_fkey" FOREIGN KEY ("feed_id") REFERENCES "ical_feeds"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- Each kind names its own source.
+ALTER TABLE "calendar_sync_issues"
+  ADD CONSTRAINT "calendar_sync_issues_source_matches_kind" CHECK (
+    CASE "kind"
+      WHEN 'inbound_overlap' THEN "calendar_id" IS NOT NULL AND "google_event_id" IS NOT NULL
+      WHEN 'ical_overlap' THEN "feed_id" IS NOT NULL AND "event_uid" IS NOT NULL
+    END
+  );

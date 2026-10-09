@@ -1,7 +1,7 @@
 /**
  * Rate limits for the endpoints worth abusing, applied by src/proxy.ts:
- * sign-in, the Google webhook and calendar connect flow, guest erasure,
- * category reassignment and bulk deletion. A fixed window per key, in
+ * sign-in, the Google webhook and calendar connect flow, the public iCal
+ * export feed, guest erasure, category reassignment and bulk deletion. A fixed window per key, in
  * memory: the app runs as one process, and a restart forgetting the counts
  * is harmless.
  *
@@ -38,6 +38,15 @@ export const RULES: Rule[] = [
     matches: (method, path) => method === "POST" && path === "/api/google/webhook",
     limit: 300,
     windowMs: MINUTE,
+    by: "client",
+  },
+  {
+    // Public (its token is the secret): platforms fetch it every few
+    // minutes to hours; guessing tokens must stay slow.
+    name: "ical-export",
+    matches: (method, path) => method === "GET" && path.startsWith("/api/ical/"),
+    limit: 60,
+    windowMs: 10 * MINUTE,
     by: "client",
   },
   {

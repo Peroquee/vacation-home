@@ -7,8 +7,9 @@
  * database's booking/block trigger backs this up; should it fire anyway, it
  * is reported the same way. Blocks may overlap each other.
  *
- * Blocks imported from Google Calendar (`origin: google`) belong to the
- * sync: this API refuses to change or delete them.
+ * Imported blocks - from Google Calendar (`origin: google`) or a booking
+ * platform's iCal feed (`origin: ical`) - belong to their sync: this API
+ * refuses to change or delete them.
  *
  * Manual blocks are deleted outright: they are not accounting records.
  */
@@ -35,7 +36,7 @@ export function toDto(block: Block) {
     reason: block.reason,
     origin: block.origin,
     /** Imported from Google Calendar: change it there, not here. */
-    readOnly: block.origin === "google",
+    readOnly: block.origin !== "manual",
     createdAt: block.createdAt.toISOString(),
     updatedAt: block.updatedAt.toISOString(),
   };
@@ -46,7 +47,7 @@ export type BlockDto = ReturnType<typeof toDto>;
 export type BlockWriteResult =
   | { block: Block }
   | { error: "not_found" }
-  | { error: "read_only" }
+  | { error: "read_only"; origin: "google" | "ical" }
   | { error: "invalid"; field: string; message: string }
   | { error: "conflict"; conflicts: Conflict[] };
 
@@ -147,7 +148,7 @@ export async function updateBlock(id: string, input: UpdateBlockInput): Promise<
       async (tx) => {
         const current = await tx.block.findUnique({ where: { id } });
         if (!current) return { error: "not_found" };
-        if (current.origin === "google") return { error: "read_only" };
+        if (current.origin !== "manual") return { error: "read_only", origin: current.origin };
         before = { start: fromUtcDate(current.startDate), end: fromUtcDate(current.endDate) };
         dates = {
           startDate: input.startDate ?? before.start,
@@ -184,13 +185,17 @@ export async function updateBlock(id: string, input: UpdateBlockInput): Promise<
 /** Deletes a manual block. */
 export async function deleteBlock(
   id: string,
-): Promise<{ deleted: true } | { error: "not_found" } | { error: "read_only" }> {
+): Promise<
+  { deleted: true } | { error: "not_found" } | { error: "read_only"; origin: "google" | "ical" }
+> {
   const head = await db.block.findUnique({ where: { id }, select: { propertyId: true } });
   if (!head) return { error: "not_found" };
   const result = await withPropertyLock(head.propertyId, async (tx) => {
     const current = await tx.block.findUnique({ where: { id } });
     if (!current) return { error: "not_found" } as const;
-    if (current.origin === "google") return { error: "read_only" } as const;
+    if (current.origin !== "manual") {
+      return { error: "read_only", origin: current.origin } as const;
+    }
     await tx.block.delete({ where: { id } });
     return {
       deleted: true,

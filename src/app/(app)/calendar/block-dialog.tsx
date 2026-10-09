@@ -98,17 +98,23 @@ function BlockDialogBody({
   const fail = (body: unknown, status: number) =>
     api.message(body) ?? tCommon("serverAnswered", { status });
 
-  if (block.origin === "google") {
+  if (block.origin !== "manual") {
+    // An iCal block is named after its feed ("Airbnb").
+    const feed = block.reason ?? "";
     return (
       <>
         <DialogHeader>
-          <DialogTitle>{t("googleTitle")}</DialogTitle>
+          <DialogTitle>
+            {block.origin === "google" ? t("googleTitle") : t("feedTitle", { feed })}
+          </DialogTitle>
           <DialogDescription>
             {format.dateRange(block.startDate, block.endDate)}
-            {block.reason ? `: ${block.reason}` : ""}
+            {block.origin === "google" && block.reason ? `: ${block.reason}` : ""}
           </DialogDescription>
         </DialogHeader>
-        <p className="text-sm">{t("googleHint")}</p>
+        <p className="text-sm">
+          {block.origin === "google" ? t("googleHint") : t("feedHint", { feed })}
+        </p>
         <DialogFooter>
           <Button variant="outline" onClick={onClose}>
             {tCommon("close")}

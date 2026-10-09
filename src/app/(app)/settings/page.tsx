@@ -11,8 +11,11 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { db } from "@/lib/db";
 import { type Formatters } from "@/i18n/format";
 import { getFormat } from "@/i18n/get-format";
+import { fromUtcDate } from "@/lib/calendar-date";
 import { toDto as calendarDto } from "@/lib/google/calendar-settings";
 import { calendarConnectAvailable, getConnectionStatus } from "@/lib/google/connection";
+import { openDoubleBookings } from "@/lib/google/sync-issues";
+import { exportUrl, toFeedDto } from "@/lib/ical/feeds";
 import { listProperties, type PropertyDto, toDto } from "@/lib/properties/service";
 import { getCurrentUser } from "@/lib/session";
 
@@ -21,6 +24,8 @@ import {
   type GoogleConnection,
   type PropertySync,
 } from "./google-calendar-section";
+import { DoubleBookings } from "./double-bookings";
+import { IcalSection } from "./ical-section";
 import { PropertyArchiveButton } from "./property-archive-button";
 import { PropertyFormDialog } from "./property-form-dialog";
 
@@ -102,6 +107,10 @@ export default async function SettingsPage({ searchParams }: PageProps<"/setting
   const active = properties.filter((p) => !p.archived);
   const archived = properties.filter((p) => p.archived);
   const google = await googleSettings(active.map((p) => ({ id: p.id, name: p.name })));
+  const [ical, doubleBookings] = await Promise.all([
+    icalSettings(active.map((p) => p.id)),
+    openDoubleBookings(),
+  ]);
   const t = await getTranslations("settings.page");
   const tCommon = await getTranslations("common");
   const columns = columnsFor(t, await getFormat(), tCommon("edit"));
@@ -152,6 +161,30 @@ export default async function SettingsPage({ searchParams }: PageProps<"/setting
           </Card>
         ) : null}
 
+        {doubleBookings.length > 0 ? (
+          <DoubleBookings
+            issues={doubleBookings.map((issue) => ({
+              id: issue.id,
+              feed: issue.feed?.name ?? "",
+              property: issue.property.name,
+              start: fromUtcDate(issue.startDate),
+              end: fromUtcDate(issue.endDate),
+              bookingIds: issue.bookingIds,
+            }))}
+          />
+        ) : null}
+
+        {active.length > 0 ? (
+          <IcalSection
+            properties={active.map((p) => ({
+              id: p.id,
+              name: p.name,
+              feeds: ical.feeds.get(p.id) ?? [],
+              exportUrl: ical.exports.get(p.id) ?? null,
+            }))}
+          />
+        ) : null}
+
         {google ? (
           <GoogleCalendarSection
             connection={google.connection}
@@ -187,5 +220,27 @@ async function googleSettings(
       property,
       calendar: byProperty.get(property.id) ?? null,
     })),
+  };
+}
+
+/** The booking platform feeds and export links of the active properties (GitLab #99). */
+async function icalSettings(propertyIds: string[]) {
+  const [feeds, tokens] = await Promise.all([
+    db.icalFeed.findMany({
+      where: { propertyId: { in: propertyIds } },
+      orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+    }),
+    db.property.findMany({
+      where: { id: { in: propertyIds }, icalExportToken: { not: null } },
+      select: { id: true, icalExportToken: true },
+    }),
+  ]);
+  const byProperty = new Map<string, ReturnType<typeof toFeedDto>[]>();
+  for (const feed of feeds) {
+    byProperty.set(feed.propertyId, [...(byProperty.get(feed.propertyId) ?? []), toFeedDto(feed)]);
+  }
+  return {
+    feeds: byProperty,
+    exports: new Map(tokens.map((p) => [p.id, exportUrl(p.icalExportToken!)])),
   };
 }
