@@ -2,11 +2,13 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useState } from "react";
 
 import { toastError, toastSuccess } from "@/components/toast";
 import { Button } from "@/components/ui/button";
-import { formatDateRange, formatDateTime } from "@/lib/format";
+import { useFormat } from "@/i18n/use-format";
+import { useApiText } from "@/i18n/use-api-text";
 
 export type SyncFailure = {
   linkId: string;
@@ -25,15 +27,14 @@ export type SyncFailure = {
   } | null;
 };
 
-async function retry(linkId?: string): Promise<number> {
+async function retry(linkId: string | undefined, fail: (body: unknown, status: number) => string) {
   const response = await fetch("/api/calendar-sync/retry", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(linkId ? { linkId } : {}),
   });
   const body = await response.json().catch(() => null);
-  if (!response.ok)
-    throw new Error(body?.error?.message ?? `The server answered ${response.status}.`);
+  if (!response.ok) throw new Error(fail(body, response.status));
   return body.queued as number;
 }
 
@@ -45,6 +46,12 @@ async function retry(linkId?: string): Promise<number> {
  */
 export function SyncFailures() {
   const router = useRouter();
+  const t = useTranslations("settings.syncFailures");
+  const tCommon = useTranslations("common");
+  const api = useApiText();
+  const fail = (body: unknown, status: number) =>
+    api.message(body) ?? tCommon("serverAnswered", { status });
+  const format = useFormat();
   const [failures, setFailures] = useState<SyncFailure[] | null>(null);
   const [failed, setFailed] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
@@ -73,15 +80,12 @@ export function SyncFailures() {
   async function run(linkId?: string) {
     setBusy(linkId ?? "all");
     try {
-      const queued = await retry(linkId);
-      toastSuccess(
-        queued === 1 ? "Retrying 1 event" : `Retrying ${queued} events`,
-        "The result shows here in a moment.",
-      );
+      const queued = await retry(linkId, fail);
+      toastSuccess(t("retried", { count: queued }), t("retriedHint"));
       await fetchFailures();
       router.refresh();
     } catch (error) {
-      toastError(error, "Could not retry");
+      toastError(error, t("retryFailed"));
     } finally {
       setBusy(null);
     }
@@ -90,28 +94,21 @@ export function SyncFailures() {
   if (failed) {
     return (
       <p role="alert" className="text-destructive text-sm">
-        Sync problems could not be loaded.
+        {t("loadFailed")}
       </p>
     );
   }
-  if (failures === null)
-    return <p className="text-muted-foreground text-sm">Checking for sync problems…</p>;
+  if (failures === null) return <p className="text-muted-foreground text-sm">{t("checking")}</p>;
   if (failures.length === 0) {
-    return (
-      <p className="text-muted-foreground text-sm">
-        No sync problems: every booking is up to date in Google.
-      </p>
-    );
+    return <p className="text-muted-foreground text-sm">{t("none")}</p>;
   }
 
   return (
     <div className="space-y-3">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <p className="text-sm font-medium">
-          {failures.length} {failures.length === 1 ? "booking" : "bookings"} could not be synced
-        </p>
+        <p className="text-sm font-medium">{t("count", { count: failures.length })}</p>
         <Button size="sm" variant="outline" disabled={busy !== null} onClick={() => run()}>
-          {busy === "all" ? "Retrying…" : "Retry all"}
+          {busy === "all" ? t("retrying") : t("retryAll")}
         </Button>
       </div>
       <ul className="divide-y rounded-lg border text-sm">
@@ -122,24 +119,24 @@ export function SyncFailures() {
                 {failure.booking ? (
                   <Link href={`/bookings/${failure.booking.id}`} className="underline">
                     {failure.booking.property.name},{" "}
-                    {formatDateRange(failure.booking.checkIn, failure.booking.checkOut)}
+                    {format.dateRange(failure.booking.checkIn, failure.booking.checkOut)}
                   </Link>
                 ) : (
-                  "A deleted booking's event"
+                  t("deletedBooking")
                 )}
               </p>
-              <p>{failure.error ?? "Syncing this event failed."}</p>
+              <p>{failure.error ? api.text(failure.error) : t("genericError")}</p>
               <p className="text-muted-foreground text-xs">
                 {failure.state === "dead"
-                  ? `Stopped after ${failure.attempts} attempts; retry by hand.`
+                  ? t("dead", { count: failure.attempts })
                   : failure.state === "delete_failing"
-                    ? "Removing the event from Google keeps failing."
-                    : `${failure.attempts} ${failure.attempts === 1 ? "attempt" : "attempts"} so far`}
+                    ? t("deleteFailing")
+                    : t("attempts", { count: failure.attempts })}
                 {failure.failingSince
-                  ? ` · failing since ${formatDateTime(failure.failingSince, "UTC")} (UTC)`
+                  ? t("failingSince", { time: format.dateTime(failure.failingSince, "UTC") })
                   : ""}
                 {failure.nextAttemptAt
-                  ? ` · next try ${formatDateTime(failure.nextAttemptAt, "UTC")} (UTC)`
+                  ? t("nextTry", { time: format.dateTime(failure.nextAttemptAt, "UTC") })
                   : ""}
               </p>
             </div>
@@ -150,7 +147,7 @@ export function SyncFailures() {
               aria-busy={busy === failure.linkId}
               onClick={() => run(failure.linkId)}
             >
-              {busy === failure.linkId ? "Retrying…" : "Retry"}
+              {busy === failure.linkId ? t("retrying") : t("retry")}
             </Button>
           </li>
         ))}

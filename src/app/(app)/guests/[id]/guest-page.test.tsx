@@ -81,7 +81,7 @@ describe("guest page", () => {
     await renderPage();
 
     expect(screen.getByRole("heading", { level: 1, name: "Deleted guest" })).toBeInTheDocument();
-    expect(screen.getByText(/Erased on Sep 1, 2026/)).toBeInTheDocument();
+    expect(screen.getByText(/Erased on 1 Sept 2026/)).toBeInTheDocument();
     expect(screen.queryByRole("button")).not.toBeInTheDocument();
     expect(screen.queryByText("ada@example.test")).not.toBeInTheDocument();
   });

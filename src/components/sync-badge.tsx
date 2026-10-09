@@ -1,4 +1,5 @@
 import { CircleAlert, CircleCheck, CircleX, Clock } from "lucide-react";
+import { useTranslations } from "next-intl";
 
 import { cn } from "@/lib/utils";
 
@@ -6,16 +7,15 @@ export type SyncState = "synced" | "pending" | "failed" | "dead" | "not_synced";
 
 const STATES: Record<
   Exclude<SyncState, "not_synced">,
-  { label: string; icon: typeof CircleCheck; tone: string }
+  { icon: typeof CircleCheck; tone: string }
 > = {
   synced: {
-    label: "In Google Calendar",
     icon: CircleCheck,
     tone: "text-emerald-700 dark:text-emerald-400",
   },
-  pending: { label: "Syncing", icon: Clock, tone: "text-muted-foreground" },
-  failed: { label: "Sync failed, retrying", icon: CircleAlert, tone: "text-destructive" },
-  dead: { label: "Sync stopped", icon: CircleX, tone: "text-destructive" },
+  pending: { icon: Clock, tone: "text-muted-foreground" },
+  failed: { icon: CircleAlert, tone: "text-destructive" },
+  dead: { icon: CircleX, tone: "text-destructive" },
 };
 
 /**
@@ -33,15 +33,16 @@ export function SyncBadge({
   title?: string;
   className?: string;
 }) {
+  const t = useTranslations("syncBadge");
   if (state === "not_synced") return null;
-  const { label, icon: Icon, tone } = STATES[state];
+  const { icon: Icon, tone } = STATES[state];
   return (
     <span
       className={cn("inline-flex items-center gap-1 text-xs whitespace-nowrap", tone, className)}
       title={title}
     >
       <Icon aria-hidden className="size-3.5" />
-      {label}
+      {t(state)}
     </span>
   );
 }

@@ -18,6 +18,8 @@ export default defineConfig({
   reporter: isCI ? [["list"], ["html", { open: "never" }]] : "list",
   use: {
     baseURL,
+    // The specs read English; the language follows Accept-Language (e2e/i18n.spec.ts).
+    locale: "en-GB",
     trace: "retain-on-failure",
   },
   projects: [

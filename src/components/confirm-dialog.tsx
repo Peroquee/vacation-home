@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { useState } from "react";
 
 import { toastError } from "@/components/toast";
@@ -45,11 +46,12 @@ export function ConfirmDialog({
   onOpenChange,
   title,
   description,
-  confirmLabel = "Confirm",
-  cancelLabel = "Cancel",
+  confirmLabel,
+  cancelLabel,
   destructive = false,
   onConfirm,
 }: ConfirmDialogProps) {
+  const t = useTranslations("common");
   const [uncontrolledOpen, setUncontrolledOpen] = useState(false);
   const open = controlledOpen ?? uncontrolledOpen;
   const setOpen = (next: boolean) => {
@@ -64,7 +66,7 @@ export function ConfirmDialog({
       await onConfirm();
       setOpen(false);
     } catch (error) {
-      toastError(error);
+      toastError(error, t("failed"));
     } finally {
       setPending(false);
     }
@@ -79,14 +81,14 @@ export function ConfirmDialog({
           {description ? <AlertDialogDescription>{description}</AlertDialogDescription> : null}
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel disabled={pending}>{cancelLabel}</AlertDialogCancel>
+          <AlertDialogCancel disabled={pending}>{cancelLabel ?? t("cancel")}</AlertDialogCancel>
           <Button
             variant={destructive ? "destructive" : "default"}
             disabled={pending}
             aria-busy={pending}
             onClick={confirm}
           >
-            {pending ? "Working…" : confirmLabel}
+            {pending ? t("working") : (confirmLabel ?? t("confirm"))}
           </Button>
         </AlertDialogFooter>
       </AlertDialogContent>

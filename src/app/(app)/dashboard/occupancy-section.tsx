@@ -1,3 +1,5 @@
+import { getTranslations } from "next-intl/server";
+
 import { OccupancyChart } from "@/components/charts/occupancy-chart";
 import { OccupancyHeatmap } from "@/components/charts/occupancy-heatmap";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -31,6 +33,7 @@ export async function OccupancySection({ state }: { state: DashboardState }) {
     getCalendars(ids, window),
   ]);
   if (!current.ok || !("report" in current.result)) return null;
+  const t = await getTranslations("dashboard.occupancy");
   const months = withPriorYear(
     monthlyOccupancy(current.result.report.months),
     prior.ok && "report" in prior.result ? monthlyOccupancy(prior.result.report.months) : null,
@@ -39,16 +42,13 @@ export async function OccupancySection({ state }: { state: DashboardState }) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Occupancy</CardTitle>
-        <CardDescription>
-          Booked nights as a share of available nights. Only confirmed bookings count, and nights
-          you blocked that no guest booked are left out of the available nights.
-        </CardDescription>
+        <CardTitle>{t("title")}</CardTitle>
+        <CardDescription>{t("description")}</CardDescription>
       </CardHeader>
       <CardContent className="grid gap-8 lg:grid-cols-2">
         <OccupancyChart months={months} />
         <div className="space-y-2">
-          <h3 className="text-sm font-medium">Booked nights over the last twelve months</h3>
+          <h3 className="text-sm font-medium">{t("heatmapTitle")}</h3>
           <OccupancyHeatmap
             months={heatmap(window, calendars)}
             properties={Math.max(1, calendars.length)}

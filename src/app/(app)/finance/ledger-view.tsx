@@ -3,6 +3,7 @@
 import { Plus } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { useState } from "react";
 
 import { type Column, DataTable } from "@/components/data-table";
@@ -10,7 +11,7 @@ import { EmptyState } from "@/components/states";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { runningNet, signedMinor } from "@/lib/finance/ledger";
-import { formatDate, formatMoney } from "@/lib/format";
+import { useFormat } from "@/i18n/use-format";
 import { cn } from "@/lib/utils";
 
 import {
@@ -58,6 +59,8 @@ export function LedgerView({
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const [editing, setEditing] = useState<EditableTransaction | null>(null);
+  const text = useTranslations("finance.ledger");
+  const format = useFormat();
   const adding = searchParams.get("add") === "1";
 
   function setAdding(open: boolean) {
@@ -71,16 +74,19 @@ export function LedgerView({
   const after = runningNet(rows);
   const names = new Map(properties.map((p) => [p.id, p.name]));
   const columns: Column<LedgerRow>[] = [
-    { id: "date", header: "Date", cell: (t) => formatDate(t.date) },
+    { id: "date", header: text("columns.date"), cell: (t) => format.date(t.date) },
     {
       id: "what",
-      header: "Description",
+      header: text("columns.description"),
       cell: (t) => (
         <button
           type="button"
           className="text-left hover:underline"
           onClick={() => setEditing(t)}
-          aria-label={`Edit: ${t.description || t.category.name}, ${formatDate(t.date)}`}
+          aria-label={text("editRow", {
+            what: t.description || t.category.name,
+            date: format.date(t.date),
+          })}
         >
           {t.description || <span className="text-muted-foreground">{t.category.name}</span>}
         </button>
@@ -88,7 +94,7 @@ export function LedgerView({
     },
     {
       id: "category",
-      header: "Category",
+      header: text("columns.category"),
       cell: (t) => (
         <span className="inline-flex items-center gap-1.5">
           <span
@@ -100,35 +106,39 @@ export function LedgerView({
         </span>
       ),
     },
-    { id: "property", header: "Property", cell: (t) => names.get(t.propertyId) ?? "–" },
+    {
+      id: "property",
+      header: text("columns.property"),
+      cell: (t) => names.get(t.propertyId) ?? "–",
+    },
     {
       id: "booking",
-      header: "Booking",
+      header: text("columns.booking"),
       cell: (t) =>
         t.bookingId ? (
           <Link href={`/bookings/${t.bookingId}`} className="underline">
-            View
+            {text("view")}
           </Link>
         ) : null,
     },
     {
       id: "amount",
-      header: "Amount",
+      header: text("columns.amount"),
       align: "end",
       cell: (t) => (
         <span className={cn(t.type === "income" ? "text-emerald-700 dark:text-emerald-400" : "")}>
           {/* The sign says the direction; the green only repeats it. */}
           {t.type === "income" ? "+" : ""}
-          {formatMoney(signedMinor(t), t.currency)}
+          {format.money(signedMinor(t), t.currency)}
         </span>
       ),
     },
     {
       id: "running",
-      header: "Running net",
+      header: text("columns.running"),
       align: "end",
       cell: (t) => (
-        <span className="text-muted-foreground">{formatMoney(after.get(t.id)!, t.currency)}</span>
+        <span className="text-muted-foreground">{format.money(after.get(t.id)!, t.currency)}</span>
       ),
     },
   ];
@@ -143,26 +153,26 @@ export function LedgerView({
 
       <div className="mb-3 flex items-center justify-between gap-2">
         <p className="text-muted-foreground text-sm">
-          {rows.length} {rows.length === 1 ? "transaction" : "transactions"}
-          {truncated ? " (the first 200; narrow the filters to see the rest)" : ""}
+          {text("count", { count: rows.length })}
+          {truncated ? text("truncated") : ""}
         </p>
         <Button onClick={() => setAdding(true)}>
           <Plus data-icon="inline-start" aria-hidden />
-          Add
+          {text("add")}
           <kbd className="bg-primary-foreground/20 ml-1 rounded px-1 text-[10px]">T</kbd>
         </Button>
       </div>
 
       <DataTable
-        caption="Transactions"
+        caption={text("caption")}
         columns={columns}
         rows={rows}
         rowKey={(t) => t.id}
         empty={
           <EmptyState
-            title="No transactions in this period"
-            description="Add an expense or income, or pick another month."
-            action={<Button onClick={() => setAdding(true)}>Add a transaction</Button>}
+            title={text("emptyTitle")}
+            description={text("emptyDescription")}
+            action={<Button onClick={() => setAdding(true)}>{text("addTransaction")}</Button>}
           />
         }
       />
@@ -188,24 +198,28 @@ export function LedgerView({
 
 /** Income, expenses and net for one currency (or zeros for an empty period). */
 function PeriodTotals({ total }: { total: PeriodTotal | null }) {
-  const money = (minor: number) => (total ? formatMoney(minor, total.currency) : "–");
+  const text = useTranslations("finance.ledger");
+  const format = useFormat();
+  const money = (minor: number) => (total ? format.money(minor, total.currency) : "–");
   return (
     <Card size="sm" className="sm:col-span-3">
       <CardHeader>
-        <CardTitle>Period totals{total ? ` (${total.currency})` : ""}</CardTitle>
+        <CardTitle>
+          {total ? text("periodTotalsIn", { currency: total.currency }) : text("periodTotals")}
+        </CardTitle>
       </CardHeader>
       <CardContent>
         <dl className="grid grid-cols-3 gap-2 text-sm">
           <div>
-            <dt className="text-muted-foreground">Income</dt>
+            <dt className="text-muted-foreground">{text("income")}</dt>
             <dd className="font-medium tabular-nums">{money(total?.incomeMinor ?? 0)}</dd>
           </div>
           <div>
-            <dt className="text-muted-foreground">Expenses</dt>
+            <dt className="text-muted-foreground">{text("expenses")}</dt>
             <dd className="font-medium tabular-nums">{money(total?.expenseMinor ?? 0)}</dd>
           </div>
           <div>
-            <dt className="text-muted-foreground">Net</dt>
+            <dt className="text-muted-foreground">{text("net")}</dt>
             <dd className="font-medium tabular-nums">{money(total?.netMinor ?? 0)}</dd>
           </div>
         </dl>

@@ -136,7 +136,7 @@ describe("BookingForm", () => {
     await fillStay(user, "2026-07-14", "2026-07-18");
 
     const alert = await screen.findByRole("alert");
-    expect(alert).toHaveTextContent(/Arrive on July 15, 2026 instead/);
+    expect(alert).toHaveTextContent(/Arrive on 15 July 2026 instead/);
     expect(within(alert).getByRole("link", { name: /Booked by Grace Hopper/ })).toHaveAttribute(
       "href",
       "/bookings/b1",
@@ -202,7 +202,7 @@ describe("BookingForm", () => {
     await user.click(screen.getByRole("button", { name: "Add booking" }));
 
     expect(await screen.findByText(/Blocked \(Painting\)/)).toBeInTheDocument();
-    expect(screen.getByText(/overlap a block/)).toBeInTheDocument();
+    expect(screen.getByText("Those dates are no longer available.")).toBeInTheDocument();
     expect(push).not.toHaveBeenCalled();
   });
 

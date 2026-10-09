@@ -10,10 +10,10 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
+import { useLocale, useTranslations } from "next-intl";
 
 import { type Column, DataTable } from "@/components/data-table";
-import { formatMoney } from "@/lib/format";
-import { APP_LOCALE } from "@/lib/locale";
+import { formattersFor } from "@/i18n/format";
 
 export type MonthFigures = {
   /** "2026-07". */
@@ -25,17 +25,22 @@ export type MonthFigures = {
 
 /** The series, in the palette's fixed order. Text never wears these colours. */
 const SERIES = [
-  { key: "incomeMinor", label: "Income", color: "var(--chart-1)", mark: "bar" },
-  { key: "expensesMinor", label: "Expenses", color: "var(--chart-2)", mark: "bar" },
-  { key: "netMinor", label: "Net profit", color: "var(--chart-3)", mark: "line" },
+  { key: "incomeMinor", color: "var(--chart-1)", mark: "bar" },
+  { key: "expensesMinor", color: "var(--chart-2)", mark: "bar" },
+  { key: "netMinor", color: "var(--chart-3)", mark: "line" },
 ] as const;
 
-const monthName = (month: string, style: "short" | "long") =>
-  new Intl.DateTimeFormat(APP_LOCALE, {
-    month: style,
-    ...(style === "long" && { year: "numeric" }),
-    timeZone: "UTC",
-  }).format(new Date(`${month}-01T00:00:00Z`));
+type Translate = ReturnType<typeof useTranslations<"charts.revenue">>;
+type MonthName = (month: string, style: "short" | "long") => string;
+
+const monthNameIn =
+  (locale: string): MonthName =>
+  (month, style) =>
+    new Intl.DateTimeFormat(locale, {
+      month: style,
+      ...(style === "long" && { year: "numeric" }),
+      timeZone: "UTC",
+    }).format(new Date(`${month}-01T00:00:00Z`));
 
 /**
  * Income and expenses per month as paired columns, with net profit as a line
@@ -51,9 +56,12 @@ export function RevenueExpensesChart({
   months: MonthFigures[];
   currency: string;
 }) {
-  const money = (minor: number) => formatMoney(minor, currency);
+  const t = useTranslations("charts.revenue");
+  const locale = useLocale();
+  const monthName = monthNameIn(locale);
+  const money = (minor: number) => formattersFor(locale).money(minor, currency);
   // Whole units on the axis, compact: €12K rather than €12,000.00.
-  const tick = new Intl.NumberFormat(APP_LOCALE, {
+  const tick = new Intl.NumberFormat(locale, {
     style: "currency",
     currency,
     notation: "compact",
@@ -68,7 +76,7 @@ export function RevenueExpensesChart({
     <figure className="space-y-3">
       <ul
         className="text-muted-foreground flex flex-wrap gap-x-4 gap-y-1 text-xs"
-        aria-label="Legend"
+        aria-label={t("legend")}
       >
         {SERIES.map((series) => (
           <li key={series.key} className="flex items-center gap-1.5">
@@ -78,7 +86,7 @@ export function RevenueExpensesChart({
               className={series.mark === "bar" ? "size-2.5 rounded-sm" : "h-0.5 w-3 rounded-full"}
               style={{ backgroundColor: series.color }}
             />
-            {series.label}
+            {t(`series.${series.key}`)}
           </li>
         ))}
       </ul>
@@ -87,11 +95,7 @@ export function RevenueExpensesChart({
        * A picture for sighted readers; the table below carries every value
        * for everyone else, so nothing in here takes keyboard focus.
        */}
-      <div
-        className="h-72 w-full"
-        role="img"
-        aria-label="Chart of income, expenses and net profit by month. The figures are in the table below."
-      >
+      <div className="h-72 w-full" role="img" aria-label={t("chartLabel")}>
         <ResponsiveContainer width="100%" height="100%">
           <ComposedChart
             data={data}
@@ -120,14 +124,19 @@ export function RevenueExpensesChart({
             <Tooltip
               cursor={{ fill: "var(--muted)", opacity: 0.6 }}
               content={({ active, payload }) => (
-                <MonthTooltip active={active} payload={payload} money={money} />
+                <MonthTooltip
+                  active={active}
+                  payload={payload}
+                  money={money}
+                  monthName={monthName}
+                />
               )}
             />
             {SERIES.filter((s) => s.mark === "bar").map((series) => (
               <Bar
                 key={series.key}
                 dataKey={series.key}
-                name={series.label}
+                name={t(`series.${series.key}`)}
                 fill={series.color}
                 maxBarSize={24}
                 // Rounded at the data end, square on the baseline.
@@ -137,7 +146,7 @@ export function RevenueExpensesChart({
             ))}
             <Line
               dataKey="netMinor"
-              name="Net profit"
+              name={t("series.netMinor")}
               type="monotone"
               stroke="var(--chart-3)"
               strokeWidth={2}
@@ -153,13 +162,11 @@ export function RevenueExpensesChart({
       </div>
 
       <details className="text-sm">
-        <summary className="text-muted-foreground cursor-pointer">
-          Show the figures as a table
-        </summary>
+        <summary className="text-muted-foreground cursor-pointer">{t("showTable")}</summary>
         <DataTable
           className="mt-2"
-          caption="Income, expenses and net profit by month"
-          columns={tableColumns(money)}
+          caption={t("caption")}
+          columns={tableColumns(t, money, monthName)}
           rows={months}
           rowKey={(m) => m.month}
           empty={null}
@@ -169,12 +176,16 @@ export function RevenueExpensesChart({
   );
 }
 
-function tableColumns(money: (minor: number) => string): Column<MonthFigures>[] {
+function tableColumns(
+  t: Translate,
+  money: (minor: number) => string,
+  monthName: MonthName,
+): Column<MonthFigures>[] {
   return [
-    { id: "month", header: "Month", cell: (m) => monthName(m.month, "long") },
+    { id: "month", header: t("month"), cell: (m) => monthName(m.month, "long") },
     ...SERIES.map((series): Column<MonthFigures> => ({
       id: series.key,
-      header: series.label,
+      header: t(`series.${series.key}`),
       cell: (m) => money(m[series.key]),
       align: "end",
     })),
@@ -186,11 +197,14 @@ function MonthTooltip({
   active,
   payload,
   money,
+  monthName,
 }: {
   active?: boolean;
   payload?: readonly { payload?: unknown }[];
   money: (minor: number) => string;
+  monthName: MonthName;
 }) {
+  const t = useTranslations("charts.revenue");
   const row = payload?.[0]?.payload as (MonthFigures & { label: string }) | undefined;
   if (!active || !row) return null;
   return (
@@ -205,7 +219,7 @@ function MonthTooltip({
               style={{ backgroundColor: series.color }}
             />
             <span className="font-medium tabular-nums">{money(row[series.key])}</span>
-            <span className="text-muted-foreground">{series.label}</span>
+            <span className="text-muted-foreground">{t(`series.${series.key}`)}</span>
           </li>
         ))}
       </ul>

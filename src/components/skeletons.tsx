@@ -3,6 +3,8 @@
  * page does not jump when it arrives. Use them in `loading.tsx` files and
  * Suspense fallbacks.
  */
+import { useTranslations } from "next-intl";
+
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
@@ -60,16 +62,18 @@ function TableBones({ rows = 5, columns = 4 }: TableShape) {
 }
 
 export function TableSkeleton({ className, ...shape }: TableShape & { className?: string }) {
+  const t = useTranslations("loading");
   return (
-    <Loading label="Loading table" className={className}>
+    <Loading label={t("table")} className={className}>
       <TableBones {...shape} />
     </Loading>
   );
 }
 
 export function CardSkeleton({ lines = 3, className }: { lines?: number; className?: string }) {
+  const t = useTranslations("loading");
   return (
-    <Loading label="Loading" className={className}>
+    <Loading label={t("default")} className={className}>
       <Card aria-hidden>
         <CardHeader>
           <Skeleton className="h-5 w-1/3" />
@@ -86,8 +90,9 @@ export function CardSkeleton({ lines = 3, className }: { lines?: number; classNa
 
 /** A whole page: header plus a table. The default for a `loading.tsx`. */
 export function PageSkeleton() {
+  const t = useTranslations("loading");
   return (
-    <Loading label="Loading page">
+    <Loading label={t("page")}>
       <PageHeaderSkeleton />
       <TableBones />
     </Loading>
@@ -102,8 +107,9 @@ export function StatTilesSkeleton({
   count?: number;
   className?: string;
 }) {
+  const t = useTranslations("loading");
   return (
-    <Loading label="Loading figures" className={className}>
+    <Loading label={t("figures")} className={className}>
       <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6" aria-hidden>
         {Array.from({ length: count }, (_, i) => (
           <Card key={i} size="sm">

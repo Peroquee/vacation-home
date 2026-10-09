@@ -12,13 +12,9 @@ import { addMonths } from "@/lib/calendar/month";
 
 type SearchParams = Record<string, string | string[] | undefined>;
 
-export const PRESETS = [
-  { id: "this-month", label: "This month" },
-  { id: "last-month", label: "Last month" },
-  { id: "year-to-date", label: "Year to date" },
-  { id: "last-12-months", label: "Last 12 months" },
-] as const;
-export type Preset = (typeof PRESETS)[number]["id"] | "custom";
+/** The named ranges; each reads as `dashboard.filters.presets.<id>`. */
+export const PRESETS = ["this-month", "last-month", "year-to-date", "last-12-months"] as const;
+export type Preset = (typeof PRESETS)[number] | "custom";
 
 export type DashboardState = {
   /** Which preset the range came from, or "custom". */
@@ -66,7 +62,7 @@ export function dashboardState(params: SearchParams, today: CalendarDate): Dashb
   const asked = first(params.preset);
   const from = first(params.from);
   const until = first(params.until);
-  const preset = PRESETS.find((p) => p.id === asked)?.id;
+  const preset = PRESETS.find((p) => p === asked);
   const custom =
     !preset && from && until && isCalendarDate(from) && isCalendarDate(until) && from <= until
       ? { from, until }

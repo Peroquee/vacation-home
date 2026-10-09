@@ -70,7 +70,8 @@ export function bookingEvent(
   const description = [
     `Booking ${booking.id}`,
     `${nights} night${nights === 1 ? "" : "s"}, ${guests}`,
-    `Total: ${formatMoney(booking.totalAmountMinor, booking.currency)}`,
+    // The event text is English, so is its amount.
+    `Total: ${formatMoney(booking.totalAmountMinor, booking.currency, { locale: "en-GB" })}`,
     "",
     `Open in Vacation Home: ${new URL(`/bookings/${booking.id}`, env.APP_URL)}`,
     "Kept in sync by Vacation Home: change the booking in the app, not here.",

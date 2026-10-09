@@ -1,12 +1,13 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { useEffect, useRef } from "react";
 
 import { Button } from "@/components/ui/button";
 import type { AgendaItem } from "@/lib/calendar/agenda";
 import type { MonthKey } from "@/lib/calendar/month";
-import { formatDateRange } from "@/lib/format";
-import { APP_LOCALE } from "@/lib/locale";
+import { useFormat } from "@/i18n/use-format";
+import { guestDisplayName } from "@/lib/guests/display";
 import { cn } from "@/lib/utils";
 
 /**
@@ -29,7 +30,10 @@ export function Agenda({
   className?: string;
 }) {
   const sentinel = useRef<HTMLDivElement>(null);
-  const title = new Intl.DateTimeFormat(APP_LOCALE, {
+  const t = useTranslations("calendar.agenda");
+  const purgedName = useTranslations("guests")("purgedName");
+  const format = useFormat();
+  const title = new Intl.DateTimeFormat(format.locale, {
     month: "long",
     year: "numeric",
     timeZone: "UTC",
@@ -50,14 +54,14 @@ export function Agenda({
   }, [onLoadMore, loading]);
 
   return (
-    <section aria-label="Agenda" className={cn("space-y-6", className)}>
+    <section aria-label={t("label")} className={cn("space-y-6", className)}>
       {months.map(({ month, items }) => (
         <div key={month}>
           <h3 className="text-muted-foreground mb-2 text-sm font-medium">
             {title.format(new Date(`${month}-01T00:00:00Z`))}
           </h3>
           {items.length === 0 ? (
-            <p className="text-muted-foreground text-sm">Nothing booked or blocked.</p>
+            <p className="text-muted-foreground text-sm">{t("empty")}</p>
           ) : (
             <ul className="divide-y rounded-lg border">
               {items.map((item) => (
@@ -82,16 +86,18 @@ export function Agenda({
                     <span className="min-w-0 flex-1">
                       <span className="block truncate font-medium">
                         {item.kind === "booking"
-                          ? item.booking.guest.name
-                          : `Blocked${item.block.reason ? `: ${item.block.reason}` : ""}`}
+                          ? guestDisplayName(item.booking.guest.name, purgedName)
+                          : item.block.reason
+                            ? t("blockedWhy", { reason: item.block.reason })
+                            : t("blocked")}
                       </span>
                       <span className="text-muted-foreground block truncate text-sm">
-                        {formatDateRange(item.start, item.end)} · {item.property.name}
+                        {format.dateRange(item.start, item.end)} · {item.property.name}
                         {item.kind === "booking" && item.booking.status === "inquiry"
-                          ? " · inquiry"
+                          ? t("inquiry")
                           : ""}
                         {item.kind === "block" && item.block.origin === "google"
-                          ? " · from Google Calendar"
+                          ? t("fromGoogle")
                           : ""}
                       </span>
                     </span>
@@ -104,7 +110,7 @@ export function Agenda({
       ))}
       <div ref={sentinel} className="flex justify-center">
         <Button variant="outline" onClick={onLoadMore} disabled={loading} aria-busy={loading}>
-          {loading ? "Loading…" : "Show next month"}
+          {loading ? t("loading") : t("more")}
         </Button>
       </div>
     </section>

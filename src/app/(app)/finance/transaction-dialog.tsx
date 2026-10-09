@@ -1,6 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
 
 import { ConfirmDialog } from "@/components/confirm-dialog";
@@ -18,9 +19,12 @@ import { Field, FieldError, FieldGroup, FieldLabel } from "@/components/ui/field
 import { Input } from "@/components/ui/input";
 import { NativeSelect, NativeSelectOption } from "@/components/ui/native-select";
 import { bookingWindow } from "@/lib/finance/ledger";
-import { formatDateRange } from "@/lib/format";
-import { amountHint, inputToMinor, minorToInput } from "@/lib/properties/form";
+import { inputToMinor, minorToInput } from "@/lib/properties/form";
+import { useAmountHint } from "@/i18n/use-amount-hint";
+import { useFormat } from "@/i18n/use-format";
+import { guestDisplayName } from "@/lib/guests/display";
 import { cn } from "@/lib/utils";
+import { useApiText } from "@/i18n/use-api-text";
 
 export type LedgerProperty = { id: string; name: string; currency: string };
 export type LedgerCategory = {
@@ -41,7 +45,7 @@ export type EditableTransaction = {
 };
 
 type FieldErrors = Record<string, string[] | undefined>;
-type BookingOption = { id: string; label: string };
+type BookingOption = { id: string; checkIn: string; checkOut: string; guest: string };
 
 function initial(
   transaction: EditableTransaction | undefined,
@@ -123,6 +127,15 @@ function TransactionForm({
   onDone: () => void;
 }) {
   const router = useRouter();
+  const amountHint = useAmountHint();
+  const t = useTranslations("finance.transaction");
+  const tForms = useTranslations("forms");
+  const tCommon = useTranslations("common");
+  const purgedName = useTranslations("guests")("purgedName");
+  const format = useFormat();
+  const api = useApiText();
+  const fail = (body: unknown, status: number) =>
+    api.message(body) ?? tCommon("serverAnswered", { status });
   const currencyOf = (id: string) => properties.find((p) => p.id === id)?.currency ?? "EUR";
   const [values, setValues] = useState(() => initial(transaction, defaults, currencyOf));
   const [errors, setErrors] = useState<FieldErrors>({});
@@ -155,7 +168,9 @@ function TransactionForm({
           setBookings(
             body.items.map((b) => ({
               id: b.id,
-              label: `${b.guest.name}, ${formatDateRange(b.checkIn, b.checkOut)}`,
+              checkIn: b.checkIn,
+              checkOut: b.checkOut,
+              guest: b.guest.name,
             })),
           ),
       )
@@ -170,9 +185,9 @@ function TransactionForm({
     const amountMinor = inputToMinor(values.amount, currency);
     const local: FieldErrors = {};
     if (amountMinor === null || amountMinor === 0) {
-      local.amountMinor = [amountMinor === 0 ? "is required" : amountHint(currency)];
+      local.amountMinor = [amountMinor === 0 ? tForms("required") : amountHint(currency)];
     }
-    if (!values.categoryId) local.categoryId = ["is required"];
+    if (!values.categoryId) local.categoryId = [tForms("required")];
     if (Object.keys(local).length > 0) return setErrors(local);
 
     const body = {
@@ -196,21 +211,19 @@ function TransactionForm({
       );
       const result = await response.json().catch(() => null);
       if (response.status === 422 && result?.error?.fields) {
-        setErrors(result.error.fields);
+        setErrors(api.fields(result.error.fields));
         return;
       }
       if (!response.ok) {
-        throw new Error(result?.error?.message ?? `The server answered ${response.status}.`);
+        throw new Error(fail(result, response.status));
       }
       toastSuccess(
-        transaction
-          ? "Transaction saved"
-          : `${values.type === "income" ? "Income" : "Expense"} added`,
+        transaction ? t("saved") : values.type === "income" ? t("incomeAdded") : t("expenseAdded"),
       );
       onDone();
       router.refresh();
     } catch (error) {
-      toastError(error, "Could not save the transaction");
+      toastError(error, t("saveFailed"));
     } finally {
       setPending(false);
     }
@@ -227,7 +240,11 @@ function TransactionForm({
       <Field data-invalid={messages ? true : undefined}>
         <FieldLabel htmlFor={id}>{label}</FieldLabel>
         {control({ id, ...(messages && { "aria-invalid": true }) })}
-        <FieldError errors={messages?.map((message) => ({ message: `${label} ${message}` }))} />
+        <FieldError
+          errors={messages?.map((message) => ({
+            message: tForms("fieldError", { label, message }),
+          }))}
+        />
       </Field>
     );
   }
@@ -235,13 +252,11 @@ function TransactionForm({
   return (
     <form onSubmit={submit} noValidate className="grid gap-4">
       <DialogHeader>
-        <DialogTitle>{transaction ? "Edit transaction" : "Add a transaction"}</DialogTitle>
-        <DialogDescription>
-          Amounts are in the property&apos;s currency ({currency}).
-        </DialogDescription>
+        <DialogTitle>{transaction ? t("editTitle") : t("addTitle")}</DialogTitle>
+        <DialogDescription>{t("currencyHint", { currency })}</DialogDescription>
       </DialogHeader>
       <FieldGroup className="gap-4">
-        <div role="radiogroup" aria-label="Type" className="grid grid-cols-2 gap-2">
+        <div role="radiogroup" aria-label={t("type")} className="grid grid-cols-2 gap-2">
           {(["expense", "income"] as const).map((type) => (
             <Button
               key={type}
@@ -260,12 +275,12 @@ function TransactionForm({
                 }))
               }
             >
-              {type === "expense" ? "Expense" : "Income"}
+              {t(type)}
             </Button>
           ))}
         </div>
         <div className="grid gap-4 sm:grid-cols-2">
-          {field("amountMinor", "Amount", (props) => (
+          {field("amountMinor", t("amount"), (props) => (
             <Input
               {...props}
               autoFocus
@@ -275,7 +290,7 @@ function TransactionForm({
               onChange={(event) => set("amount", event.target.value)}
             />
           ))}
-          {field("categoryId", "Category", (props) => (
+          {field("categoryId", t("category"), (props) => (
             <NativeSelect
               {...props}
               className="w-full"
@@ -290,7 +305,7 @@ function TransactionForm({
               }}
             >
               <NativeSelectOption value="" disabled>
-                Choose…
+                {t("choose")}
               </NativeSelectOption>
               {choices.map((c) => (
                 <NativeSelectOption key={c.id} value={c.id}>
@@ -299,7 +314,7 @@ function TransactionForm({
               ))}
             </NativeSelect>
           ))}
-          {field("date", "Date", (props) => (
+          {field("date", t("date"), (props) => (
             <Input
               {...props}
               type="date"
@@ -307,7 +322,7 @@ function TransactionForm({
               onChange={(event) => set("date", event.target.value)}
             />
           ))}
-          {field("propertyId", "Property", (props) => (
+          {field("propertyId", t("property"), (props) => (
             <NativeSelect
               {...props}
               className="w-full"
@@ -330,26 +345,29 @@ function TransactionForm({
             </NativeSelect>
           ))}
         </div>
-        {field("bookingId", "Booking (optional)", (props) => (
+        {field("bookingId", t("booking"), (props) => (
           <NativeSelect
             {...props}
             className="w-full"
             value={values.bookingId}
             onChange={(event) => set("bookingId", event.target.value)}
           >
-            <NativeSelectOption value="">No booking</NativeSelectOption>
+            <NativeSelectOption value="">{t("noBooking")}</NativeSelectOption>
             {bookings.map((b) => (
               <NativeSelectOption key={b.id} value={b.id}>
-                {b.label}
+                {t("bookingLabel", {
+                  guest: guestDisplayName(b.guest, purgedName),
+                  when: format.dateRange(b.checkIn, b.checkOut),
+                })}
               </NativeSelectOption>
             ))}
             {/* Keep a linked booking selectable even when it is outside the window. */}
             {values.bookingId && !bookings.some((b) => b.id === values.bookingId) ? (
-              <NativeSelectOption value={values.bookingId}>Linked booking</NativeSelectOption>
+              <NativeSelectOption value={values.bookingId}>{t("linkedBooking")}</NativeSelectOption>
             ) : null}
           </NativeSelect>
         ))}
-        {field("description", "Description", (props) => (
+        {field("description", t("description"), (props) => (
           <Input
             {...props}
             maxLength={500}
@@ -363,27 +381,27 @@ function TransactionForm({
           <ConfirmDialog
             trigger={
               <Button type="button" variant="destructive" disabled={pending}>
-                Delete
+                {tCommon("delete")}
               </Button>
             }
-            title="Delete this transaction?"
-            description="It is removed from the ledger and every total."
-            confirmLabel="Delete"
-            cancelLabel="Keep it"
+            title={t("deleteTitle")}
+            description={t("deleteDescription")}
+            confirmLabel={tCommon("delete")}
+            cancelLabel={t("keep")}
             destructive
             onConfirm={async () => {
               const response = await fetch(`/api/transactions/${transaction.id}`, {
                 method: "DELETE",
               });
-              if (!response.ok) throw new Error(`The server answered ${response.status}.`);
-              toastSuccess("Transaction deleted");
+              if (!response.ok) throw new Error(fail(null, response.status));
+              toastSuccess(t("deleted"));
               onDone();
               router.refresh();
             }}
           />
         ) : null}
         <Button type="submit" disabled={pending} aria-busy={pending}>
-          {pending ? "Saving…" : transaction ? "Save" : "Add"}
+          {pending ? tCommon("saving") : transaction ? tCommon("save") : t("add")}
         </Button>
       </DialogFooter>
     </form>

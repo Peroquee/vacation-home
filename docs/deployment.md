@@ -134,7 +134,6 @@ In `.env`, set at least these. Each is explained in the file itself.
 - `APP_URL`: `https://vacation.example.com` for option A,
   `http://localhost:3000` for option B.
 - `AUTH_GOOGLE_ID`, `AUTH_GOOGLE_SECRET`: from step 6.
-- `NEXT_PUBLIC_APP_LOCALE`: `de-DE` for German number and date formats.
 - `DATABASE_URL` can stay as it is: the server's settings override it.
 
 For option A also set `APP_DOMAIN`, `ACME_EMAIL`, `CLOUDFLARE_API_TOKEN`

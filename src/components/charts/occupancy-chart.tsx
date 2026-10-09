@@ -1,5 +1,6 @@
 "use client";
 
+import { useLocale, useTranslations } from "next-intl";
 import { useState } from "react";
 import {
   CartesianGrid,
@@ -14,7 +15,6 @@ import {
 import { type Column, DataTable } from "@/components/data-table";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Field, FieldLabel } from "@/components/ui/field";
-import { APP_LOCALE } from "@/lib/locale";
 
 export type OccupancyMonth = {
   /** "2026-07". */
@@ -27,14 +27,22 @@ export type OccupancyMonth = {
   priorRate: number | null;
 };
 
-const percent = new Intl.NumberFormat(APP_LOCALE, { style: "percent", maximumFractionDigits: 0 });
-const rateText = (rate: number | null) => (rate === null ? "–" : percent.format(rate));
-const monthName = (month: string, style: "short" | "long") =>
-  new Intl.DateTimeFormat(APP_LOCALE, {
-    month: style,
-    ...(style === "long" && { year: "numeric" }),
-    timeZone: "UTC",
-  }).format(new Date(`${month}-01T00:00:00Z`));
+type Translate = ReturnType<typeof useTranslations<"charts.occupancy">>;
+
+/** Rates and month names in the page's language. */
+function formatsFor(locale: string) {
+  const percent = new Intl.NumberFormat(locale, { style: "percent", maximumFractionDigits: 0 });
+  return {
+    percent,
+    rateText: (rate: number | null) => (rate === null ? "–" : percent.format(rate)),
+    monthName: (month: string, style: "short" | "long") =>
+      new Intl.DateTimeFormat(locale, {
+        month: style,
+        ...(style === "long" && { year: "numeric" }),
+        timeZone: "UTC",
+      }).format(new Date(`${month}-01T00:00:00Z`)),
+  };
+}
 
 /**
  * Occupancy per month as a line, 0-100%. The year before can be shown as a
@@ -44,6 +52,9 @@ const monthName = (month: string, style: "short" | "long") =>
  */
 export function OccupancyChart({ months }: { months: OccupancyMonth[] }) {
   const [compare, setCompare] = useState(false);
+  const t = useTranslations("charts.occupancy");
+  const formats = formatsFor(useLocale());
+  const { percent, rateText, monthName } = formats;
   const hasPrior = months.some((m) => m.priorRate !== null);
   const data = months.map((m) => ({ ...m, label: monthName(m.month, "short") }));
 
@@ -52,7 +63,7 @@ export function OccupancyChart({ months }: { months: OccupancyMonth[] }) {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <ul
           className="text-muted-foreground flex flex-wrap gap-x-4 gap-y-1 text-xs"
-          aria-label="Legend"
+          aria-label={t("legend")}
         >
           <li className="flex items-center gap-1.5">
             <span
@@ -60,7 +71,7 @@ export function OccupancyChart({ months }: { months: OccupancyMonth[] }) {
               className="h-0.5 w-3 rounded-full"
               style={{ backgroundColor: "var(--chart-1)" }}
             />
-            Occupancy
+            {t("occupancy")}
           </li>
           {compare ? (
             <li className="flex items-center gap-1.5">
@@ -69,7 +80,7 @@ export function OccupancyChart({ months }: { months: OccupancyMonth[] }) {
                 className="h-0.5 w-3 rounded-full"
                 style={{ backgroundColor: "var(--muted-foreground)" }}
               />
-              The year before
+              {t("yearBefore")}
             </li>
           ) : null}
         </ul>
@@ -81,7 +92,7 @@ export function OccupancyChart({ months }: { months: OccupancyMonth[] }) {
               onCheckedChange={(checked) => setCompare(checked)}
             />
             <FieldLabel htmlFor="occupancy-compare" className="text-xs font-normal">
-              Compare with the year before
+              {t("compare")}
             </FieldLabel>
           </Field>
         ) : null}
@@ -91,11 +102,7 @@ export function OccupancyChart({ months }: { months: OccupancyMonth[] }) {
        * A picture for sighted readers; the table below carries every value
        * for everyone else, so nothing in here takes keyboard focus.
        */}
-      <div
-        className="h-56 w-full"
-        role="img"
-        aria-label="Chart of occupancy by month. The figures are in the table below."
-      >
+      <div className="h-56 w-full" role="img" aria-label={t("chartLabel")}>
         <ResponsiveContainer width="100%" height="100%">
           <LineChart
             data={data}
@@ -131,13 +138,13 @@ export function OccupancyChart({ months }: { months: OccupancyMonth[] }) {
                     <p>
                       <span className="font-medium">{rateText(row.rate)}</span>{" "}
                       <span className="text-muted-foreground">
-                        ({row.booked} of {row.available} nights)
+                        {t("nightsOf", { booked: row.booked, available: row.available })}
                       </span>
                     </p>
                     {compare ? (
                       <p>
                         <span className="font-medium">{rateText(row.priorRate)}</span>{" "}
-                        <span className="text-muted-foreground">the year before</span>
+                        <span className="text-muted-foreground">{t("yearBeforeSuffix")}</span>
                       </p>
                     ) : null}
                   </div>
@@ -147,7 +154,7 @@ export function OccupancyChart({ months }: { months: OccupancyMonth[] }) {
             {compare ? (
               <Line
                 dataKey="priorRate"
-                name="The year before"
+                name={t("yearBefore")}
                 stroke="var(--muted-foreground)"
                 strokeWidth={2}
                 dot={false}
@@ -156,7 +163,7 @@ export function OccupancyChart({ months }: { months: OccupancyMonth[] }) {
             ) : null}
             <Line
               dataKey="rate"
-              name="Occupancy"
+              name={t("occupancy")}
               stroke="var(--chart-1)"
               strokeWidth={2}
               strokeLinecap="round"
@@ -170,13 +177,11 @@ export function OccupancyChart({ months }: { months: OccupancyMonth[] }) {
       </div>
 
       <details className="text-sm">
-        <summary className="text-muted-foreground cursor-pointer">
-          Show the figures as a table
-        </summary>
+        <summary className="text-muted-foreground cursor-pointer">{t("showTable")}</summary>
         <DataTable
           className="mt-2"
-          caption="Occupancy by month"
-          columns={columns}
+          caption={t("caption")}
+          columns={columnsFor(t, formats)}
           rows={months}
           rowKey={(m) => m.month}
           empty={null}
@@ -186,14 +191,19 @@ export function OccupancyChart({ months }: { months: OccupancyMonth[] }) {
   );
 }
 
-const columns: Column<OccupancyMonth>[] = [
-  { id: "month", header: "Month", cell: (m) => monthName(m.month, "long") },
-  {
-    id: "nights",
-    header: "Booked nights",
-    cell: (m) => `${m.booked} of ${m.available}`,
-    align: "end",
-  },
-  { id: "rate", header: "Occupancy", cell: (m) => rateText(m.rate), align: "end" },
-  { id: "prior", header: "The year before", cell: (m) => rateText(m.priorRate), align: "end" },
-];
+function columnsFor(
+  t: Translate,
+  { monthName, rateText }: ReturnType<typeof formatsFor>,
+): Column<OccupancyMonth>[] {
+  return [
+    { id: "month", header: t("month"), cell: (m) => monthName(m.month, "long") },
+    {
+      id: "nights",
+      header: t("bookedNights"),
+      cell: (m) => t("bookedOf", { booked: m.booked, available: m.available }),
+      align: "end",
+    },
+    { id: "rate", header: t("occupancy"), cell: (m) => rateText(m.rate), align: "end" },
+    { id: "prior", header: t("yearBefore"), cell: (m) => rateText(m.priorRate), align: "end" },
+  ];
+}

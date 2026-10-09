@@ -73,8 +73,8 @@ function heldFetch() {
 }
 
 async function selectFree(user: ReturnType<typeof userEvent.setup>) {
-  await user.click(screen.getByRole("button", { name: "Thursday, July 23, 2026" }));
-  await user.click(screen.getByRole("button", { name: "Sunday, July 26, 2026" }));
+  await user.click(screen.getByRole("button", { name: "Thursday, 23 July 2026" }));
+  await user.click(screen.getByRole("button", { name: "Sunday, 26 July 2026" }));
   return screen.findByRole("dialog");
 }
 
@@ -270,9 +270,9 @@ describe("CalendarView agenda (phones)", () => {
       .getAllByRole("button")
       .filter((b) => b.textContent !== "Show next month");
     expect(rows.map((r) => r.textContent?.split(/\d/)[0])).toEqual([
-      "Ada LovelaceJul ",
-      "Blocked: PaintingJul ",
-      "Blocked: FamilyJul ",
+      "Ada Lovelace",
+      "Blocked: Painting",
+      "Blocked: Family",
     ]);
 
     await user.click(rows[0]!);

@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useTranslations } from "next-intl";
 
 import { NAV_ITEMS, isActive } from "@/lib/navigation";
 import { cn } from "@/lib/utils";
@@ -9,9 +10,10 @@ import { cn } from "@/lib/utils";
 /** Desktop navigation. Hidden below the md breakpoint, where MobileNav takes over. */
 export function SidebarNav() {
   const pathname = usePathname();
+  const t = useTranslations("nav");
 
   return (
-    <nav aria-label="Main" className="flex flex-1 flex-col gap-1 p-2">
+    <nav aria-label={t("label")} className="flex flex-1 flex-col gap-1 p-2">
       {NAV_ITEMS.map(({ href, label, icon: Icon }) => {
         const active = isActive(pathname, href);
         return (
@@ -29,7 +31,7 @@ export function SidebarNav() {
             )}
           >
             <Icon aria-hidden className="size-4 shrink-0" />
-            {label}
+            {t(label)}
           </Link>
         );
       })}

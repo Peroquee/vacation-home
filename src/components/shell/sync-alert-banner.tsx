@@ -1,7 +1,8 @@
 import { TriangleAlert } from "lucide-react";
 import Link from "next/link";
+import { getTranslations } from "next-intl/server";
 
-import { formatDateTime } from "@/lib/format";
+import { getFormat } from "@/i18n/get-format";
 import { calendarConnectAvailable, getConnectionStatus } from "@/lib/google/connection";
 import { syncSummary } from "@/lib/google/sync-summary";
 import { getCurrentUser } from "@/lib/session";
@@ -20,6 +21,8 @@ export async function SyncAlertBanner() {
   if (status.status !== "connected") return null;
   const sync = await syncSummary(user.id);
   if (!sync.alert) return null;
+  const t = await getTranslations("shell.syncAlert");
+  const format = await getFormat();
 
   return (
     <div
@@ -28,12 +31,12 @@ export async function SyncAlertBanner() {
     >
       <TriangleAlert aria-hidden className="size-4 shrink-0" />
       <p className="font-medium">
-        Google Calendar sync has been failing
-        {sync.failingSince ? ` since ${formatDateTime(sync.failingSince, "UTC")} (UTC)` : ""}.
-        Google may be out of date.
+        {sync.failingSince
+          ? t("failingSince", { time: format.dateTime(sync.failingSince, "UTC") })
+          : t("failing")}
       </p>
       <Link href="/settings#google-sync" className="underline">
-        Review sync problems
+        {t("review")}
       </Link>
     </div>
   );

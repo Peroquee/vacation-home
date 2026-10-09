@@ -1,11 +1,12 @@
 import type { Metadata } from "next";
+import { getTranslations } from "next-intl/server";
 import { Suspense } from "react";
 
 import { PageHeader } from "@/components/page-header";
 import { CardSkeleton, StatTilesSkeleton } from "@/components/skeletons";
+import { getFormat } from "@/i18n/get-format";
 import { todayUtc } from "@/lib/bookings/list-params";
 import { dashboardState } from "@/lib/dashboard/params";
-import { formatDateRange } from "@/lib/format";
 import { listProperties } from "@/lib/properties/service";
 
 import { DashboardFilters } from "./dashboard-filters";
@@ -14,7 +15,10 @@ import { Kpis } from "./kpis";
 import { OccupancySection } from "./occupancy-section";
 import { RevenueChart } from "./revenue-chart";
 
-export const metadata: Metadata = { title: "Dashboard" };
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations("dashboard");
+  return { title: t("title") };
+}
 
 /**
  * How the properties are doing over a range (`?preset=`, or `?from=&until=`
@@ -25,16 +29,22 @@ export default async function DashboardPage({ searchParams }: PageProps<"/dashbo
   const today = todayUtc();
   const state = dashboardState(await searchParams, today);
   const properties = await listProperties();
+  const t = await getTranslations("dashboard");
+  const range = (await getFormat()).dateRange(state.from, state.until);
 
   return (
     <>
       <PageHeader
-        title="Dashboard"
-        description={`${formatDateRange(state.from, state.until)}${
+        title={t("title")}
+        description={
           state.propertyId
-            ? `, ${properties.find((p) => p.id === state.propertyId)?.name ?? "one property"}`
-            : ", all properties"
-        }`}
+            ? t("descriptionFor", {
+                range,
+                property:
+                  properties.find((p) => p.id === state.propertyId)?.name ?? t("oneProperty"),
+              })
+            : t("description", { range })
+        }
       />
       <DashboardFilters
         state={state}

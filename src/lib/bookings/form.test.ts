@@ -2,15 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import type { CalendarBlock, CalendarBooking } from "@/lib/availability/calendar";
 
-import {
-  describeConflict,
-  previewTotalMinor,
-  stayConflicts,
-  stayNights,
-  turnoverFix,
-} from "./form";
-
-const LOCALE_SAFE = /Jul 1[0-9]/;
+import { previewTotalMinor, stayConflicts, stayNights, turnoverFix } from "./form";
 
 function booking(over: Partial<CalendarBooking>): CalendarBooking {
   return {
@@ -100,44 +92,21 @@ describe("stayConflicts", () => {
   });
 });
 
-describe("describeConflict", () => {
-  it("names the guest when known", () => {
-    const [conflict] = stayConflicts(
-      { checkIn: "2026-07-15", checkOut: "2026-07-16" },
-      { bookings: [booking({})], blocks: [] },
-    );
-    expect(describeConflict(conflict!, new Map([["b1", "Ada Lovelace"]]))).toMatch(
-      /^Booked by Ada Lovelace, /,
-    );
-    expect(describeConflict(conflict!)).toMatch(LOCALE_SAFE);
-  });
-
-  it("gives a block's reason, or its origin", () => {
-    const at = { checkIn: "2026-07-20", checkOut: "2026-07-21" };
-    const [manual] = stayConflicts(at, { bookings: [], blocks: [block({ reason: "Painting" })] });
-    const [google] = stayConflicts(at, { bookings: [], blocks: [block({ origin: "google" })] });
-    expect(describeConflict(manual!)).toMatch(/^Blocked \(Painting\), /);
-    expect(describeConflict(google!)).toMatch(/^Blocked \(Google Calendar\), /);
-  });
-});
-
 describe("turnoverFix", () => {
   const ada = { kind: "booking", id: "b1", start: "2026-07-10", end: "2026-07-15" } as const;
 
   it("suggests arriving on the day the previous stay leaves", () => {
     // Arriving the 14th overlaps Ada's last night; the 15th is free.
-    expect(turnoverFix({ checkIn: "2026-07-14", checkOut: "2026-07-18" }, ada)).toMatchObject({
+    expect(turnoverFix({ checkIn: "2026-07-14", checkOut: "2026-07-18" }, ada)).toEqual({
       move: "checkIn",
       to: "2026-07-15",
-      message: expect.stringMatching(/^Arrive on July 15, 2026 instead/),
     });
   });
 
   it("suggests leaving on the day the next stay arrives", () => {
-    expect(turnoverFix({ checkIn: "2026-07-07", checkOut: "2026-07-11" }, ada)).toMatchObject({
+    expect(turnoverFix({ checkIn: "2026-07-07", checkOut: "2026-07-11" }, ada)).toEqual({
       move: "checkOut",
       to: "2026-07-10",
-      message: expect.stringMatching(/^Leave on July 10, 2026 instead/),
     });
   });
 

@@ -1,22 +1,28 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { getTranslations } from "next-intl/server";
 
 import { PageHeader } from "@/components/page-header";
 import { SyncBadge } from "@/components/sync-badge";
 import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { isUuid } from "@/lib/api";
-import { SOURCE_LABELS, STATUS_LABELS } from "@/lib/bookings/labels";
+import { getApiText } from "@/i18n/get-api-text";
+import { getFormat } from "@/i18n/get-format";
+import { SOURCE_KEYS } from "@/lib/bookings/labels";
 import { getBooking, toDto } from "@/lib/bookings/service";
-import { formatDate, formatDateRange, formatDateTime, formatMoney } from "@/lib/format";
 import { bookingSyncStatus } from "@/lib/google/sync-status";
+import { guestDisplayName } from "@/lib/guests/display";
 import { getGuest } from "@/lib/guests/service";
 import { cn } from "@/lib/utils";
 
 import { BookingActions } from "./booking-actions";
 
-export const metadata: Metadata = { title: "Booking" };
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations("bookings.detail");
+  return { title: t("title") };
+}
 
 /** A label and its value, as one row of a definition list. */
 function Fact({ label, children }: { label: string; children: React.ReactNode }) {
@@ -40,37 +46,45 @@ export default async function BookingPage({ params }: PageProps<"/bookings/[id]"
     bookingSyncStatus([booking.id]),
   ]);
   const sync = syncStatus[booking.id];
-  const money = (minor: number) => formatMoney(minor, booking.currency);
+  const t = await getTranslations("bookings");
+  const tCommon = await getTranslations("common");
+  const format = await getFormat();
+  const apiText = await getApiText();
+  const guestName = guestDisplayName(
+    booking.guest.name,
+    (await getTranslations("guests"))("purgedName"),
+  );
+  const money = (minor: number) => format.money(minor, booking.currency);
   const calculated = booking.nights * booking.nightlyRateMinor + booking.cleaningFeeMinor;
 
   return (
     <>
       <PageHeader
-        title={booking.guest.name}
-        description={`${booking.property.name}, ${formatDateRange(booking.checkIn, booking.checkOut)}`}
+        title={guestName}
+        description={`${booking.property.name}, ${format.dateRange(booking.checkIn, booking.checkOut)}`}
         actions={
           <Link
             href={`/bookings/${booking.id}/edit`}
             className={buttonVariants({ variant: "outline" })}
           >
-            Edit
+            {tCommon("edit")}
           </Link>
         }
       />
 
       <div className="mb-6 flex flex-wrap items-start justify-between gap-4">
         <p className="text-sm">
-          Status:{" "}
+          {t("detail.statusLabel")}{" "}
           <span
             className={cn(
               "font-medium",
               booking.status === "cancelled" && "text-muted-foreground line-through",
             )}
           >
-            {STATUS_LABELS[booking.status]}
+            {t(`status.${booking.status}`)}
           </span>
           {booking.status === "inquiry" ? (
-            <span className="text-muted-foreground"> (does not hold the dates yet)</span>
+            <span className="text-muted-foreground">{t("detail.notHolding")}</span>
           ) : null}
         </p>
         {sync && sync.state !== "not_synced" ? (
@@ -79,15 +93,15 @@ export default async function BookingPage({ params }: PageProps<"/bookings/[id]"
               state={sync.state}
               title={
                 sync.lastSyncedAt
-                  ? `Last synced ${formatDateTime(sync.lastSyncedAt, "UTC")} (UTC)`
+                  ? t("detail.lastSynced", { time: format.dateTime(sync.lastSyncedAt, "UTC") })
                   : undefined
               }
             />
             {sync.error ? (
               <p className="text-muted-foreground mt-1 max-w-sm text-xs">
-                {sync.error}{" "}
+                {apiText(sync.error)}{" "}
                 <Link href="/settings#google-sync" className="underline">
-                  See sync problems
+                  {t("detail.seeProblems")}
                 </Link>
               </p>
             ) : null}
@@ -99,33 +113,35 @@ export default async function BookingPage({ params }: PageProps<"/bookings/[id]"
       <div className="grid gap-4 md:grid-cols-2">
         <Card>
           <CardHeader>
-            <CardTitle>Stay</CardTitle>
+            <CardTitle>{t("detail.stay")}</CardTitle>
           </CardHeader>
           <CardContent>
             <dl className="divide-y text-sm">
-              <Fact label="Property">{booking.property.name}</Fact>
-              <Fact label="Check-in">{formatDate(booking.checkIn, { style: "full" })}</Fact>
-              <Fact label="Check-out">{formatDate(booking.checkOut, { style: "full" })}</Fact>
-              <Fact label="Nights">{booking.nights}</Fact>
-              <Fact label="Guests">{booking.guestCount}</Fact>
-              <Fact label="Source">{SOURCE_LABELS[booking.source]}</Fact>
+              <Fact label={t("detail.property")}>{booking.property.name}</Fact>
+              <Fact label={t("detail.checkIn")}>
+                {format.date(booking.checkIn, { style: "full" })}
+              </Fact>
+              <Fact label={t("detail.checkOut")}>
+                {format.date(booking.checkOut, { style: "full" })}
+              </Fact>
+              <Fact label={t("detail.nights")}>{booking.nights}</Fact>
+              <Fact label={t("detail.guests")}>{booking.guestCount}</Fact>
+              <Fact label={t("detail.source")}>{t(`source.${SOURCE_KEYS[booking.source]}`)}</Fact>
             </dl>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader>
-            <CardTitle>Guest</CardTitle>
+            <CardTitle>{t("detail.guest")}</CardTitle>
           </CardHeader>
           <CardContent>
             {guest?.purgedAt ? (
-              <p className="text-muted-foreground text-sm">
-                This guest&apos;s personal data was erased.
-              </p>
+              <p className="text-muted-foreground text-sm">{t("detail.erased")}</p>
             ) : (
               <dl className="divide-y text-sm">
-                <Fact label="Name">{booking.guest.name}</Fact>
-                <Fact label="Email">
+                <Fact label={t("detail.name")}>{guestName}</Fact>
+                <Fact label={t("detail.email")}>
                   {guest?.email ? (
                     <a href={`mailto:${guest.email}`} className="underline">
                       {guest.email}
@@ -134,7 +150,7 @@ export default async function BookingPage({ params }: PageProps<"/bookings/[id]"
                     "–"
                   )}
                 </Fact>
-                <Fact label="Phone">
+                <Fact label={t("detail.phone")}>
                   {guest?.phone ? (
                     <a href={`tel:${guest.phone.replace(/[^0-9+]/g, "")}`} className="underline">
                       {guest.phone}
@@ -149,32 +165,35 @@ export default async function BookingPage({ params }: PageProps<"/bookings/[id]"
               href={`/guests/${booking.guestId}`}
               className={cn(buttonVariants({ variant: "link" }), "mt-2 px-0")}
             >
-              All about this guest
+              {t("detail.aboutGuest")}
             </Link>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader>
-            <CardTitle>Price</CardTitle>
+            <CardTitle>{t("detail.price")}</CardTitle>
           </CardHeader>
           <CardContent>
             <dl className="divide-y text-sm">
-              <Fact label={`${booking.nights} × ${money(booking.nightlyRateMinor)}`}>
+              <Fact
+                label={t("detail.nightsTimesRate", {
+                  nights: booking.nights,
+                  rate: money(booking.nightlyRateMinor),
+                })}
+              >
                 {money(booking.nights * booking.nightlyRateMinor)}
               </Fact>
-              <Fact label="Cleaning fee">{money(booking.cleaningFeeMinor)}</Fact>
-              <Fact label="Total">
+              <Fact label={t("detail.cleaningFee")}>{money(booking.cleaningFeeMinor)}</Fact>
+              <Fact label={t("detail.total")}>
                 <span className="font-medium tabular-nums">{money(booking.totalAmountMinor)}</span>
               </Fact>
             </dl>
             {booking.totalIsManual ? (
               <p className="text-muted-foreground mt-2 text-sm">
-                The total was set by hand
                 {calculated !== booking.totalAmountMinor
-                  ? `; the rates would give ${money(calculated)}`
-                  : ""}
-                .
+                  ? t("detail.manualTotalDiffers", { amount: money(calculated) })
+                  : t("detail.manualTotal")}
               </p>
             ) : null}
           </CardContent>
@@ -182,13 +201,13 @@ export default async function BookingPage({ params }: PageProps<"/bookings/[id]"
 
         <Card>
           <CardHeader>
-            <CardTitle>Notes</CardTitle>
+            <CardTitle>{t("detail.notes")}</CardTitle>
           </CardHeader>
           <CardContent>
             {booking.notes ? (
               <p className="text-sm whitespace-pre-wrap">{booking.notes}</p>
             ) : (
-              <p className="text-muted-foreground text-sm">No notes.</p>
+              <p className="text-muted-foreground text-sm">{t("detail.noNotes")}</p>
             )}
           </CardContent>
         </Card>
