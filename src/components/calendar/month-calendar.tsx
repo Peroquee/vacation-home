@@ -91,6 +91,11 @@ function barStyle(bar: Bar): React.CSSProperties {
   return { backgroundColor: color, color: textOn(color) };
 }
 
+/** Height of a cell's day number, above the first lane of bars. */
+const DAY_HEADER = "2rem";
+/** One lane of bars: a 1.25rem bar and 0.25rem of air. */
+const LANE = "1.5rem";
+
 /**
  * Blocks shown before the server has them (an optimistic create) carry an
  * id with this prefix; they are drawn faded and are not clickable.
@@ -125,7 +130,7 @@ function BarView({
   const bar = segment.span;
   const label = `${barLabel(bar)}${inTheWay ? ", in the way of the selected dates" : ""}`;
   const className = cn(
-    "relative z-10 mx-px flex h-5 min-w-0 items-center overflow-hidden px-1 text-[11px] leading-none whitespace-nowrap sm:text-xs",
+    "z-10 flex h-5 min-w-0 items-center overflow-hidden px-1 text-[11px] leading-none whitespace-nowrap sm:text-xs",
     // Rounded only where the stay really starts or ends, so a cut at a week
     // edge reads as "continues".
     !segment.continuesBefore && "rounded-l-full pl-1.5",
@@ -134,10 +139,17 @@ function BarView({
       "hover:brightness-95 focus-visible:ring-ring focus-visible:ring-2 focus-visible:outline-none",
     inTheWay && "ring-destructive z-20 ring-2 ring-offset-1 motion-safe:animate-pulse",
   );
+  // Positioned within the cell of the bar's first day: half-day columns
+  // become fractions of that cell's width, and the lane a row below the
+  // day numbers. 1px either side keeps touching bars apart.
+  const halves = segment.toLine - segment.fromLine;
+  const startsMidDay = (segment.fromLine - 1) % 2 === 1;
   const style: React.CSSProperties = {
     ...barStyle(bar),
-    gridColumn: `${segment.fromLine} / ${segment.toLine}`,
-    gridRow: segment.lane + 2,
+    position: "absolute",
+    left: `calc(${startsMidDay ? 50 : 0}% + 1px)`,
+    width: `calc(${halves * 50}% - 2px)`,
+    top: `calc(${DAY_HEADER} + ${segment.lane} * ${LANE})`,
   };
   // The grid lines, also as data, which tests and tooling can read without
   // a layout engine.
@@ -405,6 +417,7 @@ export function MonthCalendar({
     timeZone: "UTC",
   }).format(new Date(`${month}-01T00:00:00Z`));
   const weekday = new Intl.DateTimeFormat(APP_LOCALE, { weekday: "short", timeZone: "UTC" });
+  const weekdayLong = new Intl.DateTimeFormat(APP_LOCALE, { weekday: "long", timeZone: "UTC" });
   const monthName = new Intl.DateTimeFormat(APP_LOCALE, { month: "long", timeZone: "UTC" });
   const fullDate = new Intl.DateTimeFormat(APP_LOCALE, { dateStyle: "full", timeZone: "UTC" });
   const [year, monthNumber] = month.split("-").map(Number) as [number, number];
@@ -534,17 +547,31 @@ export function MonthCalendar({
         </div>
       ) : null}
 
+      {/*
+       * An ARIA grid: a row per week, a cell per day. Each cell holds its day
+       * button (the roving focus target) and the bars that start in it, so
+       * every bar belongs to a cell; bars reach into the following cells by
+       * CSS only. Arrow keys move between days (see onDayKeyDown).
+       */}
       <div
         ref={gridRef}
+        role="grid"
+        aria-labelledby="calendar-title"
+        aria-describedby={selectable ? "calendar-keys" : undefined}
         className={cn(
           "rounded-card touch-manipulation border select-none",
           pending && "opacity-60 transition-opacity",
         )}
         {...pointer}
       >
-        <div className="grid grid-cols-7 border-b" aria-hidden>
+        <div role="row" className="grid grid-cols-7 border-b">
           {weeks[0]!.map((date) => (
-            <div key={date} className="text-muted-foreground px-1 py-1.5 text-center text-xs">
+            <div
+              key={date}
+              role="columnheader"
+              aria-label={weekdayLong.format(new Date(`${date}T00:00:00Z`))}
+              className="text-muted-foreground px-1 py-1.5 text-center text-xs"
+            >
               {weekday.format(new Date(`${date}T00:00:00Z`))}
             </div>
           ))}
@@ -553,79 +580,81 @@ export function MonthCalendar({
         {weeks.map((week, w) => {
           const lanes = Math.max(0, ...layout[w]!.map((s) => s.lane + 1));
           return (
-            <div key={week[0]} data-week={w} className="relative border-b last:border-b-0">
-              {/* Day cells behind the bars: borders, shading, selection. */}
-              <div className="absolute inset-0 grid grid-cols-7" aria-hidden>
-                {week.map((date) => (
-                  <div
-                    key={date}
+            <div
+              key={week[0]}
+              role="row"
+              data-week={w}
+              className="grid grid-cols-7 border-b last:border-b-0"
+              // Room for the day numbers, then a lane per stack of bars.
+              style={{
+                minHeight: `calc(${DAY_HEADER} + ${Math.max(lanes, 1)} * ${LANE} + 0.5rem)`,
+              }}
+            >
+              {week.map((date, d) => (
+                <div
+                  key={date}
+                  role="gridcell"
+                  aria-selected={selectable ? isSelected(date) : undefined}
+                  className={cn(
+                    "relative border-r px-1 pt-1 text-xs last:border-r-0 sm:text-sm",
+                    monthOf(date) !== month && "bg-muted/40",
+                    isSelected(date) && (taken ? "bg-destructive/15" : "bg-primary/15"),
+                  )}
+                >
+                  <button
+                    type="button"
+                    data-date={date}
+                    tabIndex={date === focusDay ? 0 : -1}
+                    aria-label={fullDate.format(new Date(`${date}T00:00:00Z`))}
+                    aria-current={date === today ? "date" : undefined}
+                    onFocus={() => setFocusedDay(date)}
+                    onKeyDown={(event) => onDayKeyDown(event, date)}
                     className={cn(
-                      "border-r last:border-r-0",
-                      monthOf(date) !== month && "bg-muted/40",
-                      isSelected(date) && (taken ? "bg-destructive/15" : "bg-primary/15"),
+                      "focus-visible:ring-ring inline-flex size-6 items-center justify-center rounded-full tabular-nums outline-none focus-visible:ring-2",
+                      monthOf(date) !== month && "text-muted-foreground",
+                      date === today && "bg-primary text-primary-foreground font-medium",
+                      !selectable && "cursor-default",
                     )}
-                  />
-                ))}
-              </div>
-              <div
-                className="relative grid grid-cols-[repeat(14,minmax(0,1fr))] gap-y-1 pb-2"
-                style={{ gridTemplateRows: `auto repeat(${lanes}, 1.25rem)` }}
-              >
-                {week.map((date, d) => (
-                  <div
-                    key={date}
-                    className="px-1 pt-1 text-xs sm:text-sm"
-                    style={{ gridColumn: `${d * 2 + 1} / span 2`, gridRow: 1 }}
                   >
-                    <button
-                      type="button"
-                      data-date={date}
-                      tabIndex={date === focusDay ? 0 : -1}
-                      aria-label={fullDate.format(new Date(`${date}T00:00:00Z`))}
-                      aria-current={date === today ? "date" : undefined}
-                      onFocus={() => setFocusedDay(date)}
-                      onKeyDown={(event) => onDayKeyDown(event, date)}
-                      className={cn(
-                        "focus-visible:ring-ring inline-flex size-6 items-center justify-center rounded-full tabular-nums outline-none focus-visible:ring-2",
-                        monthOf(date) !== month && "text-muted-foreground",
-                        date === today && "bg-primary text-primary-foreground font-medium",
-                        !selectable && "cursor-default",
-                      )}
-                    >
-                      <time dateTime={date}>{Number(date.slice(8))}</time>
-                    </button>
-                  </div>
-                ))}
-                {layout[w]!.map((segment) => (
-                  <BarView
-                    key={segment.span.key}
-                    segment={segment}
-                    inTheWay={inTheWay.has(segment.span.key)}
-                    onClick={
-                      segment.span.kind === "block" && onBlockClick
-                        ? () => {
-                            const { block, property } = segment.span as Extract<
-                              Bar,
-                              { kind: "block" }
-                            >;
-                            onBlockClick({ ...block, propertyId: property.id });
-                          }
-                        : undefined
-                    }
-                    href={
-                      segment.span.kind === "booking" && bookingHref
-                        ? bookingHref(segment.span.booking.id)
-                        : undefined
-                    }
-                  />
-                ))}
-                {/* Keeps an empty week as tall as one with a lane. */}
-                {lanes === 0 ? <div className="h-5" style={{ gridRow: 2 }} /> : null}
-              </div>
+                    <time dateTime={date}>{Number(date.slice(8))}</time>
+                  </button>
+                  {layout[w]!.filter((segment) => Math.floor((segment.fromLine - 1) / 2) === d).map(
+                    (segment) => (
+                      <BarView
+                        key={segment.span.key}
+                        segment={segment}
+                        inTheWay={inTheWay.has(segment.span.key)}
+                        onClick={
+                          segment.span.kind === "block" && onBlockClick
+                            ? () => {
+                                const { block, property } = segment.span as Extract<
+                                  Bar,
+                                  { kind: "block" }
+                                >;
+                                onBlockClick({ ...block, propertyId: property.id });
+                              }
+                            : undefined
+                        }
+                        href={
+                          segment.span.kind === "booking" && bookingHref
+                            ? bookingHref(segment.span.booking.id)
+                            : undefined
+                        }
+                      />
+                    ),
+                  )}
+                </div>
+              ))}
             </div>
           );
         })}
       </div>
+      {selectable ? (
+        <p id="calendar-keys" className="sr-only">
+          Arrow keys move between days. Enter starts a selection and Enter again ends it; Shift with
+          the arrows extends it; Escape cancels.
+        </p>
+      ) : null}
 
       <Legend calendars={calendars} />
     </section>
