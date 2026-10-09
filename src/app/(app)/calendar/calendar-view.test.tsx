@@ -399,7 +399,7 @@ describe("CalendarView moving a booking by dragging", () => {
 
     const [, options] = vi.mocked(toast.success).mock.calls[0]!;
     expect(options).toMatchObject({ duration: 15_000, action: { label: "Undo" } });
-    (options!.action as { onClick: () => void }).onClick();
+    (options!.action as unknown as { onClick: () => void }).onClick();
     await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
     expect(JSON.parse(String(fetchMock.mock.calls[1]![1]!.body))).toEqual({
       checkIn: "2026-07-10",
