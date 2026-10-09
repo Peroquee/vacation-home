@@ -50,5 +50,26 @@
       "Verification": "Dieser Anmeldelink ist abgelaufen. Bitte melde dich erneut an.",
       "fallback": "Die Anmeldung hat nicht geklappt. Bitte versuche es noch einmal."
     }
+  },
+  "settings": {
+    "syncFailures": {
+      "retried": "{count, plural, one {# Termin wird erneut versucht} other {# Termine werden erneut versucht}}",
+      "retriedHint": "Das Ergebnis erscheint hier gleich.",
+      "retryFailed": "Erneuter Versuch nicht möglich",
+      "loadFailed": "Sync-Probleme konnten nicht geladen werden.",
+      "checking": "Suche nach Sync-Problemen…",
+      "none": "Keine Sync-Probleme: Jede Buchung ist in Google aktuell.",
+      "count": "{count, plural, one {# Buchung konnte nicht synchronisiert werden} other {# Buchungen konnten nicht synchronisiert werden}}",
+      "retryAll": "Alle erneut versuchen",
+      "retrying": "Wird erneut versucht…",
+      "retry": "Erneut versuchen",
+      "deletedBooking": "Termin einer gelöschten Buchung",
+      "genericError": "Die Synchronisierung dieses Termins ist fehlgeschlagen.",
+      "dead": "Nach {count} Versuchen gestoppt; bitte von Hand erneut versuchen.",
+      "deleteFailing": "Das Entfernen des Termins aus Google schlägt immer wieder fehl.",
+      "attempts": "{count, plural, one {bisher # Versuch} other {bisher # Versuche}}",
+      "failingSince": " · fehlerhaft seit {time} (UTC)",
+      "nextTry": " · nächster Versuch {time} (UTC)"
+    }
   }
 }

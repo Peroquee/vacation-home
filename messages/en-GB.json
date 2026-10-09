@@ -50,5 +50,26 @@
       "Verification": "That sign-in link has expired. Please sign in again.",
       "fallback": "Signing in didn't work. Please try again."
     }
+  },
+  "settings": {
+    "syncFailures": {
+      "retried": "{count, plural, one {Retrying # event} other {Retrying # events}}",
+      "retriedHint": "The result shows here in a moment.",
+      "retryFailed": "Could not retry",
+      "loadFailed": "Sync problems could not be loaded.",
+      "checking": "Checking for sync problems…",
+      "none": "No sync problems: every booking is up to date in Google.",
+      "count": "{count, plural, one {# booking could not be synced} other {# bookings could not be synced}}",
+      "retryAll": "Retry all",
+      "retrying": "Retrying…",
+      "retry": "Retry",
+      "deletedBooking": "A deleted booking's event",
+      "genericError": "Syncing this event failed.",
+      "dead": "Stopped after {count} attempts; retry by hand.",
+      "deleteFailing": "Removing the event from Google keeps failing.",
+      "attempts": "{count, plural, one {# attempt so far} other {# attempts so far}}",
+      "failingSince": " · failing since {time} (UTC)",
+      "nextTry": " · next try {time} (UTC)"
+    }
   }
 }
