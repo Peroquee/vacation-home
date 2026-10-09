@@ -332,7 +332,11 @@ docker compose logs --tail 100 app                            # the app's latest
 docker compose logs --tail 100 caddy                          # Caddy's, e.g. certificate trouble
 docker compose restart app                                    # restart the app
 sudo apt-get update && sudo apt-get upgrade -y                # Debian's security updates, now and then
+scripts/perf/explain.sh                                       # once there is real data: checks whether the database needs more indexes
 ```
+
+The last one only reads. It ends with "none" when the indexes cover the
+app's reads; anything else it lists is worth an issue.
 
 After restoring a backup, erase again the guests the restore brought back.
 The restore script prints the exact command for this setup.
