@@ -142,24 +142,20 @@ For option A also set `APP_DOMAIN`, `ACME_EMAIL`, `CLOUDFLARE_API_TOKEN`
 
 ## 6. Google sign-in
 
-In the [Google Cloud Console](https://console.cloud.google.com/):
+Follow [google-cloud-setup.md](google-cloud-setup.md): a Google Cloud
+project, its consent screen, and an OAuth client whose redirect URIs use
+your `APP_URL`:
 
-1. Create a project (or reuse one).
-2. **APIs & Services → Library**: enable the **Google Calendar API**.
-3. **APIs & Services → OAuth consent screen**: user type "External",
-   publishing status "Testing", and add the allowed Google accounts as test
-   users.
-4. **APIs & Services → Credentials → Create credentials → OAuth client ID**,
-   type **Web application**, with these **Authorized redirect URIs** (use
-   your `APP_URL`):
-   - `<APP_URL>/api/auth/callback/google`
-   - `<APP_URL>/api/google/callback`
+- `<APP_URL>/api/auth/callback/google`
+- `<APP_URL>/api/google/callback`
 
-   For option B that is `http://localhost:3000/api/auth/callback/google`
-   and `http://localhost:3000/api/google/callback`.
+For option B that is `http://localhost:3000/api/auth/callback/google` and
+`http://localhost:3000/api/google/callback`. With calendar sync, publish the
+app there (its step 4): in "Testing", Google ends the calendar access every
+7 days.
 
-5. Copy the client ID and secret into `.env` (`AUTH_GOOGLE_ID`,
-   `AUTH_GOOGLE_SECRET`).
+Copy the client ID and secret into `.env` (`AUTH_GOOGLE_ID`,
+`AUTH_GOOGLE_SECRET`).
 
 ## 7. Option A: https on your own domain
 

@@ -4,7 +4,19 @@ Booking calendar, Google Calendar sync and finance tracking for a small number
 of vacation rental properties.
 
 **Stack:** Next.js (App Router) + TypeScript · PostgreSQL + Prisma ·
-Tailwind + shadcn/ui · Auth.js (Google OAuth) · Recharts · Docker
+Tailwind + shadcn/ui · Auth.js (Google OAuth) · next-intl · Recharts · Docker
+
+## Documentation
+
+| For                           | Read                                                                                       |
+| ----------------------------- | ------------------------------------------------------------------------------------------ |
+| Using the app                 | [docs/user-guide.md](docs/user-guide.md)                                                   |
+| Google sign-in and sync       | [docs/google-cloud-setup.md](docs/google-cloud-setup.md)                                   |
+| Running it on a server        | [docs/deployment.md](docs/deployment.md)                                                   |
+| Backups and restoring         | [docs/backup-and-restore.md](docs/backup-and-restore.md)                                   |
+| How the sync resolves clashes | [docs/calendar-sync.md](docs/calendar-sync.md)                                             |
+| Security measures             | [docs/security.md](docs/security.md)                                                       |
+| Developing                    | This README, and the UI primitives in [src/components/README.md](src/components/README.md) |
 
 ## Requirements
 
@@ -17,6 +29,54 @@ Tailwind + shadcn/ui · Auth.js (Google OAuth) · Recharts · Docker
 No local PostgreSQL install is needed; Compose provides PostgreSQL 16.
 
 ## Getting started
+
+From a fresh checkout to a signed-in app with demo data, in four steps.
+
+### 1. A Google OAuth client
+
+Signing in is Google only, so even a local copy needs an OAuth client. Create
+one as described in [docs/google-cloud-setup.md](docs/google-cloud-setup.md)
+(about fifteen minutes), with the redirect URIs
+`http://localhost:3000/api/auth/callback/google` and
+`http://localhost:3000/api/google/callback`, and your Google account as a test
+user.
+
+### 2. Settings
+
+```bash
+cp .env.example .env    # the settings file; Docker and the host both read it
+```
+
+Then fill in:
+
+| Variable               | Value                                                                                             |
+| ---------------------- | ------------------------------------------------------------------------------------------------- |
+| `AUTH_SECRET`          | A random value: `node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"`     |
+| `AUTH_GOOGLE_ID`       | The OAuth client's ID                                                                             |
+| `AUTH_GOOGLE_SECRET`   | The OAuth client's secret                                                                         |
+| `AUTH_ALLOWED_EMAILS`  | Your Google address (several: comma-separated)                                                    |
+| `TOKEN_ENCRYPTION_KEY` | Optional, for Google Calendar sync: another random value, generated the same way as `AUTH_SECRET` |
+
+`DATABASE_URL` and `APP_URL` are already right for a local copy. Every other
+variable is optional and explained in [`.env.example`](.env.example); see
+also [Configuration](#configuration).
+
+### 3. Start it
+
+Either everything in Docker, or the app on the host with only the database in
+Docker; both are described below. Then open <http://localhost:3000> and sign
+in with Google.
+
+### 4. Demo data
+
+```bash
+docker compose exec app npm run seed  # everything in Docker
+npm run seed                          # app on the host
+```
+
+Two properties with 18 months of bookings, blocks and their figures; see
+[Demo data](#demo-data). Without it the app starts empty: add a property
+under **Settings**.
 
 ### Everything in Docker
 
@@ -433,6 +493,28 @@ table, dialogs, empty, error and loading states, toasts) and the money and date
 formatting helpers. [`src/components/README.md`](src/components/README.md)
 documents each with usage examples, and `/dev/ui` renders them all while
 `npm run dev` is running.
+
+## Languages
+
+The interface is in German and English ([next-intl](https://next-intl.dev),
+without locale routing). The language comes from the `locale` cookie set in
+the account menu, else the browser's `Accept-Language`, else German
+([`src/i18n/locales.ts`](src/i18n/locales.ts)). Dates, amounts and the
+calendar's first day of the week follow it.
+
+- **Text** lives in [`messages/en-GB.json`](messages/en-GB.json) and
+  [`messages/de-DE.json`](messages/de-DE.json). Keys are typed from the
+  English file; `npm run lint` and `npm run build` fail when the two files
+  differ in keys or placeholders, or a message is empty
+  ([`scripts/check-messages.mjs`](scripts/check-messages.mjs)).
+- **Components** use `useTranslations` / `await getTranslations`, and format
+  through `useFormat()` / `await getFormat()`, never `Intl` with a fixed
+  locale.
+- **API messages** stay English; [`src/i18n/api-text.ts`](src/i18n/api-text.ts)
+  shows known phrases in the page's language through the `api` namespace. A
+  new server message needs an entry there to be translated.
+- **Tests** render in English with the real catalogue (`vitest.setup.ts`);
+  e2e runs pin `en-GB`, and `e2e/i18n.spec.ts` checks German.
 
 ## Authentication
 
