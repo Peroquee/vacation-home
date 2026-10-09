@@ -12,6 +12,7 @@ import { NativeSelect, NativeSelectOption } from "@/components/ui/native-select"
 import { todayUtc } from "@/lib/bookings/list-params";
 import { addDays } from "@/lib/calendar-date";
 import { addMonths } from "@/lib/calendar/month";
+import { db } from "@/lib/db";
 import { listCategories } from "@/lib/finance/categories";
 import { ledgerHref, ledgerParams, ledgerPeriod } from "@/lib/finance/ledger";
 import { listTransactions, listTransactionsSchema, toDto } from "@/lib/finance/transactions";
@@ -195,6 +196,16 @@ export default async function FinancePage({ searchParams }: PageProps<"/finance"
   }
 
   const { items, total, totals } = await listTransactions(query.data);
+  // Which rows have receipts (GitLab #82), in one query.
+  const receiptCounts = new Map(
+    (
+      await db.transactionAttachment.groupBy({
+        by: ["transactionId"],
+        where: { transactionId: { in: items.map((item) => item.id) } },
+        _count: true,
+      })
+    ).map((row) => [row.transactionId, row._count]),
+  );
   const rows: LedgerRow[] = items.map((item) => {
     const t = toDto(item);
     return {
@@ -208,6 +219,7 @@ export default async function FinancePage({ searchParams }: PageProps<"/finance"
       bookingId: t.bookingId,
       currency: t.currency,
       category: t.category,
+      receipts: receiptCounts.get(t.id) ?? 0,
     };
   });
   // A transaction's own (possibly hidden) category stays selectable when editing it.
