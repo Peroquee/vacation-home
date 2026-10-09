@@ -1,6 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { useState } from "react";
 
 import { ConfirmDialog } from "@/components/confirm-dialog";
@@ -42,7 +43,11 @@ class CategoryError extends Error {
   }
 }
 
-async function request(url: string, init: RequestInit = {}): Promise<unknown> {
+async function request(
+  url: string,
+  unexpected: (status: number) => string,
+  init: RequestInit = {},
+): Promise<unknown> {
   const response = await fetch(url, {
     ...init,
     headers: init.body ? { "Content-Type": "application/json" } : undefined,
@@ -51,7 +56,7 @@ async function request(url: string, init: RequestInit = {}): Promise<unknown> {
   const body = await response.json().catch(() => null);
   if (response.ok) return body;
   throw new CategoryError(
-    body?.error?.message ?? `The server answered ${response.status}.`,
+    body?.error?.message ?? unexpected(response.status),
     response.status,
     body?.error?.reason,
     body?.error?.fields,
@@ -63,8 +68,12 @@ async function request(url: string, init: RequestInit = {}): Promise<unknown> {
  * one step on the server. The one place the move is made, so the endpoint
  * behind it can change without touching the dialogs.
  */
-export async function reassign(fromId: string, toId: string): Promise<{ moved: number }> {
-  return (await request(`/api/categories/${fromId}/reassign`, {
+export async function reassign(
+  fromId: string,
+  toId: string,
+  unexpected: (status: number) => string,
+): Promise<{ moved: number }> {
+  return (await request(`/api/categories/${fromId}/reassign`, unexpected, {
     method: "POST",
     body: JSON.stringify({ to: toId }),
   })) as { moved: number };
@@ -79,6 +88,10 @@ export function CategoryFormDialog({
   trigger: React.ReactElement;
 }) {
   const router = useRouter();
+  const t = useTranslations("finance.categoryDialogs");
+  const tForms = useTranslations("forms");
+  const tCommon = useTranslations("common");
+  const unexpected = (status: number) => tCommon("serverAnswered", { status });
   const [open, setOpen] = useState(false);
   const blank = { name: "", type: "expense" as CategoryRow["type"], color: "#64748b" };
   const [values, setValues] = useState(category ?? blank);
@@ -90,7 +103,7 @@ export function CategoryFormDialog({
     setPending(true);
     setErrors({});
     try {
-      await request(category ? `/api/categories/${category.id}` : "/api/categories", {
+      await request(category ? `/api/categories/${category.id}` : "/api/categories", unexpected, {
         method: category ? "PATCH" : "POST",
         body: JSON.stringify(
           category
@@ -98,12 +111,12 @@ export function CategoryFormDialog({
             : { name: values.name, type: values.type, color: values.color },
         ),
       });
-      toastSuccess(category ? "Category saved" : "Category added");
+      toastSuccess(category ? t("saved") : t("added"));
       setOpen(false);
       router.refresh();
     } catch (error) {
       if (error instanceof CategoryError && error.fields) setErrors(error.fields);
-      else toastError(error, "Could not save the category");
+      else toastError(error, t("saveFailed"));
     } finally {
       setPending(false);
     }
@@ -126,14 +139,14 @@ export function CategoryFormDialog({
       <DialogContent>
         <form onSubmit={submit} noValidate className="grid gap-4">
           <DialogHeader>
-            <DialogTitle>{category ? `Edit ${category.name}` : "Add a category"}</DialogTitle>
-            <DialogDescription>
-              The colour is the one the expense breakdown chart uses.
-            </DialogDescription>
+            <DialogTitle>
+              {category ? t("editTitle", { name: category.name }) : t("addTitle")}
+            </DialogTitle>
+            <DialogDescription>{t("description")}</DialogDescription>
           </DialogHeader>
           <FieldGroup className="gap-3">
             <Field data-invalid={errors.name ? true : undefined}>
-              <FieldLabel htmlFor={`${prefix}-name`}>Name</FieldLabel>
+              <FieldLabel htmlFor={`${prefix}-name`}>{t("name")}</FieldLabel>
               <Input
                 id={`${prefix}-name`}
                 autoFocus
@@ -143,11 +156,13 @@ export function CategoryFormDialog({
                 onChange={(event) => setValues((v) => ({ ...v, name: event.target.value }))}
               />
               <FieldError
-                errors={errors.name?.map((message) => ({ message: `Name ${message}` }))}
+                errors={errors.name?.map((message) => ({
+                  message: tForms("fieldError", { label: t("name"), message }),
+                }))}
               />
             </Field>
             <Field>
-              <FieldLabel htmlFor={`${prefix}-type`}>Type</FieldLabel>
+              <FieldLabel htmlFor={`${prefix}-type`}>{t("type")}</FieldLabel>
               <NativeSelect
                 id={`${prefix}-type`}
                 className="w-full"
@@ -158,13 +173,13 @@ export function CategoryFormDialog({
                   setValues((v) => ({ ...v, type: event.target.value as CategoryRow["type"] }))
                 }
               >
-                <NativeSelectOption value="expense">Expense</NativeSelectOption>
-                <NativeSelectOption value="income">Income</NativeSelectOption>
+                <NativeSelectOption value="expense">{t("expense")}</NativeSelectOption>
+                <NativeSelectOption value="income">{t("income")}</NativeSelectOption>
               </NativeSelect>
-              {category ? <FieldDescription>The type cannot change.</FieldDescription> : null}
+              {category ? <FieldDescription>{t("typeFixed")}</FieldDescription> : null}
             </Field>
             <Field data-invalid={errors.color ? true : undefined}>
-              <FieldLabel htmlFor={`${prefix}-color`}>Colour</FieldLabel>
+              <FieldLabel htmlFor={`${prefix}-color`}>{t("colour")}</FieldLabel>
               <Input
                 id={`${prefix}-color`}
                 type="color"
@@ -173,13 +188,15 @@ export function CategoryFormDialog({
                 onChange={(event) => setValues((v) => ({ ...v, color: event.target.value }))}
               />
               <FieldError
-                errors={errors.color?.map((message) => ({ message: `Colour ${message}` }))}
+                errors={errors.color?.map((message) => ({
+                  message: tForms("fieldError", { label: t("colour"), message }),
+                }))}
               />
             </Field>
           </FieldGroup>
           <DialogFooter>
             <Button type="submit" disabled={pending} aria-busy={pending}>
-              {pending ? "Saving…" : category ? "Save" : "Add category"}
+              {pending ? tCommon("saving") : category ? tCommon("save") : t("add")}
             </Button>
           </DialogFooter>
         </form>
@@ -191,6 +208,8 @@ export function CategoryFormDialog({
 /** Hides a category from new transactions, or offers it again. */
 export function HideToggle({ category }: { category: CategoryRow }) {
   const router = useRouter();
+  const t = useTranslations("finance.categoryDialogs");
+  const tCommon = useTranslations("common");
   const [pending, setPending] = useState(false);
   return (
     <Button
@@ -201,20 +220,21 @@ export function HideToggle({ category }: { category: CategoryRow }) {
       onClick={async () => {
         setPending(true);
         try {
-          await request(`/api/categories/${category.id}`, {
-            method: "PATCH",
-            body: JSON.stringify({ hidden: !category.hidden }),
-          });
-          toastSuccess(category.hidden ? `${category.name} shown` : `${category.name} hidden`);
+          await request(
+            `/api/categories/${category.id}`,
+            (status) => tCommon("serverAnswered", { status }),
+            { method: "PATCH", body: JSON.stringify({ hidden: !category.hidden }) },
+          );
+          toastSuccess(t(category.hidden ? "shown" : "hiddenToast", { name: category.name }));
           router.refresh();
         } catch (error) {
-          toastError(error, "Could not change the category");
+          toastError(error, t("changeFailed"));
         } finally {
           setPending(false);
         }
       }}
     >
-      {category.hidden ? "Show" : "Hide"}
+      {category.hidden ? t("show") : t("hide")}
     </Button>
   );
 }
@@ -232,13 +252,16 @@ export function DeleteCategory({
   targets: CategoryRow[];
 }) {
   const router = useRouter();
+  const t = useTranslations("finance.categoryDialogs");
+  const tCommon = useTranslations("common");
+  const unexpected = (status: number) => tCommon("serverAnswered", { status });
   const [moving, setMoving] = useState(false);
   const [systemRefusal, setSystemRefusal] = useState(false);
   const [to, setTo] = useState(targets[0]?.id ?? "");
 
   async function remove() {
     try {
-      await request(`/api/categories/${category.id}`, { method: "DELETE" });
+      await request(`/api/categories/${category.id}`, unexpected, { method: "DELETE" });
     } catch (error) {
       if (error instanceof CategoryError && error.reason === "in_use") {
         setMoving(true);
@@ -250,16 +273,16 @@ export function DeleteCategory({
       }
       throw error;
     }
-    toastSuccess(`${category.name} deleted`);
+    toastSuccess(t("deleted", { name: category.name }));
     router.refresh();
   }
 
   async function hide() {
-    await request(`/api/categories/${category.id}`, {
+    await request(`/api/categories/${category.id}`, unexpected, {
       method: "PATCH",
       body: JSON.stringify({ hidden: true }),
     });
-    toastSuccess(`${category.name} hidden`);
+    toastSuccess(t("hiddenToast", { name: category.name }));
     router.refresh();
   }
 
@@ -268,65 +291,59 @@ export function DeleteCategory({
       <ConfirmDialog
         open={systemRefusal}
         onOpenChange={setSystemRefusal}
-        title={`${category.name} is a default category`}
-        description="Default categories cannot be deleted. Hide it instead: it stops being offered for new transactions, and existing ones keep it."
-        confirmLabel="Hide instead"
-        cancelLabel="Cancel"
+        title={t("systemTitle", { name: category.name })}
+        description={t("systemDescription")}
+        confirmLabel={t("hideInstead")}
+        cancelLabel={tCommon("cancel")}
         onConfirm={hide}
       />
       <ConfirmDialog
         trigger={
           <Button variant="destructive" size="sm">
-            Delete
+            {tCommon("delete")}
           </Button>
         }
-        title={`Delete ${category.name}?`}
-        description="If transactions use it, you can move them to another category first."
-        confirmLabel="Delete"
-        cancelLabel="Keep it"
+        title={t("deleteTitle", { name: category.name })}
+        description={t("deleteDescription")}
+        confirmLabel={tCommon("delete")}
+        cancelLabel={t("keep")}
         destructive
         onConfirm={remove}
       />
       <ConfirmDialog
         open={moving}
         onOpenChange={setMoving}
-        title={`${category.name} is in use`}
+        title={t("inUseTitle", { name: category.name })}
         description={
           targets.length > 0 ? (
             <span className="grid gap-2">
-              <span>
-                Transactions use this category. Move them to another{" "}
-                {category.type === "income" ? "income" : "expense"} category, then delete it.
-              </span>
+              <span>{category.type === "income" ? t("moveIncome") : t("moveExpense")}</span>
               <NativeSelect
-                aria-label="Move transactions to"
+                aria-label={t("moveTo")}
                 className="w-full"
                 value={to}
                 onChange={(event) => setTo(event.target.value)}
               >
-                {targets.map((t) => (
-                  <NativeSelectOption key={t.id} value={t.id}>
-                    {t.name}
+                {targets.map((c) => (
+                  <NativeSelectOption key={c.id} value={c.id}>
+                    {c.name}
                   </NativeSelectOption>
                 ))}
               </NativeSelect>
             </span>
           ) : (
-            "Transactions use this category, and there is no other category of its type to move them to. Hide it instead."
+            t("noTarget")
           )
         }
-        confirmLabel={targets.length > 0 ? "Move and delete" : "Hide instead"}
-        cancelLabel="Cancel"
+        confirmLabel={targets.length > 0 ? t("moveAndDelete") : t("hideInstead")}
+        cancelLabel={tCommon("cancel")}
         destructive={targets.length > 0}
         onConfirm={async () => {
           if (targets.length === 0) return hide();
-          const { moved } = await reassign(category.id, to);
-          await request(`/api/categories/${category.id}`, { method: "DELETE" });
-          const target = targets.find((t) => t.id === to)?.name ?? "the other category";
-          toastSuccess(
-            `${category.name} deleted`,
-            `${moved} ${moved === 1 ? "transaction" : "transactions"} moved to ${target}.`,
-          );
+          const { moved } = await reassign(category.id, to, unexpected);
+          await request(`/api/categories/${category.id}`, unexpected, { method: "DELETE" });
+          const target = targets.find((c) => c.id === to)?.name ?? t("otherCategory");
+          toastSuccess(t("deleted", { name: category.name }), t("moved", { count: moved, target }));
           router.refresh();
         }}
       />
