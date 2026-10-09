@@ -3,8 +3,9 @@
 # nothing has to be reachable from the internet. See docs/deployment.md.
 #
 # Cloudflare by default. For another DNS provider, set DNS_MODULE to its
-# caddy-dns module (https://github.com/caddy-dns) and change the `dns` line in
-# the Caddyfile to match.
+# caddy-dns module (https://github.com/caddy-dns), and change the `dns` line in
+# the Caddyfile and the token variable in compose.prod.yml to match: see
+# "Another DNS provider" in docs/deployment.md.
 
 # Pinned; bump both together.
 ARG CADDY_VERSION=2.11.4
