@@ -3,7 +3,7 @@ import { getTranslations } from "next-intl/server";
 import { Suspense } from "react";
 
 import { PageHeader } from "@/components/page-header";
-import { CardSkeleton, StatTilesSkeleton } from "@/components/skeletons";
+import { CardSkeleton } from "@/components/skeletons";
 import { getFormat } from "@/i18n/get-format";
 import { todayUtc } from "@/lib/bookings/list-params";
 import { dashboardState } from "@/lib/dashboard/params";
@@ -56,11 +56,15 @@ export default async function DashboardPage({ searchParams }: PageProps<"/dashbo
          * Not keyed by the filters: a filter change is a transition, so each
          * widget keeps its figures until the new ones are ready and they all
          * update together. The skeletons show on the first load only.
+         *
+         * The key figures are part of the first HTML, not streamed: their
+         * large numbers are what a phone shows first, so they set the
+         * page's Largest Contentful Paint (GitLab #97). They share the
+         * charts' cached analytics query, so waiting for them costs only
+         * that one query; the charts below still stream in.
          */}
         <div className="space-y-6">
-          <Suspense fallback={<StatTilesSkeleton />}>
-            <Kpis state={state} today={today} />
-          </Suspense>
+          <Kpis state={state} today={today} />
           <div className="grid gap-6 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
             <Suspense fallback={<CardSkeleton lines={8} />}>
               <RevenueChart state={state} />

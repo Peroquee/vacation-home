@@ -11,7 +11,7 @@ import { STORAGE_STATE, withE2eDb } from "./database";
 //
 //   npx playwright test --project=lighthouse
 //
-// The goal is a performance score of at least 90 on both pages.
+// Both pages must reach a performance score of at least 90.
 
 const PAGES = { calendar: "/calendar", dashboard: "/dashboard" };
 const PORT = 9223;
