@@ -497,7 +497,9 @@
       "properties": "Properties",
       "status": "Status",
       "legendConfirmed": "Confirmed",
-      "legendInquiry": "Inquiry (dates not held)"
+      "legendInquiry": "Inquiry (dates not held)",
+      "dragTo": "{guest}: {range}, {nights, plural, one {# night} other {# nights}}",
+      "dragHint": "Drag to the new dates, or press Escape."
     },
     "view": {
       "blocked": "Dates blocked",
@@ -518,7 +520,17 @@
       "doubleBookings": "Double bookings: these dates were sold on a booking platform and here",
       "doubleBooking": "{feed} has a stay {range} on the dates of a confirmed booking.",
       "openBooking": "Open the booking ({guest})",
-      "doubleBookingHint": "Cancel one of them: on the platform, or the booking here. The warning goes once the dates no longer clash."
+      "doubleBookingHint": "Cancel one of them: on the platform, or the booking here. The warning goes once the dates no longer clash.",
+      "moveTitle": "Change {guest}'s dates?",
+      "moveDescription": "From {from} ({fromNights, plural, one {# night} other {# nights}}) to {to} ({toNights, plural, one {# night} other {# nights}}). The total is recalculated from the rates, unless it was set by hand.",
+      "moveConfirm": "Change dates",
+      "moveCancel": "Keep the dates",
+      "moved": "{guest}: {range}",
+      "movedHint": "The booking has its new dates.",
+      "undo": "Undo",
+      "undone": "Dates changed back",
+      "moveFailed": "Could not change the dates",
+      "undoFailed": "Could not change the dates back"
     },
     "sheet": {
       "loadFailed": "This booking could not be loaded.",
@@ -749,6 +761,23 @@
       "doneSummary": "{imported} imported, {skipped} skipped as duplicates, {invalid} left out with problems.",
       "toLedger": "Go to the ledger",
       "another": "Import another file"
+    },
+    "receipts": {
+      "title": "Receipts",
+      "loading": "Loading receipts…",
+      "loadFailed": "The receipts could not be loaded.",
+      "none": "No receipts yet.",
+      "open": "Open {name}",
+      "remove": "Remove {name}",
+      "removeTitle": "Remove {name}?",
+      "removeDescription": "The file is deleted. Keep receipts as long as tax law requires: in Germany, 8 years.",
+      "add": "Add receipts",
+      "uploading": "Uploading…",
+      "uploadFailed": "Could not add the receipt",
+      "hint": "PDF, JPEG, PNG, WebP or HEIC, up to 10 MB each, {max} per transaction. Location data is removed from JPEG photos; HEIC and WebP photos keep theirs.",
+      "full": "This transaction has the most receipts it can hold ({max}).",
+      "saveFirst": "Receipts can be added once the transaction is saved.",
+      "count": "{count, plural, one {# receipt} other {# receipts}}"
     }
   },
   "dashboard": {
@@ -969,6 +998,13 @@
     "feedUrl": "must be an http(s) link to the platform's calendar export",
     "blockFromFeed": "This block comes from a booking platform's calendar. Change the stay on the platform; the feed updates the block.",
     "icalOverlap": "A booking platform has a stay on dates of a confirmed booking: a double booking. Cancel one of them, on the platform or here.",
-    "googleOverlap": "A Google Calendar event overlaps a confirmed booking, so it was not imported as a block. Check the dates in Google or in the booking."
+    "googleOverlap": "A Google Calendar event overlaps a confirmed booking, so it was not imported as a block. Check the dates in Google or in the booking.",
+    "fileTooLarge": "is larger than 10 MB",
+    "fileType": "must be a PDF, JPEG, PNG, WebP or HEIC file",
+    "jpegUnreadable": "is not a readable JPEG",
+    "thumbnailJpeg": "must be a small JPEG",
+    "tooManyReceipts": "is one too many: at most {max} receipts per transaction",
+    "receiptNotFound": "Receipt not found.",
+    "notFormData": "The request body is not valid form data."
   }
 }

@@ -5,12 +5,18 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import type { CalendarProperty } from "@/components/calendar/month-calendar";
 
+import { toast } from "@/components/toast";
+
 import { CalendarView } from "./calendar-view";
 
 const refresh = vi.fn();
 const push = vi.fn();
 vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh, push }) }));
-vi.mock("@/components/toast", () => ({ toastSuccess: vi.fn(), toastError: vi.fn() }));
+vi.mock("@/components/toast", () => ({
+  toastSuccess: vi.fn(),
+  toastError: vi.fn(),
+  toast: { success: vi.fn() },
+}));
 
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -354,5 +360,50 @@ describe("CalendarView double bookings", () => {
     for (const bar of screen.getAllByRole("link", { name: /^Ada Lovelace, Lake House/ })) {
       expect(bar).toHaveAccessibleName(/in the way/);
     }
+  });
+});
+
+describe("CalendarView moving a booking by dragging", () => {
+  it("asks with the old and new dates, saves, and offers to undo", async () => {
+    const fetchMock = vi.fn<typeof fetch>(async () => Response.json({}));
+    vi.stubGlobal("fetch", fetchMock);
+    const user = renderView();
+    const ada = screen.getAllByRole("link", { name: /^Ada Lovelace/ })[0]!;
+    await user.pointer([
+      { keys: "[MouseLeft>]", target: ada, coords: { clientX: 0, clientY: 0 } },
+      {
+        target: screen.getByRole("button", { name: "Monday, 13 July 2026" }),
+        coords: { clientX: 200, clientY: 0 },
+      },
+      {
+        keys: "[/MouseLeft]",
+        target: screen.getByRole("button", { name: "Monday, 13 July 2026" }),
+        coords: { clientX: 200, clientY: 0 },
+      },
+    ]);
+
+    const dialog = await screen.findByRole("alertdialog");
+    expect(dialog).toHaveTextContent("Change Ada Lovelace's dates?");
+    expect(dialog).toHaveTextContent(
+      /From 10\s–\s15 Jul 2026 \(5 nights\) to 13\s–\s18 Jul 2026 \(5 nights\)/,
+    );
+    expect(fetchMock).not.toHaveBeenCalled();
+
+    await user.click(within(dialog).getByRole("button", { name: "Change dates" }));
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+    expect(fetchMock.mock.calls[0]![0]).toBe("/api/bookings/ada");
+    expect(JSON.parse(String(fetchMock.mock.calls[0]![1]!.body))).toEqual({
+      checkIn: "2026-07-13",
+      checkOut: "2026-07-18",
+    });
+
+    const [, options] = vi.mocked(toast.success).mock.calls[0]!;
+    expect(options).toMatchObject({ duration: 15_000, action: { label: "Undo" } });
+    (options!.action as unknown as { onClick: () => void }).onClick();
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
+    expect(JSON.parse(String(fetchMock.mock.calls[1]![1]!.body))).toEqual({
+      checkIn: "2026-07-10",
+      checkOut: "2026-07-15",
+    });
   });
 });

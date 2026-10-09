@@ -30,9 +30,9 @@ export async function bootstrap(): Promise<void> {
     Sentry.init(sentryOptions());
 
     // Background jobs: Google Calendar outbound sync and inbound polling,
-    // recurring expenses and the booking platforms' iCal feeds. Not while
-    // `next build` loads the app; NEXT_PHASE is Next's own, not part of the
-    // validated schema.
+    // recurring expenses, the booking platforms' iCal feeds and the receipt
+    // cleanup. Not while `next build` loads the app; NEXT_PHASE is Next's
+    // own, not part of the validated schema.
     // eslint-disable-next-line no-restricted-properties
     if (process.env.NEXT_PHASE !== PHASE_PRODUCTION_BUILD) {
       const { startOutboundSyncWorker } = await import("./lib/google/sync-worker");
@@ -43,6 +43,8 @@ export async function bootstrap(): Promise<void> {
       startRecurringExpenseWorker();
       const { startIcalImportWorker } = await import("./lib/ical/worker");
       startIcalImportWorker();
+      const { startReceiptCleanupWorker } = await import("./lib/finance/receipts-worker");
+      startReceiptCleanupWorker();
     }
   } catch (error) {
     // A configuration failure is already a formatted, readable report, so its

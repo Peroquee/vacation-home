@@ -373,3 +373,106 @@ describe("MonthCalendar grid semantics", () => {
     ).toEqual(["2026-07-23", "2026-07-24", "2026-07-25"]);
   });
 });
+
+describe("MonthCalendar dragging a booking", () => {
+  function renderDraggable() {
+    const onBookingDrag = vi.fn();
+    render(
+      <MonthCalendar
+        month="2026-07"
+        weekStart={1}
+        today="2026-07-08"
+        calendars={[lake]}
+        onMonthChange={vi.fn()}
+        bookingHref={(id) => `/bookings/${id}`}
+        onBookingDrag={onBookingDrag}
+      />,
+    );
+    return { user: userEvent.setup(), onBookingDrag };
+  }
+  const day = (name: string) => screen.getByRole("button", { name });
+  const ada = () => screen.getAllByRole("link", { name: /^Ada Lovelace/ })[0]!;
+  const at = (x: number) => ({ clientX: x, clientY: 10 });
+
+  it("moves a stay to free dates and reports the old and the new", async () => {
+    const { user, onBookingDrag } = renderDraggable();
+    await user.pointer([
+      { keys: "[MouseLeft>]", target: ada(), coords: at(0) },
+      { target: day("Thursday, 23 July 2026"), coords: at(200) },
+    ]);
+    expect(screen.getByText(/^Ada Lovelace: 23\s–\s28 Jul 2026, 5 nights$/)).toBeInTheDocument();
+    await user.pointer({
+      keys: "[/MouseLeft]",
+      target: day("Thursday, 23 July 2026"),
+      coords: at(200),
+    });
+    expect(onBookingDrag).toHaveBeenCalledWith({
+      bookingId: "out",
+      propertyId: "p1",
+      guest: "Ada Lovelace",
+      from: { checkIn: "2026-07-10", checkOut: "2026-07-15" },
+      to: { checkIn: "2026-07-23", checkOut: "2026-07-28" },
+    });
+  });
+
+  it("changes nothing for a one-pixel slip", async () => {
+    const { user, onBookingDrag } = renderDraggable();
+    await user.pointer([
+      { keys: "[MouseLeft>]", target: ada(), coords: at(0) },
+      { target: day("Thursday, 23 July 2026"), coords: at(1) },
+      { keys: "[/MouseLeft]", target: day("Thursday, 23 July 2026"), coords: at(1) },
+    ]);
+    expect(onBookingDrag).not.toHaveBeenCalled();
+  });
+
+  it("forbids a drop on taken dates, and says why while dragging", async () => {
+    const { user, onBookingDrag } = renderDraggable();
+    await user.pointer([
+      { keys: "[MouseLeft>]", target: ada(), coords: at(0) },
+      // 18 to 23 July runs into the painting block.
+      { target: day("Saturday, 18 July 2026"), coords: at(100) },
+    ]);
+    expect(screen.getByText(/Not available: Blocked \(Painting\)/)).toBeInTheDocument();
+    await user.pointer({
+      keys: "[/MouseLeft]",
+      target: day("Saturday, 18 July 2026"),
+      coords: at(100),
+    });
+    expect(onBookingDrag).not.toHaveBeenCalled();
+  });
+
+  it("moves check-out by its edge, and cancels with Escape", async () => {
+    const { user, onBookingDrag } = renderDraggable();
+    // Ada's stay wraps into the next week; its last piece has the check-out edge.
+    const edge = screen
+      .getAllByRole("link", { name: /^Ada Lovelace/ })
+      .at(-1)!
+      .querySelector<HTMLElement>('[data-drag-handle="end"]')!;
+    await user.pointer([
+      { keys: "[MouseLeft>]", target: edge, coords: at(0) },
+      { target: day("Friday, 17 July 2026"), coords: at(80) },
+      { keys: "[/MouseLeft]", target: day("Friday, 17 July 2026"), coords: at(80) },
+    ]);
+    expect(onBookingDrag).toHaveBeenLastCalledWith(
+      expect.objectContaining({ to: { checkIn: "2026-07-10", checkOut: "2026-07-17" } }),
+    );
+
+    onBookingDrag.mockClear();
+    await user.pointer([
+      { keys: "[MouseLeft>]", target: ada(), coords: at(0) },
+      { target: day("Thursday, 23 July 2026"), coords: at(200) },
+    ]);
+    await user.keyboard("{Escape}");
+    await user.pointer({
+      keys: "[/MouseLeft]",
+      target: day("Thursday, 23 July 2026"),
+      coords: at(200),
+    });
+    expect(onBookingDrag).not.toHaveBeenCalled();
+  });
+
+  it("leaves bars alone without a handler", () => {
+    renderCalendar();
+    expect(ada().querySelector("[data-drag-handle]")).toBeNull();
+  });
+});

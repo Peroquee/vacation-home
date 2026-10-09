@@ -69,3 +69,6 @@ next-env.d.ts
 
 # Lighthouse reports (npx playwright test --project=lighthouse).
 /lighthouse/
+
+# Receipts stored by a local run (RECEIPTS_DIR default).
+/data/

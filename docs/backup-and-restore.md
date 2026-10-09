@@ -1,17 +1,19 @@
 # Database backup and restore
 
-Bookings, guests and finances live only in the PostgreSQL database. Nothing
-else can rebuild them, so this is the procedure that keeps them safe.
+Bookings, guests and finances live only in the PostgreSQL database, and the
+receipts on transactions in the `receipts` volume. Nothing else can rebuild
+them, so this is the procedure that keeps them safe.
 
-| What           | How                                                                                            |
-| -------------- | ---------------------------------------------------------------------------------------------- |
-| Backups        | `pg_dump` of `vacation_home`, compressed SQL, by the `backup` service in `docker-compose.yml`  |
-| Tool           | [postgres-backup-local](https://github.com/prodrigestivill/docker-postgres-backup-local)       |
-| When           | `BACKUP_SCHEDULE`, default daily (`@daily`, midnight in `BACKUP_TZ`), plus on every start      |
-| Where          | `BACKUP_HOST_DIR` on the Docker host, which must be an NFS mount from another machine          |
-| Kept           | `BACKUP_KEEP_DAYS` daily (7), `BACKUP_KEEP_WEEKS` weekly (4), `BACKUP_KEEP_MONTHS` monthly (6) |
-| Alert if stale | A push monitor (Uptime Kuma or Healthchecks) that alerts after 48 hours without a backup       |
-| Restore        | `scripts/backup/restore.sh`, rehearsed into a scratch database                                 |
+| What           | How                                                                                                                   |
+| -------------- | --------------------------------------------------------------------------------------------------------------------- |
+| Backups        | `pg_dump` of `vacation_home`, compressed SQL, by the `backup` service in `docker-compose.yml`                         |
+| Tool           | [postgres-backup-local](https://github.com/prodrigestivill/docker-postgres-backup-local)                              |
+| When           | `BACKUP_SCHEDULE`, default daily (`@daily`, midnight in `BACKUP_TZ`), plus on every start                             |
+| Where          | `BACKUP_HOST_DIR` on the Docker host, which must be an NFS mount from another machine                                 |
+| Kept           | `BACKUP_KEEP_DAYS` daily (7), `BACKUP_KEEP_WEEKS` weekly (4), `BACKUP_KEEP_MONTHS` monthly (6)                        |
+| Alert if stale | A push monitor (Uptime Kuma or Healthchecks) that alerts after 48 hours without a backup                              |
+| Restore        | `scripts/backup/restore.sh`, rehearsed into a scratch database                                                        |
+| Receipts       | Mirrored daily to `BACKUP_HOST_DIR/receipts` by `receipts-backup`; restored with `scripts/backup/receipts-restore.sh` |
 
 All settings are in `.env` next to `docker-compose.yml`; `.env.example` lists
 them with their defaults.
@@ -28,6 +30,7 @@ folder" means the folder that contains `docker-compose.yml`.
 4. [Restore for real](#4-restore-for-real)
 5. [After a restore: erase guests again](#5-after-a-restore-erase-guests-again)
 6. [Erased guests and backups (DSGVO)](#6-erased-guests-and-backups-dsgvo)
+7. [Receipts](#7-receipts)
 
 ## 1. One-time setup
 
@@ -93,9 +96,11 @@ The other `BACKUP_` settings can stay at their defaults for now; the alert
 URLs come in step 2.
 
 ```bash
-docker compose --profile backup up -d backup          # start the backup service; it takes a first backup right away
+docker compose --profile backup up -d backup receipts-backup
+                                                      # start the database backups and the receipts mirror; both run once right away
 docker compose logs backup                            # show what it did; look for "SQL backup created successfully"
 ls -l /mnt/backups/vacation-home/last/                # the first backup file should be listed, a few kB or more in size
+docker compose logs receipts-backup                   # look for "Receipts: ... copied, ... 0 broken"
 ```
 
 From now on it backs up every day and removes old backups by itself.
@@ -186,6 +191,16 @@ docker compose exec db dropdb -U vacation vacation_home_restore_test
 Running the script again is always safe: it starts with a fresh scratch
 database each time.
 
+Check the receipts mirror too; this only reads:
+
+```bash
+scripts/backup/receipts-restore.sh --dry-run /mnt/backups/vacation-home/receipts
+                                                      # checks every mirrored receipt against its name; lists what a restore would copy
+```
+
+It should end with `0 broken`. On a working system it has nothing to copy:
+the live volume already holds every receipt.
+
 **Record every rehearsal here**, in this file, with a merge request. The
 issue (GitLab #95) is only done once the first line is filled in.
 
@@ -239,6 +254,13 @@ docker compose start app                              # start the app with whate
 
 Then open the app in the browser and check that recent bookings are there.
 
+Then put back any receipts that are missing from the volume:
+
+```bash
+scripts/backup/receipts-restore.sh /mnt/backups/vacation-home/receipts
+                                                      # copies receipts the volume lacks; deletes nothing, safe to repeat
+```
+
 **Do step 5 now** if the script listed any guests.
 
 When the restored app works, **drop the kept copy**. It still holds the data
@@ -265,8 +287,11 @@ the app and swap the names back (ask for help with this one).
    docker compose up -d db                            # start only the database (empty for now)
    scripts/backup/restore.sh --yes --target vacation_home /mnt/backups/vacation-home/daily/vacation_home-latest.sql.gz
                                                       # restore the newest backup into it
-   docker compose up -d                               # start the app
-   docker compose --profile backup up -d backup       # and the backups again
+   docker compose up -d                               # start the app (and create the empty receipts volume)
+   scripts/backup/receipts-restore.sh /mnt/backups/vacation-home/receipts
+                                                      # copy the receipts back from the mirror
+   docker compose --profile backup up -d backup receipts-backup
+                                                      # and the backups again
    ```
 
 On a new machine, the script cannot read the list of erased guests from the
@@ -358,5 +383,22 @@ records of processing (Verzeichnis von Verarbeitungstätigkeiten) under
   replace this. A snapshot of a running VM holds the database as if the power
   had been cut (PostgreSQL usually recovers from that, but it is not a
   clean dump), and it is restored as a whole machine, not per database.
-- **Uploaded files** such as receipts (the receipt-attachments issue) are not
-  in the database. Their backup comes with that feature.
+
+## 7. Receipts
+
+Receipts on transactions are files in the `receipts` volume, each named by
+its SHA-256, so a file never changes once written. The `receipts-backup`
+service (`scripts/backup/receipts-mirror.sh`) copies new ones to
+`BACKUP_HOST_DIR/receipts/files` once a day, at its start and then every 24
+hours, checking each copy against its name.
+
+- **Deleted receipts** (or those of a deleted transaction) stay in the mirror
+  for `BACKUP_RECEIPTS_KEEP_DAYS` (186 by default, like the monthly dumps), so
+  an older database backup still has its receipts. Then they go.
+- **A restore** (`scripts/backup/receipts-restore.sh`) only adds files the
+  volume lacks and deletes nothing. Files the restored database no longer
+  lists are removed by the app's daily cleanup.
+- **Guest erasure** does not touch receipts. They are accounting records:
+  German tax law requires keeping them 8 years (§147 AO), which the DSGVO
+  allows for (Art. 17(3)(b)). The app never deletes receipts by age; do that
+  by hand once the 8 years are over.
