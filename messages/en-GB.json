@@ -187,7 +187,10 @@
     "amountHintEither": "must be an amount like {example} or {alternative}, without thousands separators",
     "required": "is required",
     "inCurrency": "In {currency}.",
-    "fieldError": "{label} {message}"
+    "fieldError": "{label} {message}",
+    "requiredGuest": "is required: pick a guest or add a new one",
+    "wholeNumber": "must be a whole number",
+    "choosePropertyFirst": "Choose a property first."
   },
   "app": {
     "name": "Vacation Rental Manager",
@@ -205,5 +208,205 @@
     "down": "Down",
     "flat": "Unchanged,",
     "noComparison": "No earlier figures to compare"
+  },
+  "conflicts": {
+    "bookedBy": "Booked by {guest}, {when}",
+    "booked": "Booked, {when}",
+    "blockedWhy": "Blocked ({why}), {when}",
+    "blocked": "Blocked, {when}",
+    "google": "Google Calendar",
+    "arriveInstead": "Arrive on {day} instead: guests can arrive on the day the previous stay checks out, but not the day before.",
+    "leaveInstead": "Leave on {day} instead: a stay can check out on the day the next one checks in, but not the day after."
+  },
+  "bookings": {
+    "status": {
+      "inquiry": "Inquiry",
+      "confirmed": "Confirmed",
+      "cancelled": "Cancelled"
+    },
+    "source": {
+      "direct": "Direct",
+      "airbnb": "Airbnb",
+      "bookingCom": "Booking.com",
+      "other": "Other"
+    },
+    "form": {
+      "unavailable": "Those dates are no longer available.",
+      "saved": "Booking saved",
+      "added": "Booking added",
+      "saveFailed": "Could not save the booking",
+      "property": "Property",
+      "chooseProperty": "Choose a property",
+      "guest": "Guest",
+      "checkIn": "Check-in",
+      "checkOut": "Check-out",
+      "guests": "Guests",
+      "statusLabel": "Status",
+      "sourceLabel": "Source",
+      "nightlyRate": "Nightly rate",
+      "cleaningFee": "Cleaning fee",
+      "total": "Total",
+      "nights": "{count, plural, one {# night} other {# nights}}",
+      "times": " × {rate}",
+      "plusCleaning": " + {fee} cleaning",
+      "overrideTotal": "Set the total by hand",
+      "totalFixed": "Stays fixed when the dates or rates change.",
+      "notes": "Notes",
+      "save": "Save booking",
+      "add": "Add booking",
+      "notAvailable": "These dates are not available.",
+      "overlap": "These dates overlap. An inquiry can be saved, but not confirmed.",
+      "useCheckIn": "Use this check-in",
+      "useCheckOut": "Use this check-out",
+      "checking": "Checking availability…",
+      "checkFailed": "Availability could not be checked. It is checked again when you save.",
+      "available": "These dates are available."
+    },
+    "actions": {
+      "confirmed": "Booking confirmed",
+      "confirmFailed": "Could not confirm",
+      "confirm": "Confirm booking",
+      "reinstated": "Booking reinstated as an inquiry",
+      "reinstateFailed": "Could not reinstate",
+      "reinstate": "Reinstate as inquiry",
+      "cancel": "Cancel booking",
+      "cancelTitle": "Cancel this booking?",
+      "cancelDescription": "Its dates become free straight away. The booking is kept, marked cancelled, and can be reinstated as an inquiry later. The guest is not notified.",
+      "keep": "Keep booking",
+      "cancelled": "Booking cancelled",
+      "taken": "This booking cannot be confirmed: its dates are taken.",
+      "takenHint": "Change the dates, or cancel the other booking first."
+    },
+    "filters": {
+      "whichStays": "Which stays",
+      "guest": "Guest",
+      "guestPlaceholder": "Name or email",
+      "property": "Property",
+      "allProperties": "All properties",
+      "archived": "Archived",
+      "status": "Status",
+      "anyStatus": "Any status",
+      "source": "Source",
+      "anySource": "Any source",
+      "from": "From",
+      "to": "To",
+      "apply": "Apply filters",
+      "clear": "Clear filters",
+      "when": {
+        "upcoming": "Upcoming",
+        "past": "Past",
+        "all": "All"
+      }
+    },
+    "list": {
+      "title": "Bookings",
+      "description": "Every stay, across your properties.",
+      "new": "New booking",
+      "pages": "Pages",
+      "previous": "Previous",
+      "next": "Next",
+      "pageOf": "Page {page} of {pages}",
+      "badFilters": "These filters don't work together",
+      "noMatch": "No bookings match these filters",
+      "noPast": "No past stays yet",
+      "noUpcoming": "No upcoming stays",
+      "none": "No bookings yet",
+      "tryFewer": "Try fewer filters, or look at all stays.",
+      "showUp": "Bookings you add show up here.",
+      "showAll": "Show all stays",
+      "count": "{count, plural, one {# booking} other {# bookings}}",
+      "sorted": {
+        "ascending": ", sorted ascending",
+        "descending": ", sorted descending"
+      },
+      "columns": {
+        "dates": "Dates",
+        "guest": "Guest",
+        "property": "Property",
+        "status": "Status",
+        "source": "Source",
+        "google": "Google",
+        "total": "Total"
+      }
+    },
+    "detail": {
+      "title": "Booking",
+      "statusLabel": "Status:",
+      "notHolding": " (does not hold the dates yet)",
+      "lastSynced": "Last synced {time} (UTC)",
+      "seeProblems": "See sync problems",
+      "stay": "Stay",
+      "property": "Property",
+      "checkIn": "Check-in",
+      "checkOut": "Check-out",
+      "nights": "Nights",
+      "guests": "Guests",
+      "source": "Source",
+      "guest": "Guest",
+      "erased": "This guest's personal data was erased.",
+      "name": "Name",
+      "email": "Email",
+      "phone": "Phone",
+      "aboutGuest": "All about this guest",
+      "price": "Price",
+      "nightsTimesRate": "{nights} × {rate}",
+      "cleaningFee": "Cleaning fee",
+      "total": "Total",
+      "manualTotal": "The total was set by hand.",
+      "manualTotalDiffers": "The total was set by hand; the rates would give {amount}.",
+      "notes": "Notes",
+      "noNotes": "No notes."
+    },
+    "new": {
+      "title": "New booking",
+      "noProperties": "No properties yet",
+      "noPropertiesHint": "Add a property before taking bookings for it.",
+      "addProperty": "Add a property"
+    },
+    "edit": {
+      "title": "Edit booking",
+      "titleFor": "Edit booking: {name}"
+    },
+    "guestPicker": {
+      "search": "Search by name or email",
+      "searchFailed": "Guests could not be searched.",
+      "noMatch": "No matching guest.",
+      "newGuest": "New guest",
+      "addFailed": "The guest could not be added.",
+      "name": "Name",
+      "email": "Email",
+      "phone": "Phone",
+      "adding": "Adding…",
+      "add": "Add guest"
+    }
+  },
+  "guests": {
+    "purgedName": "Deleted guest",
+    "title": "Guest",
+    "erasedShort": "Personal data erased.",
+    "contact": "Contact",
+    "erasedOn": "Erased on {date}. Only the anonymised bookings remain.",
+    "email": "Email",
+    "phone": "Phone",
+    "notes": "Notes",
+    "stays": "Stays",
+    "staysCount": "{count, plural, one {# booking, newest first.} other {# bookings, newest first.}}",
+    "bookingsOf": "Bookings of {name}",
+    "noBookings": "No bookings",
+    "noStays": "This guest has no stays yet.",
+    "columns": {
+      "stay": "Stay",
+      "property": "Property",
+      "status": "Status",
+      "total": "Total"
+    },
+    "erase": {
+      "trigger": "Erase personal data",
+      "title": "Erase {name}'s personal data?",
+      "description": "This cannot be undone. The name is replaced with “{purgedName}”, and the email address, phone number and notes are removed, as are the notes of their bookings. The bookings themselves remain, anonymised, because they are accounting records.",
+      "confirm": "Erase permanently",
+      "keep": "Keep data",
+      "done": "Personal data erased"
+    }
   }
 }

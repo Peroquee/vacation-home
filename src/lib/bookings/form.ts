@@ -9,7 +9,6 @@
 import type { CalendarBlock, CalendarBooking } from "@/lib/availability/calendar";
 import { type Conflict, findConflicts } from "@/lib/availability/rules";
 import { addDays, daysBetween, isCalendarDate } from "@/lib/calendar-date";
-import { formatDate, formatDateRange } from "@/lib/format";
 
 import { calculateTotalMinor } from "./pricing";
 import { stayProblem } from "./schema";
@@ -87,19 +86,9 @@ export function stayConflicts(
   );
 }
 
-/** "Booked by Ada Lovelace, Jul 14 – 18, 2026" / "Blocked: renovation, …". */
-export function describeConflict(
-  conflict: Conflict,
-  guestNames: ReadonlyMap<string, string> = new Map(),
-): string {
-  const when = formatDateRange(conflict.start, conflict.end);
-  if (conflict.kind === "booking") {
-    const guest = guestNames.get(conflict.id);
-    return guest ? `Booked by ${guest}, ${when}` : `Booked, ${when}`;
-  }
-  const why = conflict.reason ?? (conflict.origin === "google" ? "Google Calendar" : null);
-  return why ? `Blocked (${why}), ${when}` : `Blocked, ${when}`;
-}
+// The words for a conflict and a fix: src/components/use-conflict-text.ts.
+
+export type TurnoverFix = { move: "checkIn" | "checkOut"; to: string };
 
 /**
  * When a stay misses a changeover by one night, how to fix it. Check-out is
@@ -111,20 +100,17 @@ export function describeConflict(
 export function turnoverFix(
   stay: { checkIn: string; checkOut: string },
   conflict: Conflict,
-): { move: "checkIn" | "checkOut"; to: string; message: string } | null {
-  const day = (date: string) => formatDate(date, { style: "long" });
+): TurnoverFix | null {
   if (conflict.start < stay.checkIn && conflict.end === addDays(stay.checkIn, 1)) {
     return {
       move: "checkIn",
       to: conflict.end,
-      message: `Arrive on ${day(conflict.end)} instead: guests can arrive on the day the previous stay checks out, but not the day before.`,
     };
   }
   if (conflict.end > stay.checkOut && conflict.start === addDays(stay.checkOut, -1)) {
     return {
       move: "checkOut",
       to: conflict.start,
-      message: `Leave on ${day(conflict.start)} instead: a stay can check out on the day the next one checks in, but not the day after.`,
     };
   }
   return null;

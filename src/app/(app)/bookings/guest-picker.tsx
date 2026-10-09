@@ -1,6 +1,7 @@
 "use client";
 
 import { UserPlus } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { useEffect, useId, useState } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -31,7 +32,8 @@ async function searchGuests(query: string, signal: AbortSignal): Promise<GuestOp
   const params = new URLSearchParams({ limit: "10" });
   if (query) params.set("q", query);
   const response = await fetch(`/api/guests?${params}`, { signal });
-  if (!response.ok) throw new Error(`The server answered ${response.status}.`);
+  // Only whether it failed is shown.
+  if (!response.ok) throw new Error(String(response.status));
   const guests: GuestOption[] = await response.json();
   return guests.map(({ id, name, email }) => ({ id, name, email }));
 }
@@ -52,6 +54,7 @@ export function GuestPicker({
   onChange: (guest: GuestOption | null) => void;
   invalid?: boolean;
 }) {
+  const t = useTranslations("bookings.guestPicker");
   const [query, setQuery] = useState(value?.name ?? "");
   const [options, setOptions] = useState<GuestOption[]>(value ? [value] : []);
   const [searchFailed, setSearchFailed] = useState(false);
@@ -108,14 +111,12 @@ export function GuestPicker({
         <ComboboxInput
           id={id}
           className="w-full"
-          placeholder="Search by name or email"
+          placeholder={t("search")}
           aria-invalid={invalid || undefined}
           showClear={value !== null}
         />
         <ComboboxContent>
-          <ComboboxEmpty>
-            {searchFailed ? "Guests could not be searched." : "No matching guest."}
-          </ComboboxEmpty>
+          <ComboboxEmpty>{searchFailed ? t("searchFailed") : t("noMatch")}</ComboboxEmpty>
           <ComboboxList>
             {(guest: GuestOption) => (
               <ComboboxItem key={guest.id} value={guest}>
@@ -130,7 +131,7 @@ export function GuestPicker({
       </Combobox>
       <Button type="button" variant="outline" onClick={() => setCreating(true)}>
         <UserPlus data-icon="inline-start" aria-hidden />
-        New guest
+        {t("newGuest")}
       </Button>
     </div>
   );
@@ -146,6 +147,9 @@ function NewGuestForm({
   onCancel: () => void;
   onCreated: (guest: GuestOption) => void;
 }) {
+  const t = useTranslations("bookings.guestPicker");
+  const tForms = useTranslations("forms");
+  const tCommon = useTranslations("common");
   const prefix = useId();
   const [values, setValues] = useState({ name: initialName, email: "", phone: "" });
   const [errors, setErrors] = useState<FieldErrors>({});
@@ -167,25 +171,27 @@ function NewGuestForm({
         return;
       }
       if (!response.ok) {
-        throw new Error(body?.error?.message ?? `The server answered ${response.status}.`);
+        throw new Error(
+          body?.error?.message ?? tCommon("serverAnswered", { status: response.status }),
+        );
       }
       onCreated({ id: body.id, name: body.name, email: body.email });
     } catch (error) {
-      setFailure(error instanceof Error ? error.message : "The guest could not be added.");
+      setFailure(error instanceof Error ? error.message : t("addFailed"));
     } finally {
       setPending(false);
     }
   }
 
   const fields = [
-    { key: "name", label: "Name", autoComplete: "name", type: "text" },
-    { key: "email", label: "Email", autoComplete: "email", type: "email" },
-    { key: "phone", label: "Phone", autoComplete: "tel", type: "tel" },
+    { key: "name", label: t("name"), autoComplete: "name", type: "text" },
+    { key: "email", label: t("email"), autoComplete: "email", type: "email" },
+    { key: "phone", label: t("phone"), autoComplete: "tel", type: "tel" },
   ] as const;
 
   return (
     <FieldSet className="rounded-lg border p-3">
-      <FieldLegend variant="label">New guest</FieldLegend>
+      <FieldLegend variant="label">{t("newGuest")}</FieldLegend>
       <FieldGroup className="gap-3">
         {fields.map(({ key, label, autoComplete, type }) => {
           const messages = errors[key];
@@ -209,7 +215,9 @@ function NewGuestForm({
                 }}
               />
               <FieldError
-                errors={messages?.map((message) => ({ message: `${label} ${message}` }))}
+                errors={messages?.map((message) => ({
+                  message: tForms("fieldError", { label, message }),
+                }))}
               />
             </Field>
           );
@@ -217,10 +225,10 @@ function NewGuestForm({
         {failure ? <FieldError>{failure}</FieldError> : null}
         <div className="flex gap-2">
           <Button type="button" onClick={create} disabled={pending} aria-busy={pending}>
-            {pending ? "Adding…" : "Add guest"}
+            {pending ? t("adding") : t("add")}
           </Button>
           <Button type="button" variant="ghost" onClick={onCancel} disabled={pending}>
-            Cancel
+            {tCommon("cancel")}
           </Button>
         </div>
       </FieldGroup>

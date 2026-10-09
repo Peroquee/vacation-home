@@ -2,9 +2,11 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { useId, useState } from "react";
 
 import { toastError, toastSuccess } from "@/components/toast";
+import { useConflictText } from "@/components/use-conflict-text";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Field, FieldDescription, FieldError, FieldGroup, FieldLabel } from "@/components/ui/field";
@@ -13,19 +15,18 @@ import { NativeSelect, NativeSelectOption } from "@/components/ui/native-select"
 import { Textarea } from "@/components/ui/textarea";
 import {
   type Conflict,
-  describeConflict,
   previewTotalMinor,
   type PropertyChoice,
   stayNights,
   turnoverFix,
 } from "@/lib/bookings/form";
-import { SOURCE_LABELS, STATUS_LABELS } from "@/lib/bookings/labels";
+import { SOURCE_KEYS } from "@/lib/bookings/labels";
 import { BOOKING_SOURCES } from "@/lib/bookings/schema";
 import type { BookingDto } from "@/lib/bookings/service";
 import { addDays, isCalendarDate } from "@/lib/calendar-date";
-import { formatMoney } from "@/lib/format";
 import { inputToMinor, minorToInput } from "@/lib/properties/form";
 import { useAmountHint } from "@/i18n/use-amount-hint";
+import { useFormat } from "@/i18n/use-format";
 
 import { type GuestOption, GuestPicker } from "./guest-picker";
 import { useStayAvailability } from "./use-stay-availability";
@@ -110,6 +111,10 @@ export function BookingForm({
 }) {
   const router = useRouter();
   const amountHint = useAmountHint();
+  const t = useTranslations("bookings");
+  const tForms = useTranslations("forms");
+  const tCommon = useTranslations("common");
+  const format = useFormat();
   const prefix = useId();
   const [values, setValues] = useState(() => initialValues(properties, booking, preset));
   const [errors, setErrors] = useState<FieldErrors>({});
@@ -176,10 +181,10 @@ export function BookingForm({
     setServerConflicts(null);
 
     const local: FieldErrors = {};
-    if (!values.propertyId) local.propertyId = ["is required"];
-    if (!values.guest) local.guestId = ["is required: pick a guest or add a new one"];
-    if (!values.checkIn) local.checkIn = ["is required"];
-    if (!values.checkOut) local.checkOut = ["is required"];
+    if (!values.propertyId) local.propertyId = [tForms("required")];
+    if (!values.guest) local.guestId = [tForms("requiredGuest")];
+    if (!values.checkIn) local.checkIn = [tForms("required")];
+    if (!values.checkOut) local.checkOut = [tForms("required")];
     const amountError = currency ? amountHint(currency) : "";
     if (currency && nightlyRateMinor === null) local.nightlyRateMinor = [amountError];
     if (currency && cleaningFeeMinor === null) local.cleaningFeeMinor = [amountError];
@@ -187,7 +192,7 @@ export function BookingForm({
       currency && values.overrideTotal ? inputToMinor(values.total, currency) : null;
     if (values.overrideTotal && totalMinor === null) local.totalAmountMinor = [amountError];
     const guestCount = Number(values.guestCount);
-    if (!Number.isInteger(guestCount)) local.guestCount = ["must be a whole number"];
+    if (!Number.isInteger(guestCount)) local.guestCount = [tForms("wholeNumber")];
     if (Object.keys(local).length > 0) return showErrors(local);
 
     const body = {
@@ -222,18 +227,20 @@ export function BookingForm({
       }
       if (response.status === 409) {
         setServerConflicts(result?.error?.conflicts ?? []);
-        setFormError(result?.error?.message ?? "Those dates are no longer available.");
+        setFormError(result?.error?.message ?? t("form.unavailable"));
         document.getElementById(fieldId("checkIn"))?.focus();
         return;
       }
       if (!response.ok) {
-        throw new Error(result?.error?.message ?? `The server answered ${response.status}.`);
+        throw new Error(
+          result?.error?.message ?? tCommon("serverAnswered", { status: response.status }),
+        );
       }
-      toastSuccess(booking ? "Booking saved" : "Booking added");
+      toastSuccess(booking ? t("form.saved") : t("form.added"));
       router.push(`/bookings/${booking?.id ?? result.id}`);
       router.refresh();
     } catch (error) {
-      toastError(error, "Could not save the booking");
+      toastError(error, t("form.saveFailed"));
     } finally {
       setPending(false);
     }
@@ -263,7 +270,9 @@ export function BookingForm({
         {description ? <FieldDescription>{description}</FieldDescription> : null}
         <FieldError
           id={`${fieldId(key)}-error`}
-          errors={messages?.map((message) => ({ message: `${label} ${message}` }))}
+          errors={messages?.map((message) => ({
+            message: tForms("fieldError", { label, message }),
+          }))}
         />
       </Field>
     );
@@ -278,7 +287,7 @@ export function BookingForm({
   return (
     <form onSubmit={submit} noValidate className="max-w-2xl">
       <FieldGroup>
-        {field("propertyId", "Property", (props) => (
+        {field("propertyId", t("form.property"), (props) => (
           <NativeSelect
             {...props}
             className="w-full"
@@ -289,7 +298,7 @@ export function BookingForm({
           >
             {!values.propertyId ? (
               <NativeSelectOption value="" disabled>
-                Choose a property
+                {t("form.chooseProperty")}
               </NativeSelectOption>
             ) : null}
             {properties.map((p) => (
@@ -300,7 +309,7 @@ export function BookingForm({
           </NativeSelect>
         ))}
 
-        {field("guestId", "Guest", (props) => (
+        {field("guestId", t("form.guest"), (props) => (
           <GuestPicker
             id={props.id}
             invalid={Boolean(props["aria-invalid"])}
@@ -310,7 +319,7 @@ export function BookingForm({
         ))}
 
         <div className="grid gap-5 sm:grid-cols-2">
-          {field("checkIn", "Check-in", (props) => (
+          {field("checkIn", t("form.checkIn"), (props) => (
             <Input
               {...props}
               type="date"
@@ -325,7 +334,7 @@ export function BookingForm({
               }}
             />
           ))}
-          {field("checkOut", "Check-out", (props) => (
+          {field("checkOut", t("form.checkOut"), (props) => (
             <Input
               {...props}
               type="date"
@@ -348,7 +357,7 @@ export function BookingForm({
         />
 
         <div className="grid gap-5 sm:grid-cols-3">
-          {field("guestCount", "Guests", (props) => (
+          {field("guestCount", t("form.guests"), (props) => (
             <Input
               {...props}
               type="number"
@@ -359,7 +368,7 @@ export function BookingForm({
               onChange={(event) => set("guestCount", event.target.value)}
             />
           ))}
-          {field("status", "Status", (props) => (
+          {field("status", t("form.statusLabel"), (props) => (
             <NativeSelect
               {...props}
               className="w-full"
@@ -368,12 +377,12 @@ export function BookingForm({
             >
               {statusOptions.map((status) => (
                 <NativeSelectOption key={status} value={status}>
-                  {STATUS_LABELS[status]}
+                  {t(`status.${status}`)}
                 </NativeSelectOption>
               ))}
             </NativeSelect>
           ))}
-          {field("source", "Source", (props) => (
+          {field("source", t("form.sourceLabel"), (props) => (
             <NativeSelect
               {...props}
               className="w-full"
@@ -382,7 +391,7 @@ export function BookingForm({
             >
               {BOOKING_SOURCES.map((source) => (
                 <NativeSelectOption key={source} value={source}>
-                  {SOURCE_LABELS[source]}
+                  {t(`source.${SOURCE_KEYS[source]}`)}
                 </NativeSelectOption>
               ))}
             </NativeSelect>
@@ -392,7 +401,7 @@ export function BookingForm({
         <div className="grid gap-5 sm:grid-cols-2">
           {field(
             "nightlyRateMinor",
-            "Nightly rate",
+            t("form.nightlyRate"),
             (props) => (
               <Input
                 {...props}
@@ -404,11 +413,11 @@ export function BookingForm({
                 }}
               />
             ),
-            currency ? `In ${currency}.` : "Choose a property first.",
+            currency ? tForms("inCurrency", { currency }) : tForms("choosePropertyFirst"),
           )}
           {field(
             "cleaningFeeMinor",
-            "Cleaning fee",
+            t("form.cleaningFee"),
             (props) => (
               <Input
                 {...props}
@@ -420,7 +429,7 @@ export function BookingForm({
                 }}
               />
             ),
-            currency ? `In ${currency}.` : undefined,
+            currency ? tForms("inCurrency", { currency }) : undefined,
           )}
         </div>
 
@@ -428,22 +437,20 @@ export function BookingForm({
           <p className="flex items-baseline justify-between gap-4" aria-live="polite">
             <span className="text-muted-foreground text-sm">
               {nights === null
-                ? "Total"
-                : `${nights} ${nights === 1 ? "night" : "nights"}${
-                    currency && nightlyRateMinor !== null
-                      ? ` × ${formatMoney(nightlyRateMinor, currency)}`
-                      : ""
-                  }${
-                    currency && cleaningFeeMinor
-                      ? ` + ${formatMoney(cleaningFeeMinor, currency)} cleaning`
-                      : ""
-                  }`}
+                ? t("form.total")
+                : t("form.nights", { count: nights }) +
+                  (currency && nightlyRateMinor !== null
+                    ? t("form.times", { rate: format.money(nightlyRateMinor, currency) })
+                    : "") +
+                  (currency && cleaningFeeMinor
+                    ? t("form.plusCleaning", { fee: format.money(cleaningFeeMinor, currency) })
+                    : "")}
             </span>
             <span className="text-lg font-medium tabular-nums">
               {currency && values.overrideTotal && inputToMinor(values.total, currency) !== null
-                ? formatMoney(inputToMinor(values.total, currency)!, currency)
+                ? format.money(inputToMinor(values.total, currency)!, currency)
                 : currency && calculated !== null
-                  ? formatMoney(calculated, currency)
+                  ? format.money(calculated, currency)
                   : "–"}
             </span>
           </p>
@@ -459,12 +466,12 @@ export function BookingForm({
                 }
               }}
             />
-            <FieldLabel htmlFor={fieldId("overrideTotal")}>Set the total by hand</FieldLabel>
+            <FieldLabel htmlFor={fieldId("overrideTotal")}>{t("form.overrideTotal")}</FieldLabel>
           </Field>
           {values.overrideTotal
             ? field(
                 "totalAmountMinor",
-                "Total",
+                t("form.total"),
                 (props) => (
                   <Input
                     {...props}
@@ -473,12 +480,12 @@ export function BookingForm({
                     onChange={(event) => set("total", event.target.value)}
                   />
                 ),
-                "Stays fixed when the dates or rates change.",
+                t("form.totalFixed"),
               )
             : null}
         </div>
 
-        {field("notes", "Notes", (props) => (
+        {field("notes", t("form.notes"), (props) => (
           <Textarea
             {...props}
             value={values.notes}
@@ -491,10 +498,10 @@ export function BookingForm({
 
         <div className="flex gap-2">
           <Button type="submit" disabled={pending} aria-busy={pending}>
-            {pending ? "Saving…" : booking ? "Save booking" : "Add booking"}
+            {pending ? tCommon("saving") : booking ? t("form.save") : t("form.add")}
           </Button>
           <Button type="button" variant="outline" disabled={pending} onClick={() => router.back()}>
-            Cancel
+            {tCommon("cancel")}
           </Button>
         </div>
       </FieldGroup>
@@ -523,6 +530,8 @@ function AvailabilityNotice({
   /** Applies a suggested changeover date. */
   onFix: (field: "checkIn" | "checkOut", date: string) => void;
 }) {
+  const t = useTranslations("bookings.form");
+  const text = useConflictText();
   if (state === "idle" || nights === null) return null;
   if (state === "checked" && conflicts.length > 0) {
     return (
@@ -534,20 +543,16 @@ function AvailabilityNotice({
             : "rounded-lg border p-3 text-sm"
         }
       >
-        <p className="font-medium">
-          {blocking
-            ? "These dates are not available."
-            : "These dates overlap. An inquiry can be saved, but not confirmed."}
-        </p>
+        <p className="font-medium">{blocking ? t("notAvailable") : t("overlap")}</p>
         <ul className="mt-1 list-disc pl-5">
           {conflicts.map((conflict) => (
             <li key={`${conflict.kind}-${conflict.id}`}>
               {conflict.kind === "booking" && conflict.id !== ignoreBookingId ? (
                 <Link href={`/bookings/${conflict.id}`} target="_blank" className="underline">
-                  {describeConflict(conflict, guestNames)}
+                  {text.describe(conflict, guestNames)}
                 </Link>
               ) : (
-                describeConflict(conflict, guestNames)
+                text.describe(conflict, guestNames)
               )}
             </li>
           ))}
@@ -559,14 +564,14 @@ function AvailabilityNotice({
               key={`fix-${conflict.kind}-${conflict.id}`}
               className="mt-2 flex flex-wrap items-center gap-2"
             >
-              <p>{fix.message}</p>
+              <p>{text.fix(fix)}</p>
               <Button
                 type="button"
                 size="sm"
                 variant="outline"
                 onClick={() => onFix(fix.move, fix.to)}
               >
-                Use {fix.move === "checkIn" ? "this check-in" : "this check-out"}
+                {fix.move === "checkIn" ? t("useCheckIn") : t("useCheckOut")}
               </Button>
             </div>
           ) : null;
@@ -577,10 +582,10 @@ function AvailabilityNotice({
   return (
     <p role="status" className="text-muted-foreground text-sm">
       {state === "checking"
-        ? "Checking availability…"
+        ? t("checking")
         : state === "failed"
-          ? "Availability could not be checked. It is checked again when you save."
-          : "These dates are available."}
+          ? t("checkFailed")
+          : t("available")}
     </p>
   );
 }

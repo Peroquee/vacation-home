@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { getTranslations } from "next-intl/server";
 
 import { PageHeader } from "@/components/page-header";
 import { EmptyState } from "@/components/states";
@@ -10,7 +11,10 @@ import { listProperties } from "@/lib/properties/service";
 
 import { BookingForm } from "../booking-form";
 
-export const metadata: Metadata = { title: "New booking" };
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations("bookings.new");
+  return { title: t("title") };
+}
 
 const first = (value: string | string[] | undefined) => (Array.isArray(value) ? value[0] : value);
 
@@ -20,19 +24,20 @@ const first = (value: string | string[] | undefined) => (Array.isArray(value) ? 
  */
 export default async function NewBookingPage({ searchParams }: PageProps<"/bookings/new">) {
   const params = await searchParams;
+  const t = await getTranslations("bookings.new");
   const properties = (await listProperties()).map(toPropertyChoice);
   const date = (value: string | undefined) => (value && isCalendarDate(value) ? value : undefined);
 
   return (
     <>
-      <PageHeader title="New booking" />
+      <PageHeader title={t("title")} />
       {properties.length === 0 ? (
         <EmptyState
-          title="No properties yet"
-          description="Add a property before taking bookings for it."
+          title={t("noProperties")}
+          description={t("noPropertiesHint")}
           action={
             <Link href="/settings" className={buttonVariants()}>
-              Add a property
+              {t("addProperty")}
             </Link>
           }
         />

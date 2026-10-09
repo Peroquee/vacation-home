@@ -1,15 +1,13 @@
-/** How booking statuses and sources read on screen. Client-safe. */
-import type { ApiBookingSource, BOOKING_STATUSES } from "./schema";
+/**
+ * The message keys booking statuses and sources read as on screen
+ * (`bookings.status.*`, `bookings.source.*`). Client-safe. A key cannot hold
+ * a dot, hence "bookingCom".
+ */
+import type { ApiBookingSource } from "./schema";
 
-export const STATUS_LABELS: Record<(typeof BOOKING_STATUSES)[number], string> = {
-  inquiry: "Inquiry",
-  confirmed: "Confirmed",
-  cancelled: "Cancelled",
-};
-
-export const SOURCE_LABELS: Record<ApiBookingSource, string> = {
-  direct: "Direct",
-  airbnb: "Airbnb",
-  "booking.com": "Booking.com",
-  other: "Other",
-};
+export const SOURCE_KEYS = {
+  direct: "direct",
+  airbnb: "airbnb",
+  "booking.com": "bookingCom",
+  other: "other",
+} as const satisfies Record<ApiBookingSource, string>;

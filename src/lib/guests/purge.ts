@@ -31,8 +31,9 @@ import { recordAudit } from "@/lib/audit";
 import { clearWindows } from "@/lib/availability/cache";
 import { db } from "@/lib/db";
 
-/** The name a purged guest is shown with. Not personal data by design. */
-export const PURGED_GUEST_NAME = "Deleted guest";
+import { PURGED_GUEST_NAME } from "./display";
+
+export { PURGED_GUEST_NAME };
 
 export type PurgeResult =
   | { outcome: "anonymised"; guest: Guest; bookings: number }

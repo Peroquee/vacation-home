@@ -1,6 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { toastSuccess } from "@/components/toast";
@@ -14,14 +15,16 @@ import { Button } from "@/components/ui/button";
  */
 export function EraseGuestButton({ id, name }: { id: string; name: string }) {
   const router = useRouter();
+  const t = useTranslations("guests");
+  const tCommon = useTranslations("common");
 
   return (
     <ConfirmDialog
-      trigger={<Button variant="destructive">Erase personal data</Button>}
-      title={`Erase ${name}'s personal data?`}
-      description="This cannot be undone. The name is replaced with “Deleted guest”, and the email address, phone number and notes are removed, as are the notes of their bookings. The bookings themselves remain, anonymised, because they are accounting records."
-      confirmLabel="Erase permanently"
-      cancelLabel="Keep data"
+      trigger={<Button variant="destructive">{t("erase.trigger")}</Button>}
+      title={t("erase.title", { name })}
+      description={t("erase.description", { purgedName: t("purgedName") })}
+      confirmLabel={t("erase.confirm")}
+      cancelLabel={t("erase.keep")}
       destructive
       onConfirm={async () => {
         const response = await fetch(`/api/guests/${id}/purge`, {
@@ -31,9 +34,11 @@ export function EraseGuestButton({ id, name }: { id: string; name: string }) {
         });
         const body = await response.json().catch(() => null);
         if (!response.ok) {
-          throw new Error(body?.error?.message ?? `The server answered ${response.status}.`);
+          throw new Error(
+            body?.error?.message ?? tCommon("serverAnswered", { status: response.status }),
+          );
         }
-        toastSuccess("Personal data erased");
+        toastSuccess(t("erase.done"));
         if (body?.outcome === "deleted") router.push("/bookings");
         router.refresh();
       }}
