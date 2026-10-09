@@ -197,6 +197,13 @@ const envSchema = z.object({
       ),
   ).default([]),
 
+  /**
+   * Where receipts on transactions are kept (GitLab #82): files named by
+   * their SHA-256. Default ./data/receipts, relative to where the app runs;
+   * production mounts the `receipts` volume at /data/receipts.
+   */
+  RECEIPTS_DIR: optionalExact(z.string().min(1)).default("./data/receipts"),
+
   /** Minimum level written by the logger in src/lib/logger.ts. */
   LOG_LEVEL: optional(z.enum(["trace", "debug", "info", "warn", "error", "fatal"])).default("info"),
 

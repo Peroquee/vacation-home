@@ -106,8 +106,9 @@ A guest's page shows their contact details and all their stays. **Erase
 personal data** carries out a request to be forgotten (DSGVO Art. 17): the
 name becomes "Deleted guest", and the email, phone and notes go, as do the
 notes of their bookings. The bookings themselves remain, anonymised, because
-they are accounting records. This cannot be undone. How erased guests age
-out of backups: [backup-and-restore.md](backup-and-restore.md).
+they are accounting records. This cannot be undone. Receipts on transactions are not touched: they are
+accounting records. How erased guests age out of backups:
+[backup-and-restore.md](backup-and-restore.md).
 
 ## Google Calendar sync
 
@@ -182,6 +183,19 @@ running totals. Pick the month, property, type or category above it.
   charts. The default categories can be renamed, recoloured and hidden but
   not deleted. Deleting a category in use moves its transactions to another
   first.
+
+**Receipts.** Open a saved transaction to add its receipts: PDFs or photos
+(JPEG, PNG, WebP, HEIC), up to 10 MB each and 5 per transaction. Photos
+show as small previews; a click opens a photo or downloads a PDF. Location
+data is removed from JPEG photos on upload; HEIC and WebP photos (the
+iPhone's own format, for example) keep theirs, so export those as JPEG
+first if that matters. A paperclip in the ledger marks transactions with
+receipts.
+
+Receipts are accounting records: German tax law requires keeping them **8
+years** (§147 AO). Erasing a guest's personal data leaves them alone, and the
+app never deletes them by age; deleting the transaction or the receipt does.
+They are backed up with the database ([backup-and-restore.md](backup-and-restore.md#7-receipts)).
 
 **CSV.** **Export CSV** saves what the ledger shows (its month and filters)
 for your accountant or a spreadsheet, in a plain format or one for German

@@ -24,6 +24,8 @@ import { useAmountHint } from "@/i18n/use-amount-hint";
 import { useFormat } from "@/i18n/use-format";
 import { guestDisplayName } from "@/lib/guests/display";
 import { cn } from "@/lib/utils";
+
+import { ReceiptsSection } from "./receipts-section";
 import { useApiText } from "@/i18n/use-api-text";
 
 export type LedgerProperty = { id: string; name: string; currency: string };
@@ -108,6 +110,7 @@ export function TransactionDialog({
             onDone={() => onOpenChange(false)}
           />
         ) : null}
+        {open && transaction ? <ReceiptsSection transactionId={transaction.id} /> : null}
       </DialogContent>
     </Dialog>
   );

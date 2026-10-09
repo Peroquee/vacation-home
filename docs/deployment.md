@@ -249,12 +249,15 @@ As `deploy`, in `/opt/vacation-home`:
 ```bash
 scripts/deploy/deploy.sh --dry-run                            # shows what a deploy would do, changing nothing
 scripts/deploy/deploy.sh                                      # builds the app (several minutes the first time), sets up the database, starts it all
-docker compose ps                                             # lists what runs: db, app, and caddy/backup if chosen; all "Up"
+docker compose ps                                             # lists what runs: db, app, and caddy, backup and receipts-backup if chosen; all "Up"
 curl -fsS http://127.0.0.1:3000/api/ready                     # check: prints {"status":"ready"}
 ```
 
 Open the app (`https://vacation.example.com`, or `http://localhost:3000`
 through the tunnel) and sign in with an allowed Google account.
+
+Receipts on transactions are kept in the `receipts` volume, which the
+`receipts-backup` service mirrors next to the database backups.
 
 Then set up the backups' storage and alerting: see
 [backup-and-restore.md](backup-and-restore.md), which works the same here.

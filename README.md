@@ -445,6 +445,31 @@ defines each one).
   platforms need it reachable from the internet
   ([docs/deployment.md](docs/deployment.md#sharing-availability-with-booking-platforms)).
 
+### Receipts
+
+| Method and path                          | Does                                                                        |
+| ---------------------------------------- | --------------------------------------------------------------------------- |
+| `GET /api/transactions/:id/attachments`  | The transaction's receipts                                                  |
+| `POST /api/transactions/:id/attachments` | Add one: multipart `file`, and for images an optional `thumbnail`           |
+| `GET /api/attachments/:id`               | The file: images inline (`?download=1` saves), PDF and HEIC always download |
+| `GET /api/attachments/:id/thumbnail`     | The small JPEG preview of an image                                          |
+| `DELETE /api/attachments/:id`            | Remove one (`204`)                                                          |
+
+- **Storage** ([`src/lib/finance/receipts.ts`](src/lib/finance/receipts.ts)):
+  files in `RECEIPTS_DIR` (the `receipts` volume in production), named by
+  their SHA-256, written atomically; the `transaction_attachments` table
+  says which transaction has which. Identical uploads share one file.
+- **Checks**: the type from the file's own bytes (PDF, JPEG, PNG, WebP,
+  HEIC), at most 10 MB and 5 per transaction, uploads rate-limited per user.
+  JPEGs lose their EXIF, XMP and IPTC segments (the GPS position) without
+  re-encoding ([`receipt-files.ts`](src/lib/finance/receipt-files.ts));
+  HEIC and WebP are stored as uploaded. Thumbnails are made in the browser.
+- **Serving**: only through these signed-in routes, never a public URL, with
+  `nosniff` and the API's strict CSP; documents always download.
+- **Deleting** a receipt or its transaction removes the rows; files nothing
+  uses go at once or with the daily cleanup. Guest erasure leaves receipts
+  alone (accounting records). Backups: [docs/backup-and-restore.md](docs/backup-and-restore.md#7-receipts).
+
 ### Financial report
 
 | Method and path              | Does                                                                      |
