@@ -126,7 +126,8 @@
   --destructive: oklch(0.577 0.245 27.325);
   --border: oklch(0.922 0 0);
   --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
+  /* The focus ring: at least 3:1 against the surfaces (4.7:1 here). */
+  --ring: oklch(0.556 0 0);
   /*
    * Chart series, in a fixed order that is never cycled: blue, orange, aqua,
    * yellow, magenta. Validated as a set for colour-vision deficiency and
@@ -177,7 +178,7 @@
   --destructive: oklch(0.704 0.191 22.216);
   --border: oklch(1 0 0 / 10%);
   --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
+  --ring: oklch(0.708 0 0);
   --chart-1: #3987e5;
   --chart-2: #d95926;
   --chart-3: #199e70;
@@ -194,7 +195,16 @@
 }
 @layer base {
   * {
-    @apply border-border outline-ring/50;
+    @apply border-border outline-ring;
+  }
+
+  /*
+   * A visible focus indicator on everything a keyboard reaches. Components
+   * that draw their own ring say `outline-none`, which wins over this.
+   */
+  :where(a, button, input, select, textarea, summary, [tabindex]):focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 2px;
   }
 
   html {
