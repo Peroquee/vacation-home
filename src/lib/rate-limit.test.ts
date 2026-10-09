@@ -19,6 +19,9 @@ describe("rateLimitKey", () => {
     expect(rateLimitKey("POST", "/api/google/webhook", { user: null, client: null })?.key).toBe(
       "google-webhook:everyone",
     );
+    expect(rateLimitKey("GET", "/api/ical/abc.ics", { user: null, client: "10.0.0.5" })?.key).toBe(
+      "ical-export:10.0.0.5",
+    );
   });
 
   it("leaves everything else unlimited", () => {
