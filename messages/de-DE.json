@@ -18,6 +18,11 @@
       "trigger": "Kontomenü von {name}",
       "signOut": "Abmelden",
       "language": "Sprache"
+    },
+    "syncAlert": {
+      "failing": "Die Synchronisierung mit Google Kalender schlägt fehl. Google ist möglicherweise nicht aktuell.",
+      "failingSince": "Die Synchronisierung mit Google Kalender schlägt seit {time} (UTC) fehl. Google ist möglicherweise nicht aktuell.",
+      "review": "Sync-Probleme ansehen"
     }
   },
   "states": {
@@ -183,5 +188,22 @@
     "required": "ist erforderlich",
     "inCurrency": "In {currency}.",
     "fieldError": "{label} {message}"
+  },
+  "app": {
+    "name": "Ferienvermietung",
+    "shortName": "Ferienvermietung",
+    "description": "Buchungskalender, Google-Kalender-Sync und Finanzen für Ferienunterkünfte."
+  },
+  "syncBadge": {
+    "synced": "Im Google Kalender",
+    "pending": "Wird synchronisiert",
+    "failed": "Sync fehlgeschlagen, neuer Versuch folgt",
+    "dead": "Sync gestoppt"
+  },
+  "statTile": {
+    "up": "Gestiegen",
+    "down": "Gesunken",
+    "flat": "Unverändert,",
+    "noComparison": "Keine früheren Zahlen zum Vergleich"
   }
 }

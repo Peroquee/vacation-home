@@ -27,7 +27,7 @@ describe("SyncAlertBanner", () => {
   it("shows when sync has been failing for over an hour, linking to the problems", async () => {
     await renderBanner();
     expect(screen.getByRole("status")).toHaveTextContent(
-      "Google Calendar sync has been failing since Oct 8, 2026, 6:00 AM (UTC).",
+      "Google Calendar sync has been failing since 8 Oct 2026, 06:00 (UTC).",
     );
     expect(screen.getByRole("link", { name: "Review sync problems" })).toHaveAttribute(
       "href",

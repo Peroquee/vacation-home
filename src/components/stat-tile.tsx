@@ -1,4 +1,5 @@
 import { ArrowDownRight, ArrowRight, ArrowUpRight } from "lucide-react";
+import { useTranslations } from "next-intl";
 
 import { Card, CardContent } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
@@ -14,7 +15,6 @@ export type StatDelta = {
 };
 
 const ARROWS = { up: ArrowUpRight, down: ArrowDownRight, flat: ArrowRight };
-const WORDS = { up: "Up", down: "Down", flat: "Unchanged," };
 
 /**
  * One headline figure: a label, the value, and optionally its change against
@@ -35,6 +35,7 @@ export function StatTile({
   note?: string;
   className?: string;
 }) {
+  const t = useTranslations("statTile");
   const Arrow = delta ? ARROWS[delta.direction] : null;
   return (
     <Card size="sm" className={className}>
@@ -52,12 +53,12 @@ export function StatTile({
             )}
           >
             <Arrow aria-hidden className="size-3.5" />
-            <span className="sr-only">{WORDS[delta.direction]} </span>
+            <span className="sr-only">{t(delta.direction)} </span>
             <span className="font-medium">{delta.text}</span>{" "}
             <span className="text-muted-foreground">{delta.against}</span>
           </p>
         ) : (
-          <p className="text-muted-foreground text-xs">{note ?? "No earlier figures to compare"}</p>
+          <p className="text-muted-foreground text-xs">{note ?? t("noComparison")}</p>
         )}
       </CardContent>
     </Card>

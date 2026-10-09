@@ -2,17 +2,16 @@ import type { Metadata } from "next";
 import { connection } from "next/server";
 
 import { NextIntlClientProvider } from "next-intl";
-import { getLocale } from "next-intl/server";
+import { getLocale, getTranslations } from "next-intl/server";
 
 import { Toaster } from "@/components/ui/sonner";
 
 import "./globals.css";
 
-export const metadata: Metadata = {
-  title: "Vacation Rental Manager",
-  description:
-    "Booking calendar, Google Calendar sync and finance tracking for vacation rental properties.",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations("app");
+  return { title: t("name"), description: t("description") };
+}
 
 export default async function RootLayout({ children }: LayoutProps<"/">) {
   // Every page renders per request, so each gets the fresh CSP nonce that

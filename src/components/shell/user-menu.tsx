@@ -19,6 +19,14 @@ import { signOutAction } from "@/lib/auth-actions";
 import { initials } from "@/lib/initials";
 import { type CurrentUser } from "@/lib/session";
 
+/**
+ * Remembers the language for a year on this browser; the server reads it on
+ * every request (src/i18n/request.ts), so a refresh re-renders in it.
+ */
+function rememberLocale(next: string) {
+  document.cookie = `${LOCALE_COOKIE}=${next}; path=/; max-age=31536000; samesite=lax`;
+}
+
 /** Signed-in user, with the language choice and a sign-out action. */
 export function UserMenu({ user }: { user: CurrentUser }) {
   const t = useTranslations("shell.userMenu");
@@ -26,9 +34,7 @@ export function UserMenu({ user }: { user: CurrentUser }) {
   const router = useRouter();
 
   function chooseLanguage(next: string) {
-    // Remembered for a year on this browser; the server reads it on every
-    // request (src/i18n/request.ts), so a refresh re-renders in the new language.
-    document.cookie = `${LOCALE_COOKIE}=${next}; path=/; max-age=31536000; samesite=lax`;
+    rememberLocale(next);
     router.refresh();
   }
 

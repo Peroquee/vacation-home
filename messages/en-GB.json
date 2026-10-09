@@ -18,6 +18,11 @@
       "trigger": "Account menu for {name}",
       "signOut": "Sign out",
       "language": "Language"
+    },
+    "syncAlert": {
+      "failing": "Google Calendar sync has been failing. Google may be out of date.",
+      "failingSince": "Google Calendar sync has been failing since {time} (UTC). Google may be out of date.",
+      "review": "Review sync problems"
     }
   },
   "states": {
@@ -183,5 +188,22 @@
     "required": "is required",
     "inCurrency": "In {currency}.",
     "fieldError": "{label} {message}"
+  },
+  "app": {
+    "name": "Vacation Rental Manager",
+    "shortName": "Vacation Rental",
+    "description": "Booking calendar, Google Calendar sync and finance tracking for vacation rental properties."
+  },
+  "syncBadge": {
+    "synced": "In Google Calendar",
+    "pending": "Syncing",
+    "failed": "Sync failed, retrying",
+    "dead": "Sync stopped"
+  },
+  "statTile": {
+    "up": "Up",
+    "down": "Down",
+    "flat": "Unchanged,",
+    "noComparison": "No earlier figures to compare"
   }
 }
