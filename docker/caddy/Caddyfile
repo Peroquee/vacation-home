@@ -1,0 +1,31 @@
+# The https front door for the app (docs/deployment.md, "Option A").
+#
+# APP_DOMAIN is a name under a domain you own, e.g. vacation.example.com,
+# that your LAN's DNS resolves to this host's LAN address. The certificate is
+# issued by Let's Encrypt through a DNS record (DNS-01), so the app stays
+# reachable from the LAN only.
+{
+	# For Let's Encrypt's notices about the certificate.
+	email {$ACME_EMAIL}
+}
+
+{$APP_DOMAIN} {
+	tls {
+		# Cloudflare; see docker/caddy/Dockerfile for other providers.
+		dns cloudflare {env.CLOUDFLARE_API_TOKEN}
+		# Check the challenge record on a public resolver, not the LAN's.
+		resolvers 1.1.1.1 9.9.9.9
+	}
+
+	encode zstd gzip
+
+	reverse_proxy app:3000 {
+		# While a deploy restarts the app, requests wait (up to a minute) for
+		# it to be ready again instead of failing.
+		lb_try_duration 60s
+		lb_try_interval 1s
+		health_uri /api/ready
+		health_interval 5s
+		health_timeout 3s
+	}
+}

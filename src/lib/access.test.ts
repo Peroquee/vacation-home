@@ -21,6 +21,13 @@ describe("decideAccess", () => {
     expect(isPublicPath("/api/authors")).toBe(false);
   });
 
+  it("lets the health checks through without a session, and nothing beside them", () => {
+    expect(decideAccess(at("/api/health"), false)).toEqual({ kind: "allow" });
+    expect(decideAccess(at("/api/ready"), false)).toEqual({ kind: "allow" });
+    expect(isPublicPath("/api/health/details")).toBe(false);
+    expect(isPublicPath("/api/readyz")).toBe(false);
+  });
+
   it("sends pages to sign-in, remembering where they were going", () => {
     expect(decideAccess(at("/bookings?status=confirmed"), false)).toEqual({
       kind: "sign-in",

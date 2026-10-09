@@ -1,0 +1,115 @@
+# Production on your own server (a Debian 12 VM on Proxmox): the database,
+# the app, its https front door, and the backups. Everything is set in .env,
+# next to this file; see docs/deployment.md for the whole procedure.
+#
+# .env sets COMPOSE_FILE=compose.prod.yml, so plain `docker compose ...`
+# commands in this folder use this file, not the development one.
+#
+#   docker compose --profile https --profile backup up -d   start everything
+#   docker compose ps                                       what is running
+#   docker compose logs -f app                              the app's log
+#
+# Deploys go through scripts/deploy/deploy.sh, which builds the image, runs
+# the migrations and swaps the app over.
+
+name: vacation-home
+
+services:
+  db:
+    image: postgres:16.15
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: vacation
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+      POSTGRES_DB: vacation_home
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    # No published port: only the other services reach the database.
+    healthcheck:
+      test: ["CMD-SHELL", 'pg_isready -h 127.0.0.1 -U "$$POSTGRES_USER" -d "$$POSTGRES_DB"']
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  # Applies pending database migrations, then exits. The deploy script runs
+  # it before starting a new app version.
+  # Also the place for maintenance commands, e.g. after a restore:
+  #   docker compose run --rm -v "$PWD/backups-restore:/app/backups-restore:ro" \
+  #     migrate npm run guests:repurge -- backups-restore/<file>
+  migrate:
+    image: vacation-home-tools:${APP_TAG:-current}
+    profiles: [tools]
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql://vacation:${POSTGRES_PASSWORD}@db:5432/vacation_home
+    depends_on:
+      db:
+        condition: service_healthy
+
+  app:
+    image: vacation-home:${APP_TAG:-current}
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      # The database is the `db` service, whatever .env says.
+      DATABASE_URL: postgresql://vacation:${POSTGRES_PASSWORD}@db:5432/vacation_home
+    ports:
+      # Reachable from this machine only: Caddy is the way in from the LAN,
+      # and this port is what an SSH tunnel uses (docs/deployment.md, option B).
+      - "127.0.0.1:${APP_LOCAL_PORT:-3000}:3000"
+    depends_on:
+      db:
+        condition: service_healthy
+    # The image's health check probes /api/health.
+
+  # The https front door: a Let's Encrypt certificate through DNS-01, then a
+  # reverse proxy to the app. Only with `--profile https` (option A).
+  caddy:
+    build: docker/caddy
+    image: vacation-home-caddy
+    profiles: [https]
+    restart: unless-stopped
+    environment:
+      APP_DOMAIN: ${APP_DOMAIN:-}
+      ACME_EMAIL: ${ACME_EMAIL:-}
+      CLOUDFLARE_API_TOKEN: ${CLOUDFLARE_API_TOKEN:-}
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      # Certificates and Caddy's state survive restarts and rebuilds.
+      - caddy-data:/data
+      - caddy-config:/config
+    depends_on:
+      - app
+
+  # Scheduled database backups to off-host storage; docs/backup-and-restore.md.
+  backup:
+    image: prodrigestivill/postgres-backup-local:16-debian-d257e5d
+    profiles: [backup]
+    restart: unless-stopped
+    user: postgres:postgres
+    environment:
+      POSTGRES_HOST: db
+      POSTGRES_DB: vacation_home
+      POSTGRES_USER: vacation
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_EXTRA_OPTS: -Z1 --no-owner --no-privileges
+      SCHEDULE: ${BACKUP_SCHEDULE:-@daily}
+      TZ: ${BACKUP_TZ:-Europe/Berlin}
+      BACKUP_ON_START: "TRUE"
+      BACKUP_KEEP_DAYS: ${BACKUP_KEEP_DAYS:-7}
+      BACKUP_KEEP_WEEKS: ${BACKUP_KEEP_WEEKS:-4}
+      BACKUP_KEEP_MONTHS: ${BACKUP_KEEP_MONTHS:-6}
+      WEBHOOK_POST_BACKUP_URL: ${BACKUP_HEARTBEAT_URL:-**None**}
+      WEBHOOK_ERROR_URL: ${BACKUP_FAILURE_URL:-**None**}
+    volumes:
+      - ${BACKUP_HOST_DIR:-./backups}:/backups
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  db-data:
+  caddy-data:
+  caddy-config:

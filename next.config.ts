@@ -9,7 +9,11 @@ import { resolveAppLocale } from "./src/lib/locale";
 // built app no longer reads. Throws with a message naming the variable.
 resolveAppLocale(process.env.NEXT_PUBLIC_APP_LOCALE);
 
-const nextConfig: NextConfig = {/* config options here */};
+const nextConfig: NextConfig = {
+  // A self-contained server in .next/standalone with only the files it
+  // needs, so the production image carries no dev dependencies (Dockerfile).
+  output: "standalone",
+};
 
 // Build-time error-tracker setup: names the release and uploads source maps,
 // so stack traces from the minified production bundles read as source. All
