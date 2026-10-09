@@ -19,7 +19,12 @@ const totals = (income: number, expenses: number, occupancy: number | null) => (
   netMinor: income - expenses,
   occupancyRate: occupancy,
 });
-const state = { from: "2026-07-01", until: "2026-07-31", compare: "year" as const };
+const state = {
+  preset: "custom" as const,
+  from: "2026-07-01",
+  until: "2026-07-31",
+  compare: "year" as const,
+};
 
 async function renderKpis() {
   render(await Kpis({ state, today: "2026-07-10" }));
