@@ -148,7 +148,11 @@ describe("CalendarView", () => {
     const fetchMock = vi.fn<typeof fetch>(async () => Response.json({}));
     vi.stubGlobal("fetch", fetchMock);
     const user = renderView();
-    await user.click(screen.getByRole("button", { name: /^Blocked: Painting/ }));
+    await user.click(
+      within(screen.getByRole("region", { name: "July 2026" })).getByRole("button", {
+        name: /^Blocked: Painting/,
+      }),
+    );
 
     const dialog = await screen.findByRole("dialog", { name: "Blocked dates" });
     const reason = within(dialog).getByLabelText("Reason");
@@ -173,7 +177,9 @@ describe("CalendarView", () => {
   it("shows a Google Calendar block read-only", async () => {
     const user = renderView();
     await user.click(
-      screen.getByRole("button", { name: /^Blocked: Family.*from Google Calendar/ }),
+      within(screen.getByRole("region", { name: "July 2026" })).getByRole("button", {
+        name: /^Blocked: Family.*from Google Calendar/,
+      }),
     );
 
     const dialog = await screen.findByRole("dialog", { name: "Blocked from Google Calendar" });
@@ -221,5 +227,103 @@ describe("CalendarView property selector", () => {
     ]);
     await user.click(screen.getByRole("button", { name: "Next month" }));
     expect(push).toHaveBeenCalledWith("/calendar?month=2026-08&property=all", { scroll: false });
+  });
+});
+
+describe("CalendarView agenda (phones)", () => {
+  function renderAgenda() {
+    render(
+      <CalendarView
+        month="2026-07"
+        weekStart={1}
+        today="2026-07-08"
+        calendars={[lake]}
+        propertyChoice="all"
+        userId="u1"
+        properties={[]}
+      />,
+    );
+    return userEvent.setup();
+  }
+
+  it("lists the month's stays and blocks, and opens a stay in a sheet", async () => {
+    const fetchMock = vi.fn<typeof fetch>(async () =>
+      Response.json({
+        id: "ada",
+        checkIn: "2026-07-10",
+        checkOut: "2026-07-15",
+        nights: 5,
+        status: "confirmed",
+        guestCount: 2,
+        totalAmountMinor: 90000,
+        currency: "EUR",
+        guest: { name: "Ada Lovelace" },
+        property: { name: "Lake House" },
+      }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+    const user = renderAgenda();
+
+    const agenda = screen.getByRole("region", { name: "Agenda" });
+    expect(within(agenda).getByRole("heading", { name: "July 2026" })).toBeInTheDocument();
+    const rows = within(agenda)
+      .getAllByRole("button")
+      .filter((b) => b.textContent !== "Show next month");
+    expect(rows.map((r) => r.textContent?.split(/\d/)[0])).toEqual([
+      "Ada LovelaceJul ",
+      "Blocked: PaintingJul ",
+      "Blocked: FamilyJul ",
+    ]);
+
+    await user.click(rows[0]!);
+    const sheet = await screen.findByRole("dialog", { name: "Ada Lovelace" });
+    expect(sheet).toHaveTextContent("€900.00");
+    expect(within(sheet).getByRole("link", { name: "Open booking" })).toHaveAttribute(
+      "href",
+      "/bookings/ada",
+    );
+    expect(fetchMock).toHaveBeenCalledWith("/api/bookings/ada", expect.anything());
+  });
+
+  it("opens a block from the agenda in its editor", async () => {
+    const user = renderAgenda();
+    const agenda = screen.getByRole("region", { name: "Agenda" });
+    await user.click(within(agenda).getByRole("button", { name: /^Blocked: Painting/ }));
+    expect(await screen.findByRole("dialog", { name: "Blocked dates" })).toBeInTheDocument();
+  });
+
+  it("loads the next month at the end of the list", async () => {
+    const fetchMock = vi.fn<typeof fetch>(async () =>
+      Response.json({
+        properties: [
+          {
+            ...lake,
+            bookings: [
+              {
+                id: "aug",
+                checkIn: "2026-08-03",
+                checkOut: "2026-08-06",
+                status: "inquiry",
+                source: "airbnb",
+                guest: { id: "g9", name: "Grace Hopper" },
+              },
+            ],
+            blocks: [],
+          },
+        ],
+      }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+    const user = renderAgenda();
+    await user.click(screen.getByRole("button", { name: "Show next month" }));
+
+    const agenda = screen.getByRole("region", { name: "Agenda" });
+    expect(await within(agenda).findByRole("heading", { name: "August 2026" })).toBeInTheDocument();
+    expect(
+      within(agenda).getByRole("button", { name: /^Grace Hopper.*inquiry/ }),
+    ).toBeInTheDocument();
+    expect(String(fetchMock.mock.calls[0]![0])).toBe(
+      "/api/availability?propertyIds=p1&from=2026-08-01&to=2026-09-01",
+    );
   });
 });
