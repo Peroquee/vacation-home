@@ -10,7 +10,7 @@ export default defineConfig({
     // Unit tests sit next to the code they cover. Playwright owns e2e/.
     include: ["src/**/*.test.{ts,tsx}"],
     // Database tests have their own suite: vitest.db.config.mts.
-    exclude: [...configDefaults.exclude, "src/**/*.db.test.ts"],
+    exclude: [...configDefaults.exclude, "src/**/*.db.test.ts", "scripts/**/*.db.test.ts"],
     // Node by default. Component tests opt into a DOM with a
     // `// @vitest-environment jsdom` comment at the top of the file.
     environment: "node",

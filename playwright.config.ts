@@ -27,9 +27,17 @@ export default defineConfig({
     {
       name: "chromium",
       dependencies: ["setup"],
+      // Measured on its own (GitLab #97): `--project=lighthouse`.
+      testIgnore: /lighthouse\.spec\.ts/,
       // Signed in as the e2e user; a test that needs to be signed out says so
       // with test.use({ storageState: { cookies: [], origins: [] } }).
       use: { ...devices["Desktop Chrome"], storageState: STORAGE_STATE },
+    },
+    {
+      name: "lighthouse",
+      dependencies: ["setup"],
+      testMatch: /lighthouse\.spec\.ts/,
+      use: { storageState: STORAGE_STATE },
     },
   ],
   webServer: {

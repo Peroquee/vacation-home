@@ -17,7 +17,7 @@ const TEST_DATABASE_URL = process.env.TEST_DATABASE_URL;
 export default defineConfig({
   resolve: { tsconfigPaths: true },
   test: {
-    include: ["src/**/*.db.test.ts"],
+    include: ["src/**/*.db.test.ts", "scripts/**/*.db.test.ts"],
     environment: "node",
     globalSetup: ["./vitest.db.setup.mts"],
     // Each file starts from a clean database; see the file for why.

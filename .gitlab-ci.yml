@@ -172,6 +172,22 @@ e2e:
       - playwright-report/
       - test-results/
 
+# Lighthouse on the calendar and the dashboard (GitLab #97): the same setup
+# as e2e (database, browser, a production build), measuring performance
+# under Lighthouse's mobile throttling. The goal is 90 or more; allowed to
+# fail while CI's own speed is being calibrated. Reports: lighthouse/.
+lighthouse:
+  extends: e2e
+  allow_failure: true
+  script:
+    - npx playwright install --with-deps chromium
+    - npm run test:lighthouse
+  artifacts:
+    when: always
+    expire_in: 30 days
+    paths:
+      - lighthouse/
+
 build:
   stage: build
   extends: .node
