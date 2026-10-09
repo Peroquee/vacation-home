@@ -101,7 +101,7 @@ describe("GoogleCalendarSection", () => {
       />,
     );
     expect(
-      screen.getByText(/Last synced Oct 8, 2026, 7:30 AM \(UTC\) · 2 waiting/),
+      screen.getByText(/Last synced 8 Oct 2026, 07:30 \(UTC\) · 2 waiting/),
     ).toBeInTheDocument();
     expect(screen.getByText(/1 failed: Calendar not found/)).toBeInTheDocument();
   });
