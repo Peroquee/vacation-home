@@ -11,7 +11,7 @@ import { type Conflict, findConflicts } from "@/lib/availability/rules";
 import { addDays, daysBetween, isCalendarDate } from "@/lib/calendar-date";
 
 import { calculateTotalMinor } from "./pricing";
-import { stayProblem } from "./schema";
+import { stayProblem } from "./values";
 
 export type { Conflict };
 

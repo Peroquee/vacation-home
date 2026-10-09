@@ -5,8 +5,9 @@
  */
 import { z } from "zod";
 
-/** The brand teal: the colour a property gets unless one is chosen. */
-export const DEFAULT_PROPERTY_COLOR = "#0f766e";
+import { DEFAULT_PROPERTY_COLOR } from "./values";
+
+export { DEFAULT_PROPERTY_COLOR };
 
 /** Upper bound for a default rate or fee, in minor units: 1,000,000.00. */
 const MAX_AMOUNT_MINOR = 100_000_000;

@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "next dev",
     "build": "node scripts/check-messages.mjs && next build",
+    "bundle:report": "node scripts/bundle-report.mjs",
     "start": "next start",
     "lint": "eslint && node scripts/check-messages.mjs",
     "lint:fix": "eslint --fix",

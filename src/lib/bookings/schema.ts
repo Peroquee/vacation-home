@@ -1,47 +1,14 @@
 /** Input validation for bookings, shared by the API and the booking form. */
 import { z } from "zod";
 
-import { daysBetween, isCalendarDate } from "@/lib/calendar-date";
+import { isCalendarDate } from "@/lib/calendar-date";
 import { csv, fromBeforeTo, page, pageSize } from "@/lib/query";
 
 import { MAX_AMOUNT_MINOR } from "./pricing";
 
-/** The longest stay accepted, in nights. */
-export const MAX_NIGHTS = 365;
+import { BOOKING_SORTS, BOOKING_SOURCES, BOOKING_STATUSES, stayProblem } from "./values";
 
-/**
- * What is wrong with a stay, or null: check-out must follow check-in, within
- * MAX_NIGHTS. The one statement of the rule - the schema applies it to a
- * request, the service to a stored stay merged with a one-sided change.
- */
-export function stayProblem(checkIn: string, checkOut: string): string | null {
-  const nights = daysBetween(checkIn, checkOut);
-  if (nights < 1) return "must be after check-in";
-  if (nights > MAX_NIGHTS) return `a stay can be at most ${MAX_NIGHTS} nights`;
-  return null;
-}
-
-export const BOOKING_STATUSES = ["inquiry", "confirmed", "cancelled"] as const;
-/** As the API speaks them; stored as the BookingSource enum. */
-export const BOOKING_SOURCES = ["direct", "airbnb", "booking.com", "other"] as const;
-export type ApiBookingSource = (typeof BOOKING_SOURCES)[number];
-
-/** List orders: a column, ascending, or with a leading "-", descending. */
-export const BOOKING_SORTS = [
-  "checkIn",
-  "-checkIn",
-  "guest",
-  "-guest",
-  "property",
-  "-property",
-  "status",
-  "-status",
-  "source",
-  "-source",
-  "total",
-  "-total",
-] as const;
-export type BookingSort = (typeof BOOKING_SORTS)[number];
+export * from "./values";
 
 const calendarDate = z.string().trim().refine(isCalendarDate, "must be a date as YYYY-MM-DD");
 

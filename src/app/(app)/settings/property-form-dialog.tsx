@@ -27,7 +27,7 @@ import {
   minorToInput,
   timeZoneOptions,
 } from "@/lib/properties/form";
-import { DEFAULT_PROPERTY_COLOR } from "@/lib/properties/schema";
+import { DEFAULT_PROPERTY_COLOR } from "@/lib/properties/values";
 import type { PropertyDto } from "@/lib/properties/service";
 
 type FieldErrors = Record<string, string[] | undefined>;

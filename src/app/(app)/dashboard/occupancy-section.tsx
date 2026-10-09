@@ -1,6 +1,6 @@
 import { getTranslations } from "next-intl/server";
 
-import { OccupancyChart } from "@/components/charts/occupancy-chart";
+import { OccupancyChart } from "@/components/charts/lazy";
 import { OccupancyHeatmap } from "@/components/charts/occupancy-heatmap";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { getCalendars } from "@/lib/availability/calendar";
