@@ -57,7 +57,7 @@ describe("ConfirmDialog", () => {
     await user.click(screen.getByRole("button", { name: "Delete property" }));
     await user.click(screen.getByRole("button", { name: "Delete" }));
 
-    await waitFor(() => expect(toastError).toHaveBeenCalledWith(failure));
+    await waitFor(() => expect(toastError).toHaveBeenCalledWith(failure, "That didn't work"));
     expect(screen.getByRole("alertdialog")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Delete" })).toBeEnabled();
   });

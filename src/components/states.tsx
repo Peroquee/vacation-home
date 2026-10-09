@@ -1,4 +1,5 @@
 import { CircleAlert, Inbox, type LucideIcon, RotateCw } from "lucide-react";
+import { useTranslations } from "next-intl";
 
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -71,8 +72,8 @@ export function EmptyState({
  * component - typically an `error.tsx` boundary's `retry` - to offer a retry.
  */
 export function ErrorState({
-  title = "Something went wrong",
-  description = "Please try again. If it keeps happening, reload the page.",
+  title,
+  description,
   reference,
   onRetry,
   className,
@@ -81,22 +82,25 @@ export function ErrorState({
   reference?: string;
   onRetry?: () => void;
 }) {
+  const t = useTranslations();
   return (
     <StateFrame
       icon={CircleAlert}
       role="alert"
       tone="destructive"
-      title={title}
-      description={description}
+      title={title ?? t("states.errorTitle")}
+      description={description ?? t("states.errorDescription")}
       className={className}
     >
       {reference ? (
-        <p className="text-muted-foreground font-mono text-xs">Reference: {reference}</p>
+        <p className="text-muted-foreground font-mono text-xs">
+          {t("states.reference", { reference })}
+        </p>
       ) : null}
       {onRetry ? (
         <Button variant="outline" onClick={onRetry}>
           <RotateCw data-icon="inline-start" aria-hidden />
-          Try again
+          {t("common.retry")}
         </Button>
       ) : null}
     </StateFrame>

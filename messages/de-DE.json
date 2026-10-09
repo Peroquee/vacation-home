@@ -1,6 +1,17 @@
 {
   "common": {
-    "language": "Sprache"
+    "language": "Sprache",
+    "confirm": "Bestätigen",
+    "cancel": "Abbrechen",
+    "working": "Einen Moment…",
+    "save": "Speichern",
+    "saving": "Wird gespeichert…",
+    "close": "Schließen",
+    "edit": "Bearbeiten",
+    "delete": "Löschen",
+    "retry": "Erneut versuchen",
+    "failed": "Das hat nicht geklappt",
+    "serverAnswered": "Der Server antwortete mit {status}."
   },
   "shell": {
     "userMenu": {
@@ -8,5 +19,24 @@
       "signOut": "Abmelden",
       "language": "Sprache"
     }
+  },
+  "states": {
+    "errorTitle": "Etwas ist schiefgelaufen",
+    "errorDescription": "Bitte versuche es noch einmal. Wenn es wieder passiert, lade die Seite neu.",
+    "reference": "Referenz: {reference}"
+  },
+  "loading": {
+    "default": "Wird geladen",
+    "table": "Tabelle wird geladen",
+    "page": "Seite wird geladen",
+    "figures": "Zahlen werden geladen"
+  },
+  "nav": {
+    "calendar": "Kalender",
+    "bookings": "Buchungen",
+    "finance": "Finanzen",
+    "dashboard": "Übersicht",
+    "settings": "Einstellungen",
+    "label": "Hauptmenü"
   }
 }

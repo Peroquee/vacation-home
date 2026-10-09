@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useTranslations } from "next-intl";
 
 import { NAV_ITEMS, isActive } from "@/lib/navigation";
 import { cn } from "@/lib/utils";
@@ -15,9 +16,13 @@ import { cn } from "@/lib/utils";
  */
 export function MobileNav() {
   const pathname = usePathname();
+  const t = useTranslations("nav");
 
   return (
-    <nav aria-label="Main" className="bg-sidebar fixed inset-x-0 bottom-0 z-40 border-t md:hidden">
+    <nav
+      aria-label={t("label")}
+      className="bg-sidebar fixed inset-x-0 bottom-0 z-40 border-t md:hidden"
+    >
       <ul className="flex items-stretch justify-around">
         {NAV_ITEMS.map(({ href, label, icon: Icon }) => {
           const active = isActive(pathname, href);
@@ -35,7 +40,7 @@ export function MobileNav() {
                 )}
               >
                 <Icon aria-hidden className="size-5" />
-                <span className="truncate">{label}</span>
+                <span className="truncate">{t(label)}</span>
               </Link>
             </li>
           );

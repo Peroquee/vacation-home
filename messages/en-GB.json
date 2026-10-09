@@ -1,6 +1,17 @@
 {
   "common": {
-    "language": "Language"
+    "language": "Language",
+    "confirm": "Confirm",
+    "cancel": "Cancel",
+    "working": "Working…",
+    "save": "Save",
+    "saving": "Saving…",
+    "close": "Close",
+    "edit": "Edit",
+    "delete": "Delete",
+    "retry": "Try again",
+    "failed": "That didn't work",
+    "serverAnswered": "The server answered {status}."
   },
   "shell": {
     "userMenu": {
@@ -8,5 +19,24 @@
       "signOut": "Sign out",
       "language": "Language"
     }
+  },
+  "states": {
+    "errorTitle": "Something went wrong",
+    "errorDescription": "Please try again. If it keeps happening, reload the page.",
+    "reference": "Reference: {reference}"
+  },
+  "loading": {
+    "default": "Loading",
+    "table": "Loading table",
+    "page": "Loading page",
+    "figures": "Loading figures"
+  },
+  "nav": {
+    "calendar": "Calendar",
+    "bookings": "Bookings",
+    "finance": "Finance",
+    "dashboard": "Dashboard",
+    "settings": "Settings",
+    "label": "Main"
   }
 }
