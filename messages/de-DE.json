@@ -1,0 +1,12 @@
+{
+  "common": {
+    "language": "Sprache"
+  },
+  "shell": {
+    "userMenu": {
+      "trigger": "Kontomenü von {name}",
+      "signOut": "Abmelden",
+      "language": "Sprache"
+    }
+  }
+}

@@ -1,0 +1,12 @@
+{
+  "common": {
+    "language": "Language"
+  },
+  "shell": {
+    "userMenu": {
+      "trigger": "Account menu for {name}",
+      "signOut": "Sign out",
+      "language": "Language"
+    }
+  }
+}

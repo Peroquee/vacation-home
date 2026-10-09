@@ -1,5 +1,6 @@
 import { withSentryConfig } from "@sentry/nextjs/config";
 import type { NextConfig } from "next";
+import createNextIntlPlugin from "next-intl/plugin";
 
 import { resolveAppLocale } from "./src/lib/locale";
 
@@ -17,7 +18,11 @@ const nextConfig: NextConfig = {/* config options here */};
 // needs no network.
 const sentryUpload = Boolean(process.env.SENTRY_AUTH_TOKEN);
 
-export default withSentryConfig(nextConfig, {
+// Translations: each request's language and messages come from
+// src/i18n/request.ts.
+const withNextIntl = createNextIntlPlugin("./src/i18n/request.ts");
+
+export default withSentryConfig(withNextIntl(nextConfig), {
   // A self-hosted GlitchTip or Sentry, e.g. http://glitchtip.lan. Defaults to
   // sentry.io when unset.
   sentryUrl: process.env.SENTRY_URL,

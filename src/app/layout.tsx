@@ -1,8 +1,10 @@
 import type { Metadata } from "next";
 import { connection } from "next/server";
 
+import { NextIntlClientProvider } from "next-intl";
+import { getLocale } from "next-intl/server";
+
 import { Toaster } from "@/components/ui/sonner";
-import { APP_LOCALE } from "@/lib/locale";
 
 import "./globals.css";
 
@@ -17,10 +19,13 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
   // src/proxy.ts sets (a prerendered page would have none, and its scripts
   // would be blocked).
   await connection();
+  // The request's language (src/i18n/request.ts), for the page and for the
+  // client components, which get its messages from the provider.
+  const locale = await getLocale();
   return (
-    <html lang={APP_LOCALE}>
+    <html lang={locale}>
       <body>
-        {children}
+        <NextIntlClientProvider>{children}</NextIntlClientProvider>
         {/* Clears the fixed mobile bottom bar (h-16). */}
         <Toaster position="bottom-right" mobileOffset={{ bottom: "5rem" }} />
       </body>
