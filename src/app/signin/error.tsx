@@ -1,6 +1,7 @@
 "use client";
 
 import * as Sentry from "@sentry/nextjs";
+import { useTranslations } from "next-intl";
 import { useEffect } from "react";
 
 import { ErrorState } from "@/components/states";
@@ -13,6 +14,7 @@ export default function SignInError({
   error: Error & { digest?: string };
   retry: () => void;
 }) {
+  const t = useTranslations("signin");
   useEffect(() => {
     // Errors with a digest were already reported on the server.
     if (!error.digest) Sentry.captureException(error);
@@ -22,7 +24,7 @@ export default function SignInError({
     <main className="flex min-h-dvh items-center justify-center p-4">
       <ErrorState
         className="w-full max-w-sm"
-        description="Sign-in is unavailable right now. Please try again in a moment."
+        description={t("unavailable")}
         reference={error.digest}
         onRetry={retry}
       />

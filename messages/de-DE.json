@@ -38,5 +38,17 @@
     "dashboard": "Übersicht",
     "settings": "Einstellungen",
     "label": "Hauptmenü"
+  },
+  "signin": {
+    "title": "Anmelden",
+    "appName": "Ferienvermietung",
+    "intro": "Melde dich mit deinem Google-Konto an, um fortzufahren.",
+    "button": "Mit Google anmelden",
+    "unavailable": "Die Anmeldung ist gerade nicht möglich. Bitte versuche es gleich noch einmal.",
+    "errors": {
+      "AccessDenied": "Dieses Google-Konto darf die App nicht nutzen. Melde dich mit einem Konto an, das die Eigentümerin oder der Eigentümer freigegeben hat, oder bitte darum, deines hinzuzufügen.",
+      "Verification": "Dieser Anmeldelink ist abgelaufen. Bitte melde dich erneut an.",
+      "fallback": "Die Anmeldung hat nicht geklappt. Bitte versuche es noch einmal."
+    }
   }
 }

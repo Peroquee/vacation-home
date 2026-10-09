@@ -1,5 +1,6 @@
 import { Home } from "lucide-react";
 import type { Metadata } from "next";
+import { getTranslations } from "next-intl/server";
 import { redirect } from "next/navigation";
 
 import { Button } from "@/components/ui/button";
@@ -8,15 +9,13 @@ import { safeCallbackUrl } from "@/lib/access";
 import { signInWithGoogle } from "@/lib/auth-actions";
 import { getCurrentUser } from "@/lib/session";
 
-export const metadata: Metadata = { title: "Sign in" };
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations("signin");
+  return { title: t("title") };
+}
 
-/** Auth.js error codes, as they arrive in `?error=`, in plain words. */
-const MESSAGES: Record<string, string> = {
-  AccessDenied:
-    "That Google account isn't allowed to use this app. Sign in with an account the owner has added, or ask them to add yours.",
-  Verification: "That sign-in link has expired. Please sign in again.",
-};
-const FALLBACK_MESSAGE = "Signing in didn't work. Please try again.";
+/** Auth.js error codes, as they arrive in `?error=`, with a message of their own. */
+const KNOWN_ERRORS = ["AccessDenied", "Verification"] as const;
 
 export default async function SignInPage({ searchParams }: PageProps<"/signin">) {
   const { error, callbackUrl } = await searchParams;
@@ -24,8 +23,10 @@ export default async function SignInPage({ searchParams }: PageProps<"/signin">)
 
   if (await getCurrentUser()) redirect(destination);
 
+  const t = await getTranslations("signin");
   const code = Array.isArray(error) ? error[0] : error;
-  const message = code ? (MESSAGES[code] ?? FALLBACK_MESSAGE) : null;
+  const known = KNOWN_ERRORS.find((k) => k === code);
+  const message = code ? t(`errors.${known ?? "fallback"}`) : null;
 
   return (
     <main className="flex min-h-dvh items-center justify-center p-4">
@@ -33,9 +34,9 @@ export default async function SignInPage({ searchParams }: PageProps<"/signin">)
         <CardHeader>
           <Home aria-hidden className="text-brand-500 mb-2 size-6" />
           <CardTitle>
-            <h1 className="text-lg">Vacation Rental</h1>
+            <h1 className="text-lg">{t("appName")}</h1>
           </CardTitle>
-          <CardDescription>Sign in with your Google account to continue.</CardDescription>
+          <CardDescription>{t("intro")}</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           {message ? (
@@ -49,7 +50,7 @@ export default async function SignInPage({ searchParams }: PageProps<"/signin">)
           <form action={signInWithGoogle}>
             <input type="hidden" name="callbackUrl" value={destination} />
             <Button type="submit" className="w-full">
-              Sign in with Google
+              {t("button")}
             </Button>
           </form>
         </CardContent>

@@ -38,5 +38,17 @@
     "dashboard": "Dashboard",
     "settings": "Settings",
     "label": "Main"
+  },
+  "signin": {
+    "title": "Sign in",
+    "appName": "Vacation Rental",
+    "intro": "Sign in with your Google account to continue.",
+    "button": "Sign in with Google",
+    "unavailable": "Sign-in is unavailable right now. Please try again in a moment.",
+    "errors": {
+      "AccessDenied": "That Google account isn't allowed to use this app. Sign in with an account the owner has added, or ask them to add yours.",
+      "Verification": "That sign-in link has expired. Please sign in again.",
+      "fallback": "Signing in didn't work. Please try again."
+    }
   }
 }
