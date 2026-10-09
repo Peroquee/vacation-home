@@ -21,7 +21,7 @@ import {
   turnoverFix,
 } from "@/lib/bookings/form";
 import { SOURCE_KEYS } from "@/lib/bookings/labels";
-import { BOOKING_SOURCES } from "@/lib/bookings/schema";
+import { BOOKING_SOURCES } from "@/lib/bookings/values";
 import type { BookingDto } from "@/lib/bookings/service";
 import { addDays, isCalendarDate } from "@/lib/calendar-date";
 import { inputToMinor, minorToInput } from "@/lib/properties/form";

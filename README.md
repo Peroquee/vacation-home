@@ -828,7 +828,10 @@ to self-hosted Sentry. No hosted account is needed. It catches server errors
 tagged with the request id), client errors (via `error.tsx`, `global-error.tsx`
 and [`src/instrumentation-client.ts`](src/instrumentation-client.ts)) and failed
 jobs. It is off until `NEXT_PUBLIC_SENTRY_DSN` is set. Events carry no cookies,
-request bodies, user details or local variables.
+request bodies, user details or local variables. In the browser the SDK loads
+lazily ([`src/lib/sentry-client.ts`](src/lib/sentry-client.ts)), as its own
+chunk right after start and only with a DSN, so it is in no page's first-load
+JavaScript; an error in the moment before it has loaded goes unreported.
 
 - **Releases**: every event is tagged with a release, which is `SENTRY_RELEASE`,
   else the commit SHA (`CI_COMMIT_SHA` on GitLab), baked in at build time.
@@ -923,6 +926,31 @@ branch; a push to a branch with no open merge request builds nothing.
 
 The job image is pinned to the exact Node version in [`.nvmrc`](.nvmrc), and
 `install` fails if the two ever drift apart.
+
+## Performance
+
+Checked in CI (GitLab #97), so it does not erode unnoticed:
+
+- **First-load JavaScript per page**, gzipped, against
+  [`bundle-budgets.json`](bundle-budgets.json): `npm run bundle:report` after
+  a build ([`scripts/bundle-report.mjs`](scripts/bundle-report.mjs)). The
+  build job fails when a page goes over budget, and keeps the report as an
+  artifact. Raise a budget on purpose, in the change that needs it. What
+  keeps pages small: no zod in the browser (client code imports
+  `lib/*/values.ts`, not the schemas), the dashboard's charts load as their
+  own chunk ([`src/components/charts/lazy.tsx`](src/components/charts/lazy.tsx)),
+  and so does the error tracker.
+- **Lighthouse** on the calendar and the dashboard, signed in and with
+  realistic data, under Lighthouse's mobile throttling:
+  `npm run test:lighthouse` ([`e2e/lighthouse.spec.ts`](e2e/lighthouse.spec.ts)).
+  Both must score at least 90; the `lighthouse` CI job fails below that and
+  keeps the HTML reports. On the dashboard, the key figures are in the
+  first HTML rather than streamed, because their numbers are its Largest
+  Contentful Paint on a phone.
+- **Query plans** need real data: `scripts/perf/explain.sh` on the server
+  explains the app's heaviest reads ([`scripts/perf/explain.sql`](scripts/perf/explain.sql))
+  and lists sequential scans on large tables, where an index might help
+  (docs/deployment.md, "Day to day").
 
 ## Code style
 

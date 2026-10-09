@@ -1,6 +1,6 @@
 import { getTranslations } from "next-intl/server";
 
-import { RevenueExpensesChart } from "@/components/charts/revenue-expenses-chart";
+import { RevenueExpensesChart } from "@/components/charts/lazy";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import type { DashboardState } from "@/lib/dashboard/params";
 

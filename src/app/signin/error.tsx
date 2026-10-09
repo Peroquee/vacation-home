@@ -1,6 +1,6 @@
 "use client";
 
-import * as Sentry from "@sentry/nextjs";
+import { captureError } from "@/lib/sentry-client";
 import { useTranslations } from "next-intl";
 import { useEffect } from "react";
 
@@ -17,7 +17,7 @@ export default function SignInError({
   const t = useTranslations("signin");
   useEffect(() => {
     // Errors with a digest were already reported on the server.
-    if (!error.digest) Sentry.captureException(error);
+    if (!error.digest) captureError(error);
   }, [error]);
 
   return (

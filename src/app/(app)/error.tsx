@@ -1,6 +1,6 @@
 "use client";
 
-import * as Sentry from "@sentry/nextjs";
+import { captureError } from "@/lib/sentry-client";
 import { useEffect } from "react";
 
 import { ErrorState } from "@/components/states";
@@ -24,7 +24,7 @@ export default function Error({
     // An error with a digest came from the server, where onRequestError has
     // already reported it in full; this copy would only be a duplicate with
     // the message redacted.
-    if (!error.digest) Sentry.captureException(error);
+    if (!error.digest) captureError(error);
   }, [error]);
 
   return <ErrorState reference={error.digest} onRetry={retry} />;
