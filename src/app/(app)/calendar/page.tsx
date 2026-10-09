@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { cookies } from "next/headers";
 import Link from "next/link";
+import { getLocale, getTranslations } from "next-intl/server";
 
 import { PageHeader } from "@/components/page-header";
 import { EmptyState } from "@/components/states";
@@ -8,14 +9,16 @@ import { buttonVariants } from "@/components/ui/button";
 import { getCalendars } from "@/lib/availability/calendar";
 import { todayUtc } from "@/lib/bookings/list-params";
 import { gridRange, isMonthKey, monthOf, monthWeeks, weekStartFor } from "@/lib/calendar/month";
-import { APP_LOCALE } from "@/lib/locale";
 import { CALENDAR_PROPERTY_COOKIE, resolveChoice } from "@/lib/calendar/property-choice";
 import { listProperties } from "@/lib/properties/service";
 import { getCurrentUser } from "@/lib/session";
 
 import { CalendarView } from "./calendar-view";
 
-export const metadata: Metadata = { title: "Calendar" };
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations("calendar.page");
+  return { title: t("title") };
+}
 
 /** The availability API serves at most this many properties at once. */
 const MAX_PROPERTIES = 20;
@@ -29,19 +32,20 @@ export default async function CalendarPage({ searchParams }: PageProps<"/calenda
   const raw = params.month;
   const today = todayUtc();
   const month = typeof raw === "string" && isMonthKey(raw) ? raw : monthOf(today);
-  const weekStart = weekStartFor(APP_LOCALE);
+  const weekStart = weekStartFor(await getLocale());
+  const t = await getTranslations("calendar.page");
 
   const properties = (await listProperties()).slice(0, MAX_PROPERTIES);
   if (properties.length === 0) {
     return (
       <>
-        <PageHeader title="Calendar" />
+        <PageHeader title={t("title")} />
         <EmptyState
-          title="No properties yet"
-          description="Add a property to see its bookings here."
+          title={t("noProperties")}
+          description={t("noPropertiesHint")}
           action={
             <Link href="/settings" className={buttonVariants()}>
-              Add a property
+              {t("addProperty")}
             </Link>
           }
         />
@@ -68,10 +72,10 @@ export default async function CalendarPage({ searchParams }: PageProps<"/calenda
   return (
     <>
       <PageHeader
-        title="Calendar"
+        title={t("title")}
         actions={
           <Link href="/bookings/new" className={buttonVariants()}>
-            New booking
+            {t("newBooking")}
           </Link>
         }
       />

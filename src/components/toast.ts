@@ -17,8 +17,8 @@ export function toastSuccess(message: string, description?: string) {
 }
 
 /**
- * Reports a failed action, with a translated `message` from the caller. Shows the error's own message when it has one, as
- * a description under `message`.
+ * Reports a failed action under the caller's translated `message`, with the
+ * error's own message, when it has one, as the description.
  */
 export function toastError(error: unknown, message: string) {
   const detail =

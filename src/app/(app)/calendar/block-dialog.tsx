@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { useState } from "react";
 
 import { ConfirmDialog } from "@/components/confirm-dialog";
@@ -16,7 +17,7 @@ import {
 import { Field, FieldError, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import type { CalendarBlock } from "@/lib/availability/calendar";
-import { formatDateRange } from "@/lib/format";
+import { useFormat } from "@/i18n/use-format";
 
 type FieldErrors = Record<string, string[] | undefined>;
 
@@ -33,13 +34,17 @@ export class BlockRequestError extends Error {
   }
 }
 
-export async function blockRequest(url: string, init: RequestInit): Promise<unknown> {
+export async function blockRequest(
+  url: string,
+  unexpected: (status: number) => string,
+  init: RequestInit,
+): Promise<unknown> {
   const response = await fetch(url, init);
   if (response.status === 204) return null;
   const body = await response.json().catch(() => null);
   if (response.ok) return body;
   throw new BlockRequestError(
-    body?.error?.message ?? `The server answered ${response.status}.`,
+    body?.error?.message ?? unexpected(response.status),
     response.status,
     body?.error?.fields,
   );
@@ -88,24 +93,26 @@ function BlockDialogBody({
   const [errors, setErrors] = useState<FieldErrors>({});
   const [failure, setFailure] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
+  const t = useTranslations("calendar.block");
+  const tForms = useTranslations("forms");
+  const tCommon = useTranslations("common");
+  const format = useFormat();
+  const unexpected = (status: number) => tCommon("serverAnswered", { status });
 
   if (block.origin === "google") {
     return (
       <>
         <DialogHeader>
-          <DialogTitle>Blocked from Google Calendar</DialogTitle>
+          <DialogTitle>{t("googleTitle")}</DialogTitle>
           <DialogDescription>
-            {formatDateRange(block.startDate, block.endDate)}
+            {format.dateRange(block.startDate, block.endDate)}
             {block.reason ? `: ${block.reason}` : ""}
           </DialogDescription>
         </DialogHeader>
-        <p className="text-sm">
-          This block was imported from Google Calendar and is read-only here. Change or delete the
-          event in Google Calendar; the sync updates the calendar.
-        </p>
+        <p className="text-sm">{t("googleHint")}</p>
         <DialogFooter>
           <Button variant="outline" onClick={onClose}>
-            Close
+            {tCommon("close")}
           </Button>
         </DialogFooter>
       </>
@@ -118,35 +125,33 @@ function BlockDialogBody({
     setErrors({});
     setFailure(null);
     try {
-      await blockRequest(`/api/blocks/${block.id}`, {
+      await blockRequest(`/api/blocks/${block.id}`, unexpected, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(values),
       });
-      toastSuccess("Block saved");
+      toastSuccess(t("saved"));
       onChanged();
       onClose();
     } catch (error) {
       if (error instanceof BlockRequestError && error.fields) setErrors(error.fields);
-      else setFailure(error instanceof Error ? error.message : "The block could not be saved.");
+      else setFailure(error instanceof Error ? error.message : t("saveFailed"));
     } finally {
       setPending(false);
     }
   }
 
   const fields = [
-    { key: "startDate", label: "First night", type: "date" },
-    { key: "endDate", label: "Free again on", type: "date" },
-    { key: "reason", label: "Reason", type: "text" },
+    { key: "startDate", label: t("firstNight"), type: "date" },
+    { key: "endDate", label: t("freeAgain"), type: "date" },
+    { key: "reason", label: t("reason"), type: "text" },
   ] as const;
 
   return (
     <form onSubmit={save} noValidate className="grid gap-4">
       <DialogHeader>
-        <DialogTitle>Blocked dates</DialogTitle>
-        <DialogDescription>
-          The property cannot be booked from the first night until the day it is free again.
-        </DialogDescription>
+        <DialogTitle>{t("title")}</DialogTitle>
+        <DialogDescription>{t("description")}</DialogDescription>
       </DialogHeader>
       <FieldGroup className="gap-3">
         {fields.map(({ key, label, type }) => {
@@ -164,7 +169,9 @@ function BlockDialogBody({
                 onChange={(event) => setValues((v) => ({ ...v, [key]: event.target.value }))}
               />
               <FieldError
-                errors={messages?.map((message) => ({ message: `${label} ${message}` }))}
+                errors={messages?.map((message) => ({
+                  message: tForms("fieldError", { label, message }),
+                }))}
               />
             </Field>
           );
@@ -175,24 +182,24 @@ function BlockDialogBody({
         <ConfirmDialog
           trigger={
             <Button type="button" variant="destructive" disabled={pending}>
-              Delete block
+              {t("delete")}
             </Button>
           }
-          title="Delete this block?"
-          description="The dates become free for bookings again."
-          confirmLabel="Delete block"
-          cancelLabel="Keep block"
+          title={t("deleteTitle")}
+          description={t("deleteDescription")}
+          confirmLabel={t("delete")}
+          cancelLabel={t("keep")}
           destructive
           onConfirm={async () => {
             // A failure stays in the dialog as a toast (ConfirmDialog does that).
-            await blockRequest(`/api/blocks/${block.id}`, { method: "DELETE" });
-            toastSuccess("Block deleted");
+            await blockRequest(`/api/blocks/${block.id}`, unexpected, { method: "DELETE" });
+            toastSuccess(t("deleted"));
             onChanged();
             onClose();
           }}
         />
         <Button type="submit" disabled={pending} aria-busy={pending}>
-          {pending ? "Saving…" : "Save"}
+          {pending ? tCommon("saving") : tCommon("save")}
         </Button>
       </DialogFooter>
     </form>

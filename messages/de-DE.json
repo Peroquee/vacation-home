@@ -216,7 +216,9 @@
     "blocked": "Blockiert, {when}",
     "google": "Google Kalender",
     "arriveInstead": "Stattdessen am {day} anreisen: Gäste können am Abreisetag des vorherigen Aufenthalts anreisen, aber nicht am Tag davor.",
-    "leaveInstead": "Stattdessen am {day} abreisen: Ein Aufenthalt kann am Anreisetag des nächsten enden, aber nicht am Tag danach."
+    "leaveInstead": "Stattdessen am {day} abreisen: Ein Aufenthalt kann am Anreisetag des nächsten enden, aber nicht am Tag danach.",
+    "openBookingOf": "Buchung von {guest} öffnen, {when}",
+    "openBooking": "Buchung öffnen, {when}"
   },
   "bookings": {
     "status": {
@@ -407,6 +409,90 @@
       "confirm": "Endgültig löschen",
       "keep": "Daten behalten",
       "done": "Persönliche Daten gelöscht"
+    }
+  },
+  "calendar": {
+    "month": {
+      "blockLabel": "Blockiert, {property}, {when}",
+      "blockLabelWhy": "Blockiert: {reason}, {property}, {when}",
+      "fromGoogle": ", aus Google Kalender",
+      "saving": ", wird gespeichert",
+      "bookingLabel": "{guest}, {property}, {status}, {when}",
+      "inquiry": "Anfrage",
+      "confirmed": "bestätigt",
+      "inTheWay": ", im Weg der gewählten Tage",
+      "blocked": "Blockiert",
+      "previous": "Vorheriger Monat",
+      "today": "Heute",
+      "next": "Nächster Monat",
+      "month": "Monat",
+      "year": "Jahr",
+      "propertyToBook": "Zu buchende Unterkunft",
+      "nights": "{count, plural, one {# Nacht} other {# Nächte}}",
+      "notAvailable": " · Nicht frei: {conflicts}",
+      "refused": ". Ändern Sie die Daten oder drücken Sie Escape.",
+      "pickLast": "Wählen Sie jetzt den letzten Tag (den Abreisetag) oder drücken Sie Escape.",
+      "hint": "Ziehen Sie über die Tage oder tippen Sie auf den ersten und letzten Tag, um eine Buchung zu beginnen.",
+      "keys": "Die Pfeiltasten wechseln zwischen den Tagen. Enter beginnt eine Auswahl, ein zweites Enter beendet sie; Umschalt mit den Pfeiltasten erweitert sie; Escape bricht ab.",
+      "properties": "Unterkünfte",
+      "status": "Status",
+      "legendConfirmed": "Bestätigt",
+      "legendInquiry": "Anfrage (Tage nicht gehalten)"
+    },
+    "view": {
+      "blocked": "Tage blockiert",
+      "unreachable": "Der Server war nicht erreichbar.",
+      "blockFailed": "Die Tage konnten nicht blockiert werden",
+      "show": "Anzeigen",
+      "allProperties": "Alle Unterkünfte",
+      "refused": "{range} konnte nicht blockiert werden: Eine bestätigte Buchung ist im Weg.",
+      "open": "Öffnen: {conflict}",
+      "dismiss": "Schließen",
+      "nextFailed": "Der nächste Monat konnte nicht geladen werden. Bitte erneut versuchen.",
+      "choiceDescription": "Buchen Sie diese Tage für einen Gast oder blockieren Sie sie für sich.",
+      "choiceDescriptionFor": "{property}: Buchen Sie diese Tage für einen Gast oder blockieren Sie sie für sich.",
+      "newBooking": "Neue Buchung",
+      "reason": "Grund (optional)",
+      "reasonPlaceholder": "Wartung, Familienbesuch…",
+      "blockDates": "Tage blockieren"
+    },
+    "sheet": {
+      "loadFailed": "Diese Buchung konnte nicht geladen werden.",
+      "loading": "Wird geladen…",
+      "open": "Buchung öffnen"
+    },
+    "agenda": {
+      "label": "Terminliste",
+      "empty": "Nichts gebucht oder blockiert.",
+      "blocked": "Blockiert",
+      "blockedWhy": "Blockiert: {reason}",
+      "inquiry": " · Anfrage",
+      "fromGoogle": " · aus Google Kalender",
+      "loading": "Wird geladen…",
+      "more": "Nächsten Monat anzeigen"
+    },
+    "page": {
+      "title": "Kalender",
+      "noProperties": "Noch keine Unterkünfte",
+      "noPropertiesHint": "Legen Sie eine Unterkunft an, um hier ihre Buchungen zu sehen.",
+      "addProperty": "Unterkunft anlegen",
+      "newBooking": "Neue Buchung"
+    },
+    "block": {
+      "googleTitle": "Blockiert aus Google Kalender",
+      "googleHint": "Diese Blockierung stammt aus Google Kalender und kann hier nicht geändert werden. Ändern oder löschen Sie den Termin in Google Kalender; die Synchronisierung aktualisiert den Kalender.",
+      "saved": "Blockierung gespeichert",
+      "saveFailed": "Die Blockierung konnte nicht gespeichert werden.",
+      "firstNight": "Erste Nacht",
+      "freeAgain": "Wieder frei am",
+      "reason": "Grund",
+      "title": "Blockierte Tage",
+      "description": "Die Unterkunft kann von der ersten Nacht bis zu dem Tag, an dem sie wieder frei ist, nicht gebucht werden.",
+      "delete": "Blockierung löschen",
+      "deleteTitle": "Diese Blockierung löschen?",
+      "deleteDescription": "Die Tage sind wieder für Buchungen frei.",
+      "keep": "Blockierung behalten",
+      "deleted": "Blockierung gelöscht"
     }
   }
 }

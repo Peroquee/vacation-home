@@ -216,7 +216,9 @@
     "blocked": "Blocked, {when}",
     "google": "Google Calendar",
     "arriveInstead": "Arrive on {day} instead: guests can arrive on the day the previous stay checks out, but not the day before.",
-    "leaveInstead": "Leave on {day} instead: a stay can check out on the day the next one checks in, but not the day after."
+    "leaveInstead": "Leave on {day} instead: a stay can check out on the day the next one checks in, but not the day after.",
+    "openBookingOf": "Open the booking of {guest}, {when}",
+    "openBooking": "Open the booking, {when}"
   },
   "bookings": {
     "status": {
@@ -407,6 +409,90 @@
       "confirm": "Erase permanently",
       "keep": "Keep data",
       "done": "Personal data erased"
+    }
+  },
+  "calendar": {
+    "month": {
+      "blockLabel": "Blocked, {property}, {when}",
+      "blockLabelWhy": "Blocked: {reason}, {property}, {when}",
+      "fromGoogle": ", from Google Calendar",
+      "saving": ", saving",
+      "bookingLabel": "{guest}, {property}, {status}, {when}",
+      "inquiry": "inquiry",
+      "confirmed": "confirmed",
+      "inTheWay": ", in the way of the selected dates",
+      "blocked": "Blocked",
+      "previous": "Previous month",
+      "today": "Today",
+      "next": "Next month",
+      "month": "Month",
+      "year": "Year",
+      "propertyToBook": "Property to book",
+      "nights": "{count, plural, one {# night} other {# nights}}",
+      "notAvailable": " · Not available: {conflicts}",
+      "refused": ". Change the dates, or press Escape.",
+      "pickLast": "Now pick the last day (the check-out day), or press Escape.",
+      "hint": "Drag across days, or tap the first and last day, to start a booking.",
+      "keys": "Arrow keys move between days. Enter starts a selection and Enter again ends it; Shift with the arrows extends it; Escape cancels.",
+      "properties": "Properties",
+      "status": "Status",
+      "legendConfirmed": "Confirmed",
+      "legendInquiry": "Inquiry (dates not held)"
+    },
+    "view": {
+      "blocked": "Dates blocked",
+      "unreachable": "The server could not be reached.",
+      "blockFailed": "Could not block the dates",
+      "show": "Show",
+      "allProperties": "All properties",
+      "refused": "{range} could not be blocked: a confirmed booking is in the way.",
+      "open": "Open: {conflict}",
+      "dismiss": "Dismiss",
+      "nextFailed": "The next month could not be loaded. Try again.",
+      "choiceDescription": "Book these dates for a guest, or block them for yourself.",
+      "choiceDescriptionFor": "{property}: book these dates for a guest, or block them for yourself.",
+      "newBooking": "New booking",
+      "reason": "Reason (optional)",
+      "reasonPlaceholder": "Maintenance, family visit…",
+      "blockDates": "Block dates"
+    },
+    "sheet": {
+      "loadFailed": "This booking could not be loaded.",
+      "loading": "Loading…",
+      "open": "Open booking"
+    },
+    "agenda": {
+      "label": "Agenda",
+      "empty": "Nothing booked or blocked.",
+      "blocked": "Blocked",
+      "blockedWhy": "Blocked: {reason}",
+      "inquiry": " · inquiry",
+      "fromGoogle": " · from Google Calendar",
+      "loading": "Loading…",
+      "more": "Show next month"
+    },
+    "page": {
+      "title": "Calendar",
+      "noProperties": "No properties yet",
+      "noPropertiesHint": "Add a property to see its bookings here.",
+      "addProperty": "Add a property",
+      "newBooking": "New booking"
+    },
+    "block": {
+      "googleTitle": "Blocked from Google Calendar",
+      "googleHint": "This block was imported from Google Calendar and is read-only here. Change or delete the event in Google Calendar; the sync updates the calendar.",
+      "saved": "Block saved",
+      "saveFailed": "The block could not be saved.",
+      "firstNight": "First night",
+      "freeAgain": "Free again on",
+      "reason": "Reason",
+      "title": "Blocked dates",
+      "description": "The property cannot be booked from the first night until the day it is free again.",
+      "delete": "Delete block",
+      "deleteTitle": "Delete this block?",
+      "deleteDescription": "The dates become free for bookings again.",
+      "keep": "Keep block",
+      "deleted": "Block deleted"
     }
   }
 }

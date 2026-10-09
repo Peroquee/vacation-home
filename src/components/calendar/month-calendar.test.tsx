@@ -68,7 +68,7 @@ describe("MonthCalendar", () => {
     expect(days[0]).toHaveAttribute("dateTime", "2026-06-29");
     expect(days[days.length - 1]).toHaveAttribute("dateTime", "2026-08-02");
     // Today's day button is marked as the current date.
-    expect(screen.getByRole("button", { name: "Wednesday, July 8, 2026" })).toHaveAttribute(
+    expect(screen.getByRole("button", { name: "Wednesday, 8 July 2026" })).toHaveAttribute(
       "aria-current",
       "date",
     );
@@ -161,8 +161,8 @@ describe("MonthCalendar range selection", () => {
 
   const day = (name: string) => screen.getByRole("button", { name });
   // 23 to 26 July 2026 is free; Ada stays 10 to 15 July.
-  const THU_23 = "Thursday, July 23, 2026";
-  const SUN_26 = "Sunday, July 26, 2026";
+  const THU_23 = "Thursday, 23 July 2026";
+  const SUN_26 = "Sunday, 26 July 2026";
   const free = { propertyId: "p1", checkIn: "2026-07-23", checkOut: "2026-07-26" };
 
   it("selects by dragging, forwards or backwards", async () => {
@@ -210,8 +210,8 @@ describe("MonthCalendar range selection", () => {
 
   it("turns red and opens nothing when the range overlaps a stay", async () => {
     const { user, onSelectRange } = renderSelectable();
-    await user.click(day("Monday, July 13, 2026"));
-    await user.click(day("Thursday, July 16, 2026"));
+    await user.click(day("Monday, 13 July 2026"));
+    await user.click(day("Thursday, 16 July 2026"));
 
     expect(onSelectRange).not.toHaveBeenCalled();
     const hint = screen.getByText(/Not available: Booked by Ada Lovelace/);
@@ -248,7 +248,7 @@ describe("MonthCalendar conflict feedback", () => {
   }
 
   it("rings what is in the way and offers to open it", async () => {
-    const onSelectRange = await renderRefused("Monday, July 13, 2026", "Thursday, July 16, 2026");
+    const onSelectRange = await renderRefused("Monday, 13 July 2026", "Thursday, 16 July 2026");
     expect(onSelectRange).not.toHaveBeenCalled();
     for (const bar of screen.getAllByRole("link", { name: /^Ada Lovelace/ })) {
       expect(bar).toHaveAccessibleName(/in the way of the selected dates$/);
@@ -265,12 +265,12 @@ describe("MonthCalendar conflict feedback", () => {
 
   it("explains a changeover missed by one night", async () => {
     // Arriving the 14th overlaps Ada's last night; she leaves the 15th.
-    await renderRefused("Tuesday, July 14, 2026", "Saturday, July 18, 2026");
-    expect(screen.getByText(/^Arrive on July 15, 2026 instead/)).toBeInTheDocument();
+    await renderRefused("Tuesday, 14 July 2026", "Saturday, 18 July 2026");
+    expect(screen.getByText(/^Arrive on 15 July 2026 instead/)).toBeInTheDocument();
   });
 
   it("clears the ring once the selection is abandoned", async () => {
-    await renderRefused("Monday, July 13, 2026", "Thursday, July 16, 2026");
+    await renderRefused("Monday, 13 July 2026", "Thursday, 16 July 2026");
     await userEvent.setup().keyboard("{Escape}");
     expect(screen.queryByRole("link", { name: /in the way/ })).not.toBeInTheDocument();
   });
@@ -347,7 +347,7 @@ describe("MonthCalendar grid semantics", () => {
     const ada = screen.getAllByRole("link", { name: /^Ada Lovelace/ })[0]!;
     expect(
       within(ada.closest('[role="gridcell"]') as HTMLElement).getByRole("button"),
-    ).toHaveAccessibleName("Friday, July 10, 2026");
+    ).toHaveAccessibleName("Friday, 10 July 2026");
   });
 
   it("marks the selected days on their cells", async () => {
@@ -363,7 +363,7 @@ describe("MonthCalendar grid semantics", () => {
       />,
     );
     const user = userEvent.setup();
-    screen.getByRole("button", { name: "Thursday, July 23, 2026" }).focus();
+    screen.getByRole("button", { name: "Thursday, 23 July 2026" }).focus();
     await user.keyboard("{Shift>}{ArrowRight}{ArrowRight}{/Shift}");
     const selected = screen
       .getAllByRole("gridcell")

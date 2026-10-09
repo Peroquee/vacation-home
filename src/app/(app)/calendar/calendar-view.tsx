@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { useCallback, useMemo, useRef, useState, useTransition } from "react";
 
 import { Agenda } from "@/components/calendar/agenda";
@@ -12,6 +13,7 @@ import {
   PENDING_PREFIX,
 } from "@/components/calendar/month-calendar";
 import { toastError, toastSuccess } from "@/components/toast";
+import { useConflictText } from "@/components/use-conflict-text";
 import { Button, buttonVariants } from "@/components/ui/button";
 import {
   Dialog,
@@ -24,7 +26,7 @@ import { Field, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { NativeSelect, NativeSelectOption } from "@/components/ui/native-select";
 import type { CalendarBlock } from "@/lib/availability/calendar";
-import { type Conflict, describeConflict } from "@/lib/bookings/form";
+import { type Conflict } from "@/lib/bookings/form";
 import { type AgendaItem, agendaItems, monthWindow } from "@/lib/calendar/agenda";
 import { addMonths } from "@/lib/calendar/month";
 import type { CalendarDate } from "@/lib/calendar-date";
@@ -33,7 +35,8 @@ import {
   choiceCookie,
   type PropertyChoice,
 } from "@/lib/calendar/property-choice";
-import { formatDateRange } from "@/lib/format";
+import { useFormat } from "@/i18n/use-format";
+import { guestDisplayName } from "@/lib/guests/display";
 
 import { BlockDialog, type EditableBlock } from "./block-dialog";
 import { BookingSheet } from "./booking-sheet";
@@ -75,6 +78,10 @@ export function CalendarView({
   properties: { id: string; name: string }[];
 }) {
   const router = useRouter();
+  const t = useTranslations("calendar.view");
+  const purgedName = useTranslations("guests")("purgedName");
+  const format = useFormat();
+  const conflictText = useConflictText();
   const [pending, startTransition] = useTransition();
   const [choice, setChoice] = useState<Range | null>(null);
   const [optimistic, setOptimistic] = useState<PendingBlock[]>([]);
@@ -94,8 +101,13 @@ export function CalendarView({
     [props.calendars, optimistic],
   );
   const names = useMemo(
-    () => new Map(props.calendars.flatMap((c) => c.bookings.map((b) => [b.id, b.guest.name]))),
-    [props.calendars],
+    () =>
+      new Map(
+        props.calendars.flatMap((c) =>
+          c.bookings.map((b) => [b.id, guestDisplayName(b.guest.name, purgedName)]),
+        ),
+      ),
+    [props.calendars, purgedName],
   );
 
   function reload() {
@@ -129,7 +141,7 @@ export function CalendarView({
     const body = await response?.json().catch(() => null);
 
     if (response?.ok) {
-      toastSuccess("Dates blocked");
+      toastSuccess(t("blocked"));
       // Swapped for the real block in the same render as the fresh data.
       startTransition(() => {
         setOptimistic(without);
@@ -142,10 +154,7 @@ export function CalendarView({
     if (response?.status === 409 && body?.error?.conflicts?.length) {
       setRefusal({ range, conflicts: body.error.conflicts });
     } else {
-      toastError(
-        new Error(body?.error?.message ?? "The server could not be reached."),
-        "Could not block the dates",
-      );
+      toastError(new Error(body?.error?.message ?? t("unreachable")), t("blockFailed"));
     }
   }
 
@@ -165,14 +174,14 @@ export function CalendarView({
       {properties.length > 0 ? (
         <div className="mb-3 flex items-center gap-2">
           <label htmlFor="calendar-property" className="text-sm font-medium">
-            Show
+            {t("show")}
           </label>
           <NativeSelect
             id="calendar-property"
             value={propertyChoice}
             onChange={(event) => chooseProperty(event.target.value)}
           >
-            <NativeSelectOption value="all">All properties</NativeSelectOption>
+            <NativeSelectOption value="all">{t("allProperties")}</NativeSelectOption>
             {properties.map((p) => (
               <NativeSelectOption key={p.id} value={p.id}>
                 {p.name}
@@ -188,24 +197,25 @@ export function CalendarView({
           className="border-destructive/40 bg-destructive/10 text-destructive mb-3 rounded-lg border p-3 text-sm"
         >
           <p className="font-medium">
-            {formatDateRange(refusal.range.checkIn, refusal.range.checkOut)} could not be blocked: a
-            confirmed booking is in the way.
+            {t("refused", {
+              range: format.dateRange(refusal.range.checkIn, refusal.range.checkOut),
+            })}
           </p>
           <ul className="mt-1 list-disc pl-5">
             {refusal.conflicts.map((conflict) => (
               <li key={`${conflict.kind}-${conflict.id}`}>
                 {conflict.kind === "booking" ? (
                   <Link href={`/bookings/${conflict.id}`} className="underline">
-                    Open: {describeConflict(conflict, names)}
+                    {t("open", { conflict: conflictText.describe(conflict, names) })}
                   </Link>
                 ) : (
-                  describeConflict(conflict, names)
+                  conflictText.describe(conflict, names)
                 )}
               </li>
             ))}
           </ul>
           <Button size="sm" variant="outline" className="mt-2" onClick={() => setRefusal(null)}>
-            Dismiss
+            {t("dismiss")}
           </Button>
         </div>
       ) : null}
@@ -268,6 +278,7 @@ function AgendaPanel({
   const [later, setLater] = useState<{ month: string; calendars: CalendarProperty[] }[]>([]);
   const [loading, setLoading] = useState(false);
   const [failed, setFailed] = useState(false);
+  const t = useTranslations("calendar.view");
   const loadingRef = useRef(false);
 
   const loadMore = useCallback(async () => {
@@ -283,7 +294,8 @@ function AgendaPanel({
     });
     try {
       const response = await fetch(`/api/availability?${params}`);
-      if (!response.ok) throw new Error(`The server answered ${response.status}.`);
+      // Only whether it failed is shown.
+      if (!response.ok) throw new Error(String(response.status));
       const body: { properties: CalendarProperty[] } = await response.json();
       setLater((list) => [...list, { month: next, calendars: body.properties }]);
       setFailed(false);
@@ -304,7 +316,7 @@ function AgendaPanel({
       <Agenda months={months} onOpen={onOpen} onLoadMore={loadMore} loading={loading} />
       {failed ? (
         <p role="alert" className="text-destructive mt-2 text-center text-sm">
-          The next month could not be loaded. Try again.
+          {t("nextFailed")}
         </p>
       ) : null}
     </div>
@@ -324,6 +336,8 @@ function RangeChoice({
   onBlock: (range: Range, reason: string) => void;
 }) {
   const [reason, setReason] = useState("");
+  const t = useTranslations("calendar.view");
+  const format = useFormat();
 
   return (
     <Dialog
@@ -338,14 +352,15 @@ function RangeChoice({
         {range ? (
           <>
             <DialogHeader>
-              <DialogTitle>{formatDateRange(range.checkIn, range.checkOut)}</DialogTitle>
+              <DialogTitle>{format.dateRange(range.checkIn, range.checkOut)}</DialogTitle>
               <DialogDescription>
-                {propertyName ? `${propertyName}: ` : ""}book these dates for a guest, or block them
-                for yourself.
+                {propertyName
+                  ? t("choiceDescriptionFor", { property: propertyName })
+                  : t("choiceDescription")}
               </DialogDescription>
             </DialogHeader>
             <Link href={`/bookings/new?${new URLSearchParams(range)}`} className={buttonVariants()}>
-              New booking
+              {t("newBooking")}
             </Link>
             <form
               className="grid gap-3 border-t pt-4"
@@ -356,17 +371,17 @@ function RangeChoice({
               }}
             >
               <Field>
-                <FieldLabel htmlFor="block-reason">Reason (optional)</FieldLabel>
+                <FieldLabel htmlFor="block-reason">{t("reason")}</FieldLabel>
                 <Input
                   id="block-reason"
                   value={reason}
                   maxLength={200}
-                  placeholder="Maintenance, family visit…"
+                  placeholder={t("reasonPlaceholder")}
                   onChange={(event) => setReason(event.target.value)}
                 />
               </Field>
               <Button type="submit" variant="outline">
-                Block dates
+                {t("blockDates")}
               </Button>
             </form>
           </>

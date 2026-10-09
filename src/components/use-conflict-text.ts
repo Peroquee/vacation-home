@@ -36,5 +36,15 @@ export function useConflictText() {
     [t, format],
   );
 
-  return { describe, fix };
+  /** A link's text for opening the booking in the way. */
+  const open = useCallback(
+    (conflict: Conflict, guestNames: ReadonlyMap<string, string> = new Map()) => {
+      const when = format.dateRange(conflict.start, conflict.end);
+      const guest = guestNames.get(conflict.id);
+      return guest ? t("openBookingOf", { guest, when }) : t("openBooking", { when });
+    },
+    [t, format],
+  );
+
+  return { describe, fix, open };
 }
