@@ -109,6 +109,15 @@ const envSchema = z.object({
   ).default(300),
 
   /**
+   * Failed pushes of one booking's Google event in a row before it is given
+   * up on (dead letter): shown as failed, retried only by hand or by a new
+   * change to the booking. Default 8 (about 2 hours of backoff).
+   */
+  GOOGLE_SYNC_MAX_ATTEMPTS: optional(z.coerce.number().int().min(1, "must be at least 1")).default(
+    8,
+  ),
+
+  /**
    * Inbound sync imports a timed Google event (one with times, not all-day)
    * as a block only if it lasts at least this many hours, so ordinary
    * meetings do not block nights. Default 12.
