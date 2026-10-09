@@ -19,6 +19,7 @@ import { getApiText } from "@/i18n/get-api-text";
 import { getFormat } from "@/i18n/get-format";
 import { listProperties } from "@/lib/properties/service";
 
+import { CsvActions } from "./csv-actions";
 import { LedgerView, type LedgerRow } from "./ledger-view";
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -53,9 +54,20 @@ export default async function FinancePage({ searchParams }: PageProps<"/finance"
           : t("range", { range: format.dateRange(period.from, addDays(period.to, -1)) })
       }
       actions={
-        <Link href="/finance/categories" className={buttonVariants({ variant: "outline" })}>
-          {t("categories")}
-        </Link>
+        <>
+          <CsvActions
+            query={{
+              from: period.from,
+              to: period.to,
+              propertyId: params.propertyId,
+              type: params.type,
+              categoryId: params.categoryId,
+            }}
+          />
+          <Link href="/finance/categories" className={buttonVariants({ variant: "outline" })}>
+            {t("categories")}
+          </Link>
+        </>
       }
     />
   );
