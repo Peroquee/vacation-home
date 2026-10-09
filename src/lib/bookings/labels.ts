@@ -3,7 +3,7 @@
  * (`bookings.status.*`, `bookings.source.*`). Client-safe. A key cannot hold
  * a dot, hence "bookingCom".
  */
-import type { ApiBookingSource } from "./schema";
+import type { ApiBookingSource } from "./values";
 
 export const SOURCE_KEYS = {
   direct: "direct",

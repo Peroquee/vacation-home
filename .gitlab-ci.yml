@@ -172,6 +172,24 @@ e2e:
       - playwright-report/
       - test-results/
 
+# Lighthouse on the calendar and the dashboard (GitLab #97): the same setup
+# as e2e (database, browser, a production build), measuring performance
+# under Lighthouse's mobile throttling. Both pages must score 90 or more,
+# judged by the median of LIGHTHOUSE_RUNS runs (scores move a few points
+# between identical runs). Reports of every run: lighthouse/.
+lighthouse:
+  extends: e2e
+  variables:
+    LIGHTHOUSE_RUNS: "3"
+  script:
+    - npx playwright install --with-deps chromium
+    - npm run test:lighthouse
+  artifacts:
+    when: always
+    expire_in: 30 days
+    paths:
+      - lighthouse/
+
 build:
   stage: build
   extends: .node
@@ -180,6 +198,14 @@ build:
     # src/instrumentation.ts at server boot, not at build time, so a build
     # never needs production secrets.
     - npm run build
+    # First-load JavaScript per page against bundle-budgets.json (GitLab #97).
+    - node scripts/bundle-report.mjs --json > bundle-report.json || true
+    - node scripts/bundle-report.mjs
+  artifacts:
+    when: always
+    expire_in: 30 days
+    paths:
+      - bundle-report.json
 
 # Deploys main to your own server once everything above has passed: over SSH,
 # it runs scripts/deploy/deploy.sh on the Docker host, which builds the new

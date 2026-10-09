@@ -1,12 +1,14 @@
 /**
  * Runs in the browser before the app becomes interactive: starts the error
- * tracker for client-side errors. Settings are shared with the server; see
- * src/lib/sentry.ts.
+ * tracker for client-side errors, lazily (src/lib/sentry-client.ts).
+ * Settings are shared with the server; see src/lib/sentry.ts.
  */
-import * as Sentry from "@sentry/nextjs";
+import { loadSentry } from "@/lib/sentry-client";
 
-import { sentryOptions } from "@/lib/sentry";
+void loadSentry();
 
-Sentry.init(sentryOptions());
-
-export const onRouterTransitionStart = Sentry.captureRouterTransitionStart;
+export function onRouterTransitionStart(...args: unknown[]): void {
+  void loadSentry()?.then((Sentry) =>
+    (Sentry.captureRouterTransitionStart as (...a: unknown[]) => void)(...args),
+  );
+}

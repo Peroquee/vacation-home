@@ -1,6 +1,6 @@
 "use client";
 
-import * as Sentry from "@sentry/nextjs";
+import { captureError } from "@/lib/sentry-client";
 import { useEffect } from "react";
 
 import "./globals.css";
@@ -19,7 +19,7 @@ export default function GlobalError({
 }) {
   useEffect(() => {
     // See src/app/(app)/error.tsx: server errors are reported on the server.
-    if (!error.digest) Sentry.captureException(error);
+    if (!error.digest) captureError(error);
   }, [error]);
 
   return (
