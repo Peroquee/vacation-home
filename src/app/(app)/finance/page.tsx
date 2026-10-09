@@ -9,10 +9,12 @@ import { Field, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { NativeSelect, NativeSelectOption } from "@/components/ui/native-select";
 import { todayUtc } from "@/lib/bookings/list-params";
+import { addDays } from "@/lib/calendar-date";
 import { addMonths } from "@/lib/calendar/month";
 import { listCategories } from "@/lib/finance/categories";
-import { ledgerHref, ledgerMonth, ledgerParams, monthRange } from "@/lib/finance/ledger";
+import { ledgerHref, ledgerParams, ledgerPeriod } from "@/lib/finance/ledger";
 import { listTransactions, listTransactionsSchema, toDto } from "@/lib/finance/transactions";
+import { formatDateRange } from "@/lib/format";
 import { listProperties } from "@/lib/properties/service";
 
 import { LedgerView, type LedgerRow } from "./ledger-view";
@@ -29,13 +31,19 @@ const STATEMENT_SIZE = 200;
 export default async function FinancePage({ searchParams }: PageProps<"/finance">) {
   const params = ledgerParams(await searchParams);
   const today = todayUtc();
-  const month = ledgerMonth(params, today);
+  const period = ledgerPeriod(params, today);
+  // Month navigation starts from the period's month, also for a custom range.
+  const month = period.month ?? period.from.slice(0, 7);
   const [properties, categories] = await Promise.all([listProperties(), listCategories()]);
 
   const header = (
     <PageHeader
       title="Finance"
-      description="Income and expenses, month by month."
+      description={
+        period.month
+          ? "Income and expenses, month by month."
+          : `Income and expenses, ${formatDateRange(period.from, addDays(period.to, -1))}.`
+      }
       actions={
         <Link href="/finance/categories" className={buttonVariants({ variant: "outline" })}>
           Categories
@@ -64,7 +72,8 @@ export default async function FinancePage({ searchParams }: PageProps<"/finance"
     propertyId: params.propertyId,
     type: params.type,
     categoryId: params.categoryId,
-    ...monthRange(month),
+    from: period.from,
+    to: period.to,
     pageSize: String(STATEMENT_SIZE),
     // Oldest first: the running net reads like a statement.
     sort: "date",
@@ -74,6 +83,7 @@ export default async function FinancePage({ searchParams }: PageProps<"/finance"
     <Form action="/finance" className="mb-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-5 lg:items-end">
       <Field>
         <FieldLabel htmlFor="ledger-month">Month</FieldLabel>
+        {/* Choosing a month replaces a custom range. */}
         <Input id="ledger-month" name="month" type="month" defaultValue={month} />
       </Field>
       <Field>
@@ -124,14 +134,22 @@ export default async function FinancePage({ searchParams }: PageProps<"/finance"
       <div className="flex gap-2">
         <Button type="submit">Apply</Button>
         <Link
-          href={ledgerHref({ ...params, month: addMonths(month, -1) }, {})}
+          href={ledgerHref(params, {
+            month: addMonths(month, -1),
+            from: undefined,
+            until: undefined,
+          })}
           className={buttonVariants({ variant: "ghost" })}
           aria-label="Previous month"
         >
           ‹
         </Link>
         <Link
-          href={ledgerHref({ ...params, month: addMonths(month, 1) }, {})}
+          href={ledgerHref(params, {
+            month: addMonths(month, 1),
+            from: undefined,
+            until: undefined,
+          })}
           className={buttonVariants({ variant: "ghost" })}
           aria-label="Next month"
         >
@@ -193,7 +211,7 @@ export default async function FinancePage({ searchParams }: PageProps<"/finance"
         defaults={{
           propertyId: params.propertyId ?? properties[0]!.id,
           // Today, or the first of an earlier or later month being looked at.
-          date: today.startsWith(month) ? today : `${month}-01`,
+          date: today >= period.from && today < period.to ? today : period.from,
         }}
       />
     </>

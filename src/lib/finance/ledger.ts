@@ -10,7 +10,7 @@ import { addMonths, isMonthKey, type MonthKey } from "@/lib/calendar/month";
 
 type SearchParams = Record<string, string | string[] | undefined>;
 
-const KEYS = ["month", "propertyId", "type", "categoryId"] as const;
+const KEYS = ["month", "from", "until", "propertyId", "type", "categoryId"] as const;
 export type LedgerParams = Partial<Record<(typeof KEYS)[number], string>>;
 
 /** The first value of each known param, blanks dropped. */
@@ -32,6 +32,23 @@ export function monthRange(month: MonthKey): { from: CalendarDate; to: CalendarD
 /** The month to show: the one asked for, or the one containing today. */
 export function ledgerMonth(params: LedgerParams, today: CalendarDate): MonthKey {
   return params.month && isMonthKey(params.month) ? params.month : today.slice(0, 7);
+}
+
+/**
+ * The period the ledger shows, as `[from, to)`: a custom range
+ * (`?from=&until=`, both days included, e.g. from the dashboard) when both
+ * ends are valid dates in order, otherwise the month.
+ */
+export function ledgerPeriod(
+  params: LedgerParams,
+  today: CalendarDate,
+): { from: CalendarDate; to: CalendarDate; month: MonthKey | null } {
+  const { from, until } = params;
+  if (from && until && isCalendarDate(from) && isCalendarDate(until) && from <= until) {
+    return { from, to: addDays(until, 1), month: null };
+  }
+  const month = ledgerMonth(params, today);
+  return { ...monthRange(month), month };
 }
 
 /** A link to the ledger with `changes` applied; undefined removes a param. */

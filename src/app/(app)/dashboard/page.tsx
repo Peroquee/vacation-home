@@ -13,6 +13,7 @@ import { dashboardState } from "@/lib/dashboard/params";
 import { formatDateRange } from "@/lib/format";
 import { listProperties } from "@/lib/properties/service";
 
+import { ExpenseChart } from "./expense-chart";
 import { Kpis } from "./kpis";
 import { RevenueChart } from "./revenue-chart";
 
@@ -74,9 +75,14 @@ export default async function DashboardPage({ searchParams }: PageProps<"/dashbo
         <Suspense key={JSON.stringify(state)} fallback={<StatTilesSkeleton />}>
           <Kpis state={state} today={today} />
         </Suspense>
-        <Suspense key={`chart-${JSON.stringify(state)}`} fallback={<CardSkeleton lines={8} />}>
-          <RevenueChart state={state} />
-        </Suspense>
+        <div className="grid gap-6 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
+          <Suspense key={`chart-${JSON.stringify(state)}`} fallback={<CardSkeleton lines={8} />}>
+            <RevenueChart state={state} />
+          </Suspense>
+          <Suspense key={`expenses-${JSON.stringify(state)}`} fallback={<CardSkeleton lines={6} />}>
+            <ExpenseChart state={state} />
+          </Suspense>
+        </div>
       </div>
     </>
   );

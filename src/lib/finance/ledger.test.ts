@@ -5,6 +5,7 @@ import {
   ledgerHref,
   ledgerMonth,
   ledgerParams,
+  ledgerPeriod,
   monthRange,
   runningNet,
   signedMinor,
@@ -53,5 +54,24 @@ describe("amounts", () => {
 
   it("looks for bookings around a date", () => {
     expect(bookingWindow("2026-07-14")).toEqual({ from: "2026-05-15", to: "2026-09-12" });
+  });
+});
+
+describe("ledgerPeriod", () => {
+  it("uses a custom range when both ends are valid and in order", () => {
+    expect(ledgerPeriod({ from: "2026-05-01", until: "2026-07-31" }, "2026-10-08")).toEqual({
+      from: "2026-05-01",
+      to: "2026-08-01",
+      month: null,
+    });
+  });
+
+  it("falls back to the month otherwise", () => {
+    expect(ledgerPeriod({ from: "2026-07-31", until: "2026-05-01" }, "2026-10-08")).toEqual({
+      from: "2026-10-01",
+      to: "2026-11-01",
+      month: "2026-10",
+    });
+    expect(ledgerPeriod({ month: "2026-02" }, "2026-10-08").to).toBe("2026-03-01");
   });
 });
