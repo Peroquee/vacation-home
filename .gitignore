@@ -66,3 +66,6 @@ next-env.d.ts
 
 # Guest ids saved by scripts/backup/restore.sh for re-erasure after a restore
 /backups-restore/
+
+# Receipts stored by a local run (RECEIPTS_DIR default).
+/data/
