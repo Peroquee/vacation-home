@@ -35,6 +35,7 @@ import {
   selectedDays,
   stayFrom,
 } from "@/lib/calendar/selection";
+import { type DragMode, draggedStay, pastThreshold, type Stay } from "@/lib/calendar/drag";
 import { guestDisplayName } from "@/lib/guests/display";
 import { cn } from "@/lib/utils";
 
@@ -124,6 +125,9 @@ function BarView({
   href,
   onClick,
   inTheWay = false,
+  onDragStart,
+  dragging = false,
+  takeSuppressedClick,
 }: {
   segment: Segment<Bar>;
   href?: string;
@@ -131,6 +135,12 @@ function BarView({
   onClick?: () => void;
   /** Stands in the way of the current selection: ringed in red. */
   inTheWay?: boolean;
+  /** For a booking that can be dragged to new dates (GitLab #66). */
+  onDragStart?: (event: React.PointerEvent, mode: DragMode) => void;
+  /** This booking is being dragged: drawn faded. */
+  dragging?: boolean;
+  /** True once for the click that ends a drag, so it does not open the booking. */
+  takeSuppressedClick?: () => boolean;
 }) {
   const t = useTranslations("calendar.month");
   const purgedName = useTranslations("guests")("purgedName");
@@ -147,6 +157,8 @@ function BarView({
     href &&
       "hover:brightness-95 focus-visible:ring-ring focus-visible:ring-2 focus-visible:outline-none",
     inTheWay && "ring-destructive z-20 ring-2 ring-offset-1 motion-safe:animate-pulse",
+    onDragStart && "cursor-grab active:cursor-grabbing",
+    dragging && "opacity-50",
   );
   // Positioned within the cell of the bar's first day: half-day columns
   // become fractions of that cell's width, and the lane a row below the
@@ -171,10 +183,38 @@ function BarView({
   const text = bar.kind === "booking" ? guest : (bar.block.reason ?? t("blocked"));
   const content = (
     <>
+      {onDragStart && !segment.continuesBefore ? (
+        <span
+          aria-hidden
+          data-drag-handle="start"
+          className="absolute inset-y-0 left-0 w-2 cursor-ew-resize"
+        />
+      ) : null}
       {segment.continuesBefore ? <span aria-hidden>‹ </span> : null}
       <span className="truncate">{text}</span>
+      {onDragStart && !segment.continuesAfter ? (
+        <span
+          aria-hidden
+          data-drag-handle="end"
+          className="absolute inset-y-0 right-0 w-2 cursor-ew-resize"
+        />
+      ) : null}
     </>
   );
+  // A drag starts on the body (move) or an edge (check-in or check-out).
+  const drag = onDragStart
+    ? {
+        draggable: false,
+        onPointerDown(event: React.PointerEvent) {
+          if (event.button !== 0 || event.pointerType === "touch") return;
+          const handle = (event.target as Element).closest<HTMLElement>("[data-drag-handle]");
+          onDragStart(event, (handle?.dataset.dragHandle as DragMode | undefined) ?? "move");
+        },
+        onClick(event: React.MouseEvent) {
+          if (takeSuppressedClick?.()) event.preventDefault();
+        },
+      }
+    : {};
   const pendingBlock = bar.kind === "block" && isPending(bar.block.id);
   if (pendingBlock) style.opacity = 0.6;
   if (onClick && !pendingBlock) {
@@ -200,6 +240,7 @@ function BarView({
       title={label}
       aria-label={label}
       {...lines}
+      {...drag}
     >
       {content}
     </Link>
@@ -241,6 +282,36 @@ export type MonthCalendarProps = {
   highlight?: string[];
   /** Shown while the next month's data is on its way. */
   pending?: boolean;
+  /**
+   * Called when a booking's bar is dragged to free dates (GitLab #66), with
+   * its old and new stay; without it, bars cannot be dragged. Nothing is
+   * saved here: the caller confirms first.
+   */
+  onBookingDrag?: (change: BookingDrag) => void;
+};
+
+export type BookingDrag = {
+  bookingId: string;
+  propertyId: string;
+  guest: string;
+  from: Stay;
+  to: Stay;
+};
+
+type DragState = {
+  bookingId: string;
+  propertyId: string;
+  guest: string;
+  status: CalendarBooking["status"];
+  mode: DragMode;
+  stay: Stay;
+  originDay: CalendarDate;
+  startX: number;
+  startY: number;
+  /** Past the threshold: a drag, not a click. */
+  active: boolean;
+  /** The stay it would make, or null while unchanged or impossible. */
+  to: Stay | null;
 };
 
 /**
@@ -267,6 +338,7 @@ export function MonthCalendar({
   onBlockClick,
   highlight: ringed,
   pending = false,
+  onBookingDrag,
 }: MonthCalendarProps) {
   const t = useTranslations("calendar.month");
   const purgedName = useTranslations("guests")("purgedName");
@@ -367,7 +439,7 @@ export function MonthCalendar({
   }, [focusDay]);
 
   /** The day under a pointer: the day button it is on, or by position in its week row. */
-  function dayAt(event: React.PointerEvent): CalendarDate | null {
+  function dayAt(event: { clientX: number; clientY: number; target: EventTarget | null }) {
     const target =
       document.elementFromPoint?.(event.clientX, event.clientY) ?? (event.target as Element);
     const button = target?.closest<HTMLElement>("[data-date]");
@@ -381,6 +453,107 @@ export function MonthCalendar({
     );
     return weeks[Number(row.dataset.week)]?.[index] ?? null;
   }
+
+  // --- Dragging a booking (GitLab #66) ----------------------------------------
+  const [drag, setDrag] = useState<DragState | null>(null);
+  const dragRef = useRef<DragState | null>(null);
+  useEffect(() => {
+    dragRef.current = drag;
+  }, [drag]);
+  const suppressClick = useRef(false);
+  const takeSuppressedClick = () => {
+    const suppressed = suppressClick.current;
+    suppressClick.current = false;
+    return suppressed;
+  };
+  const dragCalendar = drag ? calendars.find((c) => c.property.id === drag.propertyId) : undefined;
+  const dragConflicts =
+    drag?.active && drag.to && dragCalendar
+      ? stayConflicts(drag.to, dragCalendar, drag.bookingId)
+      : [];
+  // Like the API: only a confirmed booking is refused for taken dates.
+  const dragRefused = drag?.status === "confirmed" && dragConflicts.length > 0;
+
+  function startDrag(
+    event: React.PointerEvent,
+    bar: Extract<Bar, { kind: "booking" }>,
+    mode: DragMode,
+  ) {
+    // Where the pointer is; failing that, the edge being moved (or check-in).
+    const originDay = dayAt(event) ?? (mode === "end" ? bar.booking.checkOut : bar.booking.checkIn);
+    suppressClick.current = false;
+    setDrag({
+      bookingId: bar.booking.id,
+      propertyId: bar.property.id,
+      guest: guestDisplayName(bar.booking.guest.name, purgedName),
+      status: bar.booking.status,
+      mode,
+      stay: { checkIn: bar.booking.checkIn, checkOut: bar.booking.checkOut },
+      originDay,
+      startX: event.clientX,
+      startY: event.clientY,
+      active: false,
+      to: null,
+    });
+  }
+
+  useEffect(() => {
+    if (!drag) return;
+    const move = (event: PointerEvent) => {
+      const current = dragRef.current;
+      if (!current) return;
+      const active =
+        current.active ||
+        pastThreshold(event.clientX - current.startX, event.clientY - current.startY);
+      if (!active) return;
+      const day = dayAt(event);
+      const to = day ? draggedStay(current.stay, current.mode, current.originDay, day) : current.to;
+      if (
+        active !== current.active ||
+        to?.checkIn !== current.to?.checkIn ||
+        to?.checkOut !== current.to?.checkOut
+      ) {
+        setDrag({ ...current, active, to });
+      }
+    };
+    const up = () => {
+      const current = dragRef.current;
+      setDrag(null);
+      if (!current?.active) return;
+      // A drag ends with a click on the bar; it must not open the booking.
+      suppressClick.current = true;
+      const calendar = calendars.find((c) => c.property.id === current.propertyId);
+      if (!current.to || !calendar) return;
+      const refused =
+        current.status === "confirmed" &&
+        stayConflicts(current.to, calendar, current.bookingId).length > 0;
+      if (refused) return;
+      onBookingDrag?.({
+        bookingId: current.bookingId,
+        propertyId: current.propertyId,
+        guest: current.guest,
+        from: current.stay,
+        to: current.to,
+      });
+    };
+    const cancel = (event: KeyboardEvent) => {
+      if (event.key !== "Escape") return;
+      if (dragRef.current?.active) suppressClick.current = true;
+      setDrag(null);
+    };
+    window.addEventListener("pointermove", move);
+    window.addEventListener("pointerup", up);
+    window.addEventListener("pointercancel", up);
+    window.addEventListener("keydown", cancel);
+    return () => {
+      window.removeEventListener("pointermove", move);
+      window.removeEventListener("pointerup", up);
+      window.removeEventListener("pointercancel", up);
+      window.removeEventListener("keydown", cancel);
+    };
+    // Listeners for the drag's lifetime; the latest state is read from dragRef.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [drag?.bookingId, drag?.mode]);
 
   const pointer = selectable
     ? {
@@ -439,12 +612,16 @@ export function MonthCalendar({
   const years = Array.from(
     new Set([...Array.from({ length: 6 }, (_, i) => thisYear - 2 + i), year]),
   ).sort((a, b) => a - b);
+  const dragging = drag?.active && drag.to ? { from: drag.to.checkIn, to: drag.to.checkOut } : null;
+  const shown = dragging ?? highlight;
   const isSelected = (date: CalendarDate) =>
-    highlight !== null && date >= highlight.from && date <= highlight.to;
-  const taken = conflicts.length > 0;
+    shown !== null && date >= shown.from && date <= shown.to;
+  const taken = dragging ? dragRefused : conflicts.length > 0;
   // Bar keys, so the calendar can ring what stands in the way.
   const inTheWay = new Set([
-    ...conflicts.map((c) => `${c.kind === "booking" ? "b" : "k"}-${c.id}`),
+    ...(dragging ? dragConflicts : conflicts).map(
+      (c) => `${c.kind === "booking" ? "b" : "k"}-${c.id}`,
+    ),
     ...(ringed ?? []),
   ]);
 
@@ -504,6 +681,33 @@ export function MonthCalendar({
           </NativeSelect>
         </div>
       </div>
+
+      {drag?.active ? (
+        <p
+          aria-live="polite"
+          className={cn(
+            "mb-2 min-h-5 text-sm",
+            dragRefused ? "text-destructive font-medium" : "text-muted-foreground",
+          )}
+        >
+          {drag.to
+            ? t("dragTo", {
+                guest: drag.guest,
+                range: format.dateRange(drag.to.checkIn, drag.to.checkOut),
+                nights: nightsOf(drag.to),
+              }) +
+              (dragRefused
+                ? t("notAvailable", {
+                    conflicts: dragConflicts
+                      .map((c) =>
+                        conflictText.describe(c, guestNames(dragCalendar ?? null, purgedName)),
+                      )
+                      .join("; "),
+                  })
+                : "")
+            : t("dragHint")}
+        </p>
+      ) : null}
 
       {selectable ? (
         <div className="mb-2 flex flex-wrap items-center gap-x-3 gap-y-2 text-sm">
@@ -658,6 +862,22 @@ export function MonthCalendar({
                             ? bookingHref(segment.span.booking.id)
                             : undefined
                         }
+                        onDragStart={
+                          segment.span.kind === "booking" && onBookingDrag && bookingHref
+                            ? (event, mode) =>
+                                startDrag(
+                                  event,
+                                  segment.span as Extract<Bar, { kind: "booking" }>,
+                                  mode,
+                                )
+                            : undefined
+                        }
+                        dragging={
+                          drag?.active === true &&
+                          segment.span.kind === "booking" &&
+                          segment.span.booking.id === drag.bookingId
+                        }
+                        takeSuppressedClick={takeSuppressedClick}
                       />
                     ),
                   )}

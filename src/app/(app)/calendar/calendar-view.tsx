@@ -7,12 +7,14 @@ import { useCallback, useMemo, useRef, useState, useTransition } from "react";
 
 import { Agenda } from "@/components/calendar/agenda";
 import {
+  type BookingDrag,
   type CalendarProperty,
   MonthCalendar,
   type MonthCalendarProps,
   PENDING_PREFIX,
 } from "@/components/calendar/month-calendar";
-import { toastError, toastSuccess } from "@/components/toast";
+import { ConfirmDialog } from "@/components/confirm-dialog";
+import { toast, toastError, toastSuccess } from "@/components/toast";
 import { useConflictText } from "@/components/use-conflict-text";
 import { Button, buttonVariants } from "@/components/ui/button";
 import {
@@ -29,6 +31,7 @@ import type { CalendarBlock } from "@/lib/availability/calendar";
 import { type Conflict } from "@/lib/bookings/form";
 import { type AgendaItem, agendaItems, monthWindow } from "@/lib/calendar/agenda";
 import { addMonths } from "@/lib/calendar/month";
+import { nightsOf } from "@/lib/calendar/selection";
 import type { CalendarDate } from "@/lib/calendar-date";
 import {
   CALENDAR_PROPERTY_COOKIE,
@@ -80,7 +83,7 @@ export function CalendarView({
   ...props
 }: Omit<
   MonthCalendarProps,
-  "onMonthChange" | "bookingHref" | "onSelectRange" | "onBlockClick" | "highlight"
+  "onMonthChange" | "bookingHref" | "onSelectRange" | "onBlockClick" | "highlight" | "onBookingDrag"
 > & {
   /** One property's id, or "all" for the combined view. */
   propertyChoice: PropertyChoice;
@@ -101,6 +104,8 @@ export function CalendarView({
   const [choice, setChoice] = useState<Range | null>(null);
   const [optimistic, setOptimistic] = useState<PendingBlock[]>([]);
   const [refusal, setRefusal] = useState<{ range: Range; conflicts: Conflict[] } | null>(null);
+  /** A dragged booking waiting for confirmation (GitLab #66). */
+  const [move, setMove] = useState<BookingDrag | null>(null);
   const [editing, setEditing] = useState<EditableBlock | null>(null);
   const [sheetBooking, setSheetBooking] = useState<string | null>(null);
 
@@ -124,6 +129,18 @@ export function CalendarView({
       ),
     [props.calendars, purgedName],
   );
+
+  /** Saves a booking's new dates; throws the API's message, in the page's language. */
+  async function moveBooking(bookingId: string, stay: { checkIn: string; checkOut: string }) {
+    const response = await fetch(`/api/bookings/${bookingId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(stay),
+    }).catch(() => null);
+    if (response?.ok) return;
+    const body = await response?.json().catch(() => null);
+    throw new Error(api.message(body) ?? t("unreachable"));
+  }
 
   function reload() {
     startTransition(() => router.refresh());
@@ -263,9 +280,57 @@ export function CalendarView({
         </div>
       ) : null}
 
+      <ConfirmDialog
+        open={move !== null}
+        onOpenChange={(open) => (open ? null : setMove(null))}
+        title={move ? t("moveTitle", { guest: move.guest }) : ""}
+        description={
+          move
+            ? t("moveDescription", {
+                from: format.dateRange(move.from.checkIn, move.from.checkOut),
+                fromNights: nightsOf(move.from),
+                to: format.dateRange(move.to.checkIn, move.to.checkOut),
+                toNights: nightsOf(move.to),
+              })
+            : undefined
+        }
+        confirmLabel={t("moveConfirm")}
+        cancelLabel={t("moveCancel")}
+        onConfirm={async () => {
+          if (!move) return;
+          await moveBooking(move.bookingId, move.to);
+          setMove(null);
+          reload();
+          const undoable = move;
+          toast.success(
+            t("moved", {
+              guest: undoable.guest,
+              range: format.dateRange(undoable.to.checkIn, undoable.to.checkOut),
+            }),
+            {
+              description: t("movedHint"),
+              // At least ten seconds to change one's mind (GitLab #66).
+              duration: 15_000,
+              action: {
+                label: t("undo"),
+                onClick: () => {
+                  moveBooking(undoable.bookingId, undoable.from)
+                    .then(() => {
+                      toastSuccess(t("undone"));
+                      reload();
+                    })
+                    .catch((error: unknown) => toastError(error, t("undoFailed")));
+                },
+              },
+            },
+          );
+        }}
+      />
+
       <MonthCalendar
         {...props}
         calendars={calendars}
+        onBookingDrag={setMove}
         pending={pending}
         bookingHref={(id) => `/bookings/${id}`}
         highlight={[
