@@ -217,5 +217,10 @@ category (click a category for its transactions), occupancy per month
 (optionally beside the year before) and a year of booked nights as a
 heatmap. Each chart can show its figures as a table.
 
+**Export** (top right) saves the period on screen, for the property or all
+of them: the **report as a PDF** (the figures, a chart of the months, the
+expenses by category and the occupancy, the same numbers as on screen) for
+your accountant or the tax return, and the **transactions as CSV**.
+
 "All properties" adds amounts together only when they share a currency;
 otherwise choose one property.

@@ -445,6 +445,21 @@ defines each one).
   platforms need it reachable from the internet
   ([docs/deployment.md](docs/deployment.md#sharing-availability-with-booking-platforms)).
 
+### Financial report
+
+| Method and path              | Does                                                                      |
+| ---------------------------- | ------------------------------------------------------------------------- |
+| `GET /api/reports/financial` | The dashboard's period as a PDF: `preset` or `from`/`until`, `propertyId` |
+
+The PDF ([`src/lib/reports/financial-pdf.tsx`](src/lib/reports/financial-pdf.tsx),
+drawn with [@react-pdf/renderer](https://react-pdf.org)) holds the KPI
+cards, income and expenses per month (a chart and a table), expenses by
+category and occupancy per month, in the request's language. Its content
+([`src/app/(app)/dashboard/report.ts`](<src/app/(app)/dashboard/report.ts>))
+comes from the same functions as the dashboard's widgets, so the figures
+match the screen for the same filters; a test renders both and compares.
+The transactions behind it are the CSV export with the same dates.
+
 ### Calendar availability
 
 `GET /api/availability?propertyIds=<id>,<id>&from=2026-07-01&to=2026-10-01`
