@@ -21,9 +21,15 @@ import {
 } from "@/components/ui/dialog";
 import { Field, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
+import { NativeSelect, NativeSelectOption } from "@/components/ui/native-select";
 import type { CalendarBlock } from "@/lib/availability/calendar";
 import { type Conflict, describeConflict } from "@/lib/bookings/form";
 import type { CalendarDate } from "@/lib/calendar-date";
+import {
+  CALENDAR_PROPERTY_COOKIE,
+  choiceCookie,
+  type PropertyChoice,
+} from "@/lib/calendar/property-choice";
 import { formatDateRange } from "@/lib/format";
 
 import { BlockDialog, type EditableBlock } from "./block-dialog";
@@ -35,6 +41,12 @@ type PendingBlock = CalendarBlock & { propertyId: string };
 
 let pendingCount = 0;
 
+/** The calendar's URL for a month and a property choice, both explicit so a link is stable. */
+function calendarHref(month: string, choice: PropertyChoice): string {
+  const params = new URLSearchParams({ month, property: choice });
+  return `/calendar?${params}`;
+}
+
 /**
  * The calendar page's state around the controlled MonthCalendar: the month
  * lives in the URL, so a reload or a shared link shows the same month. A
@@ -42,12 +54,22 @@ let pendingCount = 0;
  * once and is rolled back if the server refuses it, which then rings the
  * bookings in the way; blocks open an editor when clicked.
  */
-export function CalendarView(
-  props: Omit<
-    MonthCalendarProps,
-    "onMonthChange" | "bookingHref" | "onSelectRange" | "onBlockClick" | "highlight"
-  >,
-) {
+export function CalendarView({
+  propertyChoice,
+  userId,
+  properties,
+  ...props
+}: Omit<
+  MonthCalendarProps,
+  "onMonthChange" | "bookingHref" | "onSelectRange" | "onBlockClick" | "highlight"
+> & {
+  /** One property's id, or "all" for the combined view. */
+  propertyChoice: PropertyChoice;
+  /** Whose choice to remember; null leaves it unremembered. */
+  userId: string | null;
+  /** The properties to choose from; empty hides the selector (one property). */
+  properties: { id: string; name: string }[];
+}) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [choice, setChoice] = useState<Range | null>(null);
@@ -122,8 +144,39 @@ export function CalendarView(
     }
   }
 
+  function chooseProperty(next: PropertyChoice) {
+    if (userId) {
+      // Remembered for a year, for this user only.
+      document.cookie = `${CALENDAR_PROPERTY_COOKIE}=${encodeURIComponent(
+        choiceCookie(userId, next),
+      )}; path=/; max-age=31536000; samesite=lax`;
+    }
+    setRefusal(null);
+    startTransition(() => router.push(calendarHref(props.month, next), { scroll: false }));
+  }
+
   return (
     <>
+      {properties.length > 0 ? (
+        <div className="mb-3 flex items-center gap-2">
+          <label htmlFor="calendar-property" className="text-sm font-medium">
+            Show
+          </label>
+          <NativeSelect
+            id="calendar-property"
+            value={propertyChoice}
+            onChange={(event) => chooseProperty(event.target.value)}
+          >
+            <NativeSelectOption value="all">All properties</NativeSelectOption>
+            {properties.map((p) => (
+              <NativeSelectOption key={p.id} value={p.id}>
+                {p.name}
+              </NativeSelectOption>
+            ))}
+          </NativeSelect>
+        </div>
+      ) : null}
+
       {refusal ? (
         <div
           role="alert"
@@ -159,7 +212,7 @@ export function CalendarView(
         bookingHref={(id) => `/bookings/${id}`}
         highlight={refusal?.conflicts.map((c) => `${c.kind === "booking" ? "b" : "k"}-${c.id}`)}
         onMonthChange={(month) =>
-          startTransition(() => router.push(`/calendar?month=${month}`, { scroll: false }))
+          startTransition(() => router.push(calendarHref(month, propertyChoice), { scroll: false }))
         }
         onSelectRange={(range) => {
           setRefusal(null);

@@ -275,3 +275,54 @@ describe("MonthCalendar conflict feedback", () => {
     expect(screen.queryByRole("link", { name: /in the way/ })).not.toBeInTheDocument();
   });
 });
+
+describe("MonthCalendar combined view", () => {
+  it("keeps three properties booked on the same night apart, each in its colour and lane", () => {
+    const property = (
+      id: string,
+      name: string,
+      color: string,
+      guest: string,
+    ): CalendarProperty => ({
+      property: { id, name, color },
+      bookings: [
+        {
+          id: `b-${id}`,
+          checkIn: "2026-07-14",
+          checkOut: "2026-07-17",
+          status: "confirmed",
+          source: "direct",
+          guest: { id: `g-${id}`, name: guest },
+        },
+      ],
+      blocks: [],
+    });
+    render(
+      <MonthCalendar
+        month="2026-07"
+        weekStart={1}
+        today="2026-07-08"
+        calendars={[
+          property("p1", "Lake House", "#2a78d6", "Ada"),
+          property("p2", "Sea View", "#eb6834", "Grace"),
+          property("p3", "Cabin", "#1baf7a", "Alan"),
+        ]}
+        onMonthChange={vi.fn()}
+        bookingHref={(id) => `/bookings/${id}`}
+      />,
+    );
+    const bars = ["Ada", "Grace", "Alan"].map((guest) =>
+      screen.getByRole("link", { name: new RegExp(`^${guest}, `) }),
+    );
+    expect(bars.map((bar) => bar.getAttribute("data-lane"))).toEqual(["0", "1", "2"]);
+    expect(bars[1]).toHaveAccessibleName(/^Grace, Sea View, confirmed/);
+    expect(bars.map((bar) => bar.style.backgroundColor)).toEqual([
+      "rgb(42, 120, 214)",
+      "rgb(235, 104, 52)",
+      "rgb(27, 175, 122)",
+    ]);
+    expect(screen.getByRole("list", { name: "Properties" })).toHaveTextContent(
+      /Lake House.*Sea View.*Cabin/,
+    );
+  });
+});

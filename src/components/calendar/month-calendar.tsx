@@ -145,6 +145,7 @@ function BarView({
     "data-bar": "",
     "data-from-line": segment.fromLine,
     "data-to-line": segment.toLine,
+    "data-lane": segment.lane,
   };
   const text = bar.kind === "booking" ? bar.booking.guest.name : (bar.block.reason ?? "Blocked");
   const content = (
