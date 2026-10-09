@@ -11,6 +11,7 @@ import { listProperties } from "@/lib/properties/service";
 
 import { DashboardFilters } from "./dashboard-filters";
 import { ExpenseChart } from "./expense-chart";
+import { ExportMenu } from "./export-menu";
 import { Kpis } from "./kpis";
 import { OccupancySection } from "./occupancy-section";
 import { RevenueChart } from "./revenue-chart";
@@ -45,6 +46,7 @@ export default async function DashboardPage({ searchParams }: PageProps<"/dashbo
               })
             : t("description", { range })
         }
+        actions={<ExportMenu from={state.from} until={state.until} propertyId={state.propertyId} />}
       />
       <DashboardFilters
         state={state}

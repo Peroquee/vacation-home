@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { getLocale, getTranslations } from "next-intl/server";
+import { getTranslations } from "next-intl/server";
 
 import { StatTile } from "@/components/stat-tile";
 import { EmptyState, ErrorState } from "@/components/states";
@@ -10,9 +10,7 @@ import type { DashboardState } from "@/lib/dashboard/params";
 import { countUpcoming } from "@/lib/dashboard/upcoming";
 
 import { loadReport } from "./data";
-
-/** How far ahead "upcoming bookings" looks. */
-export const UPCOMING_DAYS = 30;
+import { getKpiWords, UPCOMING_DAYS } from "./figures";
 
 /** The headline figures for the range, streamed in behind a skeleton. */
 export async function Kpis({ state, today }: { state: DashboardState; today: string }) {
@@ -52,20 +50,7 @@ export async function Kpis({ state, today }: { state: DashboardState; today: str
     );
   }
 
-  const kpis = buildKpis(result.report, upcoming, {
-    locale: await getLocale(),
-    labels: {
-      revenue: t("labels.revenue"),
-      expenses: t("labels.expenses"),
-      net: t("labels.net"),
-      margin: t("labels.margin"),
-      occupancy: t("labels.occupancy"),
-      upcoming: t("labels.upcoming"),
-    },
-    against: { year: t("againstYear"), previous: t("againstPrevious") },
-    points: (value) => t("points", { value }),
-    upcoming: t("upcomingNote", { days: UPCOMING_DAYS }),
-  });
+  const kpis = buildKpis(result.report, upcoming, await getKpiWords());
   return (
     <section
       aria-label={t("label")}

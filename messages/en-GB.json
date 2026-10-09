@@ -804,6 +804,31 @@
         "last-12-months": "Last 12 months",
         "custom": "Custom"
       }
+    },
+    "report": {
+      "title": "Financial report",
+      "generated": "Created {time} (UTC)",
+      "months": "Income and expenses by month",
+      "monthsIn": "Income and expenses by month, in {currency}",
+      "month": "Month",
+      "income": "Income",
+      "expenses": "Expenses",
+      "net": "Net profit",
+      "categories": "Expenses by category",
+      "category": "Category",
+      "amount": "Amount",
+      "share": "Share",
+      "other": "Other ({names})",
+      "noExpenses": "No expenses in this period.",
+      "occupancy": "Occupancy by month",
+      "bookedNights": "Booked nights",
+      "nightsOf": "{booked} of {available}",
+      "rate": "Occupancy",
+      "yearBefore": "The year before",
+      "footer": "Figures as on the dashboard for the same filters. Income and expenses come from the ledger, by transaction date.",
+      "download": "Report (PDF)",
+      "transactions": "Transactions (CSV)",
+      "exportMenu": "Export"
     }
   },
   "charts": {

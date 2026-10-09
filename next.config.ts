@@ -6,6 +6,9 @@ const nextConfig: NextConfig = {
   // A self-contained server in .next/standalone with only the files it
   // needs, so the production image carries no dev dependencies (Dockerfile).
   output: "standalone",
+  // Renders PDFs with its own font and layout engines; loaded as a plain
+  // Node module rather than bundled (src/lib/reports).
+  serverExternalPackages: ["@react-pdf/renderer"],
 };
 
 // Build-time error-tracker setup: names the release and uploads source maps,
