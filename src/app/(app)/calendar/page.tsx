@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { cookies } from "next/headers";
 import Link from "next/link";
 
 import { PageHeader } from "@/components/page-header";
@@ -8,7 +9,9 @@ import { getCalendars } from "@/lib/availability/calendar";
 import { todayUtc } from "@/lib/bookings/list-params";
 import { gridRange, isMonthKey, monthOf, monthWeeks, weekStartFor } from "@/lib/calendar/month";
 import { APP_LOCALE } from "@/lib/locale";
+import { CALENDAR_PROPERTY_COOKIE, resolveChoice } from "@/lib/calendar/property-choice";
 import { listProperties } from "@/lib/properties/service";
+import { getCurrentUser } from "@/lib/session";
 
 import { CalendarView } from "./calendar-view";
 
@@ -17,9 +20,13 @@ export const metadata: Metadata = { title: "Calendar" };
 /** The availability API serves at most this many properties at once. */
 const MAX_PROPERTIES = 20;
 
-/** `?month=2026-07` picks the month; the current one by default. */
+/**
+ * `?month=2026-07` picks the month (the current one by default) and
+ * `?property=<id>|all` the property; without it, the user's last choice.
+ */
 export default async function CalendarPage({ searchParams }: PageProps<"/calendar">) {
-  const raw = (await searchParams).month;
+  const params = await searchParams;
+  const raw = params.month;
   const today = todayUtc();
   const month = typeof raw === "string" && isMonthKey(raw) ? raw : monthOf(today);
   const weekStart = weekStartFor(APP_LOCALE);
@@ -42,9 +49,17 @@ export default async function CalendarPage({ searchParams }: PageProps<"/calenda
     );
   }
 
+  const [user, jar] = await Promise.all([getCurrentUser(), cookies()]);
+  const choice = resolveChoice({
+    param: typeof params.property === "string" ? params.property : undefined,
+    cookie: jar.get(CALENDAR_PROPERTY_COOKIE)?.value,
+    userId: user?.id,
+    propertyIds: properties.map((p) => p.id),
+  });
+
   // Everything the grid shows, including the adjacent months' edge days.
   const { calendars } = await getCalendars(
-    properties.map((p) => p.id),
+    choice === "all" ? properties.map((p) => p.id) : [choice],
     gridRange(monthWeeks(month, weekStart)),
   );
 
@@ -61,6 +76,12 @@ export default async function CalendarPage({ searchParams }: PageProps<"/calenda
         }
       />
       <CalendarView
+        propertyChoice={choice}
+        userId={user?.id ?? null}
+        // With one property there is nothing to choose, so no selector.
+        properties={
+          properties.length > 1 ? properties.map((p) => ({ id: p.id, name: p.name })) : []
+        }
         month={month}
         weekStart={weekStart}
         today={today}
