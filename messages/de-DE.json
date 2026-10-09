@@ -804,6 +804,31 @@
         "last-12-months": "Letzte 12 Monate",
         "custom": "Eigener"
       }
+    },
+    "report": {
+      "title": "Finanzbericht",
+      "generated": "Erstellt {time} (UTC)",
+      "months": "Einnahmen und Ausgaben nach Monat",
+      "monthsIn": "Einnahmen und Ausgaben nach Monat, in {currency}",
+      "month": "Monat",
+      "income": "Einnahmen",
+      "expenses": "Ausgaben",
+      "net": "Gewinn",
+      "categories": "Ausgaben nach Kategorie",
+      "category": "Kategorie",
+      "amount": "Betrag",
+      "share": "Anteil",
+      "other": "Sonstige ({names})",
+      "noExpenses": "Keine Ausgaben in diesem Zeitraum.",
+      "occupancy": "Auslastung nach Monat",
+      "bookedNights": "Gebuchte Nächte",
+      "nightsOf": "{booked} von {available}",
+      "rate": "Auslastung",
+      "yearBefore": "Im Vorjahr",
+      "footer": "Zahlen wie in der Übersicht mit denselben Filtern. Einnahmen und Ausgaben stammen aus dem Kassenbuch, nach Buchungsdatum.",
+      "download": "Bericht (PDF)",
+      "transactions": "Posten (CSV)",
+      "exportMenu": "Exportieren"
     }
   },
   "charts": {
