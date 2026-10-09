@@ -344,6 +344,40 @@ the internet over https. This setup keeps the app off the internet, so leave
 (for example through a Cloudflare Tunnel) and set `GOOGLE_WEBHOOK_URL` to
 its public address.
 
+### Sharing availability with booking platforms
+
+Importing Airbnb's or Booking.com's calendar (**Settings → Booking
+platforms**) works on the LAN as it is: the server fetches their links. The
+other direction, the app's own calendar link for them to import, only works
+if the platforms can reach `/api/ical/...` from the internet. That is
+optional; without it, import alone already turns their stays into blocks
+here, and you keep the platforms' calendars up to date by hand.
+
+If you want it, expose **only that path**, for example through a
+[Cloudflare Tunnel](https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/),
+which needs no open port on your router. On the server:
+
+```bash
+docker run -d --name ical-tunnel --restart unless-stopped \
+  --network vacation-home_default \
+  cloudflare/cloudflared:2026.9.1 tunnel --no-autoupdate run --token <TOKEN>   # runs the tunnel next to the app
+```
+
+`<TOKEN>` comes from the Cloudflare dashboard (**Zero Trust → Networks →
+Tunnels → Create a tunnel**). There, add a public hostname such as
+`calendar.example.com` with **path** `^/api/ical/` and **service**
+`http://app:3000`, so the tunnel passes on nothing else. (The network name is
+`<folder name>_default`; `docker network ls` shows it.) Then set in `.env`:
+
+```bash
+ICAL_PUBLIC_URL="https://calendar.example.com"   # the links in Settings use this address
+```
+
+and restart the app (`docker compose up -d app`). The links are secret
+tokens, rate-limited, and show only "Booked" and "Blocked" on the taken
+dates: no names, no prices. **Make a new link** in Settings retires an old
+one at once.
+
 ### Versions
 
 The pinned versions (Node, PostgreSQL, Caddy and its DNS module) are at the

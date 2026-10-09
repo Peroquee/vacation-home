@@ -6,7 +6,8 @@
 /**
  * Reachable without a session: the sign-in page, Auth.js's own routes,
  * Google's push notifications, which carry their own secret (checked by
- * the route against the stored channel), and the health checks.
+ * the route against the stored channel), the properties' iCal export feeds,
+ * whose URL token is their secret, and the health checks.
  */
 export function isPublicPath(pathname: string): boolean {
   return (
@@ -14,6 +15,7 @@ export function isPublicPath(pathname: string): boolean {
     pathname === "/api/auth" ||
     pathname.startsWith("/api/auth/") ||
     pathname === "/api/google/webhook" ||
+    pathname.startsWith("/api/ical/") ||
     // Health checks for Docker and the reverse proxy; they reveal nothing.
     pathname === "/api/health" ||
     pathname === "/api/ready"

@@ -28,6 +28,12 @@ describe("decideAccess", () => {
     expect(isPublicPath("/api/readyz")).toBe(false);
   });
 
+  it("serves the iCal export feeds without a session: their token is the secret", () => {
+    expect(isPublicPath("/api/ical/abc.ics")).toBe(true);
+    expect(isPublicPath("/api/icalfeeds")).toBe(false);
+    expect(isPublicPath("/api/ical-feeds/x")).toBe(false);
+  });
+
   it("sends pages to sign-in, remembering where they were going", () => {
     expect(decideAccess(at("/bookings?status=confirmed"), false)).toEqual({
       kind: "sign-in",

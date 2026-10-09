@@ -1,6 +1,7 @@
 import { Suspense } from "react";
 
 import { AppShell } from "@/components/shell/app-shell";
+import { DoubleBookingBanner } from "@/components/shell/double-booking-banner";
 import { QuickAddShortcut } from "@/components/shell/quick-add-shortcut";
 import { SyncAlertBanner } from "@/components/shell/sync-alert-banner";
 
@@ -15,6 +16,9 @@ export default function AppLayout({ children }: LayoutProps<"/">) {
       {/* Its own boundary, so a slow check never holds up the page. */}
       <Suspense fallback={null}>
         <SyncAlertBanner />
+      </Suspense>
+      <Suspense fallback={null}>
+        <DoubleBookingBanner />
       </Suspense>
       {children}
     </AppShell>

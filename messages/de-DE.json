@@ -23,6 +23,11 @@
       "failing": "Die Synchronisierung mit Google Kalender schlägt fehl. Google ist möglicherweise nicht aktuell.",
       "failingSince": "Die Synchronisierung mit Google Kalender schlägt seit {time} (UTC) fehl. Google ist möglicherweise nicht aktuell.",
       "review": "Sync-Probleme ansehen"
+    },
+    "doubleBooking": {
+      "one": "Doppelbuchung: {feed} hat einen Aufenthalt in {property}, {range}, an Tagen einer bestätigten Buchung hier. Stornieren Sie einen davon.",
+      "many": "{count} Doppelbuchungen: Buchungsplattformen haben Aufenthalte an Tagen bestätigter Buchungen hier.",
+      "review": "Doppelbuchungen ansehen"
     }
   },
   "states": {
@@ -180,6 +185,61 @@
       "color": "Kalenderfarbe",
       "colorHint": "Buchungen dieser Unterkunft erscheinen im Kalender in dieser Farbe.",
       "add": "Unterkunft hinzufügen"
+    },
+    "doubleBookings": {
+      "title": "{count, plural, one {# Doppelbuchung} other {# Doppelbuchungen}}",
+      "description": "Eine Buchungsplattform hat einen Aufenthalt an Tagen einer bestätigten Buchung hier: Die Tage wurden doppelt verkauft. Stornieren Sie einen davon, auf der Plattform oder hier; die Warnung verschwindet, sobald sie sich nicht mehr überschneiden.",
+      "row": "{feed}: ein Aufenthalt in {property}, {range}",
+      "open": "{count, plural, one {Buchung öffnen} other {Buchung {n} öffnen}}"
+    },
+    "ical": {
+      "title": "Buchungsplattformen (iCal)",
+      "description": "Importieren Sie die Kalender von Airbnb, Booking.com und anderen Plattformen, damit deren Aufenthalte die Tage hier blockieren, und teilen Sie die Verfügbarkeit dieser App mit ihnen.",
+      "importTitle": "Zu importierende Kalender",
+      "noFeeds": "Noch keine. Fügen Sie den Kalender-Export-Link (iCal) einer Plattform hinzu, um deren Aufenthalte hier zu blockieren.",
+      "fetched": "{count, plural, one {# Aufenthalt} other {# Aufenthalte}} · zuletzt gelesen {time} (UTC)",
+      "notFetched": "Noch nicht gelesen.",
+      "conflicts": "{count, plural, one {# Aufenthalt überschneidet sich mit einer bestätigten Buchung: eine Doppelbuchung.} other {# Aufenthalte überschneiden sich mit bestätigten Buchungen: Doppelbuchungen.}}",
+      "errors": {
+        "http": "Die Plattform antwortete {status}. Prüfen Sie den Link; die Plattform hat ihn eventuell ersetzt.",
+        "unreachable": "Die Plattform war nicht erreichbar. Es wird bald erneut versucht.",
+        "timeout": "Die Plattform hat zu lange gebraucht. Es wird bald erneut versucht.",
+        "too_large": "Der Kalender ist größer als 5 MB, was kein Buchungskalender ist. Prüfen Sie den Link.",
+        "not_ical": "Der Link führt zu keinem iCal-Kalender. Kopieren Sie den Kalender-Export-Link der Plattform.",
+        "other": "Das Lesen des Kalenders ist fehlgeschlagen. Es wird bald erneut versucht."
+      },
+      "refresh": "Jetzt lesen",
+      "refreshing": "Wird gelesen…",
+      "refreshFailed": "Der Kalender konnte nicht gelesen werden",
+      "remove": "Kalender entfernen",
+      "removeTitle": "{name} entfernen?",
+      "removeDescription": "Seine Aufenthalte blockieren hier keine Tage mehr; ihre Blockierungen werden gelöscht. Der Kalender auf der Plattform bleibt unverändert.",
+      "removed": "{name} entfernt",
+      "add": "Kalender hinzufügen",
+      "name": "Name",
+      "url": "Kalender-Export-Link",
+      "urlHint": "Bei Airbnb: Kalender → Verfügbarkeit → Kalender verbinden → Exportieren. Bei Booking.com: Preise & Verfügbarkeit → Kalender synchronisieren → Exportieren. Halten Sie den Link privat: Wer ihn hat, sieht die Tage.",
+      "addSubmit": "Hinzufügen und lesen",
+      "adding": "Wird gelesen…",
+      "cancel": "Abbrechen",
+      "added": "{name} hinzugefügt",
+      "addedCount": "{count, plural, one {# Aufenthalt gefunden.} other {# Aufenthalte gefunden.}}",
+      "addedButFailed": "Er konnte noch nicht gelesen werden; siehe die Meldung darunter.",
+      "addFailed": "Der Kalender konnte nicht hinzugefügt werden",
+      "exportTitle": "Verfügbarkeit teilen",
+      "exportEnable": "Belegte Tage dieser Unterkunft als iCal-Kalender veröffentlichen",
+      "exportHint": "Die Plattformen importieren ihn wie jeden Kalender-Link: Bestätigte Buchungen erscheinen als „Booked“, Blockierungen als „Blocked“, ohne Namen oder Preise.",
+      "exportUrl": "Kalender-Link",
+      "exportReach": "Die Plattformen rufen diesen Link aus dem Internet ab; er funktioniert für sie also nur, wenn diese Adresse von außerhalb Ihres Netzes erreichbar ist (siehe Deployment-Anleitung). Wer den Link hat, sieht die belegten Tage.",
+      "copy": "Kopieren",
+      "copied": "Kopiert",
+      "copyFailed": "Der Link konnte nicht kopiert werden",
+      "exportFailed": "Der Kalender-Link konnte nicht geändert werden",
+      "rotate": "Neuen Link erstellen",
+      "rotateTitle": "Neuen Kalender-Link erstellen?",
+      "rotateDescription": "Der bisherige Link funktioniert sofort nicht mehr. Geben Sie den neuen allen Plattformen, die diesen Kalender importieren.",
+      "rotateConfirm": "Neuen Link erstellen",
+      "rotated": "Neuer Kalender-Link erstellt"
     }
   },
   "forms": {
@@ -454,7 +514,11 @@
       "newBooking": "Neue Buchung",
       "reason": "Grund (optional)",
       "reasonPlaceholder": "Wartung, Familienbesuch…",
-      "blockDates": "Tage blockieren"
+      "blockDates": "Tage blockieren",
+      "doubleBookings": "Doppelbuchungen: Diese Tage wurden auf einer Buchungsplattform und hier verkauft",
+      "doubleBooking": "{feed} hat einen Aufenthalt {range} an Tagen einer bestätigten Buchung.",
+      "openBooking": "Buchung öffnen ({guest})",
+      "doubleBookingHint": "Stornieren Sie einen davon: auf der Plattform oder die Buchung hier. Die Warnung verschwindet, sobald sich die Tage nicht mehr überschneiden."
     },
     "sheet": {
       "loadFailed": "Diese Buchung konnte nicht geladen werden.",
@@ -492,7 +556,9 @@
       "deleteTitle": "Diese Blockierung löschen?",
       "deleteDescription": "Die Tage sind wieder für Buchungen frei.",
       "keep": "Blockierung behalten",
-      "deleted": "Blockierung gelöscht"
+      "deleted": "Blockierung gelöscht",
+      "feedTitle": "Blockiert durch {feed}",
+      "feedHint": "Diese Blockierung stammt aus dem Kalender-Feed von {feed} und kann hier nicht geändert werden. Ändern oder stornieren Sie den Aufenthalt bei {feed}; der Feed aktualisiert den Kalender innerhalb einer Stunde."
     }
   },
   "finance": {
@@ -806,6 +872,11 @@
     "syncForbidden": "Die App darf nicht in diesen Kalender schreiben; wählen Sie einen Kalender, den Sie bearbeiten können.",
     "syncNotFound": "Der Kalender wurde in Google nicht gefunden; wählen Sie ihn erneut.",
     "syncBadRequest": "Google hat einen Termin abgelehnt; die App versucht es erneut, und der Fehler wird protokolliert.",
-    "syncFailed": "Die Synchronisierung eines Termins ist fehlgeschlagen; die App versucht es automatisch erneut."
+    "syncFailed": "Die Synchronisierung eines Termins ist fehlgeschlagen; die App versucht es automatisch erneut.",
+    "feedNotFound": "Feed nicht gefunden.",
+    "feedUrl": "muss ein http(s)-Link zum Kalender-Export der Plattform sein",
+    "blockFromFeed": "Diese Blockierung stammt aus dem Kalender einer Buchungsplattform. Ändern Sie den Aufenthalt auf der Plattform; der Feed aktualisiert die Blockierung.",
+    "icalOverlap": "Eine Buchungsplattform hat einen Aufenthalt an Tagen einer bestätigten Buchung: eine Doppelbuchung. Stornieren Sie einen davon, auf der Plattform oder hier.",
+    "googleOverlap": "Ein Termin im Google Kalender überschneidet sich mit einer bestätigten Buchung und wurde daher nicht als Blockierung übernommen. Prüfen Sie die Daten in Google oder in der Buchung."
   }
 }

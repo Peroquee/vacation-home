@@ -11,6 +11,7 @@ below are the English ones; the German interface uses the same layout.
 - [Bookings](#bookings)
 - [Guests and their personal data](#guests-and-their-personal-data)
 - [Google Calendar sync](#google-calendar-sync)
+- [Booking platforms (iCal)](#booking-platforms-ical)
 - [Finance](#finance)
 - [Dashboard](#dashboard)
 
@@ -43,11 +44,11 @@ A month at a glance, one coloured bar per stay. A bar runs from the middle
 of the check-in day to the middle of the check-out day, so a guest leaving
 and the next one arriving on the same day meet in the middle.
 
-| Bar                           | Means                                                       |
-| ----------------------------- | ----------------------------------------------------------- |
-| Solid, in the property colour | A **confirmed** booking: the dates are taken                |
-| Dashed outline                | An **inquiry**: noted, but the dates are not held           |
-| Hatched grey, coloured edge   | **Blocked**: by you, or by an event in your Google calendar |
+| Bar                           | Means                                                                                     |
+| ----------------------------- | ----------------------------------------------------------------------------------------- |
+| Solid, in the property colour | A **confirmed** booking: the dates are taken                                              |
+| Dashed outline                | An **inquiry**: noted, but the dates are not held                                         |
+| Hatched grey, coloured edge   | **Blocked**: by you, by an event in your Google calendar, or by a booking platform's stay |
 
 - **Show** at the top picks one property or all of them; the app remembers
   the choice.
@@ -133,6 +134,33 @@ what failed and why, with **Retry**. Failures are retried automatically
 for a while; after repeated failures an event stops until you retry it or
 the booking changes. If syncing has been failing for over an hour, a banner
 on every page says so: a stale Google calendar is worse than none.
+
+## Booking platforms (iCal)
+
+If the properties are also on Airbnb, Booking.com or similar, connect their
+calendars under **Settings → Booking platforms**, so nothing is sold twice.
+
+- **Their stays here**: add a platform's calendar export link (the field
+  says where to find it). Every stay there becomes a read-only block, named
+  after the platform ("Blocked: Airbnb"), and follows the platform within
+  about half an hour; **Read now** fetches at once. Change those stays on
+  the platform, not here.
+- **Your dates there**: tick **Publish this property's taken dates** and
+  give the link to each platform as a calendar to import. It shows your
+  confirmed bookings as "Booked" and your blocks as "Blocked", nothing
+  else. **Make a new link** retires the old one at once. The platforms can
+  only read it if your server is reachable from the internet; see
+  [deployment.md](deployment.md#sharing-availability-with-booking-platforms).
+
+**Double bookings.** If a platform has a stay on the dates of a confirmed
+booking here, the dates were sold twice. The app does not hide that: a red
+banner on every page, a list in Settings and a warning on the calendar (the
+booking ringed) name the platform, the dates and the booking. Cancel one of
+the two, on the platform or here; the warning goes by itself once the dates
+no longer clash.
+
+A platform's stays are blocks here, not bookings: record a stay as a
+booking if you want it in the finances and occupancy.
 
 ## Finance
 

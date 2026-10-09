@@ -23,6 +23,11 @@
       "failing": "Google Calendar sync has been failing. Google may be out of date.",
       "failingSince": "Google Calendar sync has been failing since {time} (UTC). Google may be out of date.",
       "review": "Review sync problems"
+    },
+    "doubleBooking": {
+      "one": "Double booking: {feed} has a stay at {property}, {range}, on the dates of a confirmed booking here. Cancel one of them.",
+      "many": "{count} double bookings: booking platforms have stays on the dates of confirmed bookings here.",
+      "review": "Review double bookings"
     }
   },
   "states": {
@@ -180,6 +185,61 @@
       "color": "Calendar colour",
       "colorHint": "Bookings for this property use it on the calendar.",
       "add": "Add property"
+    },
+    "doubleBookings": {
+      "title": "{count, plural, one {# double booking} other {# double bookings}}",
+      "description": "A booking platform has a stay on the dates of a confirmed booking here: the dates were sold twice. Cancel one of them, on the platform or here; the warning goes once they no longer clash.",
+      "row": "{feed}: a stay at {property}, {range}",
+      "open": "{count, plural, one {Open the booking} other {Open booking {n}}}"
+    },
+    "ical": {
+      "title": "Booking platforms (iCal)",
+      "description": "Import the calendars of Airbnb, Booking.com and other platforms, so their stays block the dates here, and share this app's availability with them.",
+      "importTitle": "Calendars to import",
+      "noFeeds": "None yet. Add a platform's calendar export link (iCal) to block its stays here.",
+      "fetched": "{count, plural, one {# stay} other {# stays}} · last read {time} (UTC)",
+      "notFetched": "Not read yet.",
+      "conflicts": "{count, plural, one {# stay clashes with a confirmed booking: a double booking.} other {# stays clash with confirmed bookings: double bookings.}}",
+      "errors": {
+        "http": "The platform answered {status}. Check the link; the platform may have replaced it.",
+        "unreachable": "The platform could not be reached. It is tried again shortly.",
+        "timeout": "The platform took too long to answer. It is tried again shortly.",
+        "too_large": "The calendar is larger than 5 MB, which no booking calendar is. Check the link.",
+        "not_ical": "The link does not lead to an iCal calendar. Copy the platform's calendar export link.",
+        "other": "Reading the calendar failed. It is tried again shortly."
+      },
+      "refresh": "Read now",
+      "refreshing": "Reading…",
+      "refreshFailed": "Could not read the calendar",
+      "remove": "Remove calendar",
+      "removeTitle": "Remove {name}?",
+      "removeDescription": "Its stays no longer block dates here; their blocks are deleted. The calendar on the platform is not changed.",
+      "removed": "{name} removed",
+      "add": "Add a calendar",
+      "name": "Name",
+      "url": "Calendar export link",
+      "urlHint": "On Airbnb: Calendar → Availability → Connect calendars → Export. On Booking.com: Rates & availability → Sync calendars → Export. Keep the link private: anyone with it sees the dates.",
+      "addSubmit": "Add and read",
+      "adding": "Reading…",
+      "cancel": "Cancel",
+      "added": "{name} added",
+      "addedCount": "{count, plural, one {# stay found.} other {# stays found.}}",
+      "addedButFailed": "It could not be read yet; see the message under it.",
+      "addFailed": "Could not add the calendar",
+      "exportTitle": "Share availability",
+      "exportEnable": "Publish this property's taken dates as an iCal calendar",
+      "exportHint": "The platforms import it like any calendar link: confirmed bookings show as \"Booked\" and blocks as \"Blocked\", with no names or prices.",
+      "exportUrl": "Calendar link",
+      "exportReach": "The platforms fetch this link from the internet, so it only works for them if this address is reachable from outside your network (see the deployment guide). Anyone with the link sees the taken dates.",
+      "copy": "Copy",
+      "copied": "Copied",
+      "copyFailed": "Could not copy the link",
+      "exportFailed": "Could not change the calendar link",
+      "rotate": "Make a new link",
+      "rotateTitle": "Make a new calendar link?",
+      "rotateDescription": "The current link stops working at once. Give the new one to every platform that imports this calendar.",
+      "rotateConfirm": "Make a new link",
+      "rotated": "New calendar link made"
     }
   },
   "forms": {
@@ -454,7 +514,11 @@
       "newBooking": "New booking",
       "reason": "Reason (optional)",
       "reasonPlaceholder": "Maintenance, family visit…",
-      "blockDates": "Block dates"
+      "blockDates": "Block dates",
+      "doubleBookings": "Double bookings: these dates were sold on a booking platform and here",
+      "doubleBooking": "{feed} has a stay {range} on the dates of a confirmed booking.",
+      "openBooking": "Open the booking ({guest})",
+      "doubleBookingHint": "Cancel one of them: on the platform, or the booking here. The warning goes once the dates no longer clash."
     },
     "sheet": {
       "loadFailed": "This booking could not be loaded.",
@@ -492,7 +556,9 @@
       "deleteTitle": "Delete this block?",
       "deleteDescription": "The dates become free for bookings again.",
       "keep": "Keep block",
-      "deleted": "Block deleted"
+      "deleted": "Block deleted",
+      "feedTitle": "Blocked by {feed}",
+      "feedHint": "This block comes from {feed}'s calendar feed and is read-only here. Change or cancel the stay on {feed}; the feed updates the calendar within the hour."
     }
   },
   "finance": {
@@ -806,6 +872,11 @@
     "syncForbidden": "The app may not write to this calendar; choose a calendar you can edit.",
     "syncNotFound": "The calendar was not found in Google; choose the calendar again.",
     "syncBadRequest": "Google rejected an event; the app retries, and the error is logged.",
-    "syncFailed": "Syncing an event failed; the app retries automatically."
+    "syncFailed": "Syncing an event failed; the app retries automatically.",
+    "feedNotFound": "Feed not found.",
+    "feedUrl": "must be an http(s) link to the platform's calendar export",
+    "blockFromFeed": "This block comes from a booking platform's calendar. Change the stay on the platform; the feed updates the block.",
+    "icalOverlap": "A booking platform has a stay on dates of a confirmed booking: a double booking. Cancel one of them, on the platform or here.",
+    "googleOverlap": "A Google Calendar event overlaps a confirmed booking, so it was not imported as a block. Check the dates in Google or in the booking."
   }
 }

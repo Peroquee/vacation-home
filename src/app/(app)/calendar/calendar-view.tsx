@@ -62,10 +62,21 @@ function calendarHref(month: string, choice: PropertyChoice): string {
  * once and is rolled back if the server refuses it, which then rings the
  * bookings in the way; blocks open an editor when clicked.
  */
+/** A platform's stay on a confirmed booking's dates (GitLab #99). */
+export type DoubleBooking = {
+  id: string;
+  /** The feed's name, e.g. "Airbnb". */
+  feed: string;
+  start: CalendarDate;
+  end: CalendarDate;
+  bookingIds: string[];
+};
+
 export function CalendarView({
   propertyChoice,
   userId,
   properties,
+  doubleBookings = [],
   ...props
 }: Omit<
   MonthCalendarProps,
@@ -77,6 +88,8 @@ export function CalendarView({
   userId: string | null;
   /** The properties to choose from; empty hides the selector (one property). */
   properties: { id: string; name: string }[];
+  /** Open double bookings in view, shown above the grid and ringed in it. */
+  doubleBookings?: DoubleBooking[];
 }) {
   const router = useRouter();
   const t = useTranslations("calendar.view");
@@ -193,6 +206,34 @@ export function CalendarView({
         </div>
       ) : null}
 
+      {doubleBookings.length > 0 ? (
+        <section
+          role="alert"
+          aria-labelledby="double-bookings-title"
+          className="border-destructive/40 bg-destructive/10 text-destructive mb-3 rounded-lg border p-3 text-sm"
+        >
+          <h2 id="double-bookings-title" className="font-medium">
+            {t("doubleBookings")}
+          </h2>
+          <ul className="mt-1 list-disc space-y-1 pl-5">
+            {doubleBookings.map((issue) => (
+              <li key={issue.id}>
+                {t("doubleBooking", {
+                  feed: issue.feed,
+                  range: format.dateRange(issue.start, issue.end),
+                })}{" "}
+                {issue.bookingIds.map((id) => (
+                  <Link key={id} href={`/bookings/${id}`} className="mr-2 underline">
+                    {t("openBooking", { guest: names.get(id) ?? "…" })}
+                  </Link>
+                ))}
+              </li>
+            ))}
+          </ul>
+          <p className="mt-1">{t("doubleBookingHint")}</p>
+        </section>
+      ) : null}
+
       {refusal ? (
         <div
           role="alert"
@@ -227,7 +268,10 @@ export function CalendarView({
         calendars={calendars}
         pending={pending}
         bookingHref={(id) => `/bookings/${id}`}
-        highlight={refusal?.conflicts.map((c) => `${c.kind === "booking" ? "b" : "k"}-${c.id}`)}
+        highlight={[
+          ...(refusal?.conflicts.map((c) => `${c.kind === "booking" ? "b" : "k"}-${c.id}`) ?? []),
+          ...doubleBookings.flatMap((issue) => issue.bookingIds.map((id) => `b-${id}`)),
+        ]}
         onMonthChange={(month) =>
           startTransition(() => router.push(calendarHref(month, propertyChoice), { scroll: false }))
         }
