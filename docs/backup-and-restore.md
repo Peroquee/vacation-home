@@ -300,6 +300,15 @@ docker compose exec app npm run guests:repurge -- backups-restore/erase-again-20
                                                       # erase every guest listed in the file again; use the file name the script printed
 ```
 
+On the production server ([deployment.md](deployment.md)) the app image has
+no npm scripts; the command runs in the tools image instead, and the script
+prints that form:
+
+```bash
+docker compose run --rm -v "$PWD/backups-restore:/app/backups-restore:ro" migrate npm run guests:repurge -- backups-restore/erase-again-20261008_194002.txt
+                                                      # the same, in the tools image, with the saved ids made available to it
+```
+
 It erases each guest exactly as the app's erase action does, and prints
 counts only, no names:
 

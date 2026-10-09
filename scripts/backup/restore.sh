@@ -238,7 +238,14 @@ if $live; then
   printf '\nRestore finished. Check the app in the browser.\n'
   if [ -n "$back_file" ]; then
     printf '\nERASE THESE GUESTS AGAIN NOW, before anyone uses the app:\n'
-    printf '  docker compose exec app npm run guests:repurge -- %s\n' "$back_file"
+    if grep -qs '^COMPOSE_FILE=.*compose\.prod\.yml' .env; then
+      # Production: the app image has no npm scripts; the tools image does,
+      # and needs the saved ids mounted in.
+      printf '  docker compose run --rm -v "$PWD/%s:/app/%s:ro" migrate npm run guests:repurge -- %s\n' \
+        "$erasure_dir" "$erasure_dir" "$back_file"
+    else
+      printf '  docker compose exec app npm run guests:repurge -- %s\n' "$back_file"
+    fi
     printf 'It prints how many were erased again. Running it twice is harmless.\n'
     printf '(More: docs/backup-and-restore.md, "After a restore")\n'
   fi

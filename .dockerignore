@@ -1,0 +1,16 @@
+# Kept out of the image build: local state, secrets and build output.
+.git
+node_modules
+.next
+.npm
+.env
+.env.*
+!.env.example
+backups
+backups-restore
+coverage
+test-results
+playwright-report
+blob-report
+e2e/.auth
+*.log
