@@ -205,6 +205,9 @@ enum CalendarSyncState {
   failed
   /// The booking or block is gone: the Google event still needs deleting.
   pending_delete
+  /// Failed GOOGLE_SYNC_MAX_ATTEMPTS times in a row: no longer retried on its
+  /// own (dead letter) until retried by hand or the booking changes again.
+  dead
 
   @@map("calendar_sync_state")
 }
@@ -239,6 +242,9 @@ model CalendarEventLink {
   changeSeq     Int               @default(0) @map("change_seq")
   /// Failed attempts in a row; the delay before the next grows with it.
   attempts      Int               @default(0)
+  /// When this link started failing (the first failure in a row), for the
+  /// "sync has been failing" banner; cleared on success.
+  failingSince  DateTime?         @map("failing_since")
   /// When the sync worker may next pick this link up.
   nextAttemptAt DateTime          @default(now()) @map("next_attempt_at")
   /// A worker's lease: until then no other worker takes the link.

@@ -140,6 +140,15 @@
   --chart-3: #1baf7a;
   --chart-4: #eda100;
   --chart-5: #e87ba4;
+  /*
+   * A sequential ramp for magnitude (heatmaps): one hue, blue, from near the
+   * surface to strongest. The dark block reverses the anchor, so low values
+   * sit near the dark surface there too.
+   */
+  --heat-1: #b7d3f6;
+  --heat-2: #6da7ec;
+  --heat-3: #2a78d6;
+  --heat-4: #184f95;
   --radius: 0.625rem;
   --sidebar: oklch(0.985 0 0);
   --sidebar-foreground: oklch(0.145 0 0);
@@ -183,6 +192,10 @@
   --chart-3: #199e70;
   --chart-4: #c98500;
   --chart-5: #d55181;
+  --heat-1: #104281;
+  --heat-2: #1c5cab;
+  --heat-3: #3987e5;
+  --heat-4: #86b6ef;
   --sidebar: oklch(0.205 0 0);
   --sidebar-foreground: oklch(0.985 0 0);
   --sidebar-primary: oklch(0.488 0.243 264.376);

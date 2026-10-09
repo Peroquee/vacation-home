@@ -8,7 +8,8 @@ import type { CalendarProperty } from "@/components/calendar/month-calendar";
 import { CalendarView } from "./calendar-view";
 
 const refresh = vi.fn();
-vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh, push: vi.fn() }) }));
+const push = vi.fn();
+vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh, push }) }));
 vi.mock("@/components/toast", () => ({ toastSuccess: vi.fn(), toastError: vi.fn() }));
 
 afterEach(() => {
@@ -47,7 +48,17 @@ const lake: CalendarProperty = {
 };
 
 function renderView() {
-  render(<CalendarView month="2026-07" weekStart={1} today="2026-07-08" calendars={[lake]} />);
+  render(
+    <CalendarView
+      month="2026-07"
+      weekStart={1}
+      today="2026-07-08"
+      calendars={[lake]}
+      propertyChoice="all"
+      userId="u1"
+      properties={[]}
+    />,
+  );
   return userEvent.setup();
 }
 
@@ -169,5 +180,46 @@ describe("CalendarView", () => {
     expect(dialog).toHaveTextContent("read-only here");
     expect(within(dialog).queryByRole("button", { name: "Save" })).not.toBeInTheDocument();
     expect(within(dialog).queryByRole("button", { name: "Delete block" })).not.toBeInTheDocument();
+  });
+});
+
+describe("CalendarView property selector", () => {
+  function renderWith(properties: { id: string; name: string }[]) {
+    render(
+      <CalendarView
+        month="2026-07"
+        weekStart={1}
+        today="2026-07-08"
+        calendars={[lake]}
+        propertyChoice="all"
+        userId="u1"
+        properties={properties}
+      />,
+    );
+    return userEvent.setup();
+  }
+
+  it("is hidden with a single property", () => {
+    renderWith([]);
+    expect(screen.queryByLabelText("Show")).not.toBeInTheDocument();
+  });
+
+  it("switches property through the URL and remembers it for this user", async () => {
+    const user = renderWith([
+      { id: "p1", name: "Lake House" },
+      { id: "p2", name: "Sea View" },
+    ]);
+    await user.selectOptions(screen.getByLabelText("Show"), "p2");
+    expect(push).toHaveBeenCalledWith("/calendar?month=2026-07&property=p2", { scroll: false });
+    expect(document.cookie).toContain(`calendar-property=${encodeURIComponent("u1:p2")}`);
+  });
+
+  it("keeps the property when changing month", async () => {
+    const user = renderWith([
+      { id: "p1", name: "Lake House" },
+      { id: "p2", name: "Sea View" },
+    ]);
+    await user.click(screen.getByRole("button", { name: "Next month" }));
+    expect(push).toHaveBeenCalledWith("/calendar?month=2026-08&property=all", { scroll: false });
   });
 });
