@@ -10,7 +10,11 @@ import { isPrismaError, orNullIfMissing } from "@/lib/db-errors";
 import type { CreatePropertyInput, UpdatePropertyInput } from "./schema";
 
 /** The API's view of a property: `archived` spelled out alongside its time. */
-export type PropertyDto = Omit<Property, "archivedAt" | "createdAt" | "updatedAt"> & {
+/** A property as the API shows it. The iCal export token is never in it. */
+export type PropertyDto = Omit<
+  Property,
+  "archivedAt" | "createdAt" | "updatedAt" | "icalExportToken"
+> & {
   archived: boolean;
   archivedAt: string | null;
   createdAt: string;
@@ -18,7 +22,8 @@ export type PropertyDto = Omit<Property, "archivedAt" | "createdAt" | "updatedAt
 };
 
 export function toDto(property: Property): PropertyDto {
-  const { archivedAt, createdAt, updatedAt, ...rest } = property;
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars -- left out on purpose
+  const { archivedAt, createdAt, updatedAt, icalExportToken, ...rest } = property;
   return {
     ...rest,
     archived: archivedAt !== null,
