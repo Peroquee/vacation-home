@@ -148,6 +148,15 @@ running totals. Pick the month, property, type or category above it.
   not deleted. Deleting a category in use moves its transactions to another
   first.
 
+**CSV.** **Export CSV** saves what the ledger shows (its month and filters)
+for your accountant or a spreadsheet, in a plain format or one for German
+Excel. **Import CSV** reads a bank statement, a spreadsheet or such an
+export: say which column holds the date, the amount and so on, look at the
+checked rows, and import. Rows with problems are listed by line and left
+out; possible duplicates (same date, amount and description as an entry
+already there) are skipped unless you tick them. A file exported here
+imports again without creating anything twice.
+
 Two things can fill the ledger automatically, set up through the API for
 now (see the [README](../README.md#api)): **booking income**, which turns
 each confirmed booking into income entries (accommodation and cleaning fee),
