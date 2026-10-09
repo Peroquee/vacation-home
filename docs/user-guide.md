@@ -60,6 +60,13 @@ and the next one arriving on the same day meet in the middle.
   ends a selection, **Shift** with the arrows extends it, **Escape** cancels.
 - Click a booking to open it, or a block to change or delete it. Blocks that
   come from Google Calendar can only be changed there.
+- **Drag a booking** (with a mouse or pen) to move the stay, or drag its
+  left or right end to change check-in or check-out. The days it would take
+  light up, red when taken; a confirmed booking can't be dropped on taken
+  dates. Before anything is saved, the app shows the old and the new dates
+  and asks. Afterwards, **Undo** in the message puts the dates back for 15
+  seconds. A small slip of the mouse moves nothing, and **Escape** cancels.
+  On a phone, change dates in the booking itself.
 - On a phone the calendar is a list, month by month; it loads the next
   month as you scroll.
 

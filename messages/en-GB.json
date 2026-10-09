@@ -497,7 +497,9 @@
       "properties": "Properties",
       "status": "Status",
       "legendConfirmed": "Confirmed",
-      "legendInquiry": "Inquiry (dates not held)"
+      "legendInquiry": "Inquiry (dates not held)",
+      "dragTo": "{guest}: {range}, {nights, plural, one {# night} other {# nights}}",
+      "dragHint": "Drag to the new dates, or press Escape."
     },
     "view": {
       "blocked": "Dates blocked",
@@ -518,7 +520,17 @@
       "doubleBookings": "Double bookings: these dates were sold on a booking platform and here",
       "doubleBooking": "{feed} has a stay {range} on the dates of a confirmed booking.",
       "openBooking": "Open the booking ({guest})",
-      "doubleBookingHint": "Cancel one of them: on the platform, or the booking here. The warning goes once the dates no longer clash."
+      "doubleBookingHint": "Cancel one of them: on the platform, or the booking here. The warning goes once the dates no longer clash.",
+      "moveTitle": "Change {guest}'s dates?",
+      "moveDescription": "From {from} ({fromNights, plural, one {# night} other {# nights}}) to {to} ({toNights, plural, one {# night} other {# nights}}). The total is recalculated from the rates, unless it was set by hand.",
+      "moveConfirm": "Change dates",
+      "moveCancel": "Keep the dates",
+      "moved": "{guest}: {range}",
+      "movedHint": "The booking has its new dates.",
+      "undo": "Undo",
+      "undone": "Dates changed back",
+      "moveFailed": "Could not change the dates",
+      "undoFailed": "Could not change the dates back"
     },
     "sheet": {
       "loadFailed": "This booking could not be loaded.",

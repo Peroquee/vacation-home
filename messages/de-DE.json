@@ -497,7 +497,9 @@
       "properties": "Unterkünfte",
       "status": "Status",
       "legendConfirmed": "Bestätigt",
-      "legendInquiry": "Anfrage (Tage nicht gehalten)"
+      "legendInquiry": "Anfrage (Tage nicht gehalten)",
+      "dragTo": "{guest}: {range}, {nights, plural, one {# Nacht} other {# Nächte}}",
+      "dragHint": "Auf die neuen Tage ziehen oder Escape drücken."
     },
     "view": {
       "blocked": "Tage blockiert",
@@ -518,7 +520,17 @@
       "doubleBookings": "Doppelbuchungen: Diese Tage wurden auf einer Buchungsplattform und hier verkauft",
       "doubleBooking": "{feed} hat einen Aufenthalt {range} an Tagen einer bestätigten Buchung.",
       "openBooking": "Buchung öffnen ({guest})",
-      "doubleBookingHint": "Stornieren Sie einen davon: auf der Plattform oder die Buchung hier. Die Warnung verschwindet, sobald sich die Tage nicht mehr überschneiden."
+      "doubleBookingHint": "Stornieren Sie einen davon: auf der Plattform oder die Buchung hier. Die Warnung verschwindet, sobald sich die Tage nicht mehr überschneiden.",
+      "moveTitle": "Daten von {guest} ändern?",
+      "moveDescription": "Von {from} ({fromNights, plural, one {# Nacht} other {# Nächte}}) auf {to} ({toNights, plural, one {# Nacht} other {# Nächte}}). Der Gesamtbetrag wird aus den Preisen neu berechnet, außer er wurde von Hand festgelegt.",
+      "moveConfirm": "Daten ändern",
+      "moveCancel": "Daten behalten",
+      "moved": "{guest}: {range}",
+      "movedHint": "Die Buchung hat ihre neuen Daten.",
+      "undo": "Rückgängig",
+      "undone": "Daten zurückgesetzt",
+      "moveFailed": "Die Daten konnten nicht geändert werden",
+      "undoFailed": "Die Daten konnten nicht zurückgesetzt werden"
     },
     "sheet": {
       "loadFailed": "Diese Buchung konnte nicht geladen werden.",
