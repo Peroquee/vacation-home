@@ -117,6 +117,8 @@ export function LedgerView({
       align: "end",
       cell: (t) => (
         <span className={cn(t.type === "income" ? "text-emerald-700 dark:text-emerald-400" : "")}>
+          {/* The sign says the direction; the green only repeats it. */}
+          {t.type === "income" ? "+" : ""}
           {formatMoney(signedMinor(t), t.currency)}
         </span>
       ),

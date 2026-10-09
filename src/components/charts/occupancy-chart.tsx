@@ -87,12 +87,20 @@ export function OccupancyChart({ months }: { months: OccupancyMonth[] }) {
         ) : null}
       </div>
 
-      <div className="h-56 w-full" aria-hidden>
+      {/*
+       * A picture for sighted readers; the table below carries every value
+       * for everyone else, so nothing in here takes keyboard focus.
+       */}
+      <div
+        className="h-56 w-full"
+        role="img"
+        aria-label="Chart of occupancy by month. The figures are in the table below."
+      >
         <ResponsiveContainer width="100%" height="100%">
           <LineChart
             data={data}
             margin={{ top: 8, right: 8, bottom: 0, left: 0 }}
-            accessibilityLayer
+            accessibilityLayer={false}
           >
             <CartesianGrid vertical={false} stroke="var(--border)" strokeWidth={1} />
             <XAxis

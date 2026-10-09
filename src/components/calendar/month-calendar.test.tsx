@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 
@@ -324,5 +324,52 @@ describe("MonthCalendar combined view", () => {
     expect(screen.getByRole("list", { name: "Properties" })).toHaveTextContent(
       /Lake House.*Sea View.*Cabin/,
     );
+  });
+});
+
+describe("MonthCalendar grid semantics", () => {
+  it("is an ARIA grid of week rows and day cells, every bar inside a cell", () => {
+    renderCalendar();
+    const grid = screen.getByRole("grid", { name: "July 2026" });
+    const rows = within(grid).getAllByRole("row");
+    // A header row, then five weeks (29 June to 2 August).
+    expect(rows).toHaveLength(6);
+    expect(
+      within(rows[0]!)
+        .getAllByRole("columnheader")
+        .map((h) => h.getAttribute("aria-label")),
+    ).toEqual(["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]);
+    expect(within(grid).getAllByRole("gridcell")).toHaveLength(35);
+    for (const bar of grid.querySelectorAll("[data-bar]")) {
+      expect(bar.closest('[role="gridcell"]')).not.toBeNull();
+    }
+    // Ada arrives on Friday 10 July: her first bar sits in that day's cell.
+    const ada = screen.getAllByRole("link", { name: /^Ada Lovelace/ })[0]!;
+    expect(
+      within(ada.closest('[role="gridcell"]') as HTMLElement).getByRole("button"),
+    ).toHaveAccessibleName("Friday, July 10, 2026");
+  });
+
+  it("marks the selected days on their cells", async () => {
+    const onSelectRange = vi.fn();
+    render(
+      <MonthCalendar
+        month="2026-07"
+        weekStart={1}
+        today="2026-07-08"
+        calendars={[lake]}
+        onMonthChange={vi.fn()}
+        onSelectRange={onSelectRange}
+      />,
+    );
+    const user = userEvent.setup();
+    screen.getByRole("button", { name: "Thursday, July 23, 2026" }).focus();
+    await user.keyboard("{Shift>}{ArrowRight}{ArrowRight}{/Shift}");
+    const selected = screen
+      .getAllByRole("gridcell")
+      .filter((cell) => cell.getAttribute("aria-selected") === "true");
+    expect(
+      selected.map((cell) => within(cell).getByRole("button").getAttribute("data-date")),
+    ).toEqual(["2026-07-23", "2026-07-24", "2026-07-25"]);
   });
 });
