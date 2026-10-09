@@ -12,6 +12,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Field, FieldError, FieldLabel } from "@/components/ui/field";
 import { NativeSelect, NativeSelectOption } from "@/components/ui/native-select";
 import { useFormat } from "@/i18n/use-format";
+import { useApiText } from "@/i18n/use-api-text";
 
 import { SyncFailures } from "./sync-failures";
 
@@ -61,14 +62,18 @@ function isOneOf<T extends string>(
   return list.includes(value as T);
 }
 
-async function send(url: string, unexpected: (status: number) => string, init: RequestInit = {}) {
+async function send(
+  url: string,
+  fail: (body: unknown, status: number) => string,
+  init: RequestInit = {},
+) {
   const response = await fetch(url, {
     ...init,
     headers: init.body ? { "Content-Type": "application/json" } : undefined,
   });
   const body = response.status === 204 ? null : await response.json().catch(() => null);
   if (!response.ok) {
-    const error = new Error(body?.error?.message ?? unexpected(response.status));
+    const error = new Error(fail(body, response.status));
     Object.assign(error, { fields: body?.error?.fields });
     throw error;
   }
@@ -95,7 +100,9 @@ export function GoogleCalendarSection({
   const t = useTranslations("settings.google");
   const tCommon = useTranslations("common");
   const format = useFormat();
-  const unexpected = (status: number) => tCommon("serverAnswered", { status });
+  const api = useApiText();
+  const fail = (body: unknown, status: number) =>
+    api.message(body) ?? tCommon("serverAnswered", { status });
   const notice = isOneOf(RETURNS, returned)
     ? { ok: returned === "connected", message: t(`returns.${returned}`) }
     : undefined;
@@ -154,7 +161,7 @@ export function GoogleCalendarSection({
               cancelLabel={t("stayConnected")}
               destructive
               onConfirm={async () => {
-                await send("/api/google/connection", unexpected, { method: "DELETE" });
+                await send("/api/google/connection", fail, { method: "DELETE" });
                 toastSuccess(t("disconnected_toast"));
                 router.refresh();
               }}
@@ -188,6 +195,7 @@ export function GoogleCalendarSection({
 /** Last sync, what is waiting, and what failed, over every property. */
 function SyncStatus({ sync }: { sync: SyncSummary }) {
   const t = useTranslations("settings.google");
+  const api = useApiText();
   const format = useFormat();
   return (
     <p className="text-muted-foreground">
@@ -200,7 +208,7 @@ function SyncStatus({ sync }: { sync: SyncSummary }) {
           {" "}
           {t("failed", { count: sync.failed })}
           {sync.dead ? t("stopped", { count: sync.dead }) : ""}
-          {sync.lastError ? `: ${sync.lastError}` : ""}
+          {sync.lastError ? `: ${api.text(sync.lastError)}` : ""}
         </span>
       ) : null}
     </p>
@@ -212,13 +220,14 @@ function PropertyCalendars({ properties }: { properties: PropertySync[] }) {
   const [calendars, setCalendars] = useState<GoogleCalendar[] | null>(null);
   const [failure, setFailure] = useState<string | null>(null);
   const t = useTranslations("settings.google");
+  const api = useApiText();
 
   useEffect(() => {
     const controller = new AbortController();
     fetch("/api/google/calendars", { signal: controller.signal })
       .then(async (response) => {
         const body = await response.json().catch(() => null);
-        if (!response.ok) throw new Error(body?.error?.message ?? t("unreachable"));
+        if (!response.ok) throw new Error(api.message(body) ?? t("unreachable"));
         setCalendars(body as GoogleCalendar[]);
       })
       .catch((error: unknown) => {
@@ -258,7 +267,9 @@ function PropertyCalendarRow({
   const router = useRouter();
   const t = useTranslations("settings.google");
   const tCommon = useTranslations("common");
-  const unexpected = (status: number) => tCommon("serverAnswered", { status });
+  const api = useApiText();
+  const fail = (body: unknown, status: number) =>
+    api.message(body) ?? tCommon("serverAnswered", { status });
   const { property, calendar } = entry;
   const [values, setValues] = useState({
     calendarId: calendar?.calendarId ?? "",
@@ -291,7 +302,7 @@ function PropertyCalendarRow({
     setPending(true);
     setError(null);
     try {
-      await send(`/api/properties/${property.id}/calendar`, unexpected, {
+      await send(`/api/properties/${property.id}/calendar`, fail, {
         method: "PUT",
         body: JSON.stringify(values),
       });
@@ -301,7 +312,7 @@ function PropertyCalendarRow({
       const fields = (failure as { fields?: Record<string, string[]> }).fields;
       setError(
         fields?.calendarId
-          ? t("calendarField", { message: fields.calendarId.join(", ") })
+          ? t("calendarField", { message: fields.calendarId.map(api.text).join(", ") })
           : (failure as Error).message,
       );
     } finally {
@@ -311,13 +322,9 @@ function PropertyCalendarRow({
 
   async function resync() {
     try {
-      const { scheduled } = (await send(
-        `/api/properties/${property.id}/calendar/resync`,
-        unexpected,
-        {
-          method: "POST",
-        },
-      )) as { scheduled: number };
+      const { scheduled } = (await send(`/api/properties/${property.id}/calendar/resync`, fail, {
+        method: "POST",
+      })) as { scheduled: number };
       toastSuccess(t("resyncStarted"), t("queued", { count: scheduled }));
       router.refresh();
     } catch (failure) {
@@ -404,7 +411,7 @@ function PropertyCalendarRow({
               confirmLabel={t("stopSyncing")}
               cancelLabel={t("keepSyncing")}
               onConfirm={async () => {
-                await send(`/api/properties/${property.id}/calendar`, unexpected, {
+                await send(`/api/properties/${property.id}/calendar`, fail, {
                   method: "DELETE",
                 });
                 toastSuccess(t("stoppedToast", { name: property.name }));

@@ -24,6 +24,7 @@ import { useAmountHint } from "@/i18n/use-amount-hint";
 import { useFormat } from "@/i18n/use-format";
 import { guestDisplayName } from "@/lib/guests/display";
 import { cn } from "@/lib/utils";
+import { useApiText } from "@/i18n/use-api-text";
 
 export type LedgerProperty = { id: string; name: string; currency: string };
 export type LedgerCategory = {
@@ -132,7 +133,9 @@ function TransactionForm({
   const tCommon = useTranslations("common");
   const purgedName = useTranslations("guests")("purgedName");
   const format = useFormat();
-  const unexpected = (status: number) => tCommon("serverAnswered", { status });
+  const api = useApiText();
+  const fail = (body: unknown, status: number) =>
+    api.message(body) ?? tCommon("serverAnswered", { status });
   const currencyOf = (id: string) => properties.find((p) => p.id === id)?.currency ?? "EUR";
   const [values, setValues] = useState(() => initial(transaction, defaults, currencyOf));
   const [errors, setErrors] = useState<FieldErrors>({});
@@ -208,11 +211,11 @@ function TransactionForm({
       );
       const result = await response.json().catch(() => null);
       if (response.status === 422 && result?.error?.fields) {
-        setErrors(result.error.fields);
+        setErrors(api.fields(result.error.fields));
         return;
       }
       if (!response.ok) {
-        throw new Error(result?.error?.message ?? unexpected(response.status));
+        throw new Error(fail(result, response.status));
       }
       toastSuccess(
         transaction ? t("saved") : values.type === "income" ? t("incomeAdded") : t("expenseAdded"),
@@ -390,7 +393,7 @@ function TransactionForm({
               const response = await fetch(`/api/transactions/${transaction.id}`, {
                 method: "DELETE",
               });
-              if (!response.ok) throw new Error(unexpected(response.status));
+              if (!response.ok) throw new Error(fail(null, response.status));
               toastSuccess(t("deleted"));
               onDone();
               router.refresh();

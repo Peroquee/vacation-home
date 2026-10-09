@@ -202,7 +202,7 @@ describe("BookingForm", () => {
     await user.click(screen.getByRole("button", { name: "Add booking" }));
 
     expect(await screen.findByText(/Blocked \(Painting\)/)).toBeInTheDocument();
-    expect(screen.getByText(/overlap a block/)).toBeInTheDocument();
+    expect(screen.getByText("Those dates are no longer available.")).toBeInTheDocument();
     expect(push).not.toHaveBeenCalled();
   });
 

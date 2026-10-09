@@ -19,6 +19,7 @@ import {
 import { Field, FieldDescription, FieldError, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { NativeSelect, NativeSelectOption } from "@/components/ui/native-select";
+import { useApiText } from "@/i18n/use-api-text";
 
 export type CategoryRow = {
   id: string;
@@ -45,7 +46,7 @@ class CategoryError extends Error {
 
 async function request(
   url: string,
-  unexpected: (status: number) => string,
+  fail: (body: unknown, status: number) => string,
   init: RequestInit = {},
 ): Promise<unknown> {
   const response = await fetch(url, {
@@ -56,7 +57,7 @@ async function request(
   const body = await response.json().catch(() => null);
   if (response.ok) return body;
   throw new CategoryError(
-    body?.error?.message ?? unexpected(response.status),
+    fail(body, response.status),
     response.status,
     body?.error?.reason,
     body?.error?.fields,
@@ -71,9 +72,9 @@ async function request(
 export async function reassign(
   fromId: string,
   toId: string,
-  unexpected: (status: number) => string,
+  fail: (body: unknown, status: number) => string,
 ): Promise<{ moved: number }> {
-  return (await request(`/api/categories/${fromId}/reassign`, unexpected, {
+  return (await request(`/api/categories/${fromId}/reassign`, fail, {
     method: "POST",
     body: JSON.stringify({ to: toId }),
   })) as { moved: number };
@@ -91,7 +92,9 @@ export function CategoryFormDialog({
   const t = useTranslations("finance.categoryDialogs");
   const tForms = useTranslations("forms");
   const tCommon = useTranslations("common");
-  const unexpected = (status: number) => tCommon("serverAnswered", { status });
+  const api = useApiText();
+  const fail = (body: unknown, status: number) =>
+    api.message(body) ?? tCommon("serverAnswered", { status });
   const [open, setOpen] = useState(false);
   const blank = { name: "", type: "expense" as CategoryRow["type"], color: "#64748b" };
   const [values, setValues] = useState(category ?? blank);
@@ -103,7 +106,7 @@ export function CategoryFormDialog({
     setPending(true);
     setErrors({});
     try {
-      await request(category ? `/api/categories/${category.id}` : "/api/categories", unexpected, {
+      await request(category ? `/api/categories/${category.id}` : "/api/categories", fail, {
         method: category ? "PATCH" : "POST",
         body: JSON.stringify(
           category
@@ -115,7 +118,7 @@ export function CategoryFormDialog({
       setOpen(false);
       router.refresh();
     } catch (error) {
-      if (error instanceof CategoryError && error.fields) setErrors(error.fields);
+      if (error instanceof CategoryError && error.fields) setErrors(api.fields(error.fields));
       else toastError(error, t("saveFailed"));
     } finally {
       setPending(false);
@@ -210,6 +213,9 @@ export function HideToggle({ category }: { category: CategoryRow }) {
   const router = useRouter();
   const t = useTranslations("finance.categoryDialogs");
   const tCommon = useTranslations("common");
+  const api = useApiText();
+  const fail = (body: unknown, status: number) =>
+    api.message(body) ?? tCommon("serverAnswered", { status });
   const [pending, setPending] = useState(false);
   return (
     <Button
@@ -220,11 +226,10 @@ export function HideToggle({ category }: { category: CategoryRow }) {
       onClick={async () => {
         setPending(true);
         try {
-          await request(
-            `/api/categories/${category.id}`,
-            (status) => tCommon("serverAnswered", { status }),
-            { method: "PATCH", body: JSON.stringify({ hidden: !category.hidden }) },
-          );
+          await request(`/api/categories/${category.id}`, fail, {
+            method: "PATCH",
+            body: JSON.stringify({ hidden: !category.hidden }),
+          });
           toastSuccess(t(category.hidden ? "shown" : "hiddenToast", { name: category.name }));
           router.refresh();
         } catch (error) {
@@ -254,14 +259,16 @@ export function DeleteCategory({
   const router = useRouter();
   const t = useTranslations("finance.categoryDialogs");
   const tCommon = useTranslations("common");
-  const unexpected = (status: number) => tCommon("serverAnswered", { status });
+  const api = useApiText();
+  const fail = (body: unknown, status: number) =>
+    api.message(body) ?? tCommon("serverAnswered", { status });
   const [moving, setMoving] = useState(false);
   const [systemRefusal, setSystemRefusal] = useState(false);
   const [to, setTo] = useState(targets[0]?.id ?? "");
 
   async function remove() {
     try {
-      await request(`/api/categories/${category.id}`, unexpected, { method: "DELETE" });
+      await request(`/api/categories/${category.id}`, fail, { method: "DELETE" });
     } catch (error) {
       if (error instanceof CategoryError && error.reason === "in_use") {
         setMoving(true);
@@ -278,7 +285,7 @@ export function DeleteCategory({
   }
 
   async function hide() {
-    await request(`/api/categories/${category.id}`, unexpected, {
+    await request(`/api/categories/${category.id}`, fail, {
       method: "PATCH",
       body: JSON.stringify({ hidden: true }),
     });
@@ -340,8 +347,8 @@ export function DeleteCategory({
         destructive={targets.length > 0}
         onConfirm={async () => {
           if (targets.length === 0) return hide();
-          const { moved } = await reassign(category.id, to, unexpected);
-          await request(`/api/categories/${category.id}`, unexpected, { method: "DELETE" });
+          const { moved } = await reassign(category.id, to, fail);
+          await request(`/api/categories/${category.id}`, fail, { method: "DELETE" });
           const target = targets.find((c) => c.id === to)?.name ?? t("otherCategory");
           toastSuccess(t("deleted", { name: category.name }), t("moved", { count: moved, target }));
           router.refresh();

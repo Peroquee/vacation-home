@@ -8,6 +8,7 @@ import { SyncBadge } from "@/components/sync-badge";
 import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { isUuid } from "@/lib/api";
+import { getApiText } from "@/i18n/get-api-text";
 import { getFormat } from "@/i18n/get-format";
 import { SOURCE_KEYS } from "@/lib/bookings/labels";
 import { getBooking, toDto } from "@/lib/bookings/service";
@@ -48,6 +49,7 @@ export default async function BookingPage({ params }: PageProps<"/bookings/[id]"
   const t = await getTranslations("bookings");
   const tCommon = await getTranslations("common");
   const format = await getFormat();
+  const apiText = await getApiText();
   const guestName = guestDisplayName(
     booking.guest.name,
     (await getTranslations("guests"))("purgedName"),
@@ -97,7 +99,7 @@ export default async function BookingPage({ params }: PageProps<"/bookings/[id]"
             />
             {sync.error ? (
               <p className="text-muted-foreground mt-1 max-w-sm text-xs">
-                {sync.error}{" "}
+                {apiText(sync.error)}{" "}
                 <Link href="/settings#google-sync" className="underline">
                   {t("detail.seeProblems")}
                 </Link>

@@ -35,6 +35,7 @@ import {
   choiceCookie,
   type PropertyChoice,
 } from "@/lib/calendar/property-choice";
+import { useApiText } from "@/i18n/use-api-text";
 import { useFormat } from "@/i18n/use-format";
 import { guestDisplayName } from "@/lib/guests/display";
 
@@ -82,6 +83,7 @@ export function CalendarView({
   const purgedName = useTranslations("guests")("purgedName");
   const format = useFormat();
   const conflictText = useConflictText();
+  const api = useApiText();
   const [pending, startTransition] = useTransition();
   const [choice, setChoice] = useState<Range | null>(null);
   const [optimistic, setOptimistic] = useState<PendingBlock[]>([]);
@@ -154,7 +156,7 @@ export function CalendarView({
     if (response?.status === 409 && body?.error?.conflicts?.length) {
       setRefusal({ range, conflicts: body.error.conflicts });
     } else {
-      toastError(new Error(body?.error?.message ?? t("unreachable")), t("blockFailed"));
+      toastError(new Error(api.message(body) ?? t("unreachable")), t("blockFailed"));
     }
   }
 

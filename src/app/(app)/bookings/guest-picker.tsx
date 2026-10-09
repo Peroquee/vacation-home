@@ -22,6 +22,7 @@ import {
   FieldLegend,
 } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
+import { useApiText } from "@/i18n/use-api-text";
 
 export type GuestOption = { id: string; name: string; email: string | null };
 
@@ -150,6 +151,7 @@ function NewGuestForm({
   const t = useTranslations("bookings.guestPicker");
   const tForms = useTranslations("forms");
   const tCommon = useTranslations("common");
+  const api = useApiText();
   const prefix = useId();
   const [values, setValues] = useState({ name: initialName, email: "", phone: "" });
   const [errors, setErrors] = useState<FieldErrors>({});
@@ -167,12 +169,12 @@ function NewGuestForm({
       });
       const body = await response.json().catch(() => null);
       if (response.status === 422 && body?.error?.fields) {
-        setErrors(body.error.fields);
+        setErrors(api.fields(body.error.fields));
         return;
       }
       if (!response.ok) {
         throw new Error(
-          body?.error?.message ?? tCommon("serverAnswered", { status: response.status }),
+          api.message(body) ?? tCommon("serverAnswered", { status: response.status }),
         );
       }
       onCreated({ id: body.id, name: body.name, email: body.email });

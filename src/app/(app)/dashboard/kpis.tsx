@@ -4,6 +4,7 @@ import { getLocale, getTranslations } from "next-intl/server";
 import { StatTile } from "@/components/stat-tile";
 import { EmptyState, ErrorState } from "@/components/states";
 import { buttonVariants } from "@/components/ui/button";
+import { getApiText } from "@/i18n/get-api-text";
 import { buildKpis } from "@/lib/dashboard/kpis";
 import type { DashboardState } from "@/lib/dashboard/params";
 import { countUpcoming } from "@/lib/dashboard/upcoming";
@@ -21,11 +22,12 @@ export async function Kpis({ state, today }: { state: DashboardState; today: str
   ]);
   const t = await getTranslations("dashboard.kpis");
   if (!loaded.ok) {
+    const apiText = await getApiText();
     return (
       <ErrorState
         title={t("badDates")}
         description={loaded.invalid.issues
-          .map((i) => `${i.path.join(".")} ${i.message}`)
+          .map((i) => `${i.path.join(".")} ${apiText(i.message)}`)
           .join("; ")}
       />
     );

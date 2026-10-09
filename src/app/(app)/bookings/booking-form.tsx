@@ -26,6 +26,7 @@ import type { BookingDto } from "@/lib/bookings/service";
 import { addDays, isCalendarDate } from "@/lib/calendar-date";
 import { inputToMinor, minorToInput } from "@/lib/properties/form";
 import { useAmountHint } from "@/i18n/use-amount-hint";
+import { useApiText } from "@/i18n/use-api-text";
 import { useFormat } from "@/i18n/use-format";
 
 import { type GuestOption, GuestPicker } from "./guest-picker";
@@ -114,6 +115,7 @@ export function BookingForm({
   const t = useTranslations("bookings");
   const tForms = useTranslations("forms");
   const tCommon = useTranslations("common");
+  const api = useApiText();
   const format = useFormat();
   const prefix = useId();
   const [values, setValues] = useState(() => initialValues(properties, booking, preset));
@@ -221,19 +223,20 @@ export function BookingForm({
       });
       const result = await response.json().catch(() => null);
       if (response.status === 422 && result?.error?.fields) {
-        const { _: general, ...fields } = result.error.fields as FieldErrors;
+        const { _: general, ...fields } = api.fields(result.error.fields as FieldErrors);
         if (general) setFormError(general.join(" "));
         return showErrors(fields);
       }
       if (response.status === 409) {
         setServerConflicts(result?.error?.conflicts ?? []);
-        setFormError(result?.error?.message ?? t("form.unavailable"));
+        // The conflicts are listed by the dates; the server's sentence would repeat them.
+        setFormError(t("form.unavailable"));
         document.getElementById(fieldId("checkIn"))?.focus();
         return;
       }
       if (!response.ok) {
         throw new Error(
-          result?.error?.message ?? tCommon("serverAnswered", { status: response.status }),
+          api.message(result) ?? tCommon("serverAnswered", { status: response.status }),
         );
       }
       toastSuccess(booking ? t("form.saved") : t("form.added"));

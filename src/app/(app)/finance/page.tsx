@@ -15,6 +15,7 @@ import { addMonths } from "@/lib/calendar/month";
 import { listCategories } from "@/lib/finance/categories";
 import { ledgerHref, ledgerParams, ledgerPeriod } from "@/lib/finance/ledger";
 import { listTransactions, listTransactionsSchema, toDto } from "@/lib/finance/transactions";
+import { getApiText } from "@/i18n/get-api-text";
 import { getFormat } from "@/i18n/get-format";
 import { listProperties } from "@/lib/properties/service";
 
@@ -41,6 +42,7 @@ export default async function FinancePage({ searchParams }: PageProps<"/finance"
   const [properties, categories] = await Promise.all([listProperties(), listCategories()]);
   const t = await getTranslations("finance.page");
   const format = await getFormat();
+  const apiText = await getApiText();
 
   const header = (
     <PageHeader
@@ -173,7 +175,7 @@ export default async function FinancePage({ searchParams }: PageProps<"/finance"
         <ErrorState
           title={t("badFilters")}
           description={query.error.issues
-            .map((issue) => `${issue.path.join(".")} ${issue.message}`)
+            .map((issue) => `${issue.path.join(".")} ${apiText(issue.message)}`)
             .join("; ")}
         />
       </>

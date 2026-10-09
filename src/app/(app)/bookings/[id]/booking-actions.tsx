@@ -10,6 +10,7 @@ import { toastError, toastSuccess } from "@/components/toast";
 import { useConflictText } from "@/components/use-conflict-text";
 import { Button } from "@/components/ui/button";
 import { type Conflict } from "@/lib/bookings/form";
+import { useApiText } from "@/i18n/use-api-text";
 
 type Status = "inquiry" | "confirmed" | "cancelled";
 
@@ -23,18 +24,19 @@ class RequestError extends Error {
   }
 }
 
-async function send(url: string, unexpected: (status: number) => string, init: RequestInit) {
+async function send(
+  url: string,
+  fail: (body: unknown, status: number) => string,
+  init: RequestInit,
+) {
   const response = await fetch(url, init);
   if (response.ok) return;
   const body = await response.json().catch(() => null);
-  throw new RequestError(
-    body?.error?.message ?? unexpected(response.status),
-    body?.error?.conflicts ?? [],
-  );
+  throw new RequestError(fail(body, response.status), body?.error?.conflicts ?? []);
 }
 
-const patchStatus = (id: string, status: Status, unexpected: (status: number) => string) =>
-  send(`/api/bookings/${id}`, unexpected, {
+const patchStatus = (id: string, status: Status, fail: (body: unknown, status: number) => string) =>
+  send(`/api/bookings/${id}`, fail, {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ status }),
@@ -53,7 +55,9 @@ export function BookingActions({ id, status }: { id: string; status: Status }) {
   const t = useTranslations("bookings.actions");
   const tCommon = useTranslations("common");
   const text = useConflictText();
-  const unexpected = (code: number) => tCommon("serverAnswered", { status: code });
+  const api = useApiText();
+  const fail = (body: unknown, status: number) =>
+    api.message(body) ?? tCommon("serverAnswered", { status });
 
   async function run(action: () => Promise<void>, done: string, failed: string) {
     setPending(true);
@@ -78,11 +82,7 @@ export function BookingActions({ id, status }: { id: string; status: Status }) {
             disabled={pending}
             aria-busy={pending}
             onClick={() =>
-              run(
-                () => patchStatus(id, "confirmed", unexpected),
-                t("confirmed"),
-                t("confirmFailed"),
-              )
+              run(() => patchStatus(id, "confirmed", fail), t("confirmed"), t("confirmFailed"))
             }
           >
             {t("confirm")}
@@ -94,11 +94,7 @@ export function BookingActions({ id, status }: { id: string; status: Status }) {
             disabled={pending}
             aria-busy={pending}
             onClick={() =>
-              run(
-                () => patchStatus(id, "inquiry", unexpected),
-                t("reinstated"),
-                t("reinstateFailed"),
-              )
+              run(() => patchStatus(id, "inquiry", fail), t("reinstated"), t("reinstateFailed"))
             }
           >
             {t("reinstate")}
@@ -116,7 +112,7 @@ export function BookingActions({ id, status }: { id: string; status: Status }) {
             cancelLabel={t("keep")}
             destructive
             onConfirm={async () => {
-              await send(`/api/bookings/${id}/cancel`, unexpected, { method: "POST" });
+              await send(`/api/bookings/${id}/cancel`, fail, { method: "POST" });
               toastSuccess(t("cancelled"));
               router.refresh();
             }}

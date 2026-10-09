@@ -8,6 +8,7 @@ import { useCallback, useEffect, useState } from "react";
 import { toastError, toastSuccess } from "@/components/toast";
 import { Button } from "@/components/ui/button";
 import { useFormat } from "@/i18n/use-format";
+import { useApiText } from "@/i18n/use-api-text";
 
 export type SyncFailure = {
   linkId: string;
@@ -26,14 +27,14 @@ export type SyncFailure = {
   } | null;
 };
 
-async function retry(linkId: string | undefined, unexpected: (status: number) => string) {
+async function retry(linkId: string | undefined, fail: (body: unknown, status: number) => string) {
   const response = await fetch("/api/calendar-sync/retry", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(linkId ? { linkId } : {}),
   });
   const body = await response.json().catch(() => null);
-  if (!response.ok) throw new Error(body?.error?.message ?? unexpected(response.status));
+  if (!response.ok) throw new Error(fail(body, response.status));
   return body.queued as number;
 }
 
@@ -47,6 +48,9 @@ export function SyncFailures() {
   const router = useRouter();
   const t = useTranslations("settings.syncFailures");
   const tCommon = useTranslations("common");
+  const api = useApiText();
+  const fail = (body: unknown, status: number) =>
+    api.message(body) ?? tCommon("serverAnswered", { status });
   const format = useFormat();
   const [failures, setFailures] = useState<SyncFailure[] | null>(null);
   const [failed, setFailed] = useState(false);
@@ -76,7 +80,7 @@ export function SyncFailures() {
   async function run(linkId?: string) {
     setBusy(linkId ?? "all");
     try {
-      const queued = await retry(linkId, (status) => tCommon("serverAnswered", { status }));
+      const queued = await retry(linkId, fail);
       toastSuccess(t("retried", { count: queued }), t("retriedHint"));
       await fetchFailures();
       router.refresh();
@@ -121,7 +125,7 @@ export function SyncFailures() {
                   t("deletedBooking")
                 )}
               </p>
-              <p>{failure.error ?? t("genericError")}</p>
+              <p>{failure.error ? api.text(failure.error) : t("genericError")}</p>
               <p className="text-muted-foreground text-xs">
                 {failure.state === "dead"
                   ? t("dead", { count: failure.attempts })

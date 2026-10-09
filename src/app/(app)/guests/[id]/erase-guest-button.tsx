@@ -6,6 +6,7 @@ import { useTranslations } from "next-intl";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { toastSuccess } from "@/components/toast";
 import { Button } from "@/components/ui/button";
+import { useApiText } from "@/i18n/use-api-text";
 
 /**
  * Erases a guest's personal data (DSGVO Art. 17) after an explicit
@@ -17,6 +18,7 @@ export function EraseGuestButton({ id, name }: { id: string; name: string }) {
   const router = useRouter();
   const t = useTranslations("guests");
   const tCommon = useTranslations("common");
+  const api = useApiText();
 
   return (
     <ConfirmDialog
@@ -35,7 +37,7 @@ export function EraseGuestButton({ id, name }: { id: string; name: string }) {
         const body = await response.json().catch(() => null);
         if (!response.ok) {
           throw new Error(
-            body?.error?.message ?? tCommon("serverAnswered", { status: response.status }),
+            api.message(body) ?? tCommon("serverAnswered", { status: response.status }),
           );
         }
         toastSuccess(t("erase.done"));

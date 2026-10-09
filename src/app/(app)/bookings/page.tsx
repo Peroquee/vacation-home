@@ -11,6 +11,7 @@ import { SyncBadge, type SyncState } from "@/components/sync-badge";
 import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { type Formatters } from "@/i18n/format";
+import { getApiText } from "@/i18n/get-api-text";
 import { getFormat } from "@/i18n/get-format";
 import { SOURCE_KEYS } from "@/lib/bookings/labels";
 import { type ListState, listHref, nextSort, parseListParams } from "@/lib/bookings/list-params";
@@ -80,6 +81,7 @@ function columns(
   sync: Record<string, { state: SyncState; error: string | null }>,
   t: Translate,
   format: Formatters,
+  apiText: (message: string) => string,
 ): Column<BookingDto>[] {
   const header = (column: string, label: string) => (
     <SortHeader state={state} sort={sort} column={column} label={label} />
@@ -122,7 +124,10 @@ function columns(
             header: t("list.columns.google"),
             cell: (b: BookingDto) =>
               sync[b.id] ? (
-                <SyncBadge state={sync[b.id]!.state} title={sync[b.id]!.error ?? undefined} />
+                <SyncBadge
+                  state={sync[b.id]!.state}
+                  title={sync[b.id]!.error ? apiText(sync[b.id]!.error!) : undefined}
+                />
               ) : null,
           },
         ]
@@ -215,6 +220,7 @@ export default async function BookingsPage({ searchParams }: PageProps<"/booking
   const filtered = FILTER_KEYS.some((key) => key in state.params);
   const t = await getTranslations("bookings");
   const format = await getFormat();
+  const apiText = await getApiText();
 
   const header = (
     <PageHeader
@@ -232,7 +238,7 @@ export default async function BookingsPage({ searchParams }: PageProps<"/booking
         <ErrorState
           title={t("list.badFilters")}
           description={state.error.issues
-            .map((issue) => `${issue.path.join(".")} ${issue.message}`)
+            .map((issue) => `${issue.path.join(".")} ${apiText(issue.message)}`)
             .join("; ")}
         />
       </>
@@ -279,7 +285,7 @@ export default async function BookingsPage({ searchParams }: PageProps<"/booking
           <div className="hidden md:block">
             <DataTable
               caption={t("list.title")}
-              columns={columns(state, state.query.sort, sync, t, format)}
+              columns={columns(state, state.query.sort, sync, t, format, apiText)}
               rows={bookings}
               rowKey={(b) => b.id}
               empty={null}

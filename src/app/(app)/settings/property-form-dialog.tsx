@@ -19,6 +19,7 @@ import { Field, FieldDescription, FieldError, FieldGroup, FieldLabel } from "@/c
 import { Input } from "@/components/ui/input";
 import { NativeSelect, NativeSelectOption } from "@/components/ui/native-select";
 import { useAmountHint } from "@/i18n/use-amount-hint";
+import { useApiText } from "@/i18n/use-api-text";
 import { useFormat } from "@/i18n/use-format";
 import {
   currencyOptions,
@@ -85,6 +86,7 @@ export function PropertyFormDialog({
   const t = useTranslations("settings.propertyForm");
   const tForms = useTranslations("forms");
   const tCommon = useTranslations("common");
+  const api = useApiText();
   const amountHint = useAmountHint();
   const { locale } = useFormat();
 
@@ -142,11 +144,11 @@ export function PropertyFormDialog({
       if (!response.ok) {
         const body = await response.json().catch(() => null);
         if (response.status === 422 && body?.error?.fields) {
-          setErrors(body.error.fields);
+          setErrors(api.fields(body.error.fields));
           return;
         }
         throw new Error(
-          body?.error?.message ?? tCommon("serverAnswered", { status: response.status }),
+          api.message(body) ?? tCommon("serverAnswered", { status: response.status }),
         );
       }
       toastSuccess(property ? t("saved") : t("added"));

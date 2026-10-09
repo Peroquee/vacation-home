@@ -18,6 +18,7 @@ import { Field, FieldError, FieldGroup, FieldLabel } from "@/components/ui/field
 import { Input } from "@/components/ui/input";
 import type { CalendarBlock } from "@/lib/availability/calendar";
 import { useFormat } from "@/i18n/use-format";
+import { useApiText } from "@/i18n/use-api-text";
 
 type FieldErrors = Record<string, string[] | undefined>;
 
@@ -36,18 +37,14 @@ export class BlockRequestError extends Error {
 
 export async function blockRequest(
   url: string,
-  unexpected: (status: number) => string,
+  fail: (body: unknown, status: number) => string,
   init: RequestInit,
 ): Promise<unknown> {
   const response = await fetch(url, init);
   if (response.status === 204) return null;
   const body = await response.json().catch(() => null);
   if (response.ok) return body;
-  throw new BlockRequestError(
-    body?.error?.message ?? unexpected(response.status),
-    response.status,
-    body?.error?.fields,
-  );
+  throw new BlockRequestError(fail(body, response.status), response.status, body?.error?.fields);
 }
 
 /**
@@ -97,7 +94,9 @@ function BlockDialogBody({
   const tForms = useTranslations("forms");
   const tCommon = useTranslations("common");
   const format = useFormat();
-  const unexpected = (status: number) => tCommon("serverAnswered", { status });
+  const api = useApiText();
+  const fail = (body: unknown, status: number) =>
+    api.message(body) ?? tCommon("serverAnswered", { status });
 
   if (block.origin === "google") {
     return (
@@ -125,7 +124,7 @@ function BlockDialogBody({
     setErrors({});
     setFailure(null);
     try {
-      await blockRequest(`/api/blocks/${block.id}`, unexpected, {
+      await blockRequest(`/api/blocks/${block.id}`, fail, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(values),
@@ -134,7 +133,7 @@ function BlockDialogBody({
       onChanged();
       onClose();
     } catch (error) {
-      if (error instanceof BlockRequestError && error.fields) setErrors(error.fields);
+      if (error instanceof BlockRequestError && error.fields) setErrors(api.fields(error.fields));
       else setFailure(error instanceof Error ? error.message : t("saveFailed"));
     } finally {
       setPending(false);
@@ -192,7 +191,7 @@ function BlockDialogBody({
           destructive
           onConfirm={async () => {
             // A failure stays in the dialog as a toast (ConfirmDialog does that).
-            await blockRequest(`/api/blocks/${block.id}`, unexpected, { method: "DELETE" });
+            await blockRequest(`/api/blocks/${block.id}`, fail, { method: "DELETE" });
             toastSuccess(t("deleted"));
             onChanged();
             onClose();
