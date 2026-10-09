@@ -129,6 +129,59 @@
         "key_changed": "Der Verschlüsselungsschlüssel des Servers hat sich geändert, daher kann der gespeicherte Google-Zugang nicht mehr gelesen werden.",
         "unknown": "Der Google-Zugang funktioniert nicht mehr."
       }
+    },
+    "archive": {
+      "restored": "{name} wiederhergestellt",
+      "restoreFailed": "Die Unterkunft konnte nicht wiederhergestellt werden",
+      "restore": "Wiederherstellen",
+      "archive": "Archivieren",
+      "title": "{name} archivieren?",
+      "description": "Sie verschwindet aus der Unterkunftsauswahl, ihre Buchungen und Finanzen bleiben aber sichtbar. Sie können sie jederzeit wiederherstellen.",
+      "archived": "{name} archiviert"
+    },
+    "page": {
+      "title": "Einstellungen",
+      "description": "Ihre Unterkünfte und die Vorgaben, mit denen jede neue Buchung beginnt.",
+      "properties": "Unterkünfte",
+      "propertiesHint": "Eine geänderte Standardrate oder -gebühr gilt nur für neue Buchungen.",
+      "emptyTitle": "Noch keine Unterkünfte",
+      "emptyDescription": "Legen Sie die Unterkunft an, die Sie vermieten, um Buchungen aufzunehmen.",
+      "archivedTitle": "Archiviert",
+      "archivedHint": "In der Unterkunftsauswahl ausgeblendet. Ihre Buchungen und Finanzen bleiben sichtbar.",
+      "archivedCaption": "Archivierte Unterkünfte",
+      "addProperty": "Unterkunft hinzufügen",
+      "editProperty": "{name} bearbeiten",
+      "columns": {
+        "property": "Unterkunft",
+        "timezone": "Zeitzone",
+        "rate": "Preis pro Nacht",
+        "cleaning": "Reinigungsgebühr",
+        "actions": "Aktionen"
+      }
+    },
+    "propertyForm": {
+      "saved": "Unterkunft gespeichert",
+      "added": "Unterkunft hinzugefügt",
+      "saveFailed": "Die Unterkunft konnte nicht gespeichert werden",
+      "editTitle": "{name} bearbeiten",
+      "addTitle": "Unterkunft hinzufügen",
+      "description": "Vorgaben gelten nur für neue Buchungen. Bestehende Buchungen behalten ihre eigenen Preise.",
+      "name": "Name",
+      "address": "Adresse",
+      "timezone": "Zeitzone",
+      "currency": "Währung",
+      "nightlyRate": "Preis pro Nacht",
+      "cleaningFee": "Reinigungsgebühr",
+      "color": "Kalenderfarbe",
+      "colorHint": "Buchungen dieser Unterkunft erscheinen im Kalender in dieser Farbe.",
+      "add": "Unterkunft hinzufügen"
     }
+  },
+  "forms": {
+    "amountHint": "muss ein Betrag wie {example} sein, ohne Tausendertrennzeichen",
+    "amountHintEither": "muss ein Betrag wie {example} oder {alternative} sein, ohne Tausendertrennzeichen",
+    "required": "ist erforderlich",
+    "inCurrency": "In {currency}.",
+    "fieldError": "{label} {message}"
   }
 }

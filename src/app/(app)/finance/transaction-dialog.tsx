@@ -19,7 +19,8 @@ import { Input } from "@/components/ui/input";
 import { NativeSelect, NativeSelectOption } from "@/components/ui/native-select";
 import { bookingWindow } from "@/lib/finance/ledger";
 import { formatDateRange } from "@/lib/format";
-import { amountHint, inputToMinor, minorToInput } from "@/lib/properties/form";
+import { inputToMinor, minorToInput } from "@/lib/properties/form";
+import { useAmountHint } from "@/i18n/use-amount-hint";
 import { cn } from "@/lib/utils";
 
 export type LedgerProperty = { id: string; name: string; currency: string };
@@ -123,6 +124,7 @@ function TransactionForm({
   onDone: () => void;
 }) {
   const router = useRouter();
+  const amountHint = useAmountHint();
   const currencyOf = (id: string) => properties.find((p) => p.id === id)?.currency ?? "EUR";
   const [values, setValues] = useState(() => initial(transaction, defaults, currencyOf));
   const [errors, setErrors] = useState<FieldErrors>({});

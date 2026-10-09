@@ -24,7 +24,8 @@ import { BOOKING_SOURCES } from "@/lib/bookings/schema";
 import type { BookingDto } from "@/lib/bookings/service";
 import { addDays, isCalendarDate } from "@/lib/calendar-date";
 import { formatMoney } from "@/lib/format";
-import { amountHint, inputToMinor, minorToInput } from "@/lib/properties/form";
+import { inputToMinor, minorToInput } from "@/lib/properties/form";
+import { useAmountHint } from "@/i18n/use-amount-hint";
 
 import { type GuestOption, GuestPicker } from "./guest-picker";
 import { useStayAvailability } from "./use-stay-availability";
@@ -108,6 +109,7 @@ export function BookingForm({
   preset?: { propertyId?: string; checkIn?: string; checkOut?: string };
 }) {
   const router = useRouter();
+  const amountHint = useAmountHint();
   const prefix = useId();
   const [values, setValues] = useState(() => initialValues(properties, booking, preset));
   const [errors, setErrors] = useState<FieldErrors>({});

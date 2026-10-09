@@ -1,6 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { useMemo, useState } from "react";
 
 import { toastError, toastSuccess } from "@/components/toast";
@@ -17,8 +18,9 @@ import {
 import { Field, FieldDescription, FieldError, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { NativeSelect, NativeSelectOption } from "@/components/ui/native-select";
+import { useAmountHint } from "@/i18n/use-amount-hint";
+import { useFormat } from "@/i18n/use-format";
 import {
-  amountHint,
   currencyOptions,
   inputToMinor,
   minorToInput,
@@ -80,13 +82,18 @@ export function PropertyFormDialog({
   const [values, setValues] = useState(() => initialValues(property));
   const [errors, setErrors] = useState<FieldErrors>({});
   const [pending, setPending] = useState(false);
+  const t = useTranslations("settings.propertyForm");
+  const tForms = useTranslations("forms");
+  const tCommon = useTranslations("common");
+  const amountHint = useAmountHint();
+  const { locale } = useFormat();
 
   const timeZones = useMemo(() => {
     const zones = timeZoneOptions();
     // Keep a stored zone selectable even if this browser's list lacks it.
     return zones.includes(values.timezone) ? zones : [values.timezone, ...zones];
   }, [values.timezone]);
-  const currencies = useMemo(() => currencyOptions(), []);
+  const currencies = useMemo(() => currencyOptions(locale), [locale]);
 
   function openChange(next: boolean) {
     if (pending) return;
@@ -138,13 +145,15 @@ export function PropertyFormDialog({
           setErrors(body.error.fields);
           return;
         }
-        throw new Error(body?.error?.message ?? `The server answered ${response.status}.`);
+        throw new Error(
+          body?.error?.message ?? tCommon("serverAnswered", { status: response.status }),
+        );
       }
-      toastSuccess(property ? "Property saved" : "Property added");
+      toastSuccess(property ? t("saved") : t("added"));
       setOpen(false);
       router.refresh();
     } catch (error) {
-      toastError(error, "Could not save the property");
+      toastError(error, t("saveFailed"));
     } finally {
       setPending(false);
     }
@@ -165,7 +174,11 @@ export function PropertyFormDialog({
         <FieldLabel htmlFor={inputId}>{label}</FieldLabel>
         {control({ id: inputId, ...(messages && { "aria-invalid": true }) })}
         {description ? <FieldDescription>{description}</FieldDescription> : null}
-        <FieldError errors={messages?.map((message) => ({ message: `${label} ${message}` }))} />
+        <FieldError
+          errors={messages?.map((message) => ({
+            message: tForms("fieldError", { label, message }),
+          }))}
+        />
       </Field>
     );
   }
@@ -175,14 +188,14 @@ export function PropertyFormDialog({
       <DialogTrigger render={trigger} />
       <DialogContent className="max-h-[calc(100dvh-2rem)] overflow-y-auto sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle>{property ? `Edit ${property.name}` : "Add property"}</DialogTitle>
-          <DialogDescription>
-            Defaults apply to new bookings only. Existing bookings keep their own rates.
-          </DialogDescription>
+          <DialogTitle>
+            {property ? t("editTitle", { name: property.name }) : t("addTitle")}
+          </DialogTitle>
+          <DialogDescription>{t("description")}</DialogDescription>
         </DialogHeader>
         <form id={`property-form-${id}`} onSubmit={submit} noValidate>
           <FieldGroup>
-            {field("name", "Name", (props) => (
+            {field("name", t("name"), (props) => (
               <Input
                 {...props}
                 value={values.name}
@@ -192,7 +205,7 @@ export function PropertyFormDialog({
                 autoComplete="off"
               />
             ))}
-            {field("address", "Address", (props) => (
+            {field("address", t("address"), (props) => (
               <Input
                 {...props}
                 value={values.address}
@@ -202,7 +215,7 @@ export function PropertyFormDialog({
               />
             ))}
             <div className="grid gap-5 sm:grid-cols-2">
-              {field("timezone", "Timezone", (props) => (
+              {field("timezone", t("timezone"), (props) => (
                 <NativeSelect
                   {...props}
                   className="w-full"
@@ -216,7 +229,7 @@ export function PropertyFormDialog({
                   ))}
                 </NativeSelect>
               ))}
-              {field("currency", "Currency", (props) => (
+              {field("currency", t("currency"), (props) => (
                 <NativeSelect
                   {...props}
                   className="w-full"
@@ -232,7 +245,7 @@ export function PropertyFormDialog({
               ))}
               {field(
                 "defaultNightlyRateMinor",
-                "Nightly rate",
+                t("nightlyRate"),
                 (props) => (
                   <Input
                     {...props}
@@ -242,11 +255,11 @@ export function PropertyFormDialog({
                     placeholder={minorToInput(0, values.currency)}
                   />
                 ),
-                `In ${values.currency}.`,
+                tForms("inCurrency", { currency: values.currency }),
               )}
               {field(
                 "defaultCleaningFeeMinor",
-                "Cleaning fee",
+                t("cleaningFee"),
                 (props) => (
                   <Input
                     {...props}
@@ -256,12 +269,12 @@ export function PropertyFormDialog({
                     placeholder={minorToInput(0, values.currency)}
                   />
                 ),
-                `In ${values.currency}.`,
+                tForms("inCurrency", { currency: values.currency }),
               )}
             </div>
             {field(
               "color",
-              "Calendar colour",
+              t("color"),
               (props) => (
                 <Input
                   {...props}
@@ -271,17 +284,17 @@ export function PropertyFormDialog({
                   onChange={(event) => set("color", event.target.value)}
                 />
               ),
-              "Bookings for this property use it on the calendar.",
+              t("colorHint"),
             )}
             {errors._ ? <FieldError errors={errors._.map((message) => ({ message }))} /> : null}
           </FieldGroup>
         </form>
         <DialogFooter>
           <Button variant="outline" disabled={pending} onClick={() => openChange(false)}>
-            Cancel
+            {tCommon("cancel")}
           </Button>
           <Button type="submit" form={`property-form-${id}`} disabled={pending} aria-busy={pending}>
-            {pending ? "Saving…" : property ? "Save" : "Add property"}
+            {pending ? tCommon("saving") : property ? tCommon("save") : t("add")}
           </Button>
         </DialogFooter>
       </DialogContent>

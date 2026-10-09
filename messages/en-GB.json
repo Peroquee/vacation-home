@@ -129,6 +129,59 @@
         "key_changed": "The server's encryption key changed, so the stored Google access can no longer be read.",
         "unknown": "Google access has stopped working."
       }
+    },
+    "archive": {
+      "restored": "{name} restored",
+      "restoreFailed": "Could not restore the property",
+      "restore": "Restore",
+      "archive": "Archive",
+      "title": "Archive {name}?",
+      "description": "It disappears from property selectors, but its bookings and finances stay visible. You can restore it at any time.",
+      "archived": "{name} archived"
+    },
+    "page": {
+      "title": "Settings",
+      "description": "Your properties and the defaults every new booking starts from.",
+      "properties": "Properties",
+      "propertiesHint": "Changing a default rate or fee affects new bookings only.",
+      "emptyTitle": "No properties yet",
+      "emptyDescription": "Add the place you rent out to start taking bookings.",
+      "archivedTitle": "Archived",
+      "archivedHint": "Hidden from property selectors. Their bookings and finances stay visible.",
+      "archivedCaption": "Archived properties",
+      "addProperty": "Add property",
+      "editProperty": "Edit {name}",
+      "columns": {
+        "property": "Property",
+        "timezone": "Timezone",
+        "rate": "Nightly rate",
+        "cleaning": "Cleaning fee",
+        "actions": "Actions"
+      }
+    },
+    "propertyForm": {
+      "saved": "Property saved",
+      "added": "Property added",
+      "saveFailed": "Could not save the property",
+      "editTitle": "Edit {name}",
+      "addTitle": "Add property",
+      "description": "Defaults apply to new bookings only. Existing bookings keep their own rates.",
+      "name": "Name",
+      "address": "Address",
+      "timezone": "Timezone",
+      "currency": "Currency",
+      "nightlyRate": "Nightly rate",
+      "cleaningFee": "Cleaning fee",
+      "color": "Calendar colour",
+      "colorHint": "Bookings for this property use it on the calendar.",
+      "add": "Add property"
     }
+  },
+  "forms": {
+    "amountHint": "must be an amount like {example}, without thousands separators",
+    "amountHintEither": "must be an amount like {example} or {alternative}, without thousands separators",
+    "required": "is required",
+    "inCurrency": "In {currency}.",
+    "fieldError": "{label} {message}"
   }
 }
