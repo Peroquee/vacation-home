@@ -34,6 +34,14 @@ function optional<T extends z.ZodType>(schema: T) {
   );
 }
 
+/** Like `optional`, but keeping case: for keys and URLs. */
+function optionalExact<T extends z.ZodType>(schema: T) {
+  return z.preprocess(
+    (value) => (typeof value === "string" ? value.trim() || undefined : value),
+    schema.optional(),
+  );
+}
+
 const envSchema = z.object({
   /** PostgreSQL connection string used by Prisma. */
   DATABASE_URL: z.url({
@@ -101,18 +109,64 @@ const envSchema = z.object({
   ).default(300),
 
   /**
+   * Inbound sync imports a timed Google event (one with times, not all-day)
+   * as a block only if it lasts at least this many hours, so ordinary
+   * meetings do not block nights. Default 12.
+   */
+  GOOGLE_IMPORT_MIN_TIMED_HOURS: optional(z.coerce.number().min(0, "cannot be negative")).default(
+    12,
+  ),
+
+  /**
    * Optional: the public https base URL at which Google can reach this app,
    * e.g. https://vacation.example.com. When set, Google pushes change
    * notifications to <url>/api/google/webhook, so changes arrive in seconds;
    * polling continues, less often, as a safety net. Leave unset when the app
    * is only reachable on the LAN: polling alone then picks up changes.
    */
-  GOOGLE_WEBHOOK_URL: optional(
+  GOOGLE_WEBHOOK_URL: optionalExact(
     z.url({
       protocol: /^https$/,
       error: "must be a public https URL, e.g. https://vacation.example.com",
     }),
   ),
+
+  /**
+   * Set to "true" when the app runs behind a reverse proxy that sets
+   * X-Forwarded-For: rate limits on sign-in and the webhook then count per
+   * client address. Off by default, as the header is trivially forged when
+   * clients reach the app directly; those limits then count per route.
+   */
+  TRUST_PROXY_HEADERS: optional(z.enum(["true", "false", "1", "0", "yes", "no"]))
+    .default("false")
+    .transform((value) => ["true", "1", "yes"].includes(value)),
+
+  /**
+   * Earlier TOKEN_ENCRYPTION_KEY values, comma-separated, kept readable
+   * during a key rotation: tokens sealed under them still decrypt until
+   * `npm run tokens:rotate` has sealed them all under the current key.
+   * See docs/security.md.
+   */
+  TOKEN_ENCRYPTION_KEYS_OLD: optionalExact(
+    z
+      .string()
+      .transform((value) =>
+        value
+          .split(",")
+          .map((key) => key.trim())
+          .filter(Boolean),
+      )
+      .pipe(
+        z.array(
+          z
+            .string()
+            .refine(
+              (key) => Buffer.from(key, "base64").length === 32,
+              "each must be 32 random bytes, base64-encoded",
+            ),
+        ),
+      ),
+  ).default([]),
 
   /** Minimum level written by the logger in src/lib/logger.ts. */
   LOG_LEVEL: optional(z.enum(["trace", "debug", "info", "warn", "error", "fatal"])).default("info"),

@@ -466,6 +466,10 @@ sign-in ([`src/lib/google/`](src/lib/google)):
   connection is marked `disconnected` with reason `revoked`, and callers get
   a `CalendarNotConnectedError`. `GET /api/google/connection` reports it so
   settings can show a "reconnect" prompt; reconnecting replaces the grant.
+  The same response carries `sync`, a summary of the user's booking events
+  in Google: `{ lastSyncedAt, pending, failed, lastError }`. It's `null`
+  unless the account is connected. `lastError` is a fixed sentence for the
+  latest failure's kind, never Google's text.
   Tokens sealed under an earlier `TOKEN_ENCRYPTION_KEY` do the same, with
   reason `key_changed`.
 - **Disconnecting**: `DELETE /api/google/connection` revokes the grant at
@@ -505,8 +509,32 @@ Each property can push its bookings to one Google Calendar
 ### Inbound sync: changes in Google Calendar
 
 For properties with `inbound: true` in their calendar settings, the app finds
-out what changed in Google ([`src/lib/google/inbound.ts`](src/lib/google/inbound.ts)).
-Turning those changes into blocks is GitLab #73.
+out what changed in Google ([`src/lib/google/inbound.ts`](src/lib/google/inbound.ts))
+and imports it as read-only blocks with `origin: "google"`
+([`src/lib/google/inbound-import.ts`](src/lib/google/inbound-import.ts)).
+
+- **What becomes a block:**
+  - All-day events, on their own dates.
+  - Timed events lasting at least `GOOGLE_IMPORT_MIN_TIMED_HOURS` (default
+    12). They block every night they touch, in the property's timezone, so
+    a meeting blocks nothing.
+  - Never the app's own booking events: they carry its extended property,
+    so a booking doesn't come back as a block. Never "free" events either.
+- **Following Google:** moving an event moves its block. Deleting it, making
+  it free or shortening it below the threshold removes the block. A full
+  list removes the blocks of events that are no longer there.
+- **No personal data:** a block keeps the Google event id and the dates, and
+  its reason names only the source ("Google Calendar · <calendar name>").
+  The event's title, description, location and attendees are never stored.
+- **Conflicts:** an event over a confirmed booking isn't imported. It
+  becomes a sync issue for review instead (`GET /api/calendar-sync/issues`,
+  `POST /api/calendar-sync/issues/:id/dismiss`), and the count is
+  `sync.openIssues` on `GET /api/google/connection`.
+- **Who wins:** the booking wins over its own event, and Google wins over its
+  own events. See [docs/calendar-sync.md](docs/calendar-sync.md) for the
+  precedence rules and why sync can't loop.
+
+How changes are found:
 
 - **Polling, the default.** A LAN-only app can't receive Google's webhooks,
   so each calendar is checked every `GOOGLE_CALENDAR_POLL_SECONDS` (default
@@ -558,6 +586,19 @@ list and event list/get/insert/update/delete:
 End-to-end tests sign in by inserting a real session into their own test
 database and sending its cookie. The app has no test-only login path that a
 production deployment could have switched on.
+
+## Security
+
+[docs/security.md](docs/security.md) is the threat checklist, with each item
+marked addressed or accepted. It also has the steps for rotating the token
+encryption key (`npm run tokens:rotate`). In short:
+
+- **Headers:** every page carries a per-request nonce CSP, frame blocking
+  and the usual hardening headers (HSTS over https).
+- **CSRF:** mutating API calls from another site are refused (`403`).
+- **Rate limits:** sign-in, the Google webhook and calendar connect, guest
+  erasure, category reassign and bulk delete are rate limited (`429`).
+- **Dependency audit:** `npm run audit` runs in CI.
 
 ## Logging and error tracking
 

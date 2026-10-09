@@ -10,6 +10,7 @@
 import type { CalendarEventLink } from "@/generated/prisma/client";
 import { db, type DbClient } from "@/lib/db";
 import { isPrismaError } from "@/lib/db-errors";
+import { logger } from "@/lib/logger";
 
 import type { CalendarClient, EventInput } from "./calendar";
 import { GoogleCalendarError } from "./calendar";
@@ -84,7 +85,7 @@ export async function pushEvent(
       written = await insertOrAdopt(current, event, calendar);
     } else {
       try {
-        written = await calendar.updateEvent(current.calendarId, current.googleEventId, event);
+        written = await updateAppWins(current, event, calendar);
       } catch (error) {
         if (!isGone(error)) throw error;
         current = await db.calendarEventLink.update({
@@ -111,6 +112,40 @@ export async function pushEvent(
   } catch (error) {
     await markFailed(current, error);
     throw error;
+  }
+}
+
+/** The parts of an event the app writes, compared to tell what changed in Google. */
+const COMPARED = ["summary", "description", "start", "end", "transparency"] as const;
+
+/**
+ * Updates the event only if it is unchanged since the app last wrote it
+ * (`If-Match` with the stored etag). If someone edited it in Google
+ * meanwhile, the app's booking wins and the event is overwritten. The
+ * fields where Google's version differed are logged, by name only - the
+ * values may hold anything someone typed in Google.
+ */
+async function updateAppWins(
+  link: CalendarEventLink,
+  event: Omit<EventInput, "id">,
+  calendar: CalendarClient,
+) {
+  try {
+    return await calendar.updateEvent(link.calendarId, link.googleEventId, event, {
+      etag: link.etag ?? undefined,
+    });
+  } catch (error) {
+    if (!(error instanceof GoogleCalendarError && error.kind === "precondition_failed"))
+      throw error;
+    const remote = await calendar.getEvent(link.calendarId, link.googleEventId);
+    const changed = COMPARED.filter(
+      (field) => JSON.stringify(remote[field] ?? null) !== JSON.stringify(event[field] ?? null),
+    );
+    logger.warn(
+      { linkId: link.id, bookingId: link.bookingId, differingFields: changed },
+      "google event was edited in Google; the booking wins and overwrites it",
+    );
+    return calendar.updateEvent(link.calendarId, link.googleEventId, event);
   }
 }
 

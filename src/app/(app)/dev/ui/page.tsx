@@ -1,13 +1,17 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
+import { ExpenseBreakdown } from "@/components/charts/expense-breakdown";
+import { RevenueExpensesChart } from "@/components/charts/revenue-expenses-chart";
 import { type Column, DataTable } from "@/components/data-table";
 import { PageHeader } from "@/components/page-header";
-import { CardSkeleton, TableSkeleton } from "@/components/skeletons";
+import { CardSkeleton, StatTilesSkeleton, TableSkeleton } from "@/components/skeletons";
+import { StatTile } from "@/components/stat-tile";
 import { EmptyState, ErrorState } from "@/components/states";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatDate, formatDateRange, formatDateTime, formatMoney } from "@/lib/format";
+import { breakdownRows } from "@/lib/dashboard/breakdown";
 import { APP_LOCALE } from "@/lib/locale";
 
 import { InteractiveExamples } from "./interactive-examples";
@@ -32,6 +36,18 @@ const stays: Stay[] = [
     totalMinor: 48550,
   },
 ];
+
+/** Twelve months, one of them empty and one at a loss, to check the chart's edge cases by eye. */
+const chartMonths = Array.from({ length: 12 }, (_, i) => {
+  const income = i === 3 ? 0 : 90000 + ((i * 37) % 9) * 15000;
+  const expenses = i === 3 ? 0 : i === 8 ? 160000 : 25000 + ((i * 53) % 7) * 6000;
+  return {
+    month: `2026-${String(i + 1).padStart(2, "0")}`,
+    incomeMinor: income,
+    expensesMinor: expenses,
+    netMinor: income - expenses,
+  };
+});
 
 const columns: Column<Stay>[] = [
   { id: "guest", header: "Guest", cell: (s) => s.guest },
@@ -92,6 +108,67 @@ export default function UiPrimitivesPage() {
           <TableSkeleton rows={3} columns={3} />
           <CardSkeleton />
         </div>
+      </Section>
+
+      <Section title="Stat tiles">
+        <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
+          <StatTile
+            label="Revenue"
+            value={formatMoney(1284000, "EUR")}
+            delta={{
+              text: "+12.5%",
+              direction: "up",
+              good: true,
+              against: "vs the same dates last year",
+            }}
+          />
+          <StatTile
+            label="Expenses"
+            value={formatMoney(312000, "EUR")}
+            delta={{
+              text: "+8%",
+              direction: "up",
+              good: false,
+              against: "vs the same dates last year",
+            }}
+          />
+          <StatTile label="Upcoming bookings" value="3" note="arriving in the next 30 days" />
+        </div>
+        <StatTilesSkeleton count={3} />
+      </Section>
+
+      <Section title="Revenue and expenses chart">
+        <Card>
+          <CardContent>
+            <RevenueExpensesChart currency="EUR" months={chartMonths} />
+          </CardContent>
+        </Card>
+      </Section>
+
+      <Section title="Expense breakdown">
+        <Card className="max-w-md">
+          <CardContent>
+            <ExpenseBreakdown
+              currency="EUR"
+              rows={breakdownRows(
+                [
+                  ["Cleaning", 480000, "#7c3aed"],
+                  ["Maintenance", 210000, "#db2777"],
+                  ["Utilities", 155000, "#ea580c"],
+                  ["Platform fees", 98000, "#ca8a04"],
+                  ["Supplies", 21000, "#65a30d"],
+                  ["Insurance", 14000, "#0284c7"],
+                ].map(([name, amountMinor, color]) => ({
+                  categoryId: String(name),
+                  name: String(name),
+                  color: String(color),
+                  amountMinor: Number(amountMinor),
+                  share: Number(amountMinor) / 978000,
+                })),
+              )}
+            />
+          </CardContent>
+        </Card>
       </Section>
 
       <Section title="Dialogs, sheet and toasts">
