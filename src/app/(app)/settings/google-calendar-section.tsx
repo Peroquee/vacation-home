@@ -1,6 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
 
 import { ConfirmDialog } from "@/components/confirm-dialog";
@@ -10,7 +11,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Checkbox } from "@/components/ui/checkbox";
 import { Field, FieldError, FieldLabel } from "@/components/ui/field";
 import { NativeSelect, NativeSelectOption } from "@/components/ui/native-select";
-import { formatDateTime } from "@/lib/format";
+import { useFormat } from "@/i18n/use-format";
+import { useApiText } from "@/i18n/use-api-text";
 
 import { SyncFailures } from "./sync-failures";
 
@@ -50,33 +52,28 @@ export type PropertySync = {
 type GoogleCalendar = { id: string; summary: string; primary: boolean };
 
 /** How Google sent the user back from the consent screen (`?google=`). */
-const RETURNS: Record<string, { ok: boolean; message: string }> = {
-  connected: { ok: true, message: "Google Calendar is connected." },
-  denied: { ok: false, message: "Google Calendar was not connected: access was declined." },
-  scope_missing: {
-    ok: false,
-    message:
-      "Google Calendar was not connected: the calendar permission was not granted. Connect again and allow access to your calendars.",
-  },
-  unavailable: { ok: false, message: "Connecting Google Calendar is switched off on this server." },
-  error: { ok: false, message: "Google Calendar could not be connected. Please try again." },
-};
+const RETURNS = ["connected", "denied", "scope_missing", "unavailable", "error"] as const;
+const REASONS = ["revoked", "key_changed"] as const;
 
-const DISCONNECTED: Record<string, string> = {
-  revoked:
-    "Google no longer allows this app to use your calendar, for example because access was removed in your Google account.",
-  key_changed:
-    "The server's encryption key changed, so the stored Google access can no longer be read.",
-};
+function isOneOf<T extends string>(
+  list: readonly T[],
+  value: string | null | undefined,
+): value is T {
+  return list.includes(value as T);
+}
 
-async function send(url: string, init: RequestInit = {}) {
+async function send(
+  url: string,
+  fail: (body: unknown, status: number) => string,
+  init: RequestInit = {},
+) {
   const response = await fetch(url, {
     ...init,
     headers: init.body ? { "Content-Type": "application/json" } : undefined,
   });
   const body = response.status === 204 ? null : await response.json().catch(() => null);
   if (!response.ok) {
-    const error = new Error(body?.error?.message ?? `The server answered ${response.status}.`);
+    const error = new Error(fail(body, response.status));
     Object.assign(error, { fields: body?.error?.fields });
     throw error;
   }
@@ -100,17 +97,22 @@ export function GoogleCalendarSection({
   returned?: string;
 }) {
   const router = useRouter();
-  const notice = returned ? RETURNS[returned] : undefined;
+  const t = useTranslations("settings.google");
+  const tCommon = useTranslations("common");
+  const format = useFormat();
+  const api = useApiText();
+  const fail = (body: unknown, status: number) =>
+    api.message(body) ?? tCommon("serverAnswered", { status });
+  const notice = isOneOf(RETURNS, returned)
+    ? { ok: returned === "connected", message: t(`returns.${returned}`) }
+    : undefined;
   const connected = connection.status === "connected";
 
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Google Calendar</CardTitle>
-        <CardDescription>
-          Bookings appear in the Google calendar you choose for each property, and events there can
-          block dates here.
-        </CardDescription>
+        <CardTitle>{t("title")}</CardTitle>
+        <CardDescription>{t("description")}</CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
         {notice ? (
@@ -126,44 +128,48 @@ export function GoogleCalendarSection({
           <div className="text-sm">
             {connected ? (
               <>
-                <p className="font-medium">Connected as {connection.googleEmail}</p>
+                <p className="font-medium">
+                  {t("connectedAs", { email: connection.googleEmail ?? "" })}
+                </p>
                 {connection.connectedAt ? (
                   <p className="text-muted-foreground">
-                    Since {formatDateTime(connection.connectedAt, "UTC")} (UTC)
+                    {t("since", { time: format.dateTime(connection.connectedAt, "UTC") })}
                   </p>
                 ) : null}
                 {connection.sync ? <SyncStatus sync={connection.sync} /> : null}
               </>
             ) : connection.status === "disconnected" ? (
               <>
-                <p className="text-destructive font-medium">Disconnected</p>
+                <p className="text-destructive font-medium">{t("disconnected")}</p>
                 <p className="text-muted-foreground">
-                  {DISCONNECTED[connection.reason ?? ""] ?? "Google access has stopped working."}{" "}
-                  Reconnect to resume syncing.
+                  {isOneOf(REASONS, connection.reason)
+                    ? t(`reasons.${connection.reason}`)
+                    : t("reasons.unknown")}{" "}
+                  {t("reconnectHint")}
                 </p>
               </>
             ) : (
-              <p className="text-muted-foreground">Not connected.</p>
+              <p className="text-muted-foreground">{t("notConnected")}</p>
             )}
           </div>
           {connected ? (
             <ConfirmDialog
-              trigger={<Button variant="outline">Disconnect</Button>}
-              title="Disconnect Google Calendar?"
-              description="All syncing stops, for every property. Events already in your Google calendars are left untouched; delete them there if you no longer want them."
-              confirmLabel="Disconnect"
-              cancelLabel="Stay connected"
+              trigger={<Button variant="outline">{t("disconnect")}</Button>}
+              title={t("disconnectTitle")}
+              description={t("disconnectDescription")}
+              confirmLabel={t("disconnect")}
+              cancelLabel={t("stayConnected")}
               destructive
               onConfirm={async () => {
-                await send("/api/google/connection", { method: "DELETE" });
-                toastSuccess("Google Calendar disconnected");
+                await send("/api/google/connection", fail, { method: "DELETE" });
+                toastSuccess(t("disconnected_toast"));
                 router.refresh();
               }}
             />
           ) : (
             // A plain link: the server redirects to Google's consent screen.
             <a href="/api/google/connect" className={buttonVariants()}>
-              {connection.status === "disconnected" ? "Reconnect" : "Connect Google Calendar"}
+              {connection.status === "disconnected" ? t("reconnect") : t("connect")}
             </a>
           )}
         </div>
@@ -176,7 +182,7 @@ export function GoogleCalendarSection({
             className="space-y-2 border-t pt-4"
           >
             <h3 id="google-sync-title" className="text-sm font-medium">
-              Sync problems
+              {t("syncProblems")}
             </h3>
             <SyncFailures />
           </section>
@@ -188,18 +194,21 @@ export function GoogleCalendarSection({
 
 /** Last sync, what is waiting, and what failed, over every property. */
 function SyncStatus({ sync }: { sync: SyncSummary }) {
+  const t = useTranslations("settings.google");
+  const api = useApiText();
+  const format = useFormat();
   return (
     <p className="text-muted-foreground">
       {sync.lastSyncedAt
-        ? `Last synced ${formatDateTime(sync.lastSyncedAt, "UTC")} (UTC)`
-        : "Nothing synced yet"}
-      {sync.pending > 0 ? ` · ${sync.pending} waiting` : ""}
+        ? t("lastSynced", { time: format.dateTime(sync.lastSyncedAt, "UTC") })
+        : t("nothingSynced")}
+      {sync.pending > 0 ? t("waiting", { count: sync.pending }) : ""}
       {sync.failed > 0 ? (
         <span className="text-destructive">
           {" "}
-          · {sync.failed} failed
-          {sync.dead ? ` (${sync.dead} stopped)` : ""}
-          {sync.lastError ? `: ${sync.lastError}` : ""}
+          {t("failed", { count: sync.failed })}
+          {sync.dead ? t("stopped", { count: sync.dead }) : ""}
+          {sync.lastError ? `: ${api.text(sync.lastError)}` : ""}
         </span>
       ) : null}
     </p>
@@ -210,31 +219,34 @@ function SyncStatus({ sync }: { sync: SyncSummary }) {
 function PropertyCalendars({ properties }: { properties: PropertySync[] }) {
   const [calendars, setCalendars] = useState<GoogleCalendar[] | null>(null);
   const [failure, setFailure] = useState<string | null>(null);
+  const t = useTranslations("settings.google");
+  const api = useApiText();
 
   useEffect(() => {
     const controller = new AbortController();
     fetch("/api/google/calendars", { signal: controller.signal })
       .then(async (response) => {
         const body = await response.json().catch(() => null);
-        if (!response.ok) throw new Error(body?.error?.message ?? "Google could not be reached.");
+        if (!response.ok) throw new Error(api.message(body) ?? t("unreachable"));
         setCalendars(body as GoogleCalendar[]);
       })
       .catch((error: unknown) => {
         if (!controller.signal.aborted) {
-          setFailure(error instanceof Error ? error.message : "Google could not be reached.");
+          setFailure(error instanceof Error ? error.message : t("unreachable"));
         }
       });
     return () => controller.abort();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- load once; t only words the failure
   }, []);
 
   if (properties.length === 0) {
-    return <p className="text-muted-foreground text-sm">Add a property to choose its calendar.</p>;
+    return <p className="text-muted-foreground text-sm">{t("addProperty")}</p>;
   }
   return (
     <div className="divide-y border-t">
       {failure ? (
         <p role="alert" className="text-destructive py-3 text-sm">
-          Your calendars could not be loaded: {failure}
+          {t("calendarsFailed", { reason: failure })}
         </p>
       ) : null}
       {properties.map((entry) => (
@@ -253,6 +265,11 @@ function PropertyCalendarRow({
   calendars: GoogleCalendar[] | null;
 }) {
   const router = useRouter();
+  const t = useTranslations("settings.google");
+  const tCommon = useTranslations("common");
+  const api = useApiText();
+  const fail = (body: unknown, status: number) =>
+    api.message(body) ?? tCommon("serverAnswered", { status });
   const { property, calendar } = entry;
   const [values, setValues] = useState({
     calendarId: calendar?.calendarId ?? "",
@@ -285,17 +302,17 @@ function PropertyCalendarRow({
     setPending(true);
     setError(null);
     try {
-      await send(`/api/properties/${property.id}/calendar`, {
+      await send(`/api/properties/${property.id}/calendar`, fail, {
         method: "PUT",
         body: JSON.stringify(values),
       });
-      toastSuccess(`${property.name} will sync`, "Its bookings are being sent to the calendar.");
+      toastSuccess(t("willSync", { name: property.name }), t("willSyncHint"));
       router.refresh();
     } catch (failure) {
       const fields = (failure as { fields?: Record<string, string[]> }).fields;
       setError(
         fields?.calendarId
-          ? `Calendar ${fields.calendarId.join(", ")}`
+          ? t("calendarField", { message: fields.calendarId.map(api.text).join(", ") })
           : (failure as Error).message,
       );
     } finally {
@@ -305,16 +322,13 @@ function PropertyCalendarRow({
 
   async function resync() {
     try {
-      const { scheduled } = (await send(`/api/properties/${property.id}/calendar/resync`, {
+      const { scheduled } = (await send(`/api/properties/${property.id}/calendar/resync`, fail, {
         method: "POST",
       })) as { scheduled: number };
-      toastSuccess(
-        "Resync started",
-        `${scheduled} ${scheduled === 1 ? "booking" : "bookings"} queued.`,
-      );
+      toastSuccess(t("resyncStarted"), t("queued", { count: scheduled }));
       router.refresh();
     } catch (failure) {
-      toastError(failure, "Could not resync");
+      toastError(failure, t("resyncFailed"));
     }
   }
 
@@ -324,15 +338,15 @@ function PropertyCalendarRow({
         <p className="font-medium">{property.name}</p>
         {calendar ? (
           <p className="text-muted-foreground text-sm">
-            {calendar.outbound ? "Syncing" : "Not sending bookings"}
+            {calendar.outbound ? t("syncing") : t("notSending")}
           </p>
         ) : (
-          <p className="text-muted-foreground text-sm">Not synced</p>
+          <p className="text-muted-foreground text-sm">{t("notSynced")}</p>
         )}
       </div>
       <div className="grid gap-3">
         <Field data-invalid={error ? true : undefined}>
-          <FieldLabel htmlFor={`${prefix}-calendar`}>Calendar</FieldLabel>
+          <FieldLabel htmlFor={`${prefix}-calendar`}>{t("calendar")}</FieldLabel>
           <NativeSelect
             id={`${prefix}-calendar`}
             className="w-full"
@@ -342,12 +356,12 @@ function PropertyCalendarRow({
             onChange={(event) => setValues((v) => ({ ...v, calendarId: event.target.value }))}
           >
             <NativeSelectOption value="" disabled>
-              {calendars === null ? "Loading your calendars…" : "Choose a calendar"}
+              {calendars === null ? t("loadingCalendars") : t("chooseCalendar")}
             </NativeSelectOption>
             {options.map((c) => (
               <NativeSelectOption key={c.id} value={c.id}>
                 {c.summary}
-                {c.primary ? " (main)" : ""}
+                {c.primary ? t("main") : ""}
               </NativeSelectOption>
             ))}
           </NativeSelect>
@@ -360,7 +374,7 @@ function PropertyCalendarRow({
               checked={values.outbound}
               onCheckedChange={(checked) => setValues((v) => ({ ...v, outbound: checked }))}
             />
-            <FieldLabel htmlFor={`${prefix}-outbound`}>Send bookings to Google</FieldLabel>
+            <FieldLabel htmlFor={`${prefix}-outbound`}>{t("outbound")}</FieldLabel>
           </Field>
           <Field orientation="horizontal" className="w-auto">
             <Checkbox
@@ -368,9 +382,7 @@ function PropertyCalendarRow({
               checked={values.inbound}
               onCheckedChange={(checked) => setValues((v) => ({ ...v, inbound: checked }))}
             />
-            <FieldLabel htmlFor={`${prefix}-inbound`}>
-              Block dates for other events there
-            </FieldLabel>
+            <FieldLabel htmlFor={`${prefix}-inbound`}>{t("inbound")}</FieldLabel>
           </Field>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -380,27 +392,29 @@ function PropertyCalendarRow({
             aria-busy={pending}
             onClick={save}
           >
-            {pending ? "Saving…" : calendar ? "Save" : "Start syncing"}
+            {pending ? tCommon("saving") : calendar ? tCommon("save") : t("startSyncing")}
           </Button>
           {calendar?.outbound ? (
             <Button size="sm" variant="outline" onClick={resync}>
-              Resync everything
+              {t("resync")}
             </Button>
           ) : null}
           {calendar ? (
             <ConfirmDialog
               trigger={
                 <Button size="sm" variant="ghost">
-                  Stop syncing
+                  {t("stopSyncing")}
                 </Button>
               }
-              title={`Stop syncing ${property.name}?`}
-              description="New and changed bookings are no longer sent to Google. Events already in the calendar are left untouched."
-              confirmLabel="Stop syncing"
-              cancelLabel="Keep syncing"
+              title={t("stopTitle", { name: property.name })}
+              description={t("stopDescription")}
+              confirmLabel={t("stopSyncing")}
+              cancelLabel={t("keepSyncing")}
               onConfirm={async () => {
-                await send(`/api/properties/${property.id}/calendar`, { method: "DELETE" });
-                toastSuccess(`${property.name} no longer syncs`);
+                await send(`/api/properties/${property.id}/calendar`, fail, {
+                  method: "DELETE",
+                });
+                toastSuccess(t("stoppedToast", { name: property.name }));
                 router.refresh();
               }}
             />

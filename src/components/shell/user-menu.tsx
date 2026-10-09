@@ -1,6 +1,8 @@
 "use client";
 
-import { LogOut } from "lucide-react";
+import { Check, LogOut } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { useLocale, useTranslations } from "next-intl";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
@@ -12,17 +14,35 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { LOCALE_COOKIE, LOCALE_NAMES, LOCALES } from "@/i18n/locales";
 import { signOutAction } from "@/lib/auth-actions";
 import { initials } from "@/lib/initials";
 import { type CurrentUser } from "@/lib/session";
 
-/** Signed-in user, with a sign-out action. */
+/**
+ * Remembers the language for a year on this browser; the server reads it on
+ * every request (src/i18n/request.ts), so a refresh re-renders in it.
+ */
+function rememberLocale(next: string) {
+  document.cookie = `${LOCALE_COOKIE}=${next}; path=/; max-age=31536000; samesite=lax`;
+}
+
+/** Signed-in user, with the language choice and a sign-out action. */
 export function UserMenu({ user }: { user: CurrentUser }) {
+  const t = useTranslations("shell.userMenu");
+  const locale = useLocale();
+  const router = useRouter();
+
+  function chooseLanguage(next: string) {
+    rememberLocale(next);
+    router.refresh();
+  }
+
   return (
     <DropdownMenu>
       <DropdownMenuTrigger
         className="hover:bg-sidebar-accent/50 flex w-full items-center gap-3 rounded-control p-2 text-left text-sm transition-colors"
-        aria-label={`Account menu for ${user.name}`}
+        aria-label={t("trigger", { name: user.name })}
       >
         <Avatar className="size-8 shrink-0">
           {user.image ? <AvatarImage src={user.image} alt="" /> : null}
@@ -44,13 +64,31 @@ export function UserMenu({ user }: { user: CurrentUser }) {
           </DropdownMenuLabel>
         </DropdownMenuGroup>
         <DropdownMenuSeparator />
+        <DropdownMenuGroup>
+          <DropdownMenuLabel className="text-muted-foreground text-xs">
+            {t("language")}
+          </DropdownMenuLabel>
+          {LOCALES.map((option) => (
+            <DropdownMenuItem
+              key={option}
+              lang={option}
+              className="gap-2"
+              aria-current={option === locale ? "true" : undefined}
+              onClick={() => chooseLanguage(option)}
+            >
+              <Check aria-hidden className={option === locale ? "size-4" : "invisible size-4"} />
+              {LOCALE_NAMES[option]}
+            </DropdownMenuItem>
+          ))}
+        </DropdownMenuGroup>
+        <DropdownMenuSeparator />
         {/* A server action, so Auth.js handles CSRF and deletes the session
             row. The item renders as a real submit button (Base UI defaults
             nativeButton to false, which would attach non-native handlers). */}
         <form action={signOutAction}>
           <DropdownMenuItem render={<button type="submit" />} className="w-full gap-2">
             <LogOut aria-hidden className="size-4" />
-            Sign out
+            {t("signOut")}
           </DropdownMenuItem>
         </form>
       </DropdownMenuContent>

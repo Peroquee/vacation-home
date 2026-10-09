@@ -2,12 +2,15 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { useState } from "react";
 
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { toastError, toastSuccess } from "@/components/toast";
+import { useConflictText } from "@/components/use-conflict-text";
 import { Button } from "@/components/ui/button";
-import { type Conflict, describeConflict } from "@/lib/bookings/form";
+import { type Conflict } from "@/lib/bookings/form";
+import { useApiText } from "@/i18n/use-api-text";
 
 type Status = "inquiry" | "confirmed" | "cancelled";
 
@@ -21,18 +24,19 @@ class RequestError extends Error {
   }
 }
 
-async function send(url: string, init: RequestInit) {
+async function send(
+  url: string,
+  fail: (body: unknown, status: number) => string,
+  init: RequestInit,
+) {
   const response = await fetch(url, init);
   if (response.ok) return;
   const body = await response.json().catch(() => null);
-  throw new RequestError(
-    body?.error?.message ?? `The server answered ${response.status}.`,
-    body?.error?.conflicts ?? [],
-  );
+  throw new RequestError(fail(body, response.status), body?.error?.conflicts ?? []);
 }
 
-const patchStatus = (id: string, status: Status) =>
-  send(`/api/bookings/${id}`, {
+const patchStatus = (id: string, status: Status, fail: (body: unknown, status: number) => string) =>
+  send(`/api/bookings/${id}`, fail, {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ status }),
@@ -48,6 +52,12 @@ export function BookingActions({ id, status }: { id: string; status: Status }) {
   const router = useRouter();
   const [pending, setPending] = useState(false);
   const [refusal, setRefusal] = useState<RequestError | null>(null);
+  const t = useTranslations("bookings.actions");
+  const tCommon = useTranslations("common");
+  const text = useConflictText();
+  const api = useApiText();
+  const fail = (body: unknown, status: number) =>
+    api.message(body) ?? tCommon("serverAnswered", { status });
 
   async function run(action: () => Promise<void>, done: string, failed: string) {
     setPending(true);
@@ -72,10 +82,10 @@ export function BookingActions({ id, status }: { id: string; status: Status }) {
             disabled={pending}
             aria-busy={pending}
             onClick={() =>
-              run(() => patchStatus(id, "confirmed"), "Booking confirmed", "Could not confirm")
+              run(() => patchStatus(id, "confirmed", fail), t("confirmed"), t("confirmFailed"))
             }
           >
-            Confirm booking
+            {t("confirm")}
           </Button>
         ) : null}
         {status === "cancelled" ? (
@@ -84,30 +94,26 @@ export function BookingActions({ id, status }: { id: string; status: Status }) {
             disabled={pending}
             aria-busy={pending}
             onClick={() =>
-              run(
-                () => patchStatus(id, "inquiry"),
-                "Booking reinstated as an inquiry",
-                "Could not reinstate",
-              )
+              run(() => patchStatus(id, "inquiry", fail), t("reinstated"), t("reinstateFailed"))
             }
           >
-            Reinstate as inquiry
+            {t("reinstate")}
           </Button>
         ) : (
           <ConfirmDialog
             trigger={
               <Button variant="destructive" disabled={pending}>
-                Cancel booking
+                {t("cancel")}
               </Button>
             }
-            title="Cancel this booking?"
-            description="Its dates become free straight away. The booking is kept, marked cancelled, and can be reinstated as an inquiry later. The guest is not notified."
-            confirmLabel="Cancel booking"
-            cancelLabel="Keep booking"
+            title={t("cancelTitle")}
+            description={t("cancelDescription")}
+            confirmLabel={t("cancel")}
+            cancelLabel={t("keep")}
             destructive
             onConfirm={async () => {
-              await send(`/api/bookings/${id}/cancel`, { method: "POST" });
-              toastSuccess("Booking cancelled");
+              await send(`/api/bookings/${id}/cancel`, fail, { method: "POST" });
+              toastSuccess(t("cancelled"));
               router.refresh();
             }}
           />
@@ -119,21 +125,21 @@ export function BookingActions({ id, status }: { id: string; status: Status }) {
           role="alert"
           className="border-destructive/40 bg-destructive/10 text-destructive rounded-lg border p-3 text-sm"
         >
-          <p className="font-medium">This booking cannot be confirmed: its dates are taken.</p>
+          <p className="font-medium">{t("taken")}</p>
           <ul className="mt-1 list-disc pl-5">
             {refusal.conflicts.map((conflict) => (
               <li key={`${conflict.kind}-${conflict.id}`}>
                 {conflict.kind === "booking" ? (
                   <Link href={`/bookings/${conflict.id}`} className="underline">
-                    {describeConflict(conflict)}
+                    {text.describe(conflict)}
                   </Link>
                 ) : (
-                  describeConflict(conflict)
+                  text.describe(conflict)
                 )}
               </li>
             ))}
           </ul>
-          <p className="mt-1">Change the dates, or cancel the other booking first.</p>
+          <p className="mt-1">{t("takenHint")}</p>
         </div>
       ) : null}
     </div>

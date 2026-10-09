@@ -256,9 +256,9 @@ Use `toast` (re-exported from sonner) for anything else, such as
 
 ## Formatting money and dates
 
-Everything is formatted in the app's locale, `NEXT_PUBLIC_APP_LOCALE` (default
-`en-US`). It is inlined when the app is built, so changing it means rebuilding,
-and an unsupported value fails `next dev` / `next build`. Currency and timezone
+Everything is formatted in the request's language (German or English, see
+`src/i18n`): `useFormat()` in client components and `await getFormat()` in
+server components give the helpers below bound to it. Currency and timezone
 are per property, so they are always passed in.
 
 **Money is stored and passed around as integer minor units** (cents, pence),

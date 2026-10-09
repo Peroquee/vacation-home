@@ -1,13 +1,6 @@
 import { withSentryConfig } from "@sentry/nextjs/config";
 import type { NextConfig } from "next";
-
-import { resolveAppLocale } from "./src/lib/locale";
-
-// NEXT_PUBLIC_APP_LOCALE is inlined into the bundles at build time, so it is
-// validated here - when `next dev` or `next build` starts - rather than with
-// the runtime configuration in src/env.ts, which could only check a value the
-// built app no longer reads. Throws with a message naming the variable.
-resolveAppLocale(process.env.NEXT_PUBLIC_APP_LOCALE);
+import createNextIntlPlugin from "next-intl/plugin";
 
 const nextConfig: NextConfig = {
   // A self-contained server in .next/standalone with only the files it
@@ -21,7 +14,11 @@ const nextConfig: NextConfig = {
 // needs no network.
 const sentryUpload = Boolean(process.env.SENTRY_AUTH_TOKEN);
 
-export default withSentryConfig(nextConfig, {
+// Translations: each request's language and messages come from
+// src/i18n/request.ts.
+const withNextIntl = createNextIntlPlugin("./src/i18n/request.ts");
+
+export default withSentryConfig(withNextIntl(nextConfig), {
   // A self-hosted GlitchTip or Sentry, e.g. http://glitchtip.lan. Defaults to
   // sentry.io when unset.
   sentryUrl: process.env.SENTRY_URL,

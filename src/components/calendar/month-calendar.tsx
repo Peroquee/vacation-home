@@ -2,10 +2,14 @@
 
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { NativeSelect, NativeSelectOption } from "@/components/ui/native-select";
+import { useConflictText } from "@/components/use-conflict-text";
+import { type Formatters } from "@/i18n/format";
+import { useFormat } from "@/i18n/use-format";
 import type { CalendarBlock, CalendarBooking } from "@/lib/availability/calendar";
 import { type CalendarDate } from "@/lib/calendar-date";
 import {
@@ -18,13 +22,7 @@ import {
   type Span,
   type Weekday,
 } from "@/lib/calendar/month";
-import {
-  type Conflict,
-  describeConflict,
-  previewTotalMinor,
-  stayConflicts,
-  turnoverFix,
-} from "@/lib/bookings/form";
+import { type Conflict, previewTotalMinor, stayConflicts, turnoverFix } from "@/lib/bookings/form";
 import {
   hover,
   IDLE,
@@ -37,8 +35,7 @@ import {
   selectedDays,
   stayFrom,
 } from "@/lib/calendar/selection";
-import { formatDateRange, formatMoney } from "@/lib/format";
-import { APP_LOCALE } from "@/lib/locale";
+import { guestDisplayName } from "@/lib/guests/display";
 import { cn } from "@/lib/utils";
 
 /** What the calendar needs of one property: who it is, and what is booked. */
@@ -103,15 +100,23 @@ const LANE = "1.5rem";
 export const PENDING_PREFIX = "pending-";
 const isPending = (id: string) => id.startsWith(PENDING_PREFIX);
 
-function barLabel(bar: Bar): string {
-  const when = formatDateRange(bar.start, bar.end);
+type Translate = ReturnType<typeof useTranslations<"calendar.month">>;
+
+function barLabel(bar: Bar, t: Translate, format: Formatters, guest: string): string {
+  const when = format.dateRange(bar.start, bar.end);
+  const property = bar.property.name;
   if (bar.kind === "block") {
-    const source = bar.block.origin === "google" ? ", from Google Calendar" : "";
-    const saving = isPending(bar.block.id) ? ", saving" : "";
-    return `Blocked${bar.block.reason ? `: ${bar.block.reason}` : ""}, ${bar.property.name}, ${when}${source}${saving}`;
+    const { reason } = bar.block;
+    return (
+      (reason
+        ? t("blockLabelWhy", { reason, property, when })
+        : t("blockLabel", { property, when })) +
+      (bar.block.origin === "google" ? t("fromGoogle") : "") +
+      (isPending(bar.block.id) ? t("saving") : "")
+    );
   }
-  const status = bar.booking.status === "inquiry" ? "inquiry" : "confirmed";
-  return `${bar.booking.guest.name}, ${bar.property.name}, ${status}, ${when}`;
+  const status = bar.booking.status === "inquiry" ? t("inquiry") : t("confirmed");
+  return t("bookingLabel", { guest, property, status, when });
 }
 
 function BarView({
@@ -127,8 +132,12 @@ function BarView({
   /** Stands in the way of the current selection: ringed in red. */
   inTheWay?: boolean;
 }) {
+  const t = useTranslations("calendar.month");
+  const purgedName = useTranslations("guests")("purgedName");
+  const format = useFormat();
   const bar = segment.span;
-  const label = `${barLabel(bar)}${inTheWay ? ", in the way of the selected dates" : ""}`;
+  const guest = bar.kind === "booking" ? guestDisplayName(bar.booking.guest.name, purgedName) : "";
+  const label = barLabel(bar, t, format, guest) + (inTheWay ? t("inTheWay") : "");
   const className = cn(
     "z-10 flex h-5 min-w-0 items-center overflow-hidden px-1 text-[11px] leading-none whitespace-nowrap sm:text-xs",
     // Rounded only where the stay really starts or ends, so a cut at a week
@@ -159,7 +168,7 @@ function BarView({
     "data-to-line": segment.toLine,
     "data-lane": segment.lane,
   };
-  const text = bar.kind === "booking" ? bar.booking.guest.name : (bar.block.reason ?? "Blocked");
+  const text = bar.kind === "booking" ? guest : (bar.block.reason ?? t("blocked"));
   const content = (
     <>
       {segment.continuesBefore ? <span aria-hidden>‹ </span> : null}
@@ -259,6 +268,10 @@ export function MonthCalendar({
   highlight: ringed,
   pending = false,
 }: MonthCalendarProps) {
+  const t = useTranslations("calendar.month");
+  const purgedName = useTranslations("guests")("purgedName");
+  const format = useFormat();
+  const conflictText = useConflictText();
   const weeks = useMemo(() => monthWeeks(month, weekStart), [month, weekStart]);
   const layout = useMemo(() => {
     const bars: Bar[] = calendars.flatMap(({ property, bookings, blocks }) =>
@@ -411,15 +424,16 @@ export function MonthCalendar({
   }
 
   // --- Rendering --------------------------------------------------------------
-  const title = new Intl.DateTimeFormat(APP_LOCALE, {
+  const locale = format.locale;
+  const title = new Intl.DateTimeFormat(locale, {
     month: "long",
     year: "numeric",
     timeZone: "UTC",
   }).format(new Date(`${month}-01T00:00:00Z`));
-  const weekday = new Intl.DateTimeFormat(APP_LOCALE, { weekday: "short", timeZone: "UTC" });
-  const weekdayLong = new Intl.DateTimeFormat(APP_LOCALE, { weekday: "long", timeZone: "UTC" });
-  const monthName = new Intl.DateTimeFormat(APP_LOCALE, { month: "long", timeZone: "UTC" });
-  const fullDate = new Intl.DateTimeFormat(APP_LOCALE, { dateStyle: "full", timeZone: "UTC" });
+  const weekday = new Intl.DateTimeFormat(locale, { weekday: "short", timeZone: "UTC" });
+  const weekdayLong = new Intl.DateTimeFormat(locale, { weekday: "long", timeZone: "UTC" });
+  const monthName = new Intl.DateTimeFormat(locale, { month: "long", timeZone: "UTC" });
+  const fullDate = new Intl.DateTimeFormat(locale, { dateStyle: "full", timeZone: "UTC" });
   const [year, monthNumber] = month.split("-").map(Number) as [number, number];
   const thisYear = Number(today.slice(0, 4));
   const years = Array.from(
@@ -444,7 +458,7 @@ export function MonthCalendar({
           <Button
             variant="outline"
             size="icon"
-            aria-label="Previous month"
+            aria-label={t("previous")}
             onClick={() => onMonthChange(addMonths(month, -1))}
           >
             <ChevronLeft aria-hidden />
@@ -454,18 +468,18 @@ export function MonthCalendar({
             onClick={() => onMonthChange(monthOf(today))}
             disabled={month === monthOf(today)}
           >
-            Today
+            {t("today")}
           </Button>
           <Button
             variant="outline"
             size="icon"
-            aria-label="Next month"
+            aria-label={t("next")}
             onClick={() => onMonthChange(addMonths(month, 1))}
           >
             <ChevronRight aria-hidden />
           </Button>
           <NativeSelect
-            aria-label="Month"
+            aria-label={t("month")}
             value={String(monthNumber)}
             onChange={(event) => onMonthChange(`${year}-${event.target.value.padStart(2, "0")}`)}
           >
@@ -476,7 +490,7 @@ export function MonthCalendar({
             ))}
           </NativeSelect>
           <NativeSelect
-            aria-label="Year"
+            aria-label={t("year")}
             value={String(year)}
             onChange={(event) =>
               onMonthChange(`${event.target.value}-${String(monthNumber).padStart(2, "0")}`)
@@ -495,7 +509,7 @@ export function MonthCalendar({
         <div className="mb-2 flex flex-wrap items-center gap-x-3 gap-y-2 text-sm">
           {calendars.length > 1 ? (
             <NativeSelect
-              aria-label="Property to book"
+              aria-label={t("propertyToBook")}
               size="sm"
               value={selected?.property.id}
               onChange={(event) => {
@@ -519,28 +533,32 @@ export function MonthCalendar({
           >
             {stay ? (
               <>
-                {formatDateRange(stay.checkIn, stay.checkOut)}
+                {format.dateRange(stay.checkIn, stay.checkOut)}
                 {" · "}
-                {nightsOf(stay)} {nightsOf(stay) === 1 ? "night" : "nights"}
+                {t("nights", { count: nightsOf(stay) })}
                 {total !== null && property?.currency
-                  ? ` · ${formatMoney(total, property.currency)}`
+                  ? ` · ${format.money(total, property.currency)}`
                   : null}
                 {taken
-                  ? ` · Not available: ${conflicts.map((c) => describeConflict(c, guestNames(selected))).join("; ")}`
+                  ? t("notAvailable", {
+                      conflicts: conflicts
+                        .map((c) => conflictText.describe(c, guestNames(selected, purgedName)))
+                        .join("; "),
+                    })
                   : null}
-                {refused ? ". Change the dates, or press Escape." : null}
+                {refused ? t("refused") : null}
               </>
             ) : selection.phase !== "idle" ? (
-              "Now pick the last day (the check-out day), or press Escape."
+              t("pickLast")
             ) : (
-              "Drag across days, or tap the first and last day, to start a booking."
+              t("hint")
             )}
           </p>
           {refused && taken ? (
             <ConflictHelp
               stay={refused}
               conflicts={conflicts}
-              names={guestNames(selected)}
+              names={guestNames(selected, purgedName)}
               bookingHref={bookingHref}
             />
           ) : null}
@@ -651,8 +669,7 @@ export function MonthCalendar({
       </div>
       {selectable ? (
         <p id="calendar-keys" className="sr-only">
-          Arrow keys move between days. Enter starts a selection and Enter again ends it; Shift with
-          the arrows extends it; Escape cancels.
+          {t("keys")}
         </p>
       ) : null}
 
@@ -676,6 +693,7 @@ function ConflictHelp({
   names: ReadonlyMap<string, string>;
   bookingHref?: (id: string) => string;
 }) {
+  const text = useConflictText();
   return (
     <ul className="w-full space-y-1">
       {conflicts.map((conflict) => {
@@ -684,13 +702,10 @@ function ConflictHelp({
           <li key={`${conflict.kind}-${conflict.id}`} className="flex flex-wrap gap-x-2">
             {conflict.kind === "booking" && bookingHref ? (
               <Link href={bookingHref(conflict.id)} className="text-destructive underline">
-                Open{" "}
-                {describeConflict(conflict, names)
-                  .replace(/^Booked by /, "the booking of ")
-                  .replace(/^Booked, /, "the booking, ")}
+                {text.open(conflict, names)}
               </Link>
             ) : null}
-            {fix ? <span className="text-muted-foreground">{fix.message}</span> : null}
+            {fix ? <span className="text-muted-foreground">{text.fix(fix)}</span> : null}
           </li>
         );
       })}
@@ -699,16 +714,22 @@ function ConflictHelp({
 }
 
 /** Guest names by booking id, for naming what a selection overlaps. */
-function guestNames(calendar: CalendarProperty | null): ReadonlyMap<string, string> {
-  return new Map(calendar?.bookings.map((b) => [b.id, b.guest.name]) ?? []);
+function guestNames(
+  calendar: CalendarProperty | null,
+  purgedName: string,
+): ReadonlyMap<string, string> {
+  return new Map(
+    calendar?.bookings.map((b) => [b.id, guestDisplayName(b.guest.name, purgedName)]) ?? [],
+  );
 }
 
 function Legend({ calendars }: { calendars: CalendarProperty[] }) {
+  const t = useTranslations("calendar.month");
   const sample = calendars[0]?.property.color ?? "#0f766e";
   const swatch = "inline-block h-3 w-6 rounded-full";
   return (
     <div className="text-muted-foreground mt-3 flex flex-wrap gap-x-5 gap-y-2 text-xs">
-      <ul className="flex flex-wrap gap-x-4 gap-y-1" aria-label="Properties">
+      <ul className="flex flex-wrap gap-x-4 gap-y-1" aria-label={t("properties")}>
         {calendars.map(({ property }) => (
           <li key={property.id} className="flex items-center gap-1.5">
             <span className={swatch} style={{ backgroundColor: property.color }} aria-hidden />
@@ -716,10 +737,10 @@ function Legend({ calendars }: { calendars: CalendarProperty[] }) {
           </li>
         ))}
       </ul>
-      <ul className="flex flex-wrap gap-x-4 gap-y-1" aria-label="Status">
+      <ul className="flex flex-wrap gap-x-4 gap-y-1" aria-label={t("status")}>
         <li className="flex items-center gap-1.5">
           <span className={swatch} style={{ backgroundColor: sample }} aria-hidden />
-          Confirmed
+          {t("legendConfirmed")}
         </li>
         <li className="flex items-center gap-1.5">
           <span
@@ -730,7 +751,7 @@ function Legend({ calendars }: { calendars: CalendarProperty[] }) {
             }}
             aria-hidden
           />
-          Inquiry (dates not held)
+          {t("legendInquiry")}
         </li>
         <li className="flex items-center gap-1.5">
           <span
@@ -745,7 +766,7 @@ function Legend({ calendars }: { calendars: CalendarProperty[] }) {
             })}
             aria-hidden
           />
-          Blocked
+          {t("blocked")}
         </li>
       </ul>
     </div>

@@ -1,18 +1,20 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { useState } from "react";
 
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { toastError, toastSuccess } from "@/components/toast";
 import { Button } from "@/components/ui/button";
 import type { PropertyDto } from "@/lib/properties/service";
+import { useApiText } from "@/i18n/use-api-text";
 
-async function post(url: string) {
+async function post(url: string, fail: (body: unknown, status: number) => string) {
   const response = await fetch(url, { method: "POST" });
   if (!response.ok) {
     const body = await response.json().catch(() => null);
-    throw new Error(body?.error?.message ?? `The server answered ${response.status}.`);
+    throw new Error(fail(body, response.status));
   }
 }
 
@@ -23,6 +25,11 @@ async function post(url: string) {
 export function PropertyArchiveButton({ property }: { property: PropertyDto }) {
   const router = useRouter();
   const [pending, setPending] = useState(false);
+  const t = useTranslations("settings.archive");
+  const tCommon = useTranslations("common");
+  const api = useApiText();
+  const fail = (body: unknown, status: number) =>
+    api.message(body) ?? tCommon("serverAnswered", { status });
 
   if (property.archived) {
     return (
@@ -34,17 +41,17 @@ export function PropertyArchiveButton({ property }: { property: PropertyDto }) {
         onClick={async () => {
           setPending(true);
           try {
-            await post(`/api/properties/${property.id}/unarchive`);
-            toastSuccess(`${property.name} restored`);
+            await post(`/api/properties/${property.id}/unarchive`, fail);
+            toastSuccess(t("restored", { name: property.name }));
             router.refresh();
           } catch (error) {
-            toastError(error, "Could not restore the property");
+            toastError(error, t("restoreFailed"));
           } finally {
             setPending(false);
           }
         }}
       >
-        Restore
+        {t("restore")}
       </Button>
     );
   }
@@ -53,15 +60,15 @@ export function PropertyArchiveButton({ property }: { property: PropertyDto }) {
     <ConfirmDialog
       trigger={
         <Button variant="outline" size="sm">
-          Archive
+          {t("archive")}
         </Button>
       }
-      title={`Archive ${property.name}?`}
-      description="It disappears from property selectors, but its bookings and finances stay visible. You can restore it at any time."
-      confirmLabel="Archive"
+      title={t("title", { name: property.name })}
+      description={t("description")}
+      confirmLabel={t("archive")}
       onConfirm={async () => {
-        await post(`/api/properties/${property.id}/archive`);
-        toastSuccess(`${property.name} archived`);
+        await post(`/api/properties/${property.id}/archive`, fail);
+        toastSuccess(t("archived", { name: property.name }));
         router.refresh();
       }}
     />

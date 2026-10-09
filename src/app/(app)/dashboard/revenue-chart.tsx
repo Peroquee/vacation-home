@@ -1,3 +1,5 @@
+import { getTranslations } from "next-intl/server";
+
 import { RevenueExpensesChart } from "@/components/charts/revenue-expenses-chart";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import type { DashboardState } from "@/lib/dashboard/params";
@@ -15,12 +17,13 @@ export async function RevenueChart({ state }: { state: DashboardState }) {
   const { report } = loaded.result;
   const currency = report.currency;
   if (!currency) return null;
+  const t = await getTranslations("dashboard.revenue");
 
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Revenue and expenses</CardTitle>
-        <CardDescription>Per month, with net profit, in {currency}.</CardDescription>
+        <CardTitle>{t("title")}</CardTitle>
+        <CardDescription>{t("description", { currency })}</CardDescription>
       </CardHeader>
       <CardContent>
         <RevenueExpensesChart

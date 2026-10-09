@@ -6,6 +6,8 @@ import { formatDate, formatDateRange, formatDateTime, formatMoney } from "@/lib/
 // with plain spaces so the expectations stay readable.
 const plain = (s: string) => s.replace(/[   ]/g, " ");
 
+const en = { locale: "en-US" };
+
 describe("formatMoney", () => {
   it("formats minor units in the currency's own precision", () => {
     expect(formatMoney(123450, "EUR", { locale: "en-US" })).toBe("€1,234.50");
@@ -30,7 +32,7 @@ describe("formatMoney", () => {
   });
 
   it("rejects fractional minor units", () => {
-    expect(() => formatMoney(12.5, "USD")).toThrow(RangeError);
+    expect(() => formatMoney(12.5, "USD", en)).toThrow(RangeError);
   });
 });
 
@@ -41,8 +43,8 @@ describe("formatDate", () => {
   });
 
   it("rejects malformed and impossible dates", () => {
-    expect(() => formatDate("2026-7-14")).toThrow(RangeError);
-    expect(() => formatDate("2026-02-30")).toThrow(RangeError);
+    expect(() => formatDate("2026-7-14", en)).toThrow(RangeError);
+    expect(() => formatDate("2026-02-30", en)).toThrow(RangeError);
   });
 });
 
@@ -58,7 +60,7 @@ describe("formatDateRange", () => {
 
   it("allows a same-day range but rejects a reversed one", () => {
     expect(formatDateRange("2026-07-14", "2026-07-14", { locale: "en-US" })).toBe("Jul 14, 2026");
-    expect(() => formatDateRange("2026-07-18", "2026-07-14")).toThrow(RangeError);
+    expect(() => formatDateRange("2026-07-18", "2026-07-14", en)).toThrow(RangeError);
   });
 });
 
@@ -74,6 +76,6 @@ describe("formatDateTime", () => {
   });
 
   it("rejects an invalid instant", () => {
-    expect(() => formatDateTime("not a date", "UTC")).toThrow(RangeError);
+    expect(() => formatDateTime("not a date", "UTC", en)).toThrow(RangeError);
   });
 });

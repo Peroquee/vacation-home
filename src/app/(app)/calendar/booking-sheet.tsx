@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
 
 import { buttonVariants } from "@/components/ui/button";
@@ -11,8 +12,8 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
-import { STATUS_LABELS } from "@/lib/bookings/labels";
-import { formatDate, formatMoney } from "@/lib/format";
+import { useFormat } from "@/i18n/use-format";
+import { guestDisplayName } from "@/lib/guests/display";
 
 type Detail = {
   id: string;
@@ -41,6 +42,8 @@ export function BookingSheet({
 }) {
   const [detail, setDetail] = useState<Detail | null>(null);
   const [failed, setFailed] = useState(false);
+  const t = useTranslations();
+  const format = useFormat();
 
   useEffect(() => {
     if (!bookingId) return;
@@ -62,24 +65,28 @@ export function BookingSheet({
     <Sheet open={bookingId !== null} onOpenChange={(open) => (open ? null : onClose())}>
       <SheetContent side="bottom" className="max-h-[85dvh] overflow-y-auto">
         <SheetHeader>
-          <SheetTitle>{shown ? shown.guest.name : "Booking"}</SheetTitle>
+          <SheetTitle>
+            {shown
+              ? guestDisplayName(shown.guest.name, t("guests.purgedName"))
+              : t("bookings.detail.title")}
+          </SheetTitle>
           <SheetDescription>
             {shown
-              ? `${shown.property.name} · ${STATUS_LABELS[shown.status]}`
+              ? `${shown.property.name} · ${t(`bookings.status.${shown.status}`)}`
               : failed
-                ? "This booking could not be loaded."
-                : "Loading…"}
+                ? t("calendar.sheet.loadFailed")
+                : t("calendar.sheet.loading")}
           </SheetDescription>
         </SheetHeader>
         {shown ? (
           <div className="space-y-4 px-4 pb-4">
             <dl className="divide-y text-sm">
               {[
-                ["Check-in", formatDate(shown.checkIn, { style: "full" })],
-                ["Check-out", formatDate(shown.checkOut, { style: "full" })],
-                ["Nights", String(shown.nights)],
-                ["Guests", String(shown.guestCount)],
-                ["Total", formatMoney(shown.totalAmountMinor, shown.currency)],
+                [t("bookings.detail.checkIn"), format.date(shown.checkIn, { style: "full" })],
+                [t("bookings.detail.checkOut"), format.date(shown.checkOut, { style: "full" })],
+                [t("bookings.detail.nights"), String(shown.nights)],
+                [t("bookings.detail.guests"), String(shown.guestCount)],
+                [t("bookings.detail.total"), format.money(shown.totalAmountMinor, shown.currency)],
               ].map(([label, value]) => (
                 <div key={label} className="flex justify-between gap-4 py-1.5">
                   <dt className="text-muted-foreground">{label}</dt>
@@ -89,13 +96,13 @@ export function BookingSheet({
             </dl>
             <div className="flex flex-wrap gap-2">
               <Link href={`/bookings/${shown.id}`} className={buttonVariants()}>
-                Open booking
+                {t("calendar.sheet.open")}
               </Link>
               <Link
                 href={`/bookings/${shown.id}/edit`}
                 className={buttonVariants({ variant: "outline" })}
               >
-                Edit
+                {t("common.edit")}
               </Link>
             </div>
           </div>

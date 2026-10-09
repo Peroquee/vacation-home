@@ -9,7 +9,8 @@ import {
 
 export type NavItem = {
   href: string;
-  label: string;
+  /** The label's key in the `nav` messages. */
+  label: "calendar" | "bookings" | "finance" | "dashboard" | "settings";
   icon: LucideIcon;
 };
 
@@ -18,11 +19,11 @@ export type NavItem = {
  * the two can never drift apart.
  */
 export const NAV_ITEMS: NavItem[] = [
-  { href: "/calendar", label: "Calendar", icon: CalendarDays },
-  { href: "/bookings", label: "Bookings", icon: ClipboardList },
-  { href: "/finance", label: "Finance", icon: Wallet },
-  { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/settings", label: "Settings", icon: Settings },
+  { href: "/calendar", label: "calendar", icon: CalendarDays },
+  { href: "/bookings", label: "bookings", icon: ClipboardList },
+  { href: "/finance", label: "finance", icon: Wallet },
+  { href: "/dashboard", label: "dashboard", icon: LayoutDashboard },
+  { href: "/settings", label: "settings", icon: Settings },
 ];
 
 /**

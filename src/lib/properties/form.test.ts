@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { canonicalTimeZone } from "./schema";
 import {
-  amountHint,
+  amountExamples,
   currencyOptions,
   inputToMinor,
   minorDigits,
@@ -75,12 +75,10 @@ describe("options", () => {
   });
 });
 
-describe("amountHint", () => {
-  it("shows both decimal marks and warns about thousands separators", () => {
-    expect(amountHint("EUR")).toBe(
-      "must be an amount like 1000.50 or 1000,50, without thousands separators",
-    );
-    expect(amountHint("JPY")).toBe("must be an amount like 100050, without thousands separators");
+describe("amountExamples", () => {
+  it("shows both decimal marks, or one for a currency without minor units", () => {
+    expect(amountExamples("EUR")).toEqual(["1000.50", "1000,50"]);
+    expect(amountExamples("JPY")).toEqual(["100050"]);
   });
 
   it("describes what inputToMinor accepts", () => {

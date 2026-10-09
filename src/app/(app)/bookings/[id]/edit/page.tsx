@@ -1,17 +1,22 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
+import { getTranslations } from "next-intl/server";
 
 import { PageHeader } from "@/components/page-header";
 import { isUuid } from "@/lib/api";
 import { toPropertyChoice } from "@/lib/bookings/form";
 import { getBooking, toDto } from "@/lib/bookings/service";
-import { formatDateRange } from "@/lib/format";
+import { getFormat } from "@/i18n/get-format";
+import { guestDisplayName } from "@/lib/guests/display";
 import { getGuest } from "@/lib/guests/service";
 import { listProperties } from "@/lib/properties/service";
 
 import { BookingForm } from "../../booking-form";
 
-export const metadata: Metadata = { title: "Edit booking" };
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations("bookings.edit");
+  return { title: t("title") };
+}
 
 export default async function EditBookingPage({ params }: PageProps<"/bookings/[id]/edit">) {
   const { id } = await params;
@@ -29,12 +34,15 @@ export default async function EditBookingPage({ params }: PageProps<"/bookings/[
     .filter((p) => p.archivedAt === null || p.id === booking.propertyId)
     .map(toPropertyChoice);
   const dto = toDto(booking);
+  const t = await getTranslations("bookings.edit");
+  const tGuests = await getTranslations("guests");
+  const format = await getFormat();
 
   return (
     <>
       <PageHeader
-        title={`Edit booking: ${dto.guest.name}`}
-        description={`${dto.property.name}, ${formatDateRange(dto.checkIn, dto.checkOut)}`}
+        title={t("titleFor", { name: guestDisplayName(dto.guest.name, tGuests("purgedName")) })}
+        description={`${dto.property.name}, ${format.dateRange(dto.checkIn, dto.checkOut)}`}
       />
       <BookingForm
         properties={properties}

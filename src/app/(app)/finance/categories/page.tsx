@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { getTranslations } from "next-intl/server";
 
 import { type Column, DataTable } from "@/components/data-table";
 import { PageHeader } from "@/components/page-header";
@@ -15,7 +16,10 @@ import {
   HideToggle,
 } from "./category-dialogs";
 
-export const metadata: Metadata = { title: "Categories" };
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations("finance.categories");
+  return { title: t("title") };
+}
 
 /**
  * Income and expense categories: add, rename, recolour, hide and delete.
@@ -31,11 +35,13 @@ export default async function CategoriesPage() {
     isSystem: c.isSystem,
     hidden: c.hidden,
   }));
+  const t = await getTranslations("finance.categories");
+  const tCommon = await getTranslations("common");
 
   const columns: Column<CategoryRow>[] = [
     {
       id: "name",
-      header: "Category",
+      header: t("category"),
       cell: (c) => (
         <span className="inline-flex items-center gap-2">
           <span
@@ -44,21 +50,23 @@ export default async function CategoriesPage() {
             style={{ backgroundColor: c.color }}
           />
           <span className={c.hidden ? "text-muted-foreground" : "font-medium"}>{c.name}</span>
-          {c.isSystem ? <span className="text-muted-foreground text-xs">default</span> : null}
-          {c.hidden ? <span className="text-muted-foreground text-xs">hidden</span> : null}
+          {c.isSystem ? (
+            <span className="text-muted-foreground text-xs">{t("default")}</span>
+          ) : null}
+          {c.hidden ? <span className="text-muted-foreground text-xs">{t("hidden")}</span> : null}
         </span>
       ),
     },
     {
       id: "actions",
-      header: <span className="sr-only">Actions</span>,
+      header: <span className="sr-only">{t("actions")}</span>,
       cell: (c) => (
         <div className="flex justify-end gap-2">
           <CategoryFormDialog
             category={c}
             trigger={
-              <Button variant="outline" size="sm" aria-label={`Edit ${c.name}`}>
-                Edit
+              <Button variant="outline" size="sm" aria-label={t("edit", { name: c.name })}>
+                {tCommon("edit")}
               </Button>
             }
           />
@@ -66,7 +74,7 @@ export default async function CategoriesPage() {
           {c.isSystem ? null : (
             <DeleteCategory
               category={c}
-              targets={rows.filter((t) => t.type === c.type && t.id !== c.id && !t.hidden)}
+              targets={rows.filter((r) => r.type === c.type && r.id !== c.id && !r.hidden)}
             />
           )}
         </div>
@@ -74,7 +82,12 @@ export default async function CategoriesPage() {
     },
   ];
 
-  const section = (type: CategoryRow["type"], title: string, description: string) => (
+  const section = (
+    type: CategoryRow["type"],
+    title: string,
+    description: string,
+    empty: string,
+  ) => (
     <Card>
       <CardHeader>
         <CardTitle>{title}</CardTitle>
@@ -86,7 +99,7 @@ export default async function CategoriesPage() {
           columns={columns}
           rows={rows.filter((c) => c.type === type)}
           rowKey={(c) => c.id}
-          empty={<EmptyState title={`No ${title.toLowerCase()} categories`} />}
+          empty={<EmptyState title={empty} />}
         />
       </CardContent>
     </Card>
@@ -95,20 +108,20 @@ export default async function CategoriesPage() {
   return (
     <>
       <PageHeader
-        title="Categories"
-        description="How income and expenses are grouped. Colours carry over to the charts."
+        title={t("title")}
+        description={t("description")}
         actions={
           <>
             <Link href="/finance" className={buttonVariants({ variant: "outline" })}>
-              Back to the ledger
+              {t("back")}
             </Link>
-            <CategoryFormDialog trigger={<Button>Add category</Button>} />
+            <CategoryFormDialog trigger={<Button>{t("add")}</Button>} />
           </>
         }
       />
       <div className="space-y-6">
-        {section("expense", "Expense", "What the properties cost.")}
-        {section("income", "Income", "What they earn.")}
+        {section("expense", t("expense"), t("expenseHint"), t("noExpense"))}
+        {section("income", t("income"), t("incomeHint"), t("noIncome"))}
       </div>
     </>
   );

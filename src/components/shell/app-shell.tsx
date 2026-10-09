@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { Home } from "lucide-react";
+import { useTranslations } from "next-intl";
 
 import { MobileNav } from "@/components/shell/mobile-nav";
 import { SidebarNav } from "@/components/shell/sidebar-nav";
@@ -50,10 +51,11 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
 }
 
 function Brand() {
+  const t = useTranslations("app");
   return (
     <Link href="/calendar" className="flex h-14 shrink-0 items-center gap-2 px-3 font-medium">
       <Home aria-hidden className="text-brand-500 size-5" />
-      <span className="truncate">Vacation Rental</span>
+      <span className="truncate">{t("shortName")}</span>
     </Link>
   );
 }

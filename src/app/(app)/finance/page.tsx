@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Form from "next/form";
 import Link from "next/link";
+import { getTranslations } from "next-intl/server";
 
 import { PageHeader } from "@/components/page-header";
 import { EmptyState, ErrorState } from "@/components/states";
@@ -14,12 +15,16 @@ import { addMonths } from "@/lib/calendar/month";
 import { listCategories } from "@/lib/finance/categories";
 import { ledgerHref, ledgerParams, ledgerPeriod } from "@/lib/finance/ledger";
 import { listTransactions, listTransactionsSchema, toDto } from "@/lib/finance/transactions";
-import { formatDateRange } from "@/lib/format";
+import { getApiText } from "@/i18n/get-api-text";
+import { getFormat } from "@/i18n/get-format";
 import { listProperties } from "@/lib/properties/service";
 
 import { LedgerView, type LedgerRow } from "./ledger-view";
 
-export const metadata: Metadata = { title: "Finance" };
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations("finance.page");
+  return { title: t("title") };
+}
 
 /** The statement shows at most this many transactions, the API's page limit. */
 const STATEMENT_SIZE = 200;
@@ -35,18 +40,21 @@ export default async function FinancePage({ searchParams }: PageProps<"/finance"
   // Month navigation starts from the period's month, also for a custom range.
   const month = period.month ?? period.from.slice(0, 7);
   const [properties, categories] = await Promise.all([listProperties(), listCategories()]);
+  const t = await getTranslations("finance.page");
+  const format = await getFormat();
+  const apiText = await getApiText();
 
   const header = (
     <PageHeader
-      title="Finance"
+      title={t("title")}
       description={
         period.month
-          ? "Income and expenses, month by month."
-          : `Income and expenses, ${formatDateRange(period.from, addDays(period.to, -1))}.`
+          ? t("monthly")
+          : t("range", { range: format.dateRange(period.from, addDays(period.to, -1)) })
       }
       actions={
         <Link href="/finance/categories" className={buttonVariants({ variant: "outline" })}>
-          Categories
+          {t("categories")}
         </Link>
       }
     />
@@ -56,11 +64,11 @@ export default async function FinancePage({ searchParams }: PageProps<"/finance"
       <>
         {header}
         <EmptyState
-          title="No properties yet"
-          description="Add a property before recording its income and expenses."
+          title={t("noProperties")}
+          description={t("noPropertiesHint")}
           action={
             <Link href="/settings" className={buttonVariants()}>
-              Add a property
+              {t("addProperty")}
             </Link>
           }
         />
@@ -82,19 +90,19 @@ export default async function FinancePage({ searchParams }: PageProps<"/finance"
   const filters = (
     <Form action="/finance" className="mb-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-5 lg:items-end">
       <Field>
-        <FieldLabel htmlFor="ledger-month">Month</FieldLabel>
+        <FieldLabel htmlFor="ledger-month">{t("month")}</FieldLabel>
         {/* Choosing a month replaces a custom range. */}
         <Input id="ledger-month" name="month" type="month" defaultValue={month} />
       </Field>
       <Field>
-        <FieldLabel htmlFor="ledger-property">Property</FieldLabel>
+        <FieldLabel htmlFor="ledger-property">{t("property")}</FieldLabel>
         <NativeSelect
           id="ledger-property"
           name="propertyId"
           className="w-full"
           defaultValue={params.propertyId ?? ""}
         >
-          <NativeSelectOption value="">All properties</NativeSelectOption>
+          <NativeSelectOption value="">{t("allProperties")}</NativeSelectOption>
           {properties.map((p) => (
             <NativeSelectOption key={p.id} value={p.id}>
               {p.name}
@@ -103,36 +111,36 @@ export default async function FinancePage({ searchParams }: PageProps<"/finance"
         </NativeSelect>
       </Field>
       <Field>
-        <FieldLabel htmlFor="ledger-type">Type</FieldLabel>
+        <FieldLabel htmlFor="ledger-type">{t("type")}</FieldLabel>
         <NativeSelect
           id="ledger-type"
           name="type"
           className="w-full"
           defaultValue={params.type ?? ""}
         >
-          <NativeSelectOption value="">Income and expenses</NativeSelectOption>
-          <NativeSelectOption value="income">Income</NativeSelectOption>
-          <NativeSelectOption value="expense">Expenses</NativeSelectOption>
+          <NativeSelectOption value="">{t("bothTypes")}</NativeSelectOption>
+          <NativeSelectOption value="income">{t("income")}</NativeSelectOption>
+          <NativeSelectOption value="expense">{t("expenses")}</NativeSelectOption>
         </NativeSelect>
       </Field>
       <Field>
-        <FieldLabel htmlFor="ledger-category">Category</FieldLabel>
+        <FieldLabel htmlFor="ledger-category">{t("category")}</FieldLabel>
         <NativeSelect
           id="ledger-category"
           name="categoryId"
           className="w-full"
           defaultValue={params.categoryId ?? ""}
         >
-          <NativeSelectOption value="">Any category</NativeSelectOption>
+          <NativeSelectOption value="">{t("anyCategory")}</NativeSelectOption>
           {categories.map((c) => (
             <NativeSelectOption key={c.id} value={c.id}>
-              {c.name} ({c.type === "income" ? "income" : "expense"})
+              {t(c.type === "income" ? "categoryIncome" : "categoryExpense", { name: c.name })}
             </NativeSelectOption>
           ))}
         </NativeSelect>
       </Field>
       <div className="flex gap-2">
-        <Button type="submit">Apply</Button>
+        <Button type="submit">{t("apply")}</Button>
         <Link
           href={ledgerHref(params, {
             month: addMonths(month, -1),
@@ -140,7 +148,7 @@ export default async function FinancePage({ searchParams }: PageProps<"/finance"
             until: undefined,
           })}
           className={buttonVariants({ variant: "ghost" })}
-          aria-label="Previous month"
+          aria-label={t("previous")}
         >
           ‹
         </Link>
@@ -151,7 +159,7 @@ export default async function FinancePage({ searchParams }: PageProps<"/finance"
             until: undefined,
           })}
           className={buttonVariants({ variant: "ghost" })}
-          aria-label="Next month"
+          aria-label={t("next")}
         >
           ›
         </Link>
@@ -165,9 +173,9 @@ export default async function FinancePage({ searchParams }: PageProps<"/finance"
         {header}
         {filters}
         <ErrorState
-          title="These filters don't work together"
+          title={t("badFilters")}
           description={query.error.issues
-            .map((issue) => `${issue.path.join(".")} ${issue.message}`)
+            .map((issue) => `${issue.path.join(".")} ${apiText(issue.message)}`)
             .join("; ")}
         />
       </>

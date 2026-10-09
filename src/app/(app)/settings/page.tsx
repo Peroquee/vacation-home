@@ -1,14 +1,16 @@
 import type { Metadata } from "next";
 import { Building2, Plus } from "lucide-react";
 import { connection } from "next/server";
+import { getTranslations } from "next-intl/server";
 
 import { type Column, DataTable } from "@/components/data-table";
 import { PageHeader } from "@/components/page-header";
 import { EmptyState } from "@/components/states";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { formatMoney } from "@/lib/format";
 import { db } from "@/lib/db";
+import { type Formatters } from "@/i18n/format";
+import { getFormat } from "@/i18n/get-format";
 import { toDto as calendarDto } from "@/lib/google/calendar-settings";
 import { calendarConnectAvailable, getConnectionStatus } from "@/lib/google/connection";
 import { listProperties, type PropertyDto, toDto } from "@/lib/properties/service";
@@ -22,62 +24,69 @@ import {
 import { PropertyArchiveButton } from "./property-archive-button";
 import { PropertyFormDialog } from "./property-form-dialog";
 
-export const metadata: Metadata = { title: "Settings" };
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations("settings.page");
+  return { title: t("title") };
+}
 
-const columns: Column<PropertyDto>[] = [
-  {
-    id: "name",
-    header: "Property",
-    cell: (p) => (
-      <div className="flex items-center gap-2">
-        <span
-          aria-hidden
-          className="size-3 shrink-0 rounded-full"
-          style={{ backgroundColor: p.color }}
-        />
-        <span className="font-medium">{p.name}</span>
-      </div>
-    ),
-  },
-  { id: "timezone", header: "Timezone", cell: (p) => p.timezone },
-  {
-    id: "rate",
-    header: "Nightly rate",
-    cell: (p) => formatMoney(p.defaultNightlyRateMinor, p.currency),
-    align: "end",
-  },
-  {
-    id: "cleaning",
-    header: "Cleaning fee",
-    cell: (p) => formatMoney(p.defaultCleaningFeeMinor, p.currency),
-    align: "end",
-  },
-  {
-    id: "actions",
-    header: <span className="sr-only">Actions</span>,
-    cell: (p) => (
-      <div className="flex justify-end gap-2">
-        <PropertyFormDialog
-          property={p}
-          trigger={
-            <Button variant="outline" size="sm" aria-label={`Edit ${p.name}`}>
-              Edit
-            </Button>
-          }
-        />
-        <PropertyArchiveButton property={p} />
-      </div>
-    ),
-  },
-];
+type Translate = Awaited<ReturnType<typeof getTranslations<"settings.page">>>;
 
-function AddPropertyButton() {
+function columnsFor(t: Translate, format: Formatters, editLabel: string): Column<PropertyDto>[] {
+  return [
+    {
+      id: "name",
+      header: t("columns.property"),
+      cell: (p) => (
+        <div className="flex items-center gap-2">
+          <span
+            aria-hidden
+            className="size-3 shrink-0 rounded-full"
+            style={{ backgroundColor: p.color }}
+          />
+          <span className="font-medium">{p.name}</span>
+        </div>
+      ),
+    },
+    { id: "timezone", header: t("columns.timezone"), cell: (p) => p.timezone },
+    {
+      id: "rate",
+      header: t("columns.rate"),
+      cell: (p) => format.money(p.defaultNightlyRateMinor, p.currency),
+      align: "end",
+    },
+    {
+      id: "cleaning",
+      header: t("columns.cleaning"),
+      cell: (p) => format.money(p.defaultCleaningFeeMinor, p.currency),
+      align: "end",
+    },
+    {
+      id: "actions",
+      header: <span className="sr-only">{t("columns.actions")}</span>,
+      cell: (p) => (
+        <div className="flex justify-end gap-2">
+          <PropertyFormDialog
+            property={p}
+            trigger={
+              <Button variant="outline" size="sm" aria-label={t("editProperty", { name: p.name })}>
+                {editLabel}
+              </Button>
+            }
+          />
+          <PropertyArchiveButton property={p} />
+        </div>
+      ),
+    },
+  ];
+}
+
+function AddPropertyButton({ label }: { label: string }) {
   return (
     <PropertyFormDialog
       trigger={
         <Button>
           <Plus data-icon="inline-start" aria-hidden />
-          Add property
+          {label}
         </Button>
       }
     />
@@ -93,34 +102,32 @@ export default async function SettingsPage({ searchParams }: PageProps<"/setting
   const active = properties.filter((p) => !p.archived);
   const archived = properties.filter((p) => p.archived);
   const google = await googleSettings(active.map((p) => ({ id: p.id, name: p.name })));
+  const t = await getTranslations("settings.page");
+  const tCommon = await getTranslations("common");
+  const columns = columnsFor(t, await getFormat(), tCommon("edit"));
+  const addProperty = <AddPropertyButton label={t("addProperty")} />;
 
   return (
     <>
-      <PageHeader
-        title="Settings"
-        description="Your properties and the defaults every new booking starts from."
-        actions={<AddPropertyButton />}
-      />
+      <PageHeader title={t("title")} description={t("description")} actions={addProperty} />
       <div className="space-y-6">
         <Card>
           <CardHeader>
-            <CardTitle>Properties</CardTitle>
-            <CardDescription>
-              Changing a default rate or fee affects new bookings only.
-            </CardDescription>
+            <CardTitle>{t("properties")}</CardTitle>
+            <CardDescription>{t("propertiesHint")}</CardDescription>
           </CardHeader>
           <CardContent>
             <DataTable
-              caption="Properties"
+              caption={t("properties")}
               columns={columns}
               rows={active}
               rowKey={(p) => p.id}
               empty={
                 <EmptyState
                   icon={Building2}
-                  title="No properties yet"
-                  description="Add the place you rent out to start taking bookings."
-                  action={<AddPropertyButton />}
+                  title={t("emptyTitle")}
+                  description={t("emptyDescription")}
+                  action={addProperty}
                 />
               }
             />
@@ -130,14 +137,12 @@ export default async function SettingsPage({ searchParams }: PageProps<"/setting
         {archived.length > 0 ? (
           <Card>
             <CardHeader>
-              <CardTitle>Archived</CardTitle>
-              <CardDescription>
-                Hidden from property selectors. Their bookings and finances stay visible.
-              </CardDescription>
+              <CardTitle>{t("archivedTitle")}</CardTitle>
+              <CardDescription>{t("archivedHint")}</CardDescription>
             </CardHeader>
             <CardContent>
               <DataTable
-                caption="Archived properties"
+                caption={t("archivedCaption")}
                 columns={columns}
                 rows={archived}
                 rowKey={(p) => p.id}
