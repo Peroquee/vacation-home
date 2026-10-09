@@ -97,7 +97,14 @@ async function tabUntil(page: Page, matches: () => Promise<boolean>, limit = 60)
   throw new Error("The control was not reachable with Tab");
 }
 
-const focused = (page: Page) => page.locator(":focus");
+/**
+ * The focused element's attribute or text, read at once. A `:focus` locator
+ * would wait for something to be focused instead of answering "nothing yet".
+ */
+const focusedAttribute = (page: Page, name: string) =>
+  page.evaluate((n) => document.activeElement?.getAttribute(n) ?? null, name);
+const focusedText = (page: Page) =>
+  page.evaluate(() => document.activeElement?.textContent?.trim() ?? null);
 
 test("a booking can be made with the keyboard alone, from the calendar", async ({ page }) => {
   const property = await (
@@ -108,7 +115,7 @@ test("a booking can be made with the keyboard alone, from the calendar", async (
   await page.goto("/calendar");
 
   // Into the calendar: the roving focus lands on today.
-  await tabUntil(page, async () => (await focused(page).getAttribute("data-date")) === today);
+  await tabUntil(page, async () => (await focusedAttribute(page, "data-date")) === today);
   // Select three nights, staying inside the month on screen.
   const towardsEnd = Number(today.slice(8)) <= 20;
   await page.keyboard.press("Enter");
@@ -118,12 +125,12 @@ test("a booking can be made with the keyboard alone, from the calendar", async (
   // The range offers a new booking.
   const dialog = page.getByRole("dialog");
   await expect(dialog).toBeVisible();
-  await tabUntil(page, async () => (await focused(page).textContent()) === "New booking");
+  await tabUntil(page, async () => (await focusedText(page)) === "New booking");
   await page.keyboard.press("Enter");
   await expect(page).toHaveURL(new RegExp(`/bookings/new\\?propertyId=${property.id}`));
 
   // The guest, added inline.
-  await tabUntil(page, async () => (await focused(page).textContent())?.trim() === "New guest");
+  await tabUntil(page, async () => (await focusedText(page)) === "New guest");
   await page.keyboard.press("Enter");
   await expect(page.getByLabel("Name")).toBeFocused();
   await page.keyboard.type("Grace Hopper");
@@ -132,7 +139,7 @@ test("a booking can be made with the keyboard alone, from the calendar", async (
   await expect(page.getByRole("combobox", { name: "Guest" })).toHaveValue("Grace Hopper");
 
   // And save.
-  await tabUntil(page, async () => (await focused(page).textContent()) === "Add booking");
+  await tabUntil(page, async () => (await focusedText(page)) === "Add booking");
   await page.keyboard.press("Enter");
   await expect(page).toHaveURL(/\/bookings\/[0-9a-f-]{36}$/);
   await expect(page.getByRole("heading", { level: 1, name: "Grace Hopper" })).toBeVisible();

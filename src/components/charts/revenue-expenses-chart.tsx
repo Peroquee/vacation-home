@@ -83,14 +83,22 @@ export function RevenueExpensesChart({
         ))}
       </ul>
 
-      <div className="h-72 w-full" aria-hidden>
+      {/*
+       * A picture for sighted readers; the table below carries every value
+       * for everyone else, so nothing in here takes keyboard focus.
+       */}
+      <div
+        className="h-72 w-full"
+        role="img"
+        aria-label="Chart of income, expenses and net profit by month. The figures are in the table below."
+      >
         <ResponsiveContainer width="100%" height="100%">
           <ComposedChart
             data={data}
             margin={{ top: 8, right: 8, bottom: 0, left: 0 }}
             barCategoryGap="25%"
             barGap={2}
-            accessibilityLayer
+            accessibilityLayer={false}
           >
             <CartesianGrid vertical={false} stroke="var(--border)" strokeWidth={1} />
             <XAxis
