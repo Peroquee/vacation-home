@@ -79,11 +79,13 @@ const PROPERTIES: PlannedProperty[] = [
   {
     key: "cabin",
     name: "Mountain Cabin",
-    address: "Bergweg 4, 3920 Zermatt, Switzerland",
-    timezone: "Europe/Zurich",
-    currency: "CHF",
-    defaultNightlyRateMinor: 21_000,
-    defaultCleaningFeeMinor: 9_000,
+    // In the eurozone like the other: the owner prices only in EUR, and the
+    // dashboard cannot add up amounts in different currencies.
+    address: "Bergweg 4, 6870 Bezau, Austria",
+    timezone: "Europe/Vienna",
+    currency: "EUR",
+    defaultNightlyRateMinor: 18_000,
+    defaultCleaningFeeMinor: 8_000,
     color: "#7c3aed",
   },
 ];

@@ -3,12 +3,14 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { PageHeader } from "@/components/page-header";
+import { SyncBadge } from "@/components/sync-badge";
 import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { isUuid } from "@/lib/api";
 import { SOURCE_LABELS, STATUS_LABELS } from "@/lib/bookings/labels";
 import { getBooking, toDto } from "@/lib/bookings/service";
-import { formatDate, formatDateRange, formatMoney } from "@/lib/format";
+import { formatDate, formatDateRange, formatDateTime, formatMoney } from "@/lib/format";
+import { bookingSyncStatus } from "@/lib/google/sync-status";
 import { getGuest } from "@/lib/guests/service";
 import { cn } from "@/lib/utils";
 
@@ -33,7 +35,11 @@ export default async function BookingPage({ params }: PageProps<"/bookings/[id]"
   if (!record) notFound();
 
   const booking = toDto(record);
-  const guest = await getGuest(booking.guestId);
+  const [guest, syncStatus] = await Promise.all([
+    getGuest(booking.guestId),
+    bookingSyncStatus([booking.id]),
+  ]);
+  const sync = syncStatus[booking.id];
   const money = (minor: number) => formatMoney(minor, booking.currency);
   const calculated = booking.nights * booking.nightlyRateMinor + booking.cleaningFeeMinor;
 
@@ -67,6 +73,26 @@ export default async function BookingPage({ params }: PageProps<"/bookings/[id]"
             <span className="text-muted-foreground"> (does not hold the dates yet)</span>
           ) : null}
         </p>
+        {sync && sync.state !== "not_synced" ? (
+          <div className="text-sm">
+            <SyncBadge
+              state={sync.state}
+              title={
+                sync.lastSyncedAt
+                  ? `Last synced ${formatDateTime(sync.lastSyncedAt, "UTC")} (UTC)`
+                  : undefined
+              }
+            />
+            {sync.error ? (
+              <p className="text-muted-foreground mt-1 max-w-sm text-xs">
+                {sync.error}{" "}
+                <Link href="/settings#google-sync" className="underline">
+                  See sync problems
+                </Link>
+              </p>
+            ) : null}
+          </div>
+        ) : null}
         <BookingActions id={booking.id} status={booking.status} />
       </div>
 

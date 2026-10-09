@@ -5,6 +5,7 @@ import Link from "next/link";
 import { type Column, DataTable } from "@/components/data-table";
 import { PageHeader } from "@/components/page-header";
 import { EmptyState, ErrorState } from "@/components/states";
+import { SyncBadge, type SyncState } from "@/components/sync-badge";
 import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { SOURCE_LABELS, STATUS_LABELS } from "@/lib/bookings/labels";
@@ -12,6 +13,7 @@ import { type ListState, listHref, nextSort, parseListParams } from "@/lib/booki
 import type { BookingSort } from "@/lib/bookings/schema";
 import { type BookingDto, listBookings, toDto } from "@/lib/bookings/service";
 import { formatDateRange, formatMoney } from "@/lib/format";
+import { bookingSyncStatus } from "@/lib/google/sync-status";
 import { listProperties } from "@/lib/properties/service";
 import { cn } from "@/lib/utils";
 
@@ -62,7 +64,11 @@ function SortHeader({
   );
 }
 
-function columns(state: ListState, sort: BookingSort): Column<BookingDto>[] {
+function columns(
+  state: ListState,
+  sort: BookingSort,
+  sync: Record<string, { state: SyncState; error: string | null }>,
+): Column<BookingDto>[] {
   const header = (column: string, label: string) => (
     <SortHeader state={state} sort={sort} column={column} label={label} />
   );
@@ -88,6 +94,19 @@ function columns(state: ListState, sort: BookingSort): Column<BookingDto>[] {
       ),
     },
     { id: "source", header: header("source", "Source"), cell: (b) => SOURCE_LABELS[b.source] },
+    // Only when some booking on the page syncs to Google Calendar.
+    ...(Object.values(sync).some((s) => s.state !== "not_synced")
+      ? [
+          {
+            id: "sync",
+            header: "Google",
+            cell: (b: BookingDto) =>
+              sync[b.id] ? (
+                <SyncBadge state={sync[b.id]!.state} title={sync[b.id]!.error ?? undefined} />
+              ) : null,
+          },
+        ]
+      : []),
     {
       id: "total",
       header: header("total", "Total"),
@@ -199,6 +218,7 @@ export default async function BookingsPage({ searchParams }: PageProps<"/booking
 
   const { items, total, page, pageSize } = await listBookings(state.query);
   const bookings = items.map(toDto);
+  const sync = bookings.length > 0 ? await bookingSyncStatus(bookings.map((b) => b.id)) : {};
 
   return (
     <>
@@ -240,7 +260,7 @@ export default async function BookingsPage({ searchParams }: PageProps<"/booking
           <div className="hidden md:block">
             <DataTable
               caption="Bookings"
-              columns={columns(state, state.query.sort)}
+              columns={columns(state, state.query.sort, sync)}
               rows={bookings}
               rowKey={(b) => b.id}
               empty={null}

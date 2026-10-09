@@ -12,6 +12,8 @@ import { Field, FieldError, FieldLabel } from "@/components/ui/field";
 import { NativeSelect, NativeSelectOption } from "@/components/ui/native-select";
 import { formatDateTime } from "@/lib/format";
 
+import { SyncFailures } from "./sync-failures";
+
 export type GoogleConnection = {
   status: "not_connected" | "connected" | "disconnected";
   googleEmail?: string | null;
@@ -29,6 +31,10 @@ export type SyncSummary = {
   pending: number;
   failed: number;
   lastError: string | null;
+  /** Of `failed`: given up on, waiting for a manual retry. */
+  dead?: number;
+  /** Failing for over an hour: the app shows a banner. */
+  alert?: boolean;
 };
 
 export type PropertySync = {
@@ -163,6 +169,18 @@ export function GoogleCalendarSection({
         </div>
 
         {connected ? <PropertyCalendars properties={properties} /> : null}
+        {connected ? (
+          <section
+            id="google-sync"
+            aria-labelledby="google-sync-title"
+            className="space-y-2 border-t pt-4"
+          >
+            <h3 id="google-sync-title" className="text-sm font-medium">
+              Sync problems
+            </h3>
+            <SyncFailures />
+          </section>
+        ) : null}
       </CardContent>
     </Card>
   );
@@ -179,7 +197,9 @@ function SyncStatus({ sync }: { sync: SyncSummary }) {
       {sync.failed > 0 ? (
         <span className="text-destructive">
           {" "}
-          · {sync.failed} failed{sync.lastError ? `: ${sync.lastError}` : ""}
+          · {sync.failed} failed
+          {sync.dead ? ` (${sync.dead} stopped)` : ""}
+          {sync.lastError ? `: ${sync.lastError}` : ""}
         </span>
       ) : null}
     </p>
