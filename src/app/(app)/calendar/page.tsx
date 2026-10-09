@@ -7,6 +7,8 @@ import { PageHeader } from "@/components/page-header";
 import { EmptyState } from "@/components/states";
 import { buttonVariants } from "@/components/ui/button";
 import { getCalendars } from "@/lib/availability/calendar";
+import { fromUtcDate, toUtcDate } from "@/lib/calendar-date";
+import { db } from "@/lib/db";
 import { todayUtc } from "@/lib/bookings/list-params";
 import { gridRange, isMonthKey, monthOf, monthWeeks, weekStartFor } from "@/lib/calendar/month";
 import { CALENDAR_PROPERTY_COOKIE, resolveChoice } from "@/lib/calendar/property-choice";
@@ -62,10 +64,23 @@ export default async function CalendarPage({ searchParams }: PageProps<"/calenda
   });
 
   // Everything the grid shows, including the adjacent months' edge days.
-  const { calendars } = await getCalendars(
-    choice === "all" ? properties.map((p) => p.id) : [choice],
-    gridRange(monthWeeks(month, weekStart)),
-  );
+  const shown = choice === "all" ? properties.map((p) => p.id) : [choice];
+  const range = gridRange(monthWeeks(month, weekStart));
+  const [{ calendars }, doubleBookings] = await Promise.all([
+    getCalendars(shown, range),
+    // Platform stays on confirmed bookings' dates in view (GitLab #99).
+    db.calendarSyncIssue.findMany({
+      where: {
+        kind: "ical_overlap",
+        resolvedAt: null,
+        propertyId: { in: shown },
+        startDate: { lt: toUtcDate(range.end) },
+        endDate: { gt: toUtcDate(range.start) },
+      },
+      include: { feed: { select: { name: true } } },
+      orderBy: { startDate: "asc" },
+    }),
+  ]);
 
   const byId = new Map(properties.map((p) => [p.id, p]));
 
@@ -86,6 +101,13 @@ export default async function CalendarPage({ searchParams }: PageProps<"/calenda
         properties={
           properties.length > 1 ? properties.map((p) => ({ id: p.id, name: p.name })) : []
         }
+        doubleBookings={doubleBookings.map((issue) => ({
+          id: issue.id,
+          feed: issue.feed?.name ?? "",
+          start: fromUtcDate(issue.startDate),
+          end: fromUtcDate(issue.endDate),
+          bookingIds: issue.bookingIds,
+        }))}
         month={month}
         weekStart={weekStart}
         today={today}

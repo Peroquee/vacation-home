@@ -3,13 +3,15 @@ import { apiError, fieldError, notFound } from "@/lib/api";
 import { type BlockWriteResult, toDto } from "./writes";
 
 /** 409 for a block from Google Calendar, which only the sync may change. */
-export function readOnlyBlock(): Response {
+export function readOnlyBlock(origin: "google" | "ical"): Response {
   return apiError(
     409,
     "conflict",
-    "This block comes from Google Calendar. Change or delete the event there; the sync updates the block.",
+    origin === "google"
+      ? "This block comes from Google Calendar. Change or delete the event there; the sync updates the block."
+      : "This block comes from a booking platform's calendar. Change the stay on the platform; the feed updates the block.",
     undefined,
-    { reason: "google" },
+    { reason: origin },
   );
 }
 
@@ -28,7 +30,7 @@ export function blockWriteResponse(result: BlockWriteResult, created = false): R
     case "not_found":
       return notFound("Block");
     case "read_only":
-      return readOnlyBlock();
+      return readOnlyBlock(result.origin);
     case "invalid":
       return fieldError(result.field, result.message);
     case "conflict": {

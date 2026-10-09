@@ -19,7 +19,7 @@ export type BookingSpan = DateRange & { id: string; status: BookingStatus };
 export type BlockSpan = DateRange & {
   id: string;
   reason: string | null;
-  origin: "manual" | "google";
+  origin: "manual" | "google" | "ical";
 };
 
 export type Conflict =
@@ -30,7 +30,7 @@ export type Conflict =
       start: CalendarDate;
       end: CalendarDate;
       reason: string | null;
-      origin: "manual" | "google";
+      origin: "manual" | "google" | "ical";
     };
 
 /** Whether a booking holds its dates against everyone else. */

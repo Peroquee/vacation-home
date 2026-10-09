@@ -109,6 +109,13 @@ const envSchema = z.object({
   ).default(300),
 
   /**
+   * How often each booking platform's iCal feed is fetched (src/lib/ical).
+   * At least 5; default 30. The platforms themselves refresh their exports
+   * only every so often, and some throttle frequent fetches.
+   */
+  ICAL_POLL_MINUTES: optional(z.coerce.number().int().min(5, "must be at least 5")).default(30),
+
+  /**
    * Failed pushes of one booking's Google event in a row before it is given
    * up on (dead letter): shown as failed, retried only by hand or by a new
    * change to the booking. Default 8 (about 2 hours of backoff).
@@ -133,6 +140,19 @@ const envSchema = z.object({
    * polling continues, less often, as a safety net. Leave unset when the app
    * is only reachable on the LAN: polling alone then picks up changes.
    */
+  /**
+   * Optional: the public base URL at which booking platforms reach this
+   * app's iCal export feeds (/api/ical/...), e.g. through a tunnel that
+   * exposes only that path. The feed links in settings use it; without it
+   * they use APP_URL, which on a LAN-only server the platforms cannot reach.
+   */
+  ICAL_PUBLIC_URL: optionalExact(
+    z.url({
+      protocol: /^https?$/,
+      error: "must be a public URL, e.g. https://calendar.example.com",
+    }),
+  ),
+
   GOOGLE_WEBHOOK_URL: optionalExact(
     z.url({
       protocol: /^https$/,

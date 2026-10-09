@@ -24,11 +24,11 @@ export async function PATCH(request: Request, { params }: Context) {
   return blockWriteResponse(await updateBlock(id, body.data));
 }
 
-/** Deletes a manual block (204). Blocks from Google Calendar: 409, `reason: "google"`. */
+/** Deletes a manual block (204). Imported blocks: 409, `reason: "google"` or `"ical"`. */
 export async function DELETE(_request: Request, { params }: Context) {
   const { id } = await params;
   if (!isUuid(id)) return notFound("Block");
   const result = await deleteBlock(id);
   if ("deleted" in result) return new Response(null, { status: 204 });
-  return result.error === "read_only" ? readOnlyBlock() : notFound("Block");
+  return result.error === "read_only" ? readOnlyBlock(result.origin) : notFound("Block");
 }

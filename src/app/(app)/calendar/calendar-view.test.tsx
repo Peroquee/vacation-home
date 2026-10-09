@@ -327,3 +327,32 @@ describe("CalendarView agenda (phones)", () => {
     );
   });
 });
+
+describe("CalendarView double bookings", () => {
+  it("names a platform's stay on a confirmed booking's dates and rings the booking", () => {
+    render(
+      <CalendarView
+        month="2026-07"
+        weekStart={1}
+        today="2026-07-08"
+        calendars={[lake]}
+        propertyChoice="all"
+        userId="u1"
+        properties={[]}
+        doubleBookings={[
+          { id: "i1", feed: "Airbnb", start: "2026-07-12", end: "2026-07-16", bookingIds: ["ada"] },
+        ]}
+      />,
+    );
+    const alert = screen.getByRole("alert");
+    expect(alert).toHaveTextContent(
+      /Airbnb has a stay 12\s–\s16 Jul 2026 on the dates of a confirmed booking/,
+    );
+    expect(
+      within(alert).getByRole("link", { name: "Open the booking (Ada Lovelace)" }),
+    ).toHaveAttribute("href", "/bookings/ada");
+    for (const bar of screen.getAllByRole("link", { name: /^Ada Lovelace, Lake House/ })) {
+      expect(bar).toHaveAccessibleName(/in the way/);
+    }
+  });
+});

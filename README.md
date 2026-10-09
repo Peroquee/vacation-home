@@ -416,6 +416,35 @@ defines each one).
   mixed currencies across all properties the answer is `409` with
   `error.reason: "mixed_currencies"`; pass a `propertyId`.
 
+### Booking platform calendars (iCal)
+
+| Method and path                          | Does                                                                               |
+| ---------------------------------------- | ---------------------------------------------------------------------------------- |
+| `GET /api/properties/:id/ical-feeds`     | The property's imported feeds: name, host, last result; never the full URL         |
+| `POST /api/properties/:id/ical-feeds`    | Add a feed (`name`, `url`) and read it at once; `201` with its first result        |
+| `POST /api/ical-feeds/:id/refresh`       | Read a feed now                                                                    |
+| `DELETE /api/ical-feeds/:id`             | Remove a feed with its blocks and double-booking issues (`204`)                    |
+| `GET /api/properties/:id/ical-export`    | `{ enabled, url }` of the property's export feed                                   |
+| `POST /api/properties/:id/ical-export`   | Switch it on; `{ "rotate": true }` makes a new token and the old URL stops at once |
+| `DELETE /api/properties/:id/ical-export` | Switch it off                                                                      |
+| `GET /api/ical/:token.ics`               | The export feed. Public (the token is the secret) and rate-limited                 |
+
+- **Import** ([`src/lib/ical`](src/lib/ical)): each feed is read every
+  `ICAL_POLL_MINUTES` (default 30) with a conditional GET, at most 20 s and
+  5 MB, and parsed with [ical.js](https://github.com/kewisch/ical.js). Its
+  stays become read-only blocks (`origin: ical`, keyed by feed and UID); only
+  UIDs and dates are kept. A current block whose stay left the feed goes;
+  past ones stay as history.
+- **Double bookings**: a stay over a confirmed booking can't be a block (the
+  database refuses it), so it opens an `ical_overlap` sync issue naming the
+  bookings. It resolves itself once the stay is gone or no longer clashes,
+  and is shown as a banner, in settings and on the calendar.
+- **Export**: off until switched on. Confirmed bookings and blocks from 30
+  days back as whole-day events, "Booked" or "Blocked", with hashed UIDs and
+  nothing else. Links use `ICAL_PUBLIC_URL` when set, else `APP_URL`; the
+  platforms need it reachable from the internet
+  ([docs/deployment.md](docs/deployment.md#sharing-availability-with-booking-platforms)).
+
 ### Calendar availability
 
 `GET /api/availability?propertyIds=<id>,<id>&from=2026-07-01&to=2026-10-01`

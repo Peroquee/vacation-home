@@ -47,6 +47,10 @@ model Property {
   calendarSyncIssues      CalendarSyncIssue[]
   incomeAutomation        IncomeAutomation?
   recurringExpenses       RecurringExpense[]
+  icalFeeds               IcalFeed[]
+  /// The secret in the URL of the property's outbound iCal feed
+  /// (/api/ical/<token>); null while the feed is off.
+  icalExportToken         String?             @unique @map("ical_export_token")
 
   // Target of the transactions' (property, currency) foreign key, which keeps
   // a transaction in its property's currency.
@@ -156,6 +160,8 @@ enum BlockOrigin {
   manual
   /// Imported from an event in the property's Google Calendar.
   google
+  /// Imported from a booking platform's iCal feed (`feedId`).
+  ical
 
   @@map("block_origin")
 }
@@ -178,15 +184,18 @@ model Block {
   endDate         DateTime    @map("end_date") @db.Date
   reason          String?
   origin          BlockOrigin @default(manual)
-  /// The Google Calendar event a `google` block came from; null for manual
-  /// blocks. Unique per property, so a re-import updates instead of
-  /// duplicating.
+  /// The Google Calendar event a `google` block came from, or the iCal UID
+  /// of an `ical` one; null for manual blocks. Unique per property, so a
+  /// re-import updates instead of duplicating.
   externalEventId String?     @map("external_event_id")
+  /// The iCal feed an `ical` block came from; its blocks go with it.
+  feedId          String?     @map("feed_id") @db.Uuid
   createdAt       DateTime    @default(now()) @map("created_at")
   updatedAt       DateTime    @updatedAt @map("updated_at")
 
   // Blocks have no life without their property.
   property      Property            @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  feed          IcalFeed?           @relation(fields: [feedId], references: [id], onDelete: Cascade)
   calendarLinks CalendarEventLink[]
 
   @@unique([propertyId, externalEventId])
@@ -301,6 +310,9 @@ enum CalendarSyncIssueKind {
   /// A Google event overlaps a confirmed booking, so it was not imported
   /// as a block: someone should look at it.
   inbound_overlap
+  /// A booking platform's stay (iCal feed) overlaps a confirmed booking: a
+  /// double booking, sold on the platform and here.
+  ical_overlap
 
   @@map("calendar_sync_issue_kind")
 }
@@ -312,8 +324,12 @@ model CalendarSyncIssue {
   id            String                @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   propertyId    String                @map("property_id") @db.Uuid
   kind          CalendarSyncIssueKind
-  calendarId    String                @map("calendar_id")
-  googleEventId String                @map("google_event_id")
+  /// For `inbound_overlap`: the Google calendar and event.
+  calendarId    String?               @map("calendar_id")
+  googleEventId String?               @map("google_event_id")
+  /// For `ical_overlap`: the feed and the event's UID in it.
+  feedId        String?               @map("feed_id") @db.Uuid
+  eventUid      String?               @map("event_uid")
   /// The confirmed bookings in the way, by id only.
   bookingIds    String[]              @map("booking_ids") @db.Uuid
   /// The nights the event would block.
@@ -325,7 +341,8 @@ model CalendarSyncIssue {
   resolution    String?
   updatedAt     DateTime              @updatedAt @map("updated_at")
 
-  property Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  property Property  @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  feed     IcalFeed? @relation(fields: [feedId], references: [id], onDelete: Cascade)
 
   @@index([propertyId, resolvedAt])
   @@map("calendar_sync_issues")
@@ -640,4 +657,43 @@ model VerificationToken {
 
   @@unique([identifier, token])
   @@map("verification_tokens")
+}
+
+// --- iCal feeds ----------------------------------------------------------------
+
+/// A booking platform's iCal export (Airbnb, Booking.com, ...) for one
+/// property. Its events become read-only `ical` blocks (src/lib/ical).
+model IcalFeed {
+  id            String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  propertyId    String    @map("property_id") @db.Uuid
+  /// Shown on its blocks, e.g. "Airbnb".
+  name          String
+  /// The platform's export URL. It carries the platform's secret token, so
+  /// the API only ever shows its host.
+  url           String
+  /// When the feed is next fetched.
+  nextFetchAt   DateTime  @default(now()) @map("next_fetch_at")
+  lastFetchedAt DateTime? @map("last_fetched_at")
+  /// The last successful fetch (a 304 counts).
+  lastSuccessAt DateTime? @map("last_success_at")
+  /// Why the last fetch failed, as a code (src/lib/ical/fetch.ts); null after a success.
+  lastError     String?   @map("last_error")
+  /// Events in the last successful fetch that block dates.
+  eventCount    Int       @default(0) @map("event_count")
+  /// Of those, the ones that overlap a confirmed booking: each is an open
+  /// `ical_overlap` issue instead of a block.
+  conflictCount Int       @default(0) @map("conflict_count")
+  /// HTTP validators, so an unchanged feed costs a 304.
+  etag          String?
+  lastModified  String?   @map("last_modified")
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+
+  property Property            @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  blocks   Block[]
+  issues   CalendarSyncIssue[]
+
+  @@index([propertyId])
+  @@index([nextFetchAt])
+  @@map("ical_feeds")
 }
