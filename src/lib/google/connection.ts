@@ -172,7 +172,7 @@ async function markDisconnected(row: GoogleConnection, reason: DisconnectedReaso
 /** Decrypts a stored token; one sealed under an earlier key needs a reconnect. */
 async function readToken(row: GoogleConnection, sealed: string): Promise<string> {
   try {
-    return decryptSecret(sealed, env.TOKEN_ENCRYPTION_KEY);
+    return decryptSecret(sealed, env.TOKEN_ENCRYPTION_KEY, env.TOKEN_ENCRYPTION_KEYS_OLD);
   } catch (error) {
     if (!(error instanceof WrongSecretKeyError)) throw error;
     await markDisconnected(row, "key_changed");
@@ -217,7 +217,11 @@ export async function disconnect(userId: string, fetchFn: Fetch = fetch): Promis
     // Revoking the refresh token ends the whole grant, access tokens included.
     let token: string | null = null;
     try {
-      token = decryptSecret(row.refreshTokenEncrypted, env.TOKEN_ENCRYPTION_KEY);
+      token = decryptSecret(
+        row.refreshTokenEncrypted,
+        env.TOKEN_ENCRYPTION_KEY,
+        env.TOKEN_ENCRYPTION_KEYS_OLD,
+      );
     } catch {
       // A key since changed or removed: nothing to revoke with. The grant
       // stays listed under the Google account's third-party access until

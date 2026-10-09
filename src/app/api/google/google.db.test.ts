@@ -124,6 +124,9 @@ describe("connecting Google Calendar", () => {
       failed: 0,
       lastError: null,
       openIssues: 0,
+      dead: 0,
+      failingSince: null,
+      alert: false,
     });
 
     const property = await db.property.create({
@@ -170,6 +173,9 @@ describe("connecting Google Calendar", () => {
       // The latest failure, as a fixed sentence: never Google's text.
       lastError: "Syncing an event failed; the app retries automatically.",
       openIssues: 0,
+      dead: 0,
+      failingSince: null,
+      alert: false,
     });
     expect(JSON.stringify(sync)).not.toContain("Ada");
   });

@@ -1,0 +1,8 @@
+{
+  "GHSA-ggr8-5vv4-36mx": {
+    "package": "deepmerge-ts (via prisma > @prisma/config)",
+    "reason": "Stack exhaustion when merging recursive object graphs. Prisma uses it only to merge this app's own prisma.config.ts at CLI start; no outside input reaches it. Prisma 7.10 pins 7.1.5 exactly and the fix is a major version.",
+    "reviewed": "2026-10-09",
+    "until": "2027-01-31"
+  }
+}

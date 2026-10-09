@@ -505,6 +505,19 @@ Each property can push its bookings to one Google Calendar
   stops all pushes until it is reconnected. An event deleted in Google is
   created again: the app's bookings are the truth.
 - The worker runs only when `TOKEN_ENCRYPTION_KEY` is set.
+- **Status and retries** (GitLab #75):
+  - `GET /api/calendar-sync/bookings?ids=a,b` gives each booking's badge:
+    `synced`, `pending`, `failed`, `dead` or `not_synced`.
+  - `GET /api/calendar-sync/failures` lists the user's failing events, with
+    the error as a fixed sentence.
+  - `POST /api/calendar-sync/retry` with `{ linkId }` retries one event, or
+    with `{}` all of them.
+  - After `GOOGLE_SYNC_MAX_ATTEMPTS` failures in a row (default 8), an event
+    becomes a **dead letter**: it isn't retried on its own until retried by
+    hand or the booking changes.
+  - The `sync` summary on `GET /api/google/connection` adds `dead`,
+    `failingSince`, and `alert`, which is `true` once failures have lasted
+    over an hour (for a persistent banner).
 
 ### Inbound sync: changes in Google Calendar
 
@@ -586,6 +599,19 @@ list and event list/get/insert/update/delete:
 End-to-end tests sign in by inserting a real session into their own test
 database and sending its cookie. The app has no test-only login path that a
 production deployment could have switched on.
+
+## Security
+
+[docs/security.md](docs/security.md) is the threat checklist, with each item
+marked addressed or accepted. It also has the steps for rotating the token
+encryption key (`npm run tokens:rotate`). In short:
+
+- **Headers:** every page carries a per-request nonce CSP, frame blocking
+  and the usual hardening headers (HSTS over https).
+- **CSRF:** mutating API calls from another site are refused (`403`).
+- **Rate limits:** sign-in, the Google webhook and calendar connect, guest
+  erasure, category reassign and bulk delete are rate limited (`429`).
+- **Dependency audit:** `npm run audit` runs in CI.
 
 ## Logging and error tracking
 

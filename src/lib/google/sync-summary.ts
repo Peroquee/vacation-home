@@ -39,29 +39,47 @@ export type SyncSummary = {
   lastError: string | null;
   /** Sync issues waiting for review (GET /api/calendar-sync/issues). */
   openIssues: number;
+  /** Of `failed`: given up on, waiting for a manual retry. */
+  dead: number;
+  /** When the oldest failure still unresolved began. */
+  failingSince: string | null;
+  /** Failing for over an hour: show a persistent banner. */
+  alert: boolean;
 };
+
+/** How long failures last before the banner shows. */
+const ALERT_AFTER_MS = 60 * 60_000;
 
 /** The summary over every booking event the user's connection writes. */
 export async function syncSummary(userId: string): Promise<SyncSummary> {
   const where = { userId };
-  const [last, pending, failed, latestFailure, openIssues] = await Promise.all([
+  const [last, pending, failed, latestFailure, openIssues, dead, oldest] = await Promise.all([
     db.calendarEventLink.aggregate({ where, _max: { lastSyncedAt: true } }),
     db.calendarEventLink.count({
       where: { ...where, syncState: { in: ["pending", "pending_delete"] } },
     }),
-    db.calendarEventLink.count({ where: { ...where, syncState: "failed" } }),
+    db.calendarEventLink.count({ where: { ...where, syncState: { in: ["failed", "dead"] } } }),
     db.calendarEventLink.findFirst({
       where: { ...where, lastError: { not: null }, syncState: { not: "synced" } },
       orderBy: { updatedAt: "desc" },
       select: { lastError: true },
     }),
     openIssueCount(userId),
+    db.calendarEventLink.count({ where: { ...where, syncState: "dead" } }),
+    db.calendarEventLink.aggregate({
+      where: { ...where, syncState: { not: "synced" }, failingSince: { not: null } },
+      _min: { failingSince: true },
+    }),
   ]);
+  const failingSince = oldest._min.failingSince;
   return {
     lastSyncedAt: last._max.lastSyncedAt?.toISOString() ?? null,
     pending,
     failed,
     lastError: errorMessage(latestFailure?.lastError ?? null),
     openIssues,
+    dead,
+    failingSince: failingSince?.toISOString() ?? null,
+    alert: failingSince !== null && Date.now() - failingSince.getTime() > ALERT_AFTER_MS,
   };
 }

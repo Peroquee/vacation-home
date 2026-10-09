@@ -8,6 +8,7 @@
  * booking updates that event instead of creating another.
  */
 import type { CalendarEventLink } from "@/generated/prisma/client";
+import { env } from "@/env";
 import { db, type DbClient } from "@/lib/db";
 import { isPrismaError } from "@/lib/db-errors";
 import { logger } from "@/lib/logger";
@@ -102,7 +103,7 @@ export async function pushEvent(
     // can claim the link between them.
     const { count } = await db.calendarEventLink.updateMany({
       where: { id: link.id, changeSeq: link.changeSeq, syncState: { not: "pending_delete" } },
-      data: { ...done, syncState: "synced", lastError: null, attempts: 0 },
+      data: { ...done, syncState: "synced", lastError: null, attempts: 0, failingSince: null },
     });
     // Otherwise the newer change is due again at once.
     if (count === 0) {
@@ -221,14 +222,19 @@ async function markFailed(link: CalendarEventLink, error: unknown): Promise<void
     attempts,
     nextAttemptAt: new Date(Date.now() + retryDelayMs(attempts)),
     claimedUntil: null,
+    failingSince: link.failingSince ?? new Date(),
   };
   // A link waiting for its remote delete stays pending_delete: that is what
   // remains to be done, and a booking-less link must not be anything else.
   // A newer change that arrived meanwhile is not held back by the backoff.
   const same = { id: link.id, changeSeq: link.changeSeq };
+  // Given up on after GOOGLE_SYNC_MAX_ATTEMPTS: a dead letter, retried only
+  // by hand (or a new change). A pending delete keeps retrying, hourly at
+  // most: a booking-less link has nothing else to become.
+  const dead = attempts >= env.GOOGLE_SYNC_MAX_ATTEMPTS;
   await db.calendarEventLink.updateMany({
-    where: { ...same, syncState: { not: "pending_delete" } },
-    data: { syncState: "failed", ...retry },
+    where: { ...same, syncState: { notIn: ["pending_delete"] } },
+    data: { syncState: dead ? "dead" : "failed", ...retry },
   });
   await db.calendarEventLink.updateMany({
     where: { ...same, syncState: "pending_delete" },
