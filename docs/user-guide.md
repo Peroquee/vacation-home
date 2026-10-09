@@ -176,6 +176,15 @@ running totals. Pick the month, property, type or category above it.
   not deleted. Deleting a category in use moves its transactions to another
   first.
 
+**CSV.** **Export CSV** saves what the ledger shows (its month and filters)
+for your accountant or a spreadsheet, in a plain format or one for German
+Excel. **Import CSV** reads a bank statement, a spreadsheet or such an
+export: say which column holds the date, the amount and so on, look at the
+checked rows, and import. Rows with problems are listed by line and left
+out; possible duplicates (same date, amount and description as an entry
+already there) are skipped unless you tick them. A file exported here
+imports again without creating anything twice.
+
 Two things can fill the ledger automatically, set up through the API for
 now (see the [README](../README.md#api)): **booking income**, which turns
 each confirmed booking into income entries (accommodation and cleaning fee),
@@ -207,6 +216,11 @@ The charts show revenue and expenses per month, where the money goes by
 category (click a category for its transactions), occupancy per month
 (optionally beside the year before) and a year of booked nights as a
 heatmap. Each chart can show its figures as a table.
+
+**Export** (top right) saves the period on screen, for the property or all
+of them: the **report as a PDF** (the figures, a chart of the months, the
+expenses by category and the occupancy, the same numbers as on screen) for
+your accountant or the tax return, and the **transactions as CSV**.
 
 "All properties" adds amounts together only when they share a currency;
 otherwise choose one property.

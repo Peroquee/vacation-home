@@ -295,14 +295,31 @@ other type, `409` for the same or a hidden one, `404` for an unknown one).
 
 ### Transactions
 
-| Method and path                      | Does                                                   |
-| ------------------------------------ | ------------------------------------------------------ |
-| `GET /api/transactions`              | The ledger: filtered, paginated, sorted, with totals   |
-| `POST /api/transactions`             | Record one; `201`                                      |
-| `GET /api/transactions/:id`          | One transaction, with its category                     |
-| `PATCH /api/transactions/:id`        | Update any subset of fields                            |
-| `DELETE /api/transactions/:id`       | Delete one                                             |
-| `POST /api/transactions/bulk-delete` | `{ "ids": [...] }`, up to 500, e.g. after a bad import |
+| Method and path                      | Does                                                     |
+| ------------------------------------ | -------------------------------------------------------- |
+| `GET /api/transactions`              | The ledger: filtered, paginated, sorted, with totals     |
+| `POST /api/transactions`             | Record one; `201`                                        |
+| `GET /api/transactions/:id`          | One transaction, with its category                       |
+| `PATCH /api/transactions/:id`        | Update any subset of fields                              |
+| `DELETE /api/transactions/:id`       | Delete one                                               |
+| `POST /api/transactions/bulk-delete` | `{ "ids": [...] }`, up to 500, e.g. after a bad import   |
+| `GET /api/transactions/export`       | The ledger's filters as CSV; `format=standard\|excel-de` |
+| `POST /api/transactions/import`      | Check CSV rows (preview), or with `commit` import them   |
+
+- **CSV** ([`src/lib/finance/csv.ts`](src/lib/finance/csv.ts) documents the
+  columns): `date, type, amount, currency, category, property, description,
+booking_id, id`. `standard` is comma-separated with a decimal point;
+  `excel-de` uses semicolons and a decimal comma. Both are UTF-8 with a BOM,
+  and cells that look like formulas get a leading apostrophe. At most 50,000
+  rows per file.
+- **Import** ([`src/lib/finance/import.ts`](src/lib/finance/import.ts)): the
+  browser reads the file and sends its rows (at most 5,000) with a column
+  mapping and defaults (property, a category per type). Every row is checked
+  and reported by line; one bad row never stops the rest. Amounts are read
+  exactly ("1.234,50", "1,234.50", "-12,00", "(12.00)"); dates as
+  YYYY-MM-DD or DD.MM.YYYY. Rows matching a ledger entry or an earlier row by
+  property, type, date, amount and description, or carrying an existing
+  transaction's `id`, are duplicates: skipped unless listed in `include`.
 
 - **Amounts** are positive integers of minor units (`amountMinor`), and the
   `type` (`income`/`expense`) gives the direction. They're in the
@@ -427,6 +444,21 @@ defines each one).
   nothing else. Links use `ICAL_PUBLIC_URL` when set, else `APP_URL`; the
   platforms need it reachable from the internet
   ([docs/deployment.md](docs/deployment.md#sharing-availability-with-booking-platforms)).
+
+### Financial report
+
+| Method and path              | Does                                                                      |
+| ---------------------------- | ------------------------------------------------------------------------- |
+| `GET /api/reports/financial` | The dashboard's period as a PDF: `preset` or `from`/`until`, `propertyId` |
+
+The PDF ([`src/lib/reports/financial-pdf.tsx`](src/lib/reports/financial-pdf.tsx),
+drawn with [@react-pdf/renderer](https://react-pdf.org)) holds the KPI
+cards, income and expenses per month (a chart and a table), expenses by
+category and occupancy per month, in the request's language. Its content
+([`src/app/(app)/dashboard/report.ts`](<src/app/(app)/dashboard/report.ts>))
+comes from the same functions as the dashboard's widgets, so the figures
+match the screen for the same filters; a test renders both and compares.
+The transactions behind it are the CSV export with the same dates.
 
 ### Calendar availability
 
