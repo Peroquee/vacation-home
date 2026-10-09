@@ -673,7 +673,8 @@ docker compose exec app npm run seed  # everything in Docker
 `npm run seed` **replaces** the properties, guests, bookings and blocks with
 demo data:
 
-- two properties, 20 guests, about 60 bookings over 18 months (October 2025 to
+- two properties, both priced in EUR (so the dashboard can total "all
+  properties"), 20 guests, about 60 bookings over 18 months (October 2025 to
   March 2027);
 - mostly confirmed bookings, plus inquiries and cancellations, from every
   source, with some same-day turnovers;
