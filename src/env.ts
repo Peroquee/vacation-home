@@ -82,6 +82,16 @@ const envSchema = z.object({
   }),
 
   /**
+   * Optional: the address Auth.js builds its own URLs from (sign-in,
+   * callbacks), if it ever has to differ from APP_URL. Unset, APP_URL is
+   * used (src/auth.ts) - never the address the request arrived at, which
+   * behind a proxy is the app's own 0.0.0.0:3000.
+   */
+  AUTH_URL: optionalExact(
+    z.url({ protocol: /^https?$/, error: "must be an http(s) URL, like APP_URL" }),
+  ),
+
+  /**
    * 32 random bytes, base64: the key that encrypts Google tokens at rest
    * (src/lib/secrets.ts). Optional - without it, connecting Google Calendar
    * is unavailable. Generate one with:
