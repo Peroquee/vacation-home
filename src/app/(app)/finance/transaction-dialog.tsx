@@ -1,12 +1,14 @@
 "use client";
 
+import { Repeat } from "lucide-react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
 
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { toastError, toastSuccess } from "@/components/toast";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
@@ -44,6 +46,8 @@ export type EditableTransaction = {
   date: string;
   description: string | null;
   bookingId: string | null;
+  /** The recurring cost that entered it (GitLab #104), if any. */
+  recurringExpenseId?: string | null;
 };
 
 type FieldErrors = Record<string, string[] | undefined>;
@@ -132,6 +136,7 @@ function TransactionForm({
   const router = useRouter();
   const amountHint = useAmountHint();
   const t = useTranslations("finance.transaction");
+  const tRecurring = useTranslations("finance.recurring");
   const tForms = useTranslations("forms");
   const tCommon = useTranslations("common");
   const purgedName = useTranslations("guests")("purgedName");
@@ -402,6 +407,16 @@ function TransactionForm({
               router.refresh();
             }}
           />
+        ) : null}
+        {transaction?.type === "expense" && !transaction.recurringExpenseId ? (
+          // A rule pre-filled from this expense, starting a month after it.
+          <Link
+            href={`/finance/recurring?from=${transaction.id}`}
+            className={buttonVariants({ variant: "ghost" })}
+          >
+            <Repeat data-icon="inline-start" aria-hidden />
+            {tRecurring("makeRecurring")}
+          </Link>
         ) : null}
         <Button type="submit" disabled={pending} aria-busy={pending}>
           {pending ? tCommon("saving") : transaction ? tCommon("save") : t("add")}

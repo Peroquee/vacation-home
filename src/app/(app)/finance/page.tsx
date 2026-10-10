@@ -43,6 +43,7 @@ export default async function FinancePage({ searchParams }: PageProps<"/finance"
   const month = period.month ?? period.from.slice(0, 7);
   const [properties, categories] = await Promise.all([listProperties(), listCategories()]);
   const t = await getTranslations("finance.page");
+  const tRecurring = await getTranslations("finance.recurring");
   const format = await getFormat();
   const apiText = await getApiText();
 
@@ -65,6 +66,9 @@ export default async function FinancePage({ searchParams }: PageProps<"/finance"
               categoryId: params.categoryId,
             }}
           />
+          <Link href="/finance/recurring" className={buttonVariants({ variant: "outline" })}>
+            {tRecurring("link")}
+          </Link>
           <Link href="/finance/categories" className={buttonVariants({ variant: "outline" })}>
             {t("categories")}
           </Link>
@@ -217,6 +221,7 @@ export default async function FinancePage({ searchParams }: PageProps<"/finance"
       date: t.date,
       description: t.description,
       bookingId: t.bookingId,
+      recurringExpenseId: t.recurringExpenseId,
       currency: t.currency,
       category: t.category,
       receipts: receiptCounts.get(t.id) ?? 0,

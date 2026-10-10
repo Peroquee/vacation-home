@@ -778,6 +778,79 @@
       "full": "Dieser Posten hat schon die meisten Belege, die er haben kann ({max}).",
       "saveFirst": "Belege können hinzugefügt werden, sobald der Posten gespeichert ist.",
       "count": "{count, plural, one {# Beleg} other {# Belege}}"
+    },
+    "recurring": {
+      "title": "Wiederkehrende Kosten",
+      "description": "Kosten, die von selbst wiederkommen, etwa die Kreditrate oder die Nebenkostenvorauszahlung. Jede Regel trägt ihre Posten ins Kassenbuch ein, sobald sie fällig sind.",
+      "backToLedger": "Zurück zum Kassenbuch",
+      "add": "Wiederkehrende Kosten hinzufügen",
+      "emptyTitle": "Noch keine wiederkehrenden Kosten",
+      "emptyDescription": "Tragen Sie Kreditrate, Versicherung oder Nebenkosten einmal ein, und sie landen von selbst im Kassenbuch.",
+      "needsSetup": "Legen Sie zuerst eine Unterkunft und eine Ausgabenkategorie an.",
+      "columns": {
+        "what": "Kosten",
+        "property": "Unterkunft",
+        "amount": "Betrag",
+        "next": "Nächste Fälligkeit",
+        "status": "Status",
+        "actions": "Aktionen"
+      },
+      "every": {
+        "monthly": "{amount} im Monat",
+        "quarterly": "{amount} im Quartal",
+        "annual": "{amount} im Jahr"
+      },
+      "interval": {
+        "monthly": "Monatlich",
+        "quarterly": "Vierteljährlich",
+        "annual": "Jährlich"
+      },
+      "status": {
+        "active": "Aktiv",
+        "paused": "Pausiert",
+        "ended": "Beendet"
+      },
+      "whenResumed": "Nach Fortsetzen",
+      "pause": "Pausieren",
+      "resume": "Fortsetzen",
+      "editRule": "{name} bearbeiten",
+      "pauseRule": "{name} pausieren",
+      "resumeRule": "{name} fortsetzen",
+      "deleteRule": "{name} löschen",
+      "paused": "Pausiert",
+      "pausedHint": "Solange sie pausiert ist, wird nichts eingetragen; diese Zeiträume werden übersprungen.",
+      "resumed": "Fortgesetzt",
+      "changeFailed": "Die wiederkehrenden Kosten konnten nicht geändert werden",
+      "deleteTitle": "{name} löschen?",
+      "deleteDescription": "Es werden keine weiteren Posten dafür eingetragen. Die schon im Kassenbuch stehenden bleiben unverändert.",
+      "keep": "Behalten",
+      "deleted": "{name} gelöscht",
+      "addTitle": "Wiederkehrende Kosten hinzufügen",
+      "addHint": "Sie trägt ab dem Startdatum an jedem Fälligkeitstag eine Ausgabe ins Kassenbuch ein.",
+      "editTitle": "Wiederkehrende Kosten bearbeiten",
+      "editHint": "Änderungen gelten für die ab jetzt eingetragenen Posten. Die schon im Kassenbuch stehenden bleiben unverändert.",
+      "fields": {
+        "property": "Unterkunft",
+        "category": "Kategorie",
+        "amount": "Betrag",
+        "interval": "Alle",
+        "startDate": "Erste Fälligkeit",
+        "endDate": "Letzte Fälligkeit (optional)",
+        "description": "Beschreibung"
+      },
+      "choose": "Wählen…",
+      "startHint": "Fälligkeiten bis heute werden sofort eingetragen.",
+      "endHint": "Leer: Sie läuft weiter, bis Sie sie pausieren oder löschen.",
+      "descriptionPlaceholder": "z. B. Kreditrate Sparkasse",
+      "addSubmit": "Hinzufügen",
+      "added": "Wiederkehrende Kosten hinzugefügt",
+      "saved": "Wiederkehrende Kosten gespeichert",
+      "savedHint": "Ab der nächsten Fälligkeit.",
+      "saveFailed": "Die wiederkehrenden Kosten konnten nicht gespeichert werden",
+      "badge": "wiederkehrend",
+      "badgeLabel": "Wiederkehrend: Regel anzeigen",
+      "makeRecurring": "Wiederkehrend machen",
+      "link": "Wiederkehrende Kosten"
     }
   },
   "dashboard": {
