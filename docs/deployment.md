@@ -56,6 +56,19 @@ In the Proxmox web interface, create a VM for Debian 12 ("bookworm"):
 
 - **CPU** 2 cores, **memory** 4 GB, **disk** 32 GB. Building the app needs
   the memory; running it needs much less.
+- **What fills the disk**, roughly: Debian and Docker 3 GB; the app's last
+  five builds 1.5 to 2.5 GB (they share most layers) and the tools image's
+  last two about 1 GB; Docker's build cache, trimmed to one week by every
+  deploy, 2 to 4 GB; the database well under 1 GB for years of bookings;
+  receipts as uploaded, about 1 to 3 MB per photo, so a few hundred receipts
+  a year add under 1 GB. That is 10 to 12 GB in steady use, which leaves
+  32 GB plenty of room. To see it on the server:
+
+  ```bash
+  df -h /                                    # free space on the disk
+  docker system df                           # what images, volumes and the build cache take
+  ```
+
 - Install Debian 12 from its netinst ISO, with the "SSH server" and
   "standard system utilities" software selections, and no desktop.
 - Give it a fixed address on your LAN, for example 192.168.178.50: in the

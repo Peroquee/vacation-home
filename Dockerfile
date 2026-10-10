@@ -4,8 +4,10 @@
 #
 #   deps   every dependency, for building (and the Prisma CLI)
 #   build  the Next.js production build (standalone output)
-#   tools  build + source: migrations and maintenance commands, run once
-#          (`docker compose run --rm migrate`, guests:repurge after a restore)
+#   tools  migrations and maintenance commands, run once (`docker compose
+#          run --rm migrate`, guests:repurge after a restore): the Prisma CLI
+#          and the scripts bundled into single files, nothing else
+#          (about 0.5 GB instead of the whole build)
 #   app    what runs: Next's standalone server and static files only, as the
 #          unprivileged `node` user
 #
@@ -15,6 +17,9 @@
 ARG NODE_VERSION=24.20.0
 
 FROM node:${NODE_VERSION}-bookworm-slim AS deps
+# Prisma picks its schema engine by the OpenSSL it finds when installing.
+RUN apt-get update && apt-get install -y --no-install-recommends openssl \
+  && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
 ENV HUSKY=0 NEXT_TELEMETRY_DISABLED=1
 # The schema and its config are needed by `npm ci`'s postinstall (prisma generate).
@@ -29,13 +34,32 @@ COPY . .
 ARG NEXT_PUBLIC_SENTRY_DSN=""
 ARG NEXT_PUBLIC_SENTRY_ENVIRONMENT=""
 ARG SENTRY_RELEASE=""
-RUN npm run build
+RUN npm run build && npm run build:tools
 
-FROM build AS tools
+# The Prisma CLI and exactly its own dependencies, as the lockfile installed
+# them: copied out of the full install rather than installed again.
+FROM deps AS prisma-cli
+RUN npm query '#prisma, #prisma *' \
+  | node -e 'let s="";process.stdin.on("data",(d)=>(s+=d)).on("end",()=>console.log([...new Set(JSON.parse(s).map((n)=>n.location))].join("\n")))' \
+  > /tmp/prisma-cli.txt \
+  && mkdir /out && tar -cf - -T /tmp/prisma-cli.txt | tar -xf - -C /out
+
+FROM node:${NODE_VERSION}-bookworm-slim AS tools
+# The schema engine needs OpenSSL at run time too.
+RUN apt-get update && apt-get install -y --no-install-recommends openssl \
+  && rm -rf /var/lib/apt/lists/*
+WORKDIR /app
+ENV NODE_ENV=production
+COPY --from=prisma-cli /out/node_modules ./node_modules
+COPY prisma/schema.prisma ./prisma/schema.prisma
+COPY prisma/migrations ./prisma/migrations
+COPY docker/tools/prisma.config.ts docker/tools/package.json ./
+COPY --from=build /app/dist-tools ./dist-tools
 USER node
 # Applies pending migrations; the compose `migrate` service runs this once
-# before each deploy's app starts.
-CMD ["npx", "prisma", "migrate", "deploy"]
+# before each deploy's app starts. The maintenance commands keep their
+# names: `npm run guests:repurge -- <file>`, `npm run tokens:rotate`.
+CMD ["npm", "run", "migrate:deploy"]
 
 FROM node:${NODE_VERSION}-bookworm-slim AS app
 WORKDIR /app

@@ -72,3 +72,6 @@ next-env.d.ts
 
 # Receipts stored by a local run (RECEIPTS_DIR default).
 /data/
+
+# Bundled maintenance scripts for the tools image (npm run build:tools).
+/dist-tools/

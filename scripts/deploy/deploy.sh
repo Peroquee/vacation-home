@@ -18,7 +18,9 @@
 # Safe to re-run: building an existing tag is a no-op apart from checking
 # it, migrations apply only what is pending, and restarting onto the version
 # already running changes nothing. If a step fails, the version that was
-# running keeps running. The last five builds are kept for rollbacks.
+# running keeps running. The last five app builds are kept for rollbacks,
+# and the last two tools builds (migrations run forward only). Docker's
+# build cache is trimmed to the last week, so it cannot fill the disk.
 #
 # Rolling back switches the app to an earlier build without touching the
 # database. That is only safe if no migration since then removed or changed
@@ -65,6 +67,8 @@ done
 [ -z "$ref" ] || [ -z "$rollback" ] || { echo "Use --ref or --rollback, not both." >&2; exit 2; }
 
 KEEP=5
+# Tools images only run migrations and maintenance; a rollback needs none.
+KEEP_TOOLS=2
 
 cd "$DEPLOY_CHECKOUT"
 step() { printf '\n==> %s\n' "$*"; }
@@ -113,7 +117,10 @@ if [ -n "$rollback" ]; then
   docker image inspect "vacation-home:$sha" >/dev/null 2>&1 ||
     { echo "No build of $sha is kept here. Kept builds:" >&2; docker images vacation-home --format '  {{.Tag}}' >&2; exit 1; }
   change docker tag "vacation-home:$sha" vacation-home:current
-  change docker tag "vacation-home-tools:$sha" vacation-home-tools:current
+  # Fewer tools builds are kept; without one, "current" stays as it is.
+  if docker image inspect "vacation-home-tools:$sha" >/dev/null 2>&1; then
+    change docker tag "vacation-home-tools:$sha" vacation-home-tools:current
+  fi
   change docker compose up -d app
   $dry_run || wait_ready
   printf '\nRolled back to %s. The database was not changed.\n' "$sha"
@@ -133,7 +140,7 @@ change git checkout --quiet --detach "$target"
 
 step "Building the images (the running version keeps serving)"
 build_args=()
-for name in NEXT_PUBLIC_APP_LOCALE NEXT_PUBLIC_SENTRY_DSN NEXT_PUBLIC_SENTRY_ENVIRONMENT; do
+for name in NEXT_PUBLIC_SENTRY_DSN NEXT_PUBLIC_SENTRY_ENVIRONMENT; do
   value="$(sed -n "s/^${name}=//p" .env | tr -d '"')"
   [ -z "$value" ] || build_args+=(--build-arg "${name}=${value}")
 done
@@ -157,15 +164,21 @@ change docker tag "vacation-home-tools:$sha" vacation-home-tools:current
 change docker compose up -d
 $dry_run || wait_ready
 
-step "Keeping the last $KEEP builds"
+step "Keeping the last $KEEP app builds and $KEEP_TOOLS tools builds"
 for repo in vacation-home vacation-home-tools; do
+  keep=$KEEP
+  [ "$repo" = vacation-home ] || keep=$KEEP_TOOLS
   # Newest first; "current" is a second name for one of them, never removed.
   old="$(docker images "$repo" --format '{{.CreatedAt}}\t{{.Tag}}' |
-    grep -v $'\tcurrent$' | sort -r | tail -n +"$((KEEP + 1))" | cut -f2)"
+    grep -v $'\tcurrent$' | sort -r | tail -n +"$((keep + 1))" | cut -f2)"
   for tag in $old; do
-    change docker image rm --force "$repo:$tag" >/dev/null || true
+    change docker image rm --force "$repo:$tag" || true
   done
 done
+# Layers no kept image uses, and build cache older than a week: the next
+# build of a changed lockfile reuses what is fresh, the rest only takes disk.
+change docker image prune --force
+change docker builder prune --force --filter until=168h
 
 if $dry_run; then
   printf '\nDry run finished: nothing was changed.\n'

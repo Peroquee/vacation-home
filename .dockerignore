@@ -14,3 +14,7 @@ playwright-report
 blob-report
 e2e/.auth
 *.log
+
+dist-tools
+lighthouse
+data
