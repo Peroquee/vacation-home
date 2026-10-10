@@ -1,9 +1,12 @@
 /**
  * `npm run tokens:rotate`: re-encrypts every stored Google token under the
  * current TOKEN_ENCRYPTION_KEY, the last step of a key rotation
- * (docs/security.md). Run it in the app container:
+ * (docs/security.md). In development, in the app container; on the
+ * production server, in the tools image, which carries it bundled
+ * (scripts/build-tools.mjs):
  *
- *   docker compose exec app npm run tokens:rotate
+ *   docker compose exec app npm run tokens:rotate          development
+ *   docker compose run --rm migrate npm run tokens:rotate  production
  *
  * Prints counts only, never a token.
  */
