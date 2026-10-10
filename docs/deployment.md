@@ -153,6 +153,17 @@ For option A also set `APP_DOMAIN`, `ACME_EMAIL`, `CLOUDFLARE_API_TOKEN`
 (step 7) and `TRUST_PROXY_HEADERS="true"`. For option B, set
 `COMPOSE_PROFILES="backup"` (no `https`).
 
+With the `backup` profile, the folder `BACKUP_HOST_DIR` must belong to user
+999, the backup services' user. `scripts/deploy/deploy.sh` creates or fixes a
+local folder (it uses `sudo`; if that would ask for a password, it stops and
+prints the commands). To do it by hand, for the default `./backups`:
+
+```bash
+mkdir -p backups                                              # the folder next to the app, if missing
+sudo chown 999:999 backups                                    # give it to the backup services' user
+sudo chmod 750 backups                                        # only they (and root) may read it
+```
+
 ## 6. Google sign-in
 
 Follow [google-cloud-setup.md](google-cloud-setup.md): a Google Cloud

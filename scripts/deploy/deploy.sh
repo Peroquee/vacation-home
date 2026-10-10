@@ -151,6 +151,16 @@ if [[ ",$profiles," == *",https,"* ]]; then
   change docker compose build --quiet caddy
 fi
 
+if [[ ",$profiles," == *",backup,"* ]]; then
+  # Docker would create a missing folder as root, and the backup services
+  # (user 999) could not write to it.
+  step "Checking the backup folder"
+  backup_dir="$(sed -n 's/^BACKUP_HOST_DIR=//p' .env | tr -d '"')"
+  check=(bash scripts/deploy/backup-dir.sh)
+  $dry_run && check+=(--dry-run)
+  "${check[@]}" "${backup_dir:-./backups}"
+fi
+
 step "Applying database migrations"
 change docker compose up -d db
 # The new code's migrations: APP_TAG picks the new tools image.
@@ -169,8 +179,9 @@ for repo in vacation-home vacation-home-tools; do
   keep=$KEEP
   [ "$repo" = vacation-home ] || keep=$KEEP_TOOLS
   # Newest first; "current" is a second name for one of them, never removed.
+  # (`|| true`: with no builds yet, grep finds nothing, which is fine.)
   old="$(docker images "$repo" --format '{{.CreatedAt}}\t{{.Tag}}' |
-    grep -v $'\tcurrent$' | sort -r | tail -n +"$((keep + 1))" | cut -f2)"
+    { grep -v $'\tcurrent$' || true; } | sort -r | tail -n +"$((keep + 1))" | cut -f2)"
   for tag in $old; do
     change docker image rm --force "$repo:$tag" || true
   done
