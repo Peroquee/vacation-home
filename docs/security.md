@@ -43,9 +43,10 @@ area changes.
    `TOKEN_ENCRYPTION_KEYS_OLD` (comma-separated, if there are several).
    Restart the app. Tokens sealed under the old key stay readable, since
    each sealed value names its key.
-3. Re-seal everything under the new key:
-   `docker compose exec app npm run tokens:rotate`. It prints how many were
-   re-encrypted, and is safe to run again.
+3. Re-seal everything under the new key, with the tools image:
+   `docker compose run --rm migrate npm run tokens:rotate` (in development,
+   `npm run tokens:rotate`). It prints how many were re-encrypted, and is
+   safe to run again.
 4. Empty `TOKEN_ENCRYPTION_KEYS_OLD` and restart.
 
 A token sealed under a key that's in neither variable can't be read. The

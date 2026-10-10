@@ -3,9 +3,14 @@
  * the file (one id per line), after a database restore brought them back.
  * See src/lib/guests/repurge.ts and docs/backup-and-restore.md, step 5.
  *
- * Run it in the app container, from the app folder on the Docker host:
+ * Run it from the app folder on the Docker host: in development in the app
+ * container, on the production server in the tools image (bundled by
+ * scripts/build-tools.mjs), with the file mounted in. restore.sh prints the
+ * right command:
  *
  *   docker compose exec app npm run guests:repurge -- backups-restore/erase-again-<stamp>.txt
+ *   docker compose run --rm -v "$PWD/backups-restore:/app/backups-restore:ro" \
+ *     migrate npm run guests:repurge -- backups-restore/erase-again-<stamp>.txt
  *
  * Prints counts only - never a name or any other personal data. Safe to run
  * again: guests already erased are skipped.

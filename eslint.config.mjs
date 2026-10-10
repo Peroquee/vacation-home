@@ -61,6 +61,10 @@ const eslintConfig = defineConfig([
     "playwright-report/**",
     "test-results/**",
     "blob-report/**",
+    // Maintenance scripts bundled for the tools image (scripts/build-tools.mjs).
+    "dist-tools/**",
+    // Lighthouse reports.
+    "lighthouse/**",
   ]),
 ]);
 
