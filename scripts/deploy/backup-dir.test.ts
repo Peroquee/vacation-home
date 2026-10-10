@@ -2,7 +2,9 @@
  * scripts/deploy/backup-dir.sh and its call in deploy.sh (GitLab #96): the
  * backup folder ends up writable by the backup services' user. Stubs on
  * PATH stand in for sudo (records, and refuses unless SUDO_OK=1), for
- * `stat -f` (FAKE_FS=nfs pretends a network share) and for docker.
+ * `stat -f` (FAKE_FS=nfs pretends a network share), for `id -u` (FAKE_EUID:
+ * the tests run as a normal user, 1000, even where CI runs them as root)
+ * and for docker.
  */
 import { spawnSync } from "node:child_process";
 import {
@@ -45,6 +47,10 @@ beforeEach(() => {
     ].join("\n"),
   );
   stub(
+    "id",
+    `if [ "$1" = -u ] && [ -n "$FAKE_EUID" ]; then echo "$FAKE_EUID"; exit 0; fi\nexec /usr/bin/id "$@"`,
+  );
+  stub(
     "stat",
     `if [ "$1" = -f ] && [ -n "$FAKE_FS" ]; then echo "$FAKE_FS"; exit 0; fi\nexec /usr/bin/stat "$@"`,
   );
@@ -55,7 +61,7 @@ const baseEnv = process.env;
 const run = (args: string[], env: Record<string, string> = {}) =>
   spawnSync("bash", [script, ...args], {
     encoding: "utf8",
-    env: { ...baseEnv, PATH: `${stubs}:${baseEnv.PATH}`, ...env },
+    env: { ...baseEnv, PATH: `${stubs}:${baseEnv.PATH}`, FAKE_EUID: "1000", ...env },
   });
 const sudoCalls = () => (existsSync(calls) ? readFileSync(calls, "utf8").trim().split("\n") : []);
 
@@ -91,6 +97,15 @@ describe("a local folder", () => {
     expect(result.status).toBe(0);
     expect(result.stdout).toContain("giving the backup folder");
     expect(sudoCalls()).toEqual([`chown 999:999 ${dir}`, `chmod 750 ${dir}`]);
+  });
+
+  it("as root, needs no sudo", () => {
+    const dir = join(root, "backups");
+    const result = run(["--dry-run", dir], { FAKE_EUID: "0" });
+    expect(result.status).toBe(0);
+    expect(result.stdout).toContain(`[dry-run] mkdir -p ${dir}`);
+    expect(result.stdout).toContain(`[dry-run] chown 999:999 ${dir}`);
+    expect(result.stdout).not.toContain("sudo");
   });
 
   it("only says what it would do on a dry run", () => {
@@ -151,11 +166,11 @@ describe("deploy.sh", () => {
     const result = spawnSync("bash", [join(checkout, "scripts/deploy/deploy.sh"), "--dry-run"], {
       cwd: checkout,
       encoding: "utf8",
-      env: { ...baseEnv, PATH: `${stubs}:${baseEnv.PATH}` },
+      env: { ...baseEnv, PATH: `${stubs}:${baseEnv.PATH}`, FAKE_EUID: "1000" },
     });
     expect(result.status, result.stderr).toBe(0);
     expect(result.stdout).toContain("==> Checking the backup folder");
-    expect(result.stdout).toMatch(/\[dry-run\] (sudo -n )?mkdir -p \.\/backups/);
+    expect(result.stdout).toContain("[dry-run] sudo -n mkdir -p ./backups");
     expect(result.stdout).toContain("[dry-run] docker compose up -d db");
   });
 });
