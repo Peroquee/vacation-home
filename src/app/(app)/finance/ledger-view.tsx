@@ -1,6 +1,6 @@
 "use client";
 
-import { Paperclip, Plus } from "lucide-react";
+import { Paperclip, Plus, Repeat } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
@@ -63,6 +63,7 @@ export function LedgerView({
   const [editing, setEditing] = useState<EditableTransaction | null>(null);
   const text = useTranslations("finance.ledger");
   const tReceipts = useTranslations("finance.receipts");
+  const tRecurring = useTranslations("finance.recurring");
   const receiptsText = (count: number) => tReceipts("count", { count });
   const format = useFormat();
   const adding = searchParams.get("add") === "1";
@@ -83,23 +84,36 @@ export function LedgerView({
       id: "what",
       header: text("columns.description"),
       cell: (t) => (
-        <button
-          type="button"
-          className="text-left hover:underline"
-          onClick={() => setEditing(t)}
-          aria-label={text("editRow", {
-            what: t.description || t.category.name,
-            date: format.date(t.date),
-          })}
-        >
-          {t.description || <span className="text-muted-foreground">{t.category.name}</span>}
-          {t.receipts > 0 ? (
-            <span className="text-muted-foreground ml-1.5 inline-flex items-center align-middle">
-              <Paperclip aria-hidden className="size-3.5" />
-              <span className="sr-only">, {receiptsText(t.receipts)}</span>
-            </span>
+        <span className="inline-flex flex-wrap items-center gap-x-2">
+          <button
+            type="button"
+            className="text-left hover:underline"
+            onClick={() => setEditing(t)}
+            aria-label={text("editRow", {
+              what: t.description || t.category.name,
+              date: format.date(t.date),
+            })}
+          >
+            {t.description || <span className="text-muted-foreground">{t.category.name}</span>}
+            {t.receipts > 0 ? (
+              <span className="text-muted-foreground ml-1.5 inline-flex items-center align-middle">
+                <Paperclip aria-hidden className="size-3.5" />
+                <span className="sr-only">, {receiptsText(t.receipts)}</span>
+              </span>
+            ) : null}
+          </button>
+          {t.recurringExpenseId ? (
+            // Entered by a recurring cost (GitLab #104): leads to its rule.
+            <Link
+              href={`/finance/recurring#rule-${t.recurringExpenseId}`}
+              className="bg-muted text-muted-foreground hover:text-foreground inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs"
+              aria-label={tRecurring("badgeLabel")}
+            >
+              <Repeat aria-hidden className="size-3" />
+              {tRecurring("badge")}
+            </Link>
           ) : null}
-        </button>
+        </span>
       ),
     },
     {

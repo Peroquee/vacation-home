@@ -206,10 +206,48 @@ out; possible duplicates (same date, amount and description as an entry
 already there) are skipped unless you tick them. A file exported here
 imports again without creating anything twice.
 
-Two things can fill the ledger automatically, set up through the API for
-now (see the [README](../README.md#api)): **booking income**, which turns
-each confirmed booking into income entries (accommodation and cleaning fee),
-and **recurring expenses** (monthly, quarterly or annual).
+**Booking income** fills the ledger automatically: each confirmed booking
+becomes income entries (accommodation and cleaning fee). It is set up
+through the API for now (see the [README](../README.md#api)).
+
+### Recurring costs
+
+**Finance → Recurring costs** lists the expenses that repeat: what they
+are, the property, the amount per month, quarter or year, when the next one
+is due and whether the rule is active, paused or ended. On each due date the
+app adds the expense to the ledger by itself; if it was offline, it catches
+up later, never twice for the same date.
+
+- **Add a recurring cost**: property, category, amount, how often, the
+  first due date, optionally the last one, and a description. The day of
+  the first due date sets the day each time (a rule starting on the 31st is
+  due on the last day of shorter months).
+- **Make recurring**: open an expense in the ledger and click **Make
+  recurring** to start a rule with its property, category, amount and
+  description, first due one month later.
+- **Edit** changes the category, amount, last due date and description for
+  the entries still to come. Entries already in the ledger keep their
+  amounts. Property, interval and first due date cannot change; for that,
+  give the rule a last due date and add a new one.
+- **Pause** stops new entries, for example while a contract is suspended.
+  **Resume** carries on from the next due date; the dates that passed while
+  paused are skipped, not caught up.
+- **Delete** removes the rule. Entries it already made stay in the ledger.
+- In the ledger, a **recurring** badge marks the entries a rule made; it
+  links to that rule.
+
+Two examples:
+
+- **Mortgage.** €950.00 on the 1st of every month: add a category
+  _Mortgage_ under **Categories** first, then amount 950, monthly, first due 1 January, description
+  "Sparkasse loan". When the bank changes the rate from July, edit the
+  amount in June: the entries up to June stay at €950.00, later ones use the
+  new amount. When the loan is paid off, set the last due date.
+- **Utility prepayment.** €180.00 a quarter to the municipal utility:
+  category _Utilities_, amount 180, quarterly, first due 15 February. The
+  yearly statement is a one-off entry in the ledger (a refund as income, an
+  extra payment as an expense); if it sets a new prepayment, edit the rule's
+  amount.
 
 ## Dashboard
 

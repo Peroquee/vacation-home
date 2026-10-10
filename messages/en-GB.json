@@ -778,6 +778,79 @@
       "full": "This transaction has the most receipts it can hold ({max}).",
       "saveFirst": "Receipts can be added once the transaction is saved.",
       "count": "{count, plural, one {# receipt} other {# receipts}}"
+    },
+    "recurring": {
+      "title": "Recurring costs",
+      "description": "Costs that come back on their own, such as the mortgage or the utilities' prepayments. Each rule enters its transactions in the ledger when they fall due.",
+      "backToLedger": "Back to the ledger",
+      "add": "Add a recurring cost",
+      "emptyTitle": "No recurring costs yet",
+      "emptyDescription": "Add the mortgage, insurance or utilities once, and they enter the ledger by themselves.",
+      "needsSetup": "Add a property and an expense category first.",
+      "columns": {
+        "what": "Cost",
+        "property": "Property",
+        "amount": "Amount",
+        "next": "Next due",
+        "status": "Status",
+        "actions": "Actions"
+      },
+      "every": {
+        "monthly": "{amount} a month",
+        "quarterly": "{amount} a quarter",
+        "annual": "{amount} a year"
+      },
+      "interval": {
+        "monthly": "Monthly",
+        "quarterly": "Quarterly",
+        "annual": "Yearly"
+      },
+      "status": {
+        "active": "Active",
+        "paused": "Paused",
+        "ended": "Ended"
+      },
+      "whenResumed": "When resumed",
+      "pause": "Pause",
+      "resume": "Resume",
+      "editRule": "Edit {name}",
+      "pauseRule": "Pause {name}",
+      "resumeRule": "Resume {name}",
+      "deleteRule": "Delete {name}",
+      "paused": "Paused",
+      "pausedHint": "Nothing is entered while it is paused; those periods are skipped.",
+      "resumed": "Resumed",
+      "changeFailed": "Could not change the recurring cost",
+      "deleteTitle": "Delete {name}?",
+      "deleteDescription": "No more transactions are entered for it. Those already in the ledger stay as they are.",
+      "keep": "Keep it",
+      "deleted": "{name} deleted",
+      "addTitle": "Add a recurring cost",
+      "addHint": "It enters an expense in the ledger on every due date, from the start date on.",
+      "editTitle": "Edit recurring cost",
+      "editHint": "Changes apply to the transactions entered from now on. Those already in the ledger stay as they are.",
+      "fields": {
+        "property": "Property",
+        "category": "Category",
+        "amount": "Amount",
+        "interval": "Every",
+        "startDate": "First due",
+        "endDate": "Last due (optional)",
+        "description": "Description"
+      },
+      "choose": "Choose…",
+      "startHint": "Due dates up to today are entered at once.",
+      "endHint": "Empty: it keeps going until you pause or delete it.",
+      "descriptionPlaceholder": "e.g. Mortgage, Sparkasse",
+      "addSubmit": "Add",
+      "added": "Recurring cost added",
+      "saved": "Recurring cost saved",
+      "savedHint": "From the next due date on.",
+      "saveFailed": "Could not save the recurring cost",
+      "badge": "recurring",
+      "badgeLabel": "Recurring: show its rule",
+      "makeRecurring": "Make recurring",
+      "link": "Recurring costs"
     }
   },
   "dashboard": {
