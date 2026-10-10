@@ -105,8 +105,22 @@ docker compose logs receipts-backup                   # look for "Receipts: ... 
 
 From now on it backs up every day and removes old backups by itself.
 
-If the log shows `Permission denied`, the folder does not belong to user id 999
-yet: repeat the `chown` from 1.2, then `docker compose restart backup`.
+If the log shows `Permission denied` (or the services restart over and over),
+the folder does not belong to user id 999 yet. Docker creates a missing
+folder as root, which the backup services cannot write to. Fix it once, then
+restart them:
+
+```bash
+sudo mkdir -p /mnt/backups/vacation-home              # the folder, if it is missing (use your BACKUP_HOST_DIR)
+sudo chown 999:999 /mnt/backups/vacation-home         # give it to the backup services' user and group (id 999)
+sudo chmod 750 /mnt/backups/vacation-home             # only they (and root) may read the backups
+docker compose restart backup receipts-backup         # start both services again
+```
+
+On the production server, `scripts/deploy/deploy.sh` does this for a local
+folder by itself (with `sudo`, if it may run without a password; otherwise it
+stops and prints these commands). For a network share it only checks, and
+warns if user 999 cannot write there: ownership is set on the NAS.
 
 ## 2. The 48-hour alert
 
