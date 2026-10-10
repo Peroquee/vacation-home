@@ -620,6 +620,9 @@ stored in the database ([`src/auth.ts`](src/auth.ts)).
 - **Sign-in asks for identity only** (`openid email profile`): no calendar
   access and no offline access, and no token from sign-in is stored.
 - **Signing out** deletes the session row.
+- **Its own URLs** (sign-in, the OAuth callback) are built from `APP_URL`,
+  or `AUTH_URL` if set, never from the request: behind a reverse proxy the
+  server only sees its own `0.0.0.0:3000` ([`src/auth.ts`](src/auth.ts)).
 
 ### Google Calendar access
 

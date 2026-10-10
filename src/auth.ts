@@ -11,7 +11,7 @@
  * import: `next build` imports this module without any configuration.
  */
 import { PrismaAdapter } from "@auth/prisma-adapter";
-import NextAuth from "next-auth";
+import NextAuth, { type NextAuthConfig } from "next-auth";
 import type { Adapter } from "next-auth/adapters";
 import Google from "next-auth/providers/google";
 
@@ -47,40 +47,60 @@ function adapter(): Adapter {
   };
 }
 
-export const { handlers, auth, signIn, signOut } = NextAuth(() => ({
-  adapter: adapter(),
-  secret: env.AUTH_SECRET,
-  // Self-hosted behind our own reverse proxy, not on a platform Auth.js
-  // recognises; APP_URL is where it is served.
-  trustHost: true,
-  session: { strategy: "database", maxAge: 30 * 24 * 60 * 60 },
-  pages: { signIn: SIGN_IN_PATH, error: SIGN_IN_PATH },
-  providers: [
-    Google({
-      clientId: env.AUTH_GOOGLE_ID,
-      clientSecret: env.AUTH_GOOGLE_SECRET,
-      // Identity only: no calendar, no offline access (see the top of this file).
-      authorization: { params: { scope: SIGN_IN_SCOPES } },
-    }),
-  ],
-  callbacks: {
-    signIn({ profile }) {
-      const allowed = profile?.email_verified === true && isAllowedEmail(profile.email);
-      // Turned into /signin?error=AccessDenied, which explains it.
-      // Not the address itself: a stranger's email is personal data we have
-      // no reason to keep.
-      if (!allowed) logger.warn("sign-in refused: account not on the allow-list");
-      return allowed;
+/**
+ * Auth.js builds its URLs (sign-in, the OAuth callback) from AUTH_URL when
+ * set, else from the request. Behind a reverse proxy (Caddy, tailscale
+ * serve) the standalone server sees itself as 0.0.0.0:3000 whatever the
+ * forwarded headers say, so it always gets the public address: AUTH_URL if
+ * given, else APP_URL. Auth.js reads it from process.env itself, after
+ * this configuration is built on each request.
+ */
+function setAuthUrl() {
+  // eslint-disable-next-line no-restricted-properties -- written for Auth.js, from the validated env
+  process.env.AUTH_URL = env.AUTH_URL ?? env.APP_URL;
+}
+
+export const { handlers, auth, signIn, signOut } = NextAuth(() => {
+  setAuthUrl();
+  return config();
+});
+
+function config(): NextAuthConfig {
+  return {
+    adapter: adapter(),
+    secret: env.AUTH_SECRET,
+    // Self-hosted behind our own reverse proxy, not on a platform Auth.js
+    // recognises; APP_URL is where it is served.
+    trustHost: true,
+    session: { strategy: "database", maxAge: 30 * 24 * 60 * 60 },
+    pages: { signIn: SIGN_IN_PATH, error: SIGN_IN_PATH },
+    providers: [
+      Google({
+        clientId: env.AUTH_GOOGLE_ID,
+        clientSecret: env.AUTH_GOOGLE_SECRET,
+        // Identity only: no calendar, no offline access (see the top of this file).
+        authorization: { params: { scope: SIGN_IN_SCOPES } },
+      }),
+    ],
+    callbacks: {
+      signIn({ profile }) {
+        const allowed = profile?.email_verified === true && isAllowedEmail(profile.email);
+        // Turned into /signin?error=AccessDenied, which explains it.
+        // Not the address itself: a stranger's email is personal data we have
+        // no reason to keep.
+        if (!allowed) logger.warn("sign-in refused: account not on the allow-list");
+        return allowed;
+      },
+      session({ session, user }) {
+        session.user.id = user.id;
+        return session;
+      },
     },
-    session({ session, user }) {
-      session.user.id = user.id;
-      return session;
+    // Through the scrubbing logger: Auth.js errors can carry tokens.
+    logger: {
+      error: (error) => logger.error({ err: error }, "auth error"),
+      warn: (code) => logger.warn({ code }, "auth warning"),
+      debug: () => {},
     },
-  },
-  // Through the scrubbing logger: Auth.js errors can carry tokens.
-  logger: {
-    error: (error) => logger.error({ err: error }, "auth error"),
-    warn: (code) => logger.warn({ code }, "auth warning"),
-    debug: () => {},
-  },
-}));
+  };
+}
