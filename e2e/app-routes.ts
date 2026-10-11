@@ -38,7 +38,10 @@ export const PUBLIC_ROUTES = [
   "/signin",
 ].sort();
 
-const APP_DIR = join(import.meta.dirname, "..", "src", "app");
+// From the working directory: both Vitest and Playwright run from the
+// repository root, and Playwright loads this file as CommonJS, where
+// import.meta does not exist.
+const APP_DIR = join(process.cwd(), "src", "app");
 
 /** Files that are routes of their own. Layouts, error pages and the like are not. */
 const ROUTE_FILES: Record<
