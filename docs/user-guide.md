@@ -42,6 +42,11 @@ a colour for the calendar.
   open `/stay/lake-house` without signing in. It is off for every property
   until you turn it on, and an archived property is never shown. The page
   never shows the address you entered here.
+- **Booking rules** (Settings → Booking rules) limit what guests can request
+  on the public site: minimum and maximum nights, how many days ahead a stay
+  must be requested (lead time) and may be (horizon), which weekdays guests
+  can arrive on, and free nights to keep between stays (for cleaning). Your
+  own bookings may break them: the booking form warns you, but saves.
 
 ## The calendar
 
