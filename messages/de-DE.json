@@ -1235,7 +1235,9 @@
       "altDe": "Beschreibung (Deutsch)",
       "saveAlt": "Beschreibung speichern",
       "altSaved": "Beschreibung gespeichert",
-      "altFailed": "Die Beschreibung konnte nicht gespeichert werden"
+      "altFailed": "Die Beschreibung konnte nicht gespeichert werden",
+      "coverAlt": "Titelbild (1 von {count})",
+      "photoAlt": "Foto {number} von {count}"
     },
     "amenities": {
       "wifi": "WLAN",

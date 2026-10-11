@@ -143,6 +143,8 @@ export function PhotoManager({ propertyId, initial }: { propertyId: string; init
                 photo={photo}
                 src={`${base}/files/${photo.sizes[0]!.file}`}
                 cover={index === 0}
+                number={index + 1}
+                count={photos.length}
                 onEarlier={index > 0 ? () => move(index, index - 1) : null}
                 onLater={index < photos.length - 1 ? () => move(index, index + 1) : null}
                 onCover={() => move(index, 0)}
@@ -165,6 +167,8 @@ function PhotoCard({
   photo,
   src,
   cover,
+  number,
+  count,
   onEarlier,
   onLater,
   onCover,
@@ -176,6 +180,9 @@ function PhotoCard({
   photo: PhotoDto;
   src: string;
   cover: boolean;
+  /** Its place in the order, from 1, and how many there are. */
+  number: number;
+  count: number;
   onEarlier: (() => void) | null;
   onLater: (() => void) | null;
   onCover: () => void;
@@ -217,7 +224,13 @@ function PhotoCard({
           src={src}
           width={size.width}
           height={size.height}
-          alt={alt.altEn || alt.altDe}
+          // The owner's own description when there is one; otherwise its place,
+          // never empty: an image without a name is skipped by screen readers.
+          alt={
+            alt.altEn ||
+            alt.altDe ||
+            (cover ? t("coverAlt", { count }) : t("photoAlt", { number, count }))
+          }
           className="aspect-[4/3] w-full rounded-md object-cover"
         />
         {cover ? (
