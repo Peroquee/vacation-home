@@ -3,6 +3,7 @@
   "routes": {
     "/bookings/new": 320,
     "/bookings/[id]/edit": 320,
-    "/dev/ui": 420
+    "/dev/ui": 420,
+    "/stay/[slug]": 180
   }
 }

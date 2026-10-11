@@ -198,8 +198,23 @@ messages per invalid field, with problems that belong to no single field under
 
 Fields: `name`, `address` (optional), `timezone` (IANA, e.g. `Europe/Lisbon`),
 `currency` (ISO 4217), `defaultNightlyRateMinor` and `defaultCleaningFeeMinor`
-(default 0), and `color` (`#rrggbb`, default the brand teal). Responses add
-`id`, `archived`, `archivedAt`, `createdAt` and `updatedAt`.
+(default 0), `color` (`#rrggbb`, default the brand teal), `slug` (the
+public page's address, `/stay/<slug>`: 3 to 60 lowercase letters, digits and
+single hyphens, unique; optional) and `publiclyListed` (default `false`;
+needs a slug). Responses add `id`, `archived`, `archivedAt`, `createdAt` and
+`updatedAt`.
+
+### Public booking site
+
+No session needed; see [Authentication](#authentication) for the boundary.
+
+| Method and path                    | Does                                                         |
+| ---------------------------------- | ------------------------------------------------------------ |
+| `GET /stay/:slug`                  | A listed property's public page                              |
+| `GET /api/public/properties/:slug` | Its public face: `slug`, `name` and `currency`, nothing else |
+| `GET /robots.txt`                  | Lets search engines index `/stay/` only                      |
+
+An unlisted, archived or unknown property is the same `404` everywhere.
 
 ### Guests
 
@@ -611,9 +626,18 @@ stored in the database ([`src/auth.ts`](src/auth.ts)).
   Anyone else is sent back to the sign-in page with an explanation. The list
   is checked again on every request, so removing an address signs that
   account out on its next request.
-- **Everything is private**: [`src/proxy.ts`](src/proxy.ts) requires a session
-  on every route except `/signin` and Auth.js's own `/api/auth/*`. Pages
-  redirect to sign-in and come back afterwards. API calls get a `401` instead.
+- **Everything is private** except an explicit allow-list
+  ([`src/lib/access.ts`](src/lib/access.ts)): `/signin`, Auth.js's own
+  `/api/auth/*`, the health checks, the iCal export feeds and Google's
+  webhook (each with its own secret), and the public booking site (`/stay/*`,
+  `/api/public/*`, `/robots.txt`). [`src/proxy.ts`](src/proxy.ts) requires a
+  session everywhere else: pages redirect to sign-in and come back
+  afterwards, API calls get a `401` instead. A test walks every route file
+  and checks this ([`src/lib/access.routes.test.ts`](src/lib/access.routes.test.ts),
+  and `e2e/public-site.spec.ts` against the running app).
+- **The public booking site never sees a session**: the proxy does not look
+  one up there and strips Auth.js's cookies before the page runs, so a
+  public response can neither show who is signed in nor set a cookie.
 - **Google client setup**: create an OAuth client of type "Web application"
   and add `<APP_URL>/api/auth/callback/google` and
   `<APP_URL>/api/google/callback` as authorised redirect URIs.
@@ -790,8 +814,11 @@ encryption key (`npm run tokens:rotate`). In short:
 - **Headers:** every page carries a per-request nonce CSP, frame blocking
   and the usual hardening headers (HSTS over https).
 - **CSRF:** mutating API calls from another site are refused (`403`).
-- **Rate limits:** sign-in, the Google webhook and calendar connect, guest
-  erasure, category reassign and bulk delete are rate limited (`429`).
+- **Rate limits:** the public booking site (pages 120/min, API 60/min per
+  client), sign-in, the Google webhook and calendar connect, guest erasure,
+  category reassign and bulk delete are rate limited (`429`). Behind a reverse
+  proxy, set `TRUST_PROXY_HEADERS=true` so limits count per visitor rather
+  than for everyone together.
 - **Dependency audit:** `npm run audit` runs in CI.
 
 ## Logging and error tracking

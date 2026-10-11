@@ -172,9 +172,10 @@ e2e:
       - playwright-report/
       - test-results/
 
-# Lighthouse on the calendar and the dashboard (GitLab #97): the same setup
-# as e2e (database, browser, a production build), measuring performance
-# under Lighthouse's mobile throttling. Both pages must score 90 or more,
+# Lighthouse on the calendar, the dashboard (GitLab #97) and the public
+# property page (GitLab #105): the same setup as e2e (database, browser, a
+# production build), measuring performance under Lighthouse's mobile
+# throttling. Every page must score 90 or more,
 # judged by the median of LIGHTHOUSE_RUNS runs (scores move a few points
 # between identical runs). Reports of every run: lighthouse/.
 lighthouse:

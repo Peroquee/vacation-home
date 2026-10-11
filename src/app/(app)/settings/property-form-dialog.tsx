@@ -15,7 +15,17 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Field, FieldDescription, FieldError, FieldGroup, FieldLabel } from "@/components/ui/field";
+import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Field,
+  FieldContent,
+  FieldDescription,
+  FieldError,
+  FieldGroup,
+  FieldLabel,
+  FieldLegend,
+  FieldSet,
+} from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { NativeSelect, NativeSelectOption } from "@/components/ui/native-select";
 import { useAmountHint } from "@/i18n/use-amount-hint";
@@ -40,6 +50,8 @@ type Values = {
   nightlyRate: string;
   cleaningFee: string;
   color: string;
+  slug: string;
+  publiclyListed: boolean;
 };
 
 function initialValues(property?: PropertyDto): Values {
@@ -52,6 +64,8 @@ function initialValues(property?: PropertyDto): Values {
       nightlyRate: minorToInput(property.defaultNightlyRateMinor, property.currency),
       cleaningFee: minorToInput(property.defaultCleaningFeeMinor, property.currency),
       color: property.color,
+      slug: property.slug ?? "",
+      publiclyListed: property.publiclyListed,
     };
   }
   return {
@@ -63,6 +77,8 @@ function initialValues(property?: PropertyDto): Values {
     nightlyRate: "",
     cleaningFee: "",
     color: DEFAULT_PROPERTY_COLOR,
+    slug: "",
+    publiclyListed: false,
   };
 }
 
@@ -138,6 +154,8 @@ export function PropertyFormDialog({
             defaultNightlyRateMinor: nightly,
             defaultCleaningFeeMinor: cleaning,
             color: values.color,
+            slug: values.slug,
+            publiclyListed: values.publiclyListed,
           }),
         },
       );
@@ -288,6 +306,48 @@ export function PropertyFormDialog({
               ),
               t("colorHint"),
             )}
+            <FieldSet>
+              <FieldLegend variant="label">{t("publicListing")}</FieldLegend>
+              <FieldDescription>{t("publicListingHint")}</FieldDescription>
+              {field(
+                "slug",
+                t("slug"),
+                (props) => (
+                  <Input
+                    {...props}
+                    value={values.slug}
+                    onChange={(event) => set("slug", event.target.value)}
+                    maxLength={60}
+                    autoComplete="off"
+                    autoCapitalize="none"
+                    spellCheck={false}
+                    placeholder="lake-house"
+                  />
+                ),
+                t("slugHint", { path: `/stay/${values.slug.trim().toLowerCase() || "…"}` }),
+              )}
+              <Field
+                orientation="horizontal"
+                data-invalid={errors.publiclyListed ? true : undefined}
+              >
+                <Checkbox
+                  id={`property-${id}-publiclyListed`}
+                  checked={values.publiclyListed}
+                  onCheckedChange={(checked) => set("publiclyListed", checked)}
+                  {...(errors.publiclyListed && { "aria-invalid": true })}
+                />
+                <FieldContent>
+                  <FieldLabel htmlFor={`property-${id}-publiclyListed`} className="font-normal">
+                    {t("publiclyListed")}
+                  </FieldLabel>
+                  <FieldError
+                    errors={errors.publiclyListed?.map((message) => ({
+                      message: tForms("fieldError", { label: t("publiclyListed"), message }),
+                    }))}
+                  />
+                </FieldContent>
+              </Field>
+            </FieldSet>
             {errors._ ? <FieldError errors={errors._.map((message) => ({ message }))} /> : null}
           </FieldGroup>
         </form>

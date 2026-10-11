@@ -4,13 +4,30 @@
  */
 
 /**
- * Reachable without a session: the sign-in page, Auth.js's own routes,
+ * The public booking site (GitLab #105): its pages under /stay/, its API
+ * under /api/public/, and robots.txt. Served to anyone, and treated by the
+ * proxy as if no one were signed in: no session is looked up, refreshed or
+ * revoked there, so these responses never set a session cookie. Every route
+ * under these prefixes lives in src/app/(public) or src/app/api/public;
+ * src/lib/access.routes.test.ts checks that against the route files.
+ */
+export function isPublicSitePath(pathname: string): boolean {
+  return (
+    pathname.startsWith("/stay/") ||
+    pathname.startsWith("/api/public/") ||
+    pathname === "/robots.txt"
+  );
+}
+
+/**
+ * Reachable without a session: the public booking site, the sign-in page, Auth.js's own routes,
  * Google's push notifications, which carry their own secret (checked by
  * the route against the stored channel), the properties' iCal export feeds,
  * whose URL token is their secret, and the health checks.
  */
 export function isPublicPath(pathname: string): boolean {
   return (
+    isPublicSitePath(pathname) ||
     pathname === "/signin" ||
     pathname === "/api/auth" ||
     pathname.startsWith("/api/auth/") ||

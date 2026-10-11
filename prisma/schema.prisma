@@ -51,6 +51,12 @@ model Property {
   /// The secret in the URL of the property's outbound iCal feed
   /// (/api/ical/<token>); null while the feed is off.
   icalExportToken         String?             @unique @map("ical_export_token")
+  /// The property's address on the public booking site: /stay/<slug>.
+  /// Lowercase letters, digits and single hyphens; null until chosen.
+  slug                    String?             @unique
+  /// Shown on the public booking site. Off by default, and only possible
+  /// with a slug; an archived property stays hidden whatever this says.
+  publiclyListed          Boolean             @default(false) @map("publicly_listed")
 
   // Target of the transactions' (property, currency) foreign key, which keeps
   // a transaction in its property's currency.

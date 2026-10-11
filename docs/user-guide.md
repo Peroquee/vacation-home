@@ -37,6 +37,11 @@ a colour for the calendar.
 - **Archive** a property you no longer rent out. It disappears from the
   selectors, but its bookings and finances stay, and the occupancy figures
   stop counting it from the day it was archived. **Restore** brings it back.
+- **Public booking site**: give a property a **web address** (for example
+  `lake-house`) and tick **Show on the public booking site**. Guests can then
+  open `/stay/lake-house` without signing in. It is off for every property
+  until you turn it on, and an archived property is never shown. The page
+  never shows the address you entered here.
 
 ## The calendar
 

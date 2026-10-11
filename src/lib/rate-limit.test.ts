@@ -24,6 +24,20 @@ describe("rateLimitKey", () => {
     );
   });
 
+  it("limits the whole public booking site per client, even without a session", () => {
+    const client = { user: null, client: "203.0.113.7" };
+    expect(rateLimitKey("GET", "/stay/lake-house", client)?.key).toBe("public-page:203.0.113.7");
+    expect(rateLimitKey("GET", "/robots.txt", client)?.key).toBe("public-page:203.0.113.7");
+    expect(rateLimitKey("GET", "/api/public/properties/lake-house", client)?.key).toBe(
+      "public-api:203.0.113.7",
+    );
+    expect(rateLimitKey("POST", "/api/public/anything", client)?.rule.name).toBe("public-api");
+    // Without a trusted address, everyone shares one window.
+    expect(rateLimitKey("GET", "/stay/lake-house", { user: null, client: null })?.key).toBe(
+      "public-page:everyone",
+    );
+  });
+
   it("leaves everything else unlimited", () => {
     expect(rateLimitKey("GET", "/api/guests", { user: "u1", client: null })).toBeNull();
     expect(rateLimitKey("GET", `/api/guests/${ID}/purge`, { user: "u1", client: null })).toBeNull();

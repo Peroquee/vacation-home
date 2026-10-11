@@ -1,8 +1,8 @@
 /**
  * Rate limits for the endpoints worth abusing, applied by src/proxy.ts:
- * sign-in, the Google webhook and calendar connect flow, the public iCal
- * export feed, receipt uploads, guest erasure, category reassignment and bulk
- * deletion. A fixed window per key, in
+ * the public booking site, sign-in, the Google webhook and calendar connect
+ * flow, the public iCal export feed, receipt uploads, guest erasure,
+ * category reassignment and bulk deletion. A fixed window per key, in
  * memory: the app runs as one process, and a restart forgetting the counts
  * is harmless.
  *
@@ -25,6 +25,23 @@ const MINUTE = 60_000;
 const UUID = "[0-9a-fA-F-]{36}";
 
 export const RULES: Rule[] = [
+  {
+    // The public booking site's pages (GitLab #105), any method: open to
+    // the internet, and each one reads the database. Generous for a person
+    // browsing (page loads plus their prefetches), slow for a scraper.
+    name: "public-page",
+    matches: (_method, path) => path.startsWith("/stay/") || path === "/robots.txt",
+    limit: 120,
+    windowMs: MINUTE,
+    by: "client",
+  },
+  {
+    name: "public-api",
+    matches: (_method, path) => path.startsWith("/api/public/"),
+    limit: 60,
+    windowMs: MINUTE,
+    by: "client",
+  },
   {
     name: "sign-in",
     matches: (method, path) =>

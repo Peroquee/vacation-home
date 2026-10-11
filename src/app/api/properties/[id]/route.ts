@@ -1,5 +1,5 @@
 import { apiError, fieldError, isUuid, notFound, parseBody } from "@/lib/api";
-import { updatePropertySchema } from "@/lib/properties/schema";
+import { SLUG_REQUIRED, SLUG_TAKEN, updatePropertySchema } from "@/lib/properties/schema";
 import { deleteProperty, getProperty, toDto, updateProperty } from "@/lib/properties/service";
 
 type Context = RouteContext<"/api/properties/[id]">;
@@ -44,6 +44,8 @@ export async function PATCH(request: Request, { params }: Context) {
       "cannot change: transactions are recorded in the current currency",
     );
   }
+  if (property === "slug_taken") return fieldError("slug", SLUG_TAKEN);
+  if (property === "slug_required") return fieldError("publiclyListed", SLUG_REQUIRED);
   return property ? Response.json(toDto(property)) : notFound("Property");
 }
 

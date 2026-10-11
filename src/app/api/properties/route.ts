@@ -1,5 +1,5 @@
-import { parseBody } from "@/lib/api";
-import { createPropertySchema } from "@/lib/properties/schema";
+import { fieldError, parseBody } from "@/lib/api";
+import { createPropertySchema, SLUG_TAKEN } from "@/lib/properties/schema";
 import { createProperty, listProperties, toDto } from "@/lib/properties/service";
 
 /**
@@ -18,6 +18,7 @@ export async function POST(request: Request) {
   if ("response" in body) return body.response;
 
   const property = await createProperty(body.data);
+  if (property === "slug_taken") return fieldError("slug", SLUG_TAKEN);
   return Response.json(toDto(property), {
     status: 201,
     headers: { Location: `/api/properties/${property.id}` },
