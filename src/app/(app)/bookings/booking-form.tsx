@@ -22,6 +22,7 @@ import {
 } from "@/lib/bookings/form";
 import { SOURCE_KEYS } from "@/lib/bookings/labels";
 import { BOOKING_SOURCES } from "@/lib/bookings/values";
+import type { RuleViolation } from "@/lib/booking-rules/rules";
 import type { BookingDto } from "@/lib/bookings/service";
 import { addDays, isCalendarDate } from "@/lib/calendar-date";
 import { inputToMinor, minorToInput } from "@/lib/properties/form";
@@ -30,6 +31,7 @@ import { useApiText } from "@/i18n/use-api-text";
 import { useFormat } from "@/i18n/use-format";
 
 import { type GuestOption, GuestPicker } from "./guest-picker";
+import { useRuleWarnings } from "./use-rule-warnings";
 import { useStayAvailability } from "./use-stay-availability";
 
 /** The booking being edited: its DTO, with the guest's email for the picker. */
@@ -141,6 +143,12 @@ export function BookingForm({
   });
 
   const availability = useStayAvailability(
+    values.propertyId,
+    values.checkIn,
+    values.checkOut,
+    booking?.id,
+  );
+  const ruleWarnings = useRuleWarnings(
     values.propertyId,
     values.checkIn,
     values.checkOut,
@@ -358,6 +366,10 @@ export function BookingForm({
           ignoreBookingId={booking?.id}
           onFix={(field, date) => set(field, date)}
         />
+        <RuleWarnings
+          warnings={ruleWarnings}
+          labels={{ checkIn: t("form.checkIn"), checkOut: t("form.checkOut") }}
+        />
 
         <div className="grid gap-5 sm:grid-cols-3">
           {field("guestCount", t("form.guests"), (props) => (
@@ -509,6 +521,38 @@ export function BookingForm({
         </div>
       </FieldGroup>
     </form>
+  );
+}
+
+/**
+ * The property's booking rules the stay breaks. Advice, not an error: the
+ * owner may book outside them; guests on the public site cannot.
+ */
+function RuleWarnings({
+  warnings,
+  labels,
+}: {
+  warnings: RuleViolation[];
+  labels: Record<RuleViolation["field"], string>;
+}) {
+  const t = useTranslations("bookings.form");
+  const tForms = useTranslations("forms");
+  const api = useApiText();
+  if (warnings.length === 0) return null;
+  return (
+    <div
+      role="status"
+      className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-200"
+    >
+      <p className="font-medium">{t("outsideRules")}</p>
+      <ul className="mt-1 list-disc pl-5">
+        {warnings.map(({ field, rule, message }) => (
+          <li key={`${field}-${rule}`}>
+            {tForms("fieldError", { label: labels[field], message: api.text(message) })}
+          </li>
+        ))}
+      </ul>
+    </div>
   );
 }
 

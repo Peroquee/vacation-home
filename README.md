@@ -204,15 +204,34 @@ single hyphens, unique; optional) and `publiclyListed` (default `false`;
 needs a slug). Responses add `id`, `archived`, `archivedAt`, `createdAt` and
 `updatedAt`.
 
+### Booking rules
+
+| Method and path                               | Does                                                     |
+| --------------------------------------------- | -------------------------------------------------------- |
+| `GET /api/properties/:id/booking-rules`       | The property's rules; the defaults (no limits) if unset  |
+| `PUT /api/properties/:id/booking-rules`       | Replace them; every field required                       |
+| `GET /api/properties/:id/booking-rules/check` | `?checkIn=&checkOut=[&ignoreBookingId=]`: `{ warnings }` |
+
+Fields: `minNights` (1–365), `maxNights` (or `null`), `minLeadDays` (days
+between today in the property's timezone and check-in; 0 allows today),
+`horizonDays` (how far ahead check-in may be, or `null`), `checkInWeekdays`
+(ISO weekdays, 1 = Monday … 7 = Sunday; empty for any) and `bufferDays`
+(free nights required next to confirmed bookings and blocks, 0–30). One
+check ([`src/lib/booking-rules`](src/lib/booking-rules)) serves everyone: the
+public site refuses a stay that breaks a rule, the owner's booking form
+shows it as a warning (`/check`, which skips the date rules for stays that
+already started).
+
 ### Public booking site
 
 No session needed; see [Authentication](#authentication) for the boundary.
 
-| Method and path                    | Does                                                         |
-| ---------------------------------- | ------------------------------------------------------------ |
-| `GET /stay/:slug`                  | A listed property's public page                              |
-| `GET /api/public/properties/:slug` | Its public face: `slug`, `name` and `currency`, nothing else |
-| `GET /robots.txt`                  | Lets search engines index `/stay/` only                      |
+| Method and path                               | Does                                                                                                                                    |
+| --------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
+| `GET /stay/:slug`                             | A listed property's public page                                                                                                         |
+| `GET /api/public/properties/:slug`            | Its public face: `slug`, `name` and `currency`, nothing else                                                                            |
+| `GET /api/public/properties/:slug/stay-check` | `?checkIn=&checkOut=`: `{ ok: true }`, or a `422` naming each broken booking rule per field; taken dates are "not available", never why |
+| `GET /robots.txt`                             | Lets search engines index `/stay/` only                                                                                                 |
 
 An unlisted, archived or unknown property is the same `404` everywhere.
 

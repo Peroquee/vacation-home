@@ -45,12 +45,19 @@ const CREATED_ID = "9d2f8a51-3c4b-4e6f-8a7b-1c2d3e4f5a6b";
 type Calendar = { bookings: unknown[]; blocks: unknown[] };
 const free: Calendar = { bookings: [], blocks: [] };
 
-/** Answers the availability check with `calendar`, and saves with `save`. */
-function serve(calendar: Calendar, save?: Response) {
+const isCheck = (url: unknown) =>
+  String(url).startsWith("/api/availability") || String(url).includes("/booking-rules/check");
+
+/**
+ * Answers the availability check with `calendar`, the booking rules check
+ * with `warnings`, and saves with `save`.
+ */
+function serve(calendar: Calendar, save?: Response, warnings: unknown[] = []) {
   const fetchMock = vi.fn<typeof fetch>(async (input) => {
     if (String(input).startsWith("/api/availability")) {
       return Response.json({ properties: [{ ...calendar, days: [] }] });
     }
+    if (String(input).includes("/booking-rules/check")) return Response.json({ warnings });
     return save ?? Response.json({ id: CREATED_ID }, { status: 201 });
   });
   vi.stubGlobal("fetch", fetchMock);
@@ -58,7 +65,7 @@ function serve(calendar: Calendar, save?: Response) {
 }
 
 function saveCall(fetchMock: ReturnType<typeof serve>) {
-  const call = fetchMock.mock.calls.find(([url]) => !String(url).startsWith("/api/availability"));
+  const call = fetchMock.mock.calls.find(([url]) => !isCheck(url));
   return call && { url: String(call[0]), init: call[1]!, body: JSON.parse(String(call[1]!.body)) };
 }
 
@@ -90,6 +97,25 @@ describe("BookingForm", () => {
     expect(screen.getByText(/4 nights × €180\.00 \+ €60\.00 cleaning/)).toBeInTheDocument();
     expect(screen.getByText("€780.00")).toBeInTheDocument();
     expect(await screen.findByText("These dates are available.")).toBeInTheDocument();
+  });
+
+  it("warns about the property's booking rules, without blocking the save", async () => {
+    const fetchMock = serve(free, undefined, [
+      { field: "checkOut", rule: "minNights", message: "the stay must be at least 3 nights" },
+    ]);
+    const user = userEvent.setup();
+    render(<BookingForm properties={[property]} />);
+    await fillStay(user, "2026-07-10", "2026-07-12");
+
+    const warning = await screen.findByText(/Outside this property's booking rules/);
+    expect(warning.parentElement).toHaveTextContent("Check-out the stay must be at least 3 nights");
+    expect(
+      fetchMock.mock.calls.some(([url]) =>
+        String(url).startsWith(
+          `/api/properties/${property.id}/booking-rules/check?checkIn=2026-07-10&checkOut=2026-07-12`,
+        ),
+      ),
+    ).toBe(true);
   });
 
   it("shows a taken range before submit", async () => {
