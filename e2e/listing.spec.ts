@@ -185,6 +185,14 @@ test("the owner manages the listing on its settings page", async ({ page, reques
   const photos = page.getByRole("listitem").filter({ has: page.getByRole("img") });
   await expect(photos).toHaveCount(2);
   await expect(photos.first()).toContainText("Cover");
+  await expect(photos.first().getByRole("img", { name: "Cover photo (1 of 2)" })).toBeVisible();
+  await expect(photos.nth(1).getByRole("img", { name: "Photo 2 of 2" })).toBeVisible();
+  // The thumbnails really load, from the owner's file route under the app's CSP.
+  for (const image of await page.getByRole("img", { name: /of 2/ }).all()) {
+    await expect
+      .poll(() => image.evaluate((img: HTMLImageElement) => img.complete && img.naturalWidth))
+      .toBeGreaterThan(0);
+  }
 
   // The second becomes the cover.
   await photos.nth(1).getByRole("button", { name: "Make cover" }).click();

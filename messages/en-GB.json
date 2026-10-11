@@ -1213,7 +1213,9 @@
       "altDe": "Description (German)",
       "saveAlt": "Save description",
       "altSaved": "Description saved",
-      "altFailed": "Could not save the description"
+      "altFailed": "Could not save the description",
+      "coverAlt": "Cover photo (1 of {count})",
+      "photoAlt": "Photo {number} of {count}"
     },
     "amenities": {
       "wifi": "Wi-Fi",
