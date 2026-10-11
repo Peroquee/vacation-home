@@ -1162,7 +1162,29 @@
     "rules": "Hausregeln",
     "checkIn": "Anreise ab {time} Uhr",
     "checkOut": "Abreise bis {time} Uhr",
-    "morePhotos": "{count, plural, one {# weiteres Foto} other {# weitere Fotos}}"
+    "morePhotos": "{count, plural, one {# weiteres Foto} other {# weitere Fotos}}",
+    "picker": {
+      "heading": "Freie Termine",
+      "previous": "Vorheriger Monat",
+      "next": "Nächster Monat",
+      "loading": "Freie Termine werden geladen…",
+      "failed": "Die freien Termine konnten nicht geladen werden. Bitte laden Sie die Seite neu.",
+      "chooseArrival": "Wählen Sie Ihren Anreisetag. {min, plural, one {} other {Mindestaufenthalt: # Nächte.}}",
+      "chooseDeparture": "Wählen Sie jetzt Ihren Abreisetag.",
+      "legendFree": "Frei",
+      "legendTaken": "Nicht verfügbar",
+      "legendStay": "Ihr Aufenthalt",
+      "daySelected": "in Ihrem Aufenthalt",
+      "dayDeparture": "mögliche Abreise",
+      "dayArrival": "mögliche Anreise",
+      "dayFree": "frei, kein Anreisetag",
+      "dayTaken": "nicht verfügbar",
+      "breakdown": "{nights, plural, one {# Nacht} other {# Nächte}} × {rate}",
+      "breakdownWithCleaning": "{nights, plural, one {# Nacht} other {# Nächte}} × {rate} + {cleaning} Reinigung",
+      "total": "Voraussichtlich gesamt: {total}",
+      "estimateNote": "Eine Schätzung: den Preis bestätigt die Vermieterin oder der Vermieter mit Ihrer Anfrage.",
+      "clear": "Andere Termine wählen"
+    }
   },
   "listing": {
     "page": {

@@ -49,6 +49,11 @@ a colour for the calendar.
   Add photos there too, from a computer or straight from an iPhone or iPad:
   the first one is the cover, and the arrows change the order. Photos are
   stored resized, without the location or camera data a phone puts in them.
+- **Availability on the public page**: guests see which nights are free and
+  pick an arrival and a departure day; only stays your booking rules allow
+  can be picked, and they see an estimate (nights × nightly rate + cleaning
+  fee, from the property's defaults). They never see why a night is taken,
+  and requests you have not confirmed do not block anything.
 - **Booking rules** (Settings → Booking rules) limit what guests can request
   on the public site: minimum and maximum nights, how many days ahead a stay
   must be requested (lead time) and may be (horizon), which weekdays guests
