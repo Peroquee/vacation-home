@@ -46,6 +46,7 @@ model Property {
   calendarWatch           CalendarWatch?
   calendarSyncIssues      CalendarSyncIssue[]
   incomeAutomation        IncomeAutomation?
+  bookingRules            BookingRules?
   recurringExpenses       RecurringExpense[]
   icalFeeds               IcalFeed[]
   /// The secret in the URL of the property's outbound iCal feed
@@ -445,6 +446,31 @@ model IncomeAutomation {
   property Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
 
   @@map("income_automation")
+}
+
+/// Guard rails for stays at a property (GitLab #107), checked by
+/// src/lib/booking-rules: hard limits on the public site, warnings in the
+/// owner's own booking form. No row means no rules.
+model BookingRules {
+  propertyId      String   @id @map("property_id") @db.Uuid
+  minNights       Int      @default(1) @map("min_nights")
+  /// Null: no limit beyond the app's own 365 nights.
+  maxNights       Int?     @map("max_nights")
+  /// Days between today (in the property's timezone) and check-in at least.
+  minLeadDays     Int      @default(0) @map("min_lead_days")
+  /// How many days ahead check-in may be; null for no limit.
+  horizonDays     Int?     @map("horizon_days")
+  /// ISO weekdays (1 = Monday ... 7 = Sunday) a stay may start on, sorted;
+  /// empty for any day.
+  checkInWeekdays Int[]    @default([]) @map("check_in_weekdays")
+  /// Free nights required between two stays.
+  bufferDays      Int      @default(0) @map("buffer_days")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  property Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+
+  @@map("booking_rules")
 }
 
 enum RecurrenceInterval {

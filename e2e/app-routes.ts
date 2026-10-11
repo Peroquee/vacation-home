@@ -26,6 +26,7 @@ export type AppRoute = {
 export const PUBLIC_ROUTES = [
   // The public booking site (GitLab #105).
   "/api/public/properties/[slug]",
+  "/api/public/properties/[slug]/stay-check",
   "/robots.txt",
   "/stay/[slug]",
   // Signing in, and what has its own secret or reveals nothing.

@@ -245,6 +245,37 @@
       "rotateDescription": "The current link stops working at once. Give the new one to every platform that imports this calendar.",
       "rotateConfirm": "Make a new link",
       "rotated": "New calendar link made"
+    },
+    "bookingRules": {
+      "title": "Booking rules",
+      "description": "Limits for the stays guests can request on the public booking site. Your own bookings may break them; the booking form warns you when one does.",
+      "edit": "Edit the booking rules of {name}",
+      "dialogTitle": "Booking rules: {name}",
+      "dialogDescription": "Guests can only request stays within these rules.",
+      "saved": "Booking rules saved",
+      "saveFailed": "Could not save the booking rules",
+      "blankForNone": "Leave blank for no limit.",
+      "fields": {
+        "minNights": "Minimum nights",
+        "maxNights": "Maximum nights",
+        "minLeadDays": "Lead time (days)",
+        "horizonDays": "Booking horizon (days ahead)",
+        "bufferDays": "Buffer between stays (nights)",
+        "checkInWeekdays": "Check-in days"
+      },
+      "hints": {
+        "minLeadDays": "0 allows arriving today, 1 from tomorrow.",
+        "bufferDays": "Nights kept free before and after every stay, for cleaning.",
+        "checkInWeekdays": "None ticked: any day."
+      },
+      "summary": {
+        "nightsFrom": "{min, plural, one {any length} other {at least # nights}}",
+        "nightsBetween": "{min}–{max} nights",
+        "lead": "{days, plural, one {# day} other {# days}} notice",
+        "horizon": "up to {days} days ahead",
+        "weekdays": "arrive on {days}",
+        "buffer": "{days, plural, one {# night} other {# nights}} between stays"
+      }
     }
   },
   "forms": {
@@ -327,7 +358,8 @@
       "useCheckOut": "Use this check-out",
       "checking": "Checking availability…",
       "checkFailed": "Availability could not be checked. It is checked again when you save.",
-      "available": "These dates are available."
+      "available": "These dates are available.",
+      "outsideRules": "Outside this property's booking rules (guests could not request this stay):"
     },
     "actions": {
       "confirmed": "Booking confirmed",
@@ -1087,7 +1119,25 @@
     "slugFormat": "must be 3 to 60 lowercase letters, digits and single hyphens, e.g. lake-house",
     "slugRequired": "needs a web address (slug) first",
     "slugTaken": "is already used by another property",
-    "trueOrFalse": "must be true or false"
+    "trueOrFalse": "must be true or false",
+    "stayPast": "cannot be in the past",
+    "stayUnavailable": "these dates are not available",
+    "stayWeekday": "is not a day guests can arrive on",
+    "leadDay": "must be at least 1 day from today",
+    "leadDays": "must be at least {days} days from today",
+    "horizonDay": "can be at most 1 day ahead",
+    "horizonDays": "can be at most {days} days ahead",
+    "bufferBeforeNight": "needs 1 free night after the stay before",
+    "bufferBeforeNights": "needs {nights} free nights after the stay before",
+    "bufferAfterNight": "needs 1 free night before the next stay",
+    "bufferAfterNights": "needs {nights} free nights before the next stay",
+    "minNights": "the stay must be at least {nights} nights",
+    "maxNight": "the stay can be at most 1 night",
+    "maxNights": "the stay can be at most {nights} nights",
+    "wholeNumberRange": "must be a whole number from {min} to {max}",
+    "maxBelowMin": "must not be less than the minimum stay",
+    "horizonBelowLead": "must be more than the lead time",
+    "weekdays": "must be weekdays from 1 (Monday) to 7 (Sunday), each once"
   },
   "stay": {
     "intro": "Details, photos and availability are coming soon."

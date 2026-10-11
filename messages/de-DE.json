@@ -245,6 +245,37 @@
       "rotateDescription": "Der bisherige Link funktioniert sofort nicht mehr. Geben Sie den neuen allen Plattformen, die diesen Kalender importieren.",
       "rotateConfirm": "Neuen Link erstellen",
       "rotated": "Neuer Kalender-Link erstellt"
+    },
+    "bookingRules": {
+      "title": "Buchungsregeln",
+      "description": "Grenzen für die Aufenthalte, die Gäste auf der öffentlichen Buchungsseite anfragen können. Ihre eigenen Buchungen dürfen davon abweichen; das Buchungsformular weist Sie darauf hin.",
+      "edit": "Buchungsregeln von {name} bearbeiten",
+      "dialogTitle": "Buchungsregeln: {name}",
+      "dialogDescription": "Gäste können nur Aufenthalte innerhalb dieser Regeln anfragen.",
+      "saved": "Buchungsregeln gespeichert",
+      "saveFailed": "Die Buchungsregeln konnten nicht gespeichert werden",
+      "blankForNone": "Leer lassen für keine Grenze.",
+      "fields": {
+        "minNights": "Mindestnächte",
+        "maxNights": "Höchstnächte",
+        "minLeadDays": "Vorlaufzeit (Tage)",
+        "horizonDays": "Buchungshorizont (Tage im Voraus)",
+        "bufferDays": "Puffer zwischen Aufenthalten (Nächte)",
+        "checkInWeekdays": "Anreisetage"
+      },
+      "hints": {
+        "minLeadDays": "0 erlaubt die Anreise heute, 1 ab morgen.",
+        "bufferDays": "Nächte, die vor und nach jedem Aufenthalt frei bleiben, z. B. für die Reinigung.",
+        "checkInWeekdays": "Keiner angehakt: jeder Tag."
+      },
+      "summary": {
+        "nightsFrom": "{min, plural, one {beliebige Dauer} other {mindestens # Nächte}}",
+        "nightsBetween": "{min}–{max} Nächte",
+        "lead": "{days, plural, one {# Tag} other {# Tage}} Vorlauf",
+        "horizon": "bis {days} Tage im Voraus",
+        "weekdays": "Anreise {days}",
+        "buffer": "{days, plural, one {# Nacht} other {# Nächte}} Puffer"
+      }
     }
   },
   "forms": {
@@ -327,7 +358,8 @@
       "useCheckOut": "Diese Abreise übernehmen",
       "checking": "Verfügbarkeit wird geprüft…",
       "checkFailed": "Die Verfügbarkeit konnte nicht geprüft werden. Sie wird beim Speichern erneut geprüft.",
-      "available": "Diese Tage sind frei."
+      "available": "Diese Tage sind frei.",
+      "outsideRules": "Außerhalb der Buchungsregeln dieser Unterkunft (Gäste könnten diesen Aufenthalt nicht anfragen):"
     },
     "actions": {
       "confirmed": "Buchung bestätigt",
@@ -1087,7 +1119,25 @@
     "slugFormat": "muss aus 3 bis 60 Kleinbuchstaben, Ziffern und einzelnen Bindestrichen bestehen, z. B. haus-am-see",
     "slugRequired": "braucht zuerst eine Webadresse (Slug)",
     "slugTaken": "wird schon von einer anderen Unterkunft verwendet",
-    "trueOrFalse": "muss wahr oder falsch sein"
+    "trueOrFalse": "muss wahr oder falsch sein",
+    "stayPast": "darf nicht in der Vergangenheit liegen",
+    "stayUnavailable": "diese Tage sind nicht frei",
+    "stayWeekday": "ist kein Anreisetag",
+    "leadDay": "muss mindestens 1 Tag in der Zukunft liegen",
+    "leadDays": "muss mindestens {days} Tage in der Zukunft liegen",
+    "horizonDay": "darf höchstens 1 Tag im Voraus liegen",
+    "horizonDays": "darf höchstens {days} Tage im Voraus liegen",
+    "bufferBeforeNight": "braucht 1 freie Nacht nach dem vorigen Aufenthalt",
+    "bufferBeforeNights": "braucht {nights} freie Nächte nach dem vorigen Aufenthalt",
+    "bufferAfterNight": "braucht 1 freie Nacht vor dem nächsten Aufenthalt",
+    "bufferAfterNights": "braucht {nights} freie Nächte vor dem nächsten Aufenthalt",
+    "minNights": "der Aufenthalt muss mindestens {nights} Nächte dauern",
+    "maxNight": "der Aufenthalt darf höchstens 1 Nacht dauern",
+    "maxNights": "der Aufenthalt darf höchstens {nights} Nächte dauern",
+    "wholeNumberRange": "muss eine ganze Zahl von {min} bis {max} sein",
+    "maxBelowMin": "darf nicht kleiner als der Mindestaufenthalt sein",
+    "horizonBelowLead": "muss größer als die Vorlaufzeit sein",
+    "weekdays": "muss aus Wochentagen von 1 (Montag) bis 7 (Sonntag) bestehen, jeder höchstens einmal"
   },
   "stay": {
     "intro": "Beschreibung, Fotos und freie Termine folgen in Kürze."

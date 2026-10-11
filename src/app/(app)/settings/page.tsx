@@ -11,6 +11,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { db } from "@/lib/db";
 import { type Formatters } from "@/i18n/format";
 import { getFormat } from "@/i18n/get-format";
+import { getBookingRulesFor } from "@/lib/booking-rules/service";
 import { fromUtcDate } from "@/lib/calendar-date";
 import { toDto as calendarDto } from "@/lib/google/calendar-settings";
 import { calendarConnectAvailable, getConnectionStatus } from "@/lib/google/connection";
@@ -24,6 +25,7 @@ import {
   type GoogleConnection,
   type PropertySync,
 } from "./google-calendar-section";
+import { BookingRulesSection } from "./booking-rules-section";
 import { DoubleBookings } from "./double-bookings";
 import { IcalSection } from "./ical-section";
 import { PropertyArchiveButton } from "./property-archive-button";
@@ -107,9 +109,10 @@ export default async function SettingsPage({ searchParams }: PageProps<"/setting
   const active = properties.filter((p) => !p.archived);
   const archived = properties.filter((p) => p.archived);
   const google = await googleSettings(active.map((p) => ({ id: p.id, name: p.name })));
-  const [ical, doubleBookings] = await Promise.all([
+  const [ical, doubleBookings, bookingRules] = await Promise.all([
     icalSettings(active.map((p) => p.id)),
     openDoubleBookings(),
+    getBookingRulesFor(active.map((p) => p.id)),
   ]);
   const t = await getTranslations("settings.page");
   const tCommon = await getTranslations("common");
@@ -170,6 +173,15 @@ export default async function SettingsPage({ searchParams }: PageProps<"/setting
               start: fromUtcDate(issue.startDate),
               end: fromUtcDate(issue.endDate),
               bookingIds: issue.bookingIds,
+            }))}
+          />
+        ) : null}
+
+        {active.length > 0 ? (
+          <BookingRulesSection
+            properties={active.map((p) => ({
+              property: { id: p.id, name: p.name },
+              rules: bookingRules.get(p.id)!,
             }))}
           />
         ) : null}
