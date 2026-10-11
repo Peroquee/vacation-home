@@ -1162,7 +1162,29 @@
     "rules": "House rules",
     "checkIn": "Check-in from {time}",
     "checkOut": "Check-out until {time}",
-    "morePhotos": "{count, plural, one {# more photo} other {# more photos}}"
+    "morePhotos": "{count, plural, one {# more photo} other {# more photos}}",
+    "picker": {
+      "heading": "Availability",
+      "previous": "Previous month",
+      "next": "Next month",
+      "loading": "Loading the free dates…",
+      "failed": "The free dates could not be loaded. Please reload the page.",
+      "chooseArrival": "Choose your arrival day. {min, plural, one {} other {The minimum stay is # nights.}}",
+      "chooseDeparture": "Now choose your departure day.",
+      "legendFree": "Free",
+      "legendTaken": "Not available",
+      "legendStay": "Your stay",
+      "daySelected": "in your stay",
+      "dayDeparture": "possible departure",
+      "dayArrival": "possible arrival",
+      "dayFree": "free, not an arrival day",
+      "dayTaken": "not available",
+      "breakdown": "{nights, plural, one {# night} other {# nights}} × {rate}",
+      "breakdownWithCleaning": "{nights, plural, one {# night} other {# nights}} × {rate} + {cleaning} cleaning",
+      "total": "Estimated total: {total}",
+      "estimateNote": "An estimate: the owner confirms the price with your request.",
+      "clear": "Choose other dates"
+    }
   },
   "listing": {
     "page": {

@@ -5,7 +5,10 @@ import { cache } from "react";
 
 import { getFormat } from "@/i18n/get-format";
 import { getPublicProperty } from "@/lib/listing/public";
+import { monthOf } from "@/lib/calendar/month";
 import { pickText, type PublicPhotoDto } from "@/lib/properties/public";
+
+import { StayPicker } from "./stay-picker";
 
 /** Once per request, for the metadata and the page alike. */
 const listed = cache(getPublicProperty);
@@ -20,10 +23,10 @@ export async function generateMetadata({ params }: PageProps<"/stay/[slug]">): P
 
 /**
  * A listed property's public page (GitLab #106), in the visitor's language
- * with the other as a fallback. Server-rendered, with no client code of its
- * own: plain images with `srcset`, the cover loaded first. Unlisted,
+ * with the other as a fallback. Server-rendered: plain images with
+ * `srcset`, the cover loaded first. Unlisted,
  * archived and unknown properties are all the same 404. The availability
- * calendar comes with GitLab #108.
+ * calendar and price estimate (GitLab #108) are the one client component.
  */
 export default async function StayPage({ params }: PageProps<"/stay/[slug]">) {
   const property = await listed((await params).slug);
@@ -85,6 +88,11 @@ export default async function StayPage({ params }: PageProps<"/stay/[slug]">) {
           ))}
         </ul>
       ) : null}
+
+      <StayPicker
+        slug={property.slug}
+        firstMonth={monthOf(new Date().toISOString().slice(0, 10))}
+      />
 
       {description ? (
         <section className="space-y-2">
