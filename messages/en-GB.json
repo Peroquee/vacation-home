@@ -167,7 +167,9 @@
         "rate": "Nightly rate",
         "cleaning": "Cleaning fee",
         "actions": "Actions"
-      }
+      },
+      "listing": "Listing",
+      "editListing": "Edit the public listing of {name}"
     },
     "propertyForm": {
       "saved": "Property saved",
@@ -1137,9 +1139,101 @@
     "wholeNumberRange": "must be a whole number from {min} to {max}",
     "maxBelowMin": "must not be less than the minimum stay",
     "horizonBelowLead": "must be more than the lead time",
-    "weekdays": "must be weekdays from 1 (Monday) to 7 (Sunday), each once"
+    "weekdays": "must be weekdays from 1 (Monday) to 7 (Sunday), each once",
+    "photoTooLarge": "is larger than 20 MB",
+    "photoHeic": "is a HEIC photo: choose JPEG in the upload, or save it as JPEG first",
+    "photoType": "must be a JPEG, PNG or WebP image",
+    "photoUnreadable": "is not a readable image",
+    "tooManyPhotos": "is one too many: at most {max} photos per property",
+    "timeFormat": "must be a time like 15:00",
+    "amenityList": "must be amenities from the list",
+    "photoIds": "must be photo ids",
+    "photosChanged": "The photos have changed; reload and try again.",
+    "photoNotFound": "Photo not found."
   },
   "stay": {
-    "intro": "Details, photos and availability are coming soon."
+    "photoOf": "Photo {n} of {title}",
+    "guests": "{count, plural, one {# guest} other {# guests}}",
+    "bedrooms": "{count, plural, one {# bedroom} other {# bedrooms}}",
+    "bathrooms": "{count, plural, one {# bathroom} other {# bathrooms}}",
+    "fromRate": "From {rate} per night",
+    "about": "About this place",
+    "amenities": "Amenities",
+    "rules": "House rules",
+    "checkIn": "Check-in from {time}",
+    "checkOut": "Check-out until {time}",
+    "morePhotos": "{count, plural, one {# more photo} other {# more photos}}"
+  },
+  "listing": {
+    "page": {
+      "title": "Listing",
+      "heading": "Listing: {name}",
+      "listed": "Shown on the public booking site at {path}.",
+      "notListed": "Not on the public booking site yet: turn it on in the property's settings.",
+      "view": "View the public page",
+      "back": "Back to settings"
+    },
+    "form": {
+      "heading": "Profile",
+      "hint": "What guests read on the public page. Never put the exact address here: the location is a town or region.",
+      "saved": "Listing saved",
+      "saveFailed": "Could not save the listing",
+      "location": "Location",
+      "locationHint": "Town or region only, e.g. Malcesine, Lake Garda.",
+      "maxGuests": "Maximum guests",
+      "bedrooms": "Bedrooms",
+      "bathrooms": "Bathrooms",
+      "checkInTime": "Check-in from",
+      "checkOutTime": "Check-out until",
+      "amenities": "Amenities",
+      "languageEn": "English",
+      "languageDe": "German",
+      "title": "Title",
+      "description": "Description",
+      "houseRules": "House rules"
+    },
+    "photos": {
+      "heading": "Photos",
+      "hint": "Up to {max} photos. The first is the cover. Photos are stored resized and without any location or camera data.",
+      "add": "Add photos",
+      "uploading": "Uploading {done} of {total}…",
+      "types": "JPEG, PNG or WebP, up to 20 MB each.",
+      "uploaded": "{count, plural, one {Photo added} other {# photos added}}",
+      "uploadFailed": "{name}: {reason}",
+      "none": "No photos yet.",
+      "cover": "Cover",
+      "earlier": "Move earlier",
+      "later": "Move later",
+      "makeCover": "Make cover",
+      "deleteTitle": "Delete this photo?",
+      "deleteDescription": "It disappears from the public page.",
+      "deleted": "Photo deleted",
+      "reorderFailed": "Could not change the order",
+      "altEn": "Description (English)",
+      "altDe": "Description (German)",
+      "saveAlt": "Save description",
+      "altSaved": "Description saved",
+      "altFailed": "Could not save the description"
+    },
+    "amenities": {
+      "wifi": "Wi-Fi",
+      "kitchen": "Kitchen",
+      "dishwasher": "Dishwasher",
+      "washingMachine": "Washing machine",
+      "heating": "Heating",
+      "airConditioning": "Air conditioning",
+      "fireplace": "Fireplace",
+      "tv": "TV",
+      "parking": "Parking",
+      "garden": "Garden",
+      "terrace": "Terrace",
+      "balcony": "Balcony",
+      "bbq": "Barbecue",
+      "pool": "Pool",
+      "sauna": "Sauna",
+      "babyCot": "Baby cot",
+      "highChair": "High chair",
+      "petsAllowed": "Pets allowed"
+    }
   }
 }

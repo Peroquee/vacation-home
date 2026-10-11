@@ -42,6 +42,13 @@ a colour for the calendar.
   open `/stay/lake-house` without signing in. It is off for every property
   until you turn it on, and an archived property is never shown. The page
   never shows the address you entered here.
+- **Listing**: **Settings → Properties → Listing** is what guests see on
+  the public page: a title, description and house rules in English and
+  German, the number of guests, bedrooms and bathrooms, amenities, check-in
+  and check-out times, and the town or region (never the exact address).
+  Add photos there too, from a computer or straight from an iPhone or iPad:
+  the first one is the cover, and the arrows change the order. Photos are
+  stored resized, without the location or camera data a phone puts in them.
 - **Booking rules** (Settings → Booking rules) limit what guests can request
   on the public site: minimum and maximum nights, how many days ahead a stay
   must be requested (lead time) and may be (horizon), which weekdays guests

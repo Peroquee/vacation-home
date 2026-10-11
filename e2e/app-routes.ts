@@ -26,6 +26,7 @@ export type AppRoute = {
 export const PUBLIC_ROUTES = [
   // The public booking site (GitLab #105).
   "/api/public/properties/[slug]",
+  "/api/public/properties/[slug]/photos/[file]",
   "/api/public/properties/[slug]/stay-check",
   "/robots.txt",
   "/stay/[slug]",
@@ -68,6 +69,8 @@ function sample(segment: string): string {
   if (segment.startsWith("[[...") || segment.startsWith("[...")) return "a/b";
   if (segment === "[id]") return "6f1c2a3b-4d5e-4f60-8a7b-9c0d1e2f3a4b";
   if (segment === "[slug]") return "lake-house";
+  if (segment === "[photoId]") return "0c7a3e2b-1d4f-4a6b-9c8d-7e6f5a4b3c2d";
+  if (segment === "[file]") return `${"a".repeat(64)}.webp`;
   return "sample";
 }
 

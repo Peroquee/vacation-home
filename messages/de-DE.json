@@ -167,7 +167,9 @@
         "rate": "Preis pro Nacht",
         "cleaning": "Reinigungsgebühr",
         "actions": "Aktionen"
-      }
+      },
+      "listing": "Inserat",
+      "editListing": "Öffentliches Inserat von {name} bearbeiten"
     },
     "propertyForm": {
       "saved": "Unterkunft gespeichert",
@@ -1137,9 +1139,101 @@
     "wholeNumberRange": "muss eine ganze Zahl von {min} bis {max} sein",
     "maxBelowMin": "darf nicht kleiner als der Mindestaufenthalt sein",
     "horizonBelowLead": "muss größer als die Vorlaufzeit sein",
-    "weekdays": "muss aus Wochentagen von 1 (Montag) bis 7 (Sonntag) bestehen, jeder höchstens einmal"
+    "weekdays": "muss aus Wochentagen von 1 (Montag) bis 7 (Sonntag) bestehen, jeder höchstens einmal",
+    "photoTooLarge": "ist größer als 20 MB",
+    "photoHeic": "ist ein HEIC-Foto: wählen Sie beim Hochladen JPEG oder speichern Sie es vorher als JPEG",
+    "photoType": "muss ein JPEG-, PNG- oder WebP-Bild sein",
+    "photoUnreadable": "ist kein lesbares Bild",
+    "tooManyPhotos": "ist eines zu viel: höchstens {max} Fotos pro Unterkunft",
+    "timeFormat": "muss eine Uhrzeit wie 15:00 sein",
+    "amenityList": "muss Ausstattung aus der Liste sein",
+    "photoIds": "müssen Foto-IDs sein",
+    "photosChanged": "Die Fotos wurden geändert; laden Sie neu und versuchen Sie es erneut.",
+    "photoNotFound": "Foto nicht gefunden."
   },
   "stay": {
-    "intro": "Beschreibung, Fotos und freie Termine folgen in Kürze."
+    "photoOf": "Foto {n} von {title}",
+    "guests": "{count, plural, one {# Gast} other {# Gäste}}",
+    "bedrooms": "{count, plural, one {# Schlafzimmer} other {# Schlafzimmer}}",
+    "bathrooms": "{count, plural, one {# Badezimmer} other {# Badezimmer}}",
+    "fromRate": "Ab {rate} pro Nacht",
+    "about": "Über die Unterkunft",
+    "amenities": "Ausstattung",
+    "rules": "Hausregeln",
+    "checkIn": "Anreise ab {time} Uhr",
+    "checkOut": "Abreise bis {time} Uhr",
+    "morePhotos": "{count, plural, one {# weiteres Foto} other {# weitere Fotos}}"
+  },
+  "listing": {
+    "page": {
+      "title": "Inserat",
+      "heading": "Inserat: {name}",
+      "listed": "Auf der öffentlichen Buchungsseite unter {path}.",
+      "notListed": "Noch nicht auf der öffentlichen Buchungsseite: schalten Sie es in den Einstellungen der Unterkunft ein.",
+      "view": "Öffentliche Seite ansehen",
+      "back": "Zurück zu den Einstellungen"
+    },
+    "form": {
+      "heading": "Profil",
+      "hint": "Was Gäste auf der öffentlichen Seite lesen. Nie die genaue Adresse eintragen: der Ort ist eine Stadt oder Region.",
+      "saved": "Inserat gespeichert",
+      "saveFailed": "Das Inserat konnte nicht gespeichert werden",
+      "location": "Ort",
+      "locationHint": "Nur Ort oder Region, z. B. Malcesine, Gardasee.",
+      "maxGuests": "Höchstzahl Gäste",
+      "bedrooms": "Schlafzimmer",
+      "bathrooms": "Badezimmer",
+      "checkInTime": "Anreise ab",
+      "checkOutTime": "Abreise bis",
+      "amenities": "Ausstattung",
+      "languageEn": "Englisch",
+      "languageDe": "Deutsch",
+      "title": "Titel",
+      "description": "Beschreibung",
+      "houseRules": "Hausregeln"
+    },
+    "photos": {
+      "heading": "Fotos",
+      "hint": "Bis zu {max} Fotos. Das erste ist das Titelbild. Fotos werden verkleinert und ohne Standort- oder Kameradaten gespeichert.",
+      "add": "Fotos hinzufügen",
+      "uploading": "Lade {done} von {total} hoch…",
+      "types": "JPEG, PNG oder WebP, je bis zu 20 MB.",
+      "uploaded": "{count, plural, one {Foto hinzugefügt} other {# Fotos hinzugefügt}}",
+      "uploadFailed": "{name}: {reason}",
+      "none": "Noch keine Fotos.",
+      "cover": "Titelbild",
+      "earlier": "Nach vorne",
+      "later": "Nach hinten",
+      "makeCover": "Als Titelbild",
+      "deleteTitle": "Dieses Foto löschen?",
+      "deleteDescription": "Es verschwindet von der öffentlichen Seite.",
+      "deleted": "Foto gelöscht",
+      "reorderFailed": "Die Reihenfolge konnte nicht geändert werden",
+      "altEn": "Beschreibung (Englisch)",
+      "altDe": "Beschreibung (Deutsch)",
+      "saveAlt": "Beschreibung speichern",
+      "altSaved": "Beschreibung gespeichert",
+      "altFailed": "Die Beschreibung konnte nicht gespeichert werden"
+    },
+    "amenities": {
+      "wifi": "WLAN",
+      "kitchen": "Küche",
+      "dishwasher": "Geschirrspüler",
+      "washingMachine": "Waschmaschine",
+      "heating": "Heizung",
+      "airConditioning": "Klimaanlage",
+      "fireplace": "Kamin",
+      "tv": "Fernseher",
+      "parking": "Parkplatz",
+      "garden": "Garten",
+      "terrace": "Terrasse",
+      "balcony": "Balkon",
+      "bbq": "Grill",
+      "pool": "Pool",
+      "sauna": "Sauna",
+      "babyCot": "Babybett",
+      "highChair": "Hochstuhl",
+      "petsAllowed": "Haustiere erlaubt"
+    }
   }
 }

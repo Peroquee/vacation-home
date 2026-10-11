@@ -222,16 +222,42 @@ public site refuses a stay that breaks a rule, the owner's booking form
 shows it as a warning (`/check`, which skips the date rules for stays that
 already started).
 
+### Listing profile and photos
+
+| Method and path                              | Does                                                                     |
+| -------------------------------------------- | ------------------------------------------------------------------------ |
+| `GET /api/properties/:id/listing`            | The public profile; blank until saved                                    |
+| `PUT /api/properties/:id/listing`            | Replace it; fields left out are blank                                    |
+| `GET /api/properties/:id/photos`             | The photos in order, the cover first                                     |
+| `POST /api/properties/:id/photos`            | Upload (multipart `file`: JPEG, PNG or WebP, ≤ 20 MB; ≤ 30 per property) |
+| `PATCH /api/properties/:id/photos/:photoId`  | Change `altEn`/`altDe`                                                   |
+| `DELETE /api/properties/:id/photos/:photoId` | Remove; its files go once nothing else uses them                         |
+| `PUT /api/properties/:id/photos/order`       | `{ ids }`: every photo once, the first the cover; `409` if stale         |
+| `GET /api/properties/:id/photos/files/:file` | A stored size, for the owner                                             |
+
+Profile fields: `titleEn`/`titleDe`, `descriptionEn`/`descriptionDe`,
+`houseRulesEn`/`houseRulesDe`, `location` (town or region, never the
+address), `maxGuests`, `bedrooms`, `bathrooms`, `amenities` (keys from
+[`src/lib/listing/values.ts`](src/lib/listing/values.ts)), `checkInTime` and
+`checkOutTime` (`HH:MM`). Photos ([`src/lib/listing`](src/lib/listing)) are
+checked by their bytes, turned upright and re-encoded with sharp as WebP at
+480, 960 and 1600 px; the upload itself is never stored, so no EXIF, GPS or
+other metadata survives. HEIC is refused (the upload form asks iOS for JPEG,
+which it converts to itself). The sizes are files in the content-addressed
+store shared with the receipts ([`src/lib/files/store.ts`](src/lib/files/store.ts)),
+so the receipts backup covers them.
+
 ### Public booking site
 
 No session needed; see [Authentication](#authentication) for the boundary.
 
-| Method and path                               | Does                                                                                                                                    |
-| --------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
-| `GET /stay/:slug`                             | A listed property's public page                                                                                                         |
-| `GET /api/public/properties/:slug`            | Its public face: `slug`, `name` and `currency`, nothing else                                                                            |
-| `GET /api/public/properties/:slug/stay-check` | `?checkIn=&checkOut=`: `{ ok: true }`, or a `422` naming each broken booking rule per field; taken dates are "not available", never why |
-| `GET /robots.txt`                             | Lets search engines index `/stay/` only                                                                                                 |
+| Method and path                                 | Does                                                                                                                                    |
+| ----------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
+| `GET /stay/:slug`                               | A listed property's public page                                                                                                         |
+| `GET /api/public/properties/:slug`              | Its public face: the profile in both languages, the "from" rate and photo URLs; never the address or internal notes                     |
+| `GET /api/public/properties/:slug/photos/:file` | A photo size of a listed property, cached as immutable                                                                                  |
+| `GET /api/public/properties/:slug/stay-check`   | `?checkIn=&checkOut=`: `{ ok: true }`, or a `422` naming each broken booking rule per field; taken dates are "not available", never why |
+| `GET /robots.txt`                               | Lets search engines index `/stay/` only                                                                                                 |
 
 An unlisted, archived or unknown property is the same `404` everywhere.
 

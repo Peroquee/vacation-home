@@ -1,6 +1,7 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 
 import { chromium, expect, test } from "@playwright/test";
+import sharp from "sharp";
 
 import { STORAGE_STATE, withE2eDb } from "./database";
 
@@ -36,6 +37,7 @@ test.afterAll(async () => {
     await db.query("DELETE FROM bookings");
     await db.query("DELETE FROM blocks");
     await db.query("DELETE FROM guests");
+    await db.query("DELETE FROM property_photos");
     await db.query("DELETE FROM properties");
   });
 });
@@ -66,6 +68,35 @@ test("calendar, dashboard and the public page score at least 90 under throttling
         },
       })
     ).json();
+    if (name === "Lake House") {
+      // The public page as it will be: a profile and a gallery of camera-
+      // sized photos (GitLab #106), so its largest paint is a real image.
+      await request.put(`/api/properties/${property.id}/listing`, {
+        data: {
+          titleEn: "Lake house with a view",
+          descriptionEn: "Wake up to the lake. ".repeat(40),
+          location: "Malcesine, Lake Garda",
+          maxGuests: 4,
+          amenities: ["wifi", "terrace", "parking"],
+        },
+      });
+      for (let i = 0; i < 6; i++) {
+        const photo = await sharp({
+          create: {
+            width: 3000,
+            height: 2000,
+            channels: 3,
+            background: "#888",
+            noise: { type: "gaussian", mean: 128, sigma: 20 },
+          },
+        })
+          .jpeg({ quality: 85 })
+          .toBuffer();
+        await request.post(`/api/properties/${property.id}/photos`, {
+          multipart: { file: { name: `photo-${i}.jpg`, mimeType: "image/jpeg", buffer: photo } },
+        });
+      }
+    }
     for (let i = 0; i < 40; i++) {
       const guest = await (
         await request.post("/api/guests", { data: { name: `Guest ${i}` } })

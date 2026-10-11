@@ -35,6 +35,9 @@ ARG NEXT_PUBLIC_SENTRY_DSN=""
 ARG NEXT_PUBLIC_SENTRY_ENVIRONMENT=""
 ARG SENTRY_RELEASE=""
 RUN npm run build && npm run build:tools
+# The photo processing (GitLab #106) must work from the standalone output
+# the app stage copies: fail the image build, not the first upload.
+RUN node scripts/check-standalone-sharp.mjs
 
 # The Prisma CLI and exactly its own dependencies, as the lockfile installed
 # them: copied out of the full install rather than installed again.

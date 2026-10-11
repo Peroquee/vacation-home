@@ -47,6 +47,8 @@ model Property {
   calendarSyncIssues      CalendarSyncIssue[]
   incomeAutomation        IncomeAutomation?
   bookingRules            BookingRules?
+  listing                 PropertyListing?
+  photos                  PropertyPhoto[]
   recurringExpenses       RecurringExpense[]
   icalFeeds               IcalFeed[]
   /// The secret in the URL of the property's outbound iCal feed
@@ -471,6 +473,67 @@ model BookingRules {
   property Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
 
   @@map("booking_rules")
+}
+
+/// What guests see of a property on the public booking site (GitLab #106).
+/// Text comes in both languages; the page shows the visitor's, falling back
+/// to the other. Never the exact address: `location` is a town or region.
+model PropertyListing {
+  propertyId    String   @id @map("property_id") @db.Uuid
+  titleEn       String   @default("") @map("title_en")
+  titleDe       String   @default("") @map("title_de")
+  descriptionEn String   @default("") @map("description_en")
+  descriptionDe String   @default("") @map("description_de")
+  houseRulesEn  String   @default("") @map("house_rules_en")
+  houseRulesDe  String   @default("") @map("house_rules_de")
+  /// Town or region, e.g. "Malcesine, Lake Garda".
+  location      String   @default("")
+  maxGuests     Int?     @map("max_guests")
+  bedrooms      Int?
+  bathrooms     Int?
+  /// Keys from src/lib/listing/values.ts (AMENITIES), sorted.
+  amenities     String[] @default([])
+  /// "HH:MM" in the property's timezone.
+  checkInTime   String?  @map("check_in_time")
+  checkOutTime  String?  @map("check_out_time")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  property Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+
+  @@map("property_listings")
+}
+
+/// A photo of a property for its public page (GitLab #106). Only re-encoded
+/// sizes are stored (WebP, no metadata), never the upload itself; they are
+/// files in the content-addressed store (src/lib/files/store.ts).
+model PropertyPhoto {
+  id         String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  propertyId String              @map("property_id") @db.Uuid
+  /// Display order; the lowest is the cover photo.
+  position   Int
+  altEn      String              @default("") @map("alt_en")
+  altDe      String              @default("") @map("alt_de")
+  createdAt  DateTime            @default(now()) @map("created_at")
+  property   Property            @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  sizes      PropertyPhotoSize[]
+
+  @@index([propertyId, position])
+  @@map("property_photos")
+}
+
+/// One stored size of a photo.
+model PropertyPhotoSize {
+  photoId String        @map("photo_id") @db.Uuid
+  width   Int
+  height  Int
+  /// The file's name in the store: its SHA-256.
+  sha256  String        @db.Char(64)
+  photo   PropertyPhoto @relation(fields: [photoId], references: [id], onDelete: Cascade)
+
+  @@id([photoId, width])
+  @@index([sha256])
+  @@map("property_photo_sizes")
 }
 
 enum RecurrenceInterval {

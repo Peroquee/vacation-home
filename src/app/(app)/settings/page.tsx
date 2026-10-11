@@ -1,12 +1,13 @@
 import type { Metadata } from "next";
 import { Building2, Plus } from "lucide-react";
+import Link from "next/link";
 import { connection } from "next/server";
 import { getTranslations } from "next-intl/server";
 
 import { type Column, DataTable } from "@/components/data-table";
 import { PageHeader } from "@/components/page-header";
 import { EmptyState } from "@/components/states";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { db } from "@/lib/db";
 import { type Formatters } from "@/i18n/format";
@@ -80,6 +81,13 @@ function columnsFor(t: Translate, format: Formatters, editLabel: string): Column
               </Button>
             }
           />
+          <Link
+            href={`/settings/properties/${p.id}/listing`}
+            className={buttonVariants({ variant: "outline", size: "sm" })}
+            aria-label={t("editListing", { name: p.name })}
+          >
+            {t("listing")}
+          </Link>
           <PropertyArchiveButton property={p} />
         </div>
       ),
