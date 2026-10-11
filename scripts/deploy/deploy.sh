@@ -20,7 +20,8 @@
 # already running changes nothing. If a step fails, the version that was
 # running keeps running. The last five app builds are kept for rollbacks,
 # and the last two tools builds (migrations run forward only). Docker's
-# build cache is trimmed to the last week, so it cannot fill the disk.
+# build cache is capped by size (DEPLOY_BUILD_CACHE_MAX, default 4gb, from
+# the environment or .env), so frequent deploys cannot fill the disk.
 #
 # Rolling back switches the app to an earlier build without touching the
 # database. That is only safe if no migration since then removed or changed
@@ -83,6 +84,14 @@ change() {
 [ -f .env ] || { echo "No .env here; see docs/deployment.md, step 3." >&2; exit 1; }
 grep -qs '^COMPOSE_FILE=.*compose\.prod\.yml' .env ||
   { echo "This .env does not select compose.prod.yml; see docs/deployment.md." >&2; exit 1; }
+
+# The most disk Docker's build cache may keep after a deploy: the
+# environment's DEPLOY_BUILD_CACHE_MAX, else .env's, else 4gb. Checked now,
+# before anything changes, so a typo fails the deploy rather than the prune.
+cache_max="${DEPLOY_BUILD_CACHE_MAX:-$(sed -n 's/^DEPLOY_BUILD_CACHE_MAX=//p' .env | tr -d '"')}"
+cache_max="${cache_max:-4gb}"
+[[ "$cache_max" =~ ^[0-9]+(\.[0-9]+)?([kKmMgGtT]?[bB])?$ ]] ||
+  { echo "DEPLOY_BUILD_CACHE_MAX must be a size like 4gb or 500mb, not '$cache_max'." >&2; exit 2; }
 
 # Which profiles are in use (https: Caddy; backup: the backups), from .env.
 profiles="$(sed -n 's/^COMPOSE_PROFILES=//p' .env | tr -d '"')"
@@ -186,10 +195,24 @@ for repo in vacation-home vacation-home-tools; do
     change docker image rm --force "$repo:$tag" || true
   done
 done
-# Layers no kept image uses, and build cache older than a week: the next
-# build of a changed lockfile reuses what is fresh, the rest only takes disk.
+# Layers no kept image uses, then the build cache down to its cap: the most
+# recently used entries stay, so the next build of an unchanged lockfile is
+# still fast. Age alone was no limit: eight deploys in two days grew a week
+# of cache to 15 GB. The flag depends on the Docker version (asking only
+# reads, so a dry run asks too): --max-used-space with buildx (Docker 28+),
+# --keep-storage before it; with neither, at least what is over a day old.
 change docker image prune --force
-change docker builder prune --force --filter until=168h
+prune_help="$(docker builder prune --help 2>&1 || true)"
+if grep -q -- '--max-used-space' <<<"$prune_help"; then
+  step "Trimming Docker's build cache to $cache_max"
+  change docker builder prune --force --max-used-space "$cache_max"
+elif grep -q -- '--keep-storage' <<<"$prune_help"; then
+  step "Trimming Docker's build cache to $cache_max"
+  change docker builder prune --force --keep-storage "$cache_max"
+else
+  step "Trimming Docker's build cache to the last day (no size limit in this Docker)"
+  change docker builder prune --force --filter until=24h
+fi
 
 if $dry_run; then
   printf '\nDry run finished: nothing was changed.\n'

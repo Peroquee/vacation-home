@@ -145,12 +145,23 @@ describe("a network share", () => {
 });
 
 describe("deploy.sh", () => {
-  it("checks the backup folder when the backup profile is on (stub docker, dry run)", () => {
+  /**
+   * A dry run of deploy.sh in a fresh clone with a stub docker, whose
+   * `builder prune --help` lists `pruneFlags`. Returns the run.
+   */
+  function dryRun({
+    env = "",
+    pruneFlags = "--max-used-space bytes",
+    extraEnv = {},
+  }: { env?: string; pruneFlags?: string; extraEnv?: Record<string, string> } = {}) {
     stub(
       "docker",
       [
         `if [ "$1" = images ]; then exit 0; fi`,
         `if [ "$1" = image ] && [ "$2" = inspect ]; then exit 1; fi`,
+        `if [ "$1" = builder ] && [ "$2" = prune ] && [ "$3" = --help ]; then`,
+        `  printf 'Usage: docker builder prune\\n  -f, --force\\n  ${pruneFlags}\\n'; exit 0`,
+        `fi`,
         `exit 0`,
       ].join("\n"),
     );
@@ -159,18 +170,61 @@ describe("deploy.sh", () => {
     for (const file of ["scripts/deploy/deploy.sh", "scripts/deploy/backup-dir.sh"]) {
       writeFileSync(join(checkout, file), readFileSync(file));
     }
-    writeFileSync(
-      join(checkout, ".env"),
-      'COMPOSE_FILE=compose.prod.yml\nCOMPOSE_PROFILES="backup"\nBACKUP_HOST_DIR="./backups"\n',
-    );
-    const result = spawnSync("bash", [join(checkout, "scripts/deploy/deploy.sh"), "--dry-run"], {
+    writeFileSync(join(checkout, ".env"), `COMPOSE_FILE=compose.prod.yml\n${env}`);
+    return spawnSync("bash", [join(checkout, "scripts/deploy/deploy.sh"), "--dry-run"], {
       cwd: checkout,
       encoding: "utf8",
-      env: { ...baseEnv, PATH: `${stubs}:${baseEnv.PATH}`, FAKE_EUID: "1000" },
+      env: { ...baseEnv, PATH: `${stubs}:${baseEnv.PATH}`, FAKE_EUID: "1000", ...extraEnv },
     });
+  }
+
+  it("checks the backup folder when the backup profile is on (stub docker, dry run)", () => {
+    const result = dryRun({ env: 'COMPOSE_PROFILES="backup"\nBACKUP_HOST_DIR="./backups"\n' });
     expect(result.status, result.stderr).toBe(0);
     expect(result.stdout).toContain("==> Checking the backup folder");
     expect(result.stdout).toContain("[dry-run] sudo -n mkdir -p ./backups");
     expect(result.stdout).toContain("[dry-run] docker compose up -d db");
+  });
+
+  describe("caps Docker's build cache by size (GitLab #96)", () => {
+    it("with --max-used-space, at 4gb unless told otherwise", () => {
+      const result = dryRun();
+      expect(result.status, result.stderr).toBe(0);
+      expect(result.stdout).toContain(
+        "[dry-run] docker builder prune --force --max-used-space 4gb",
+      );
+      expect(result.stdout).not.toContain("until=");
+    });
+
+    it("with --keep-storage on older Docker", () => {
+      const result = dryRun({ pruneFlags: "--keep-storage bytes" });
+      expect(result.status, result.stderr).toBe(0);
+      expect(result.stdout).toContain("[dry-run] docker builder prune --force --keep-storage 4gb");
+    });
+
+    it("by age, a day, when this Docker has no size limit", () => {
+      const result = dryRun({ pruneFlags: "--filter filter" });
+      expect(result.status, result.stderr).toBe(0);
+      expect(result.stdout).toContain("[dry-run] docker builder prune --force --filter until=24h");
+    });
+
+    it("takes the cap from .env, and the environment over .env", () => {
+      expect(dryRun({ env: 'DEPLOY_BUILD_CACHE_MAX="2.5gb"\n' }).stdout).toContain(
+        "--max-used-space 2.5gb",
+      );
+      expect(
+        dryRun({
+          env: "DEPLOY_BUILD_CACHE_MAX=2gb\n",
+          extraEnv: { DEPLOY_BUILD_CACHE_MAX: "500mb" },
+        }).stdout,
+      ).toContain("--max-used-space 500mb");
+    });
+
+    it("refuses a cap that is not a size, before changing anything", () => {
+      const result = dryRun({ extraEnv: { DEPLOY_BUILD_CACHE_MAX: "4 gigs" } });
+      expect(result.status).toBe(2);
+      expect(result.stderr).toContain("DEPLOY_BUILD_CACHE_MAX must be a size like 4gb");
+      expect(result.stdout).not.toContain("[dry-run]");
+    });
   });
 });
