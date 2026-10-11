@@ -36,6 +36,16 @@ export const RULES: Rule[] = [
     by: "client",
   },
   {
+    // Photo files of the public pages: a gallery is many at once, and they
+    // are cached for a year, so a person asks for each only once.
+    name: "public-photo",
+    matches: (method, path) =>
+      method === "GET" && /^\/api\/public\/properties\/[^/]+\/photos\/[^/]+$/.test(path),
+    limit: 600,
+    windowMs: MINUTE,
+    by: "client",
+  },
+  {
     name: "public-api",
     matches: (_method, path) => path.startsWith("/api/public/"),
     limit: 60,
@@ -79,6 +89,15 @@ export const RULES: Rule[] = [
     name: "receipt-upload",
     matches: (method, path) =>
       method === "POST" && new RegExp(`^/api/transactions/${UUID}/attachments$`).test(path),
+    limit: 60,
+    windowMs: 10 * MINUTE,
+    by: "user",
+  },
+  {
+    // Each upload is up to 20 MB, decoded and re-encoded three times.
+    name: "photo-upload",
+    matches: (method, path) =>
+      method === "POST" && new RegExp(`^/api/properties/${UUID}/photos$`).test(path),
     limit: 60,
     windowMs: 10 * MINUTE,
     by: "user",

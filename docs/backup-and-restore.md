@@ -30,7 +30,7 @@ folder" means the folder that contains `docker-compose.yml`.
 4. [Restore for real](#4-restore-for-real)
 5. [After a restore: erase guests again](#5-after-a-restore-erase-guests-again)
 6. [Erased guests and backups (DSGVO)](#6-erased-guests-and-backups-dsgvo)
-7. [Receipts](#7-receipts)
+7. [Files volume: receipts and listing photos](#7-files-volume-receipts-and-listing-photos)
 
 ## 1. One-time setup
 
@@ -398,20 +398,25 @@ records of processing (Verzeichnis von Verarbeitungstätigkeiten) under
   had been cut (PostgreSQL usually recovers from that, but it is not a
   clean dump), and it is restored as a whole machine, not per database.
 
-## 7. Receipts
+## 7. Files volume: receipts and listing photos
 
-Receipts on transactions are files in the `receipts` volume, each named by
-its SHA-256, so a file never changes once written. The `receipts-backup`
+Receipts on transactions and the photos of the public listings (GitLab
+#106) are files in one volume, still called `receipts` so existing
+deployments keep it. Each file is named by its SHA-256, so it never changes
+once written, and one file can serve both a receipt and a photo. Photos are
+stored only as the app's own resized WebP copies, without any metadata. The
+backup and restore below cover both kinds alike. The `receipts-backup`
 service (`scripts/backup/receipts-mirror.sh`) copies new ones to
 `BACKUP_HOST_DIR/receipts/files` once a day, at its start and then every 24
 hours, checking each copy against its name.
 
-- **Deleted receipts** (or those of a deleted transaction) stay in the mirror
+- **Deleted receipts and photos** (or those of a deleted transaction) stay in the mirror
   for `BACKUP_RECEIPTS_KEEP_DAYS` (186 by default, like the monthly dumps), so
   an older database backup still has its receipts. Then they go.
 - **A restore** (`scripts/backup/receipts-restore.sh`) only adds files the
   volume lacks and deletes nothing. Files the restored database no longer
-  lists are removed by the app's daily cleanup.
+  lists are removed by the app's daily cleanup, which keeps every file a
+  receipt **or** a photo still points to.
 - **Guest erasure** does not touch receipts. They are accounting records:
   German tax law requires keeping them 8 years (§147 AO), which the DSGVO
   allows for (Art. 17(3)(b)). The app never deletes receipts by age; do that

@@ -199,6 +199,9 @@ build:
     # src/instrumentation.ts at server boot, not at build time, so a build
     # never needs production secrets.
     - npm run build
+    # The image processing the production image ships (GitLab #106): sharp
+    # from the standalone output, with its native binary, re-encodes a picture.
+    - node scripts/check-standalone-sharp.mjs
     # First-load JavaScript per page against bundle-budgets.json (GitLab #97).
     - node scripts/bundle-report.mjs --json > bundle-report.json || true
     - node scripts/bundle-report.mjs

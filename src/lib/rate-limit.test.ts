@@ -32,6 +32,13 @@ describe("rateLimitKey", () => {
       "public-api:203.0.113.7",
     );
     expect(rateLimitKey("POST", "/api/public/anything", client)?.rule.name).toBe("public-api");
+    expect(
+      rateLimitKey("GET", `/api/public/properties/lake-house/photos/${"a".repeat(64)}.webp`, client)
+        ?.rule.name,
+    ).toBe("public-photo");
+    expect(
+      rateLimitKey("POST", `/api/properties/${ID}/photos`, { user: "u1", client: null })?.key,
+    ).toBe("photo-upload:u1");
     // Without a trusted address, everyone shares one window.
     expect(rateLimitKey("GET", "/stay/lake-house", { user: null, client: null })?.key).toBe(
       "public-page:everyone",

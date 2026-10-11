@@ -92,11 +92,15 @@ test.describe("a listed property", () => {
 
     const api = await context.request.get("/api/public/properties/public-site-lake-house");
     expect(api.status()).toBe(200);
-    expect(await api.json()).toEqual({
+    const body = await api.json();
+    // Untitled yet: the property's name stands in (GitLab #106 adds the profile).
+    expect(body).toMatchObject({
       slug: "public-site-lake-house",
-      name: "Public site Lake House",
+      title: { en: "Public site Lake House", de: "" },
       currency: "EUR",
+      photos: [],
     });
+    expect(JSON.stringify(body)).not.toContain("Secretville");
     expect(api.headers()["set-cookie"]).toBeUndefined();
     await context.close();
   });

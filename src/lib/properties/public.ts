@@ -1,18 +1,78 @@
 /**
- * What the public booking site may show of a property (GitLab #105). An
- * explicit allow-list, never a copy minus some fields: a column added to
- * properties later stays private until it is added here on purpose. The
- * address, the iCal token and everything operational stay out.
+ * What the public booking site may show of a property (GitLab #105, #106).
+ * An explicit allow-list, never a copy minus some fields: a column added to
+ * properties or listings later stays private until it is added here on
+ * purpose. The address, the iCal token, the internal notes and everything
+ * operational stay out.
  */
 import type { Property } from "@/generated/prisma/client";
+import type { ListingDto, PhotoDto } from "@/lib/listing/service";
+
+/** A text in both languages; the page shows the visitor's (`pickText`). */
+export type PublicText = { en: string; de: string };
+
+export type PublicPhotoDto = {
+  alt: PublicText;
+  /** Smallest first, for `srcset`. */
+  sizes: { width: number; height: number; url: string }[];
+};
 
 export type PublicPropertyDto = {
   slug: string;
-  name: string;
+  title: PublicText;
   /** ISO 4217: every price on the public page is in it. */
   currency: string;
+  /** The default nightly rate, shown as "from"; null when none is set. */
+  nightlyRateFromMinor: number | null;
+  /** Town or region only. */
+  location: string;
+  description: PublicText;
+  houseRules: PublicText;
+  maxGuests: number | null;
+  bedrooms: number | null;
+  bathrooms: number | null;
+  amenities: string[];
+  checkInTime: string | null;
+  checkOutTime: string | null;
+  /** The cover first. */
+  photos: PublicPhotoDto[];
 };
 
-export function toPublicDto(property: Property & { slug: string }): PublicPropertyDto {
-  return { slug: property.slug, name: property.name, currency: property.currency };
+export function toPublicDto(
+  property: Property & { slug: string },
+  listing: ListingDto,
+  photos: PhotoDto[],
+): PublicPropertyDto {
+  const base = `/api/public/properties/${property.slug}/photos`;
+  // Untitled in both languages: the property's own name rather than nothing.
+  const titled = listing.titleEn || listing.titleDe;
+  return {
+    slug: property.slug,
+    title: titled ? { en: listing.titleEn, de: listing.titleDe } : { en: property.name, de: "" },
+    currency: property.currency,
+    nightlyRateFromMinor:
+      property.defaultNightlyRateMinor > 0 ? property.defaultNightlyRateMinor : null,
+    location: listing.location,
+    description: { en: listing.descriptionEn, de: listing.descriptionDe },
+    houseRules: { en: listing.houseRulesEn, de: listing.houseRulesDe },
+    maxGuests: listing.maxGuests,
+    bedrooms: listing.bedrooms,
+    bathrooms: listing.bathrooms,
+    amenities: listing.amenities,
+    checkInTime: listing.checkInTime,
+    checkOutTime: listing.checkOutTime,
+    photos: photos.map((photo) => ({
+      alt: { en: photo.altEn, de: photo.altDe },
+      sizes: photo.sizes.map(({ width, height, file }) => ({
+        width,
+        height,
+        url: `${base}/${file}`,
+      })),
+    })),
+  };
+}
+
+/** The text in the visitor's language, else in the other one. */
+export function pickText(text: PublicText, locale: string): string {
+  return locale.startsWith("de") ? text.de || text.en : text.en || text.de;
 }
