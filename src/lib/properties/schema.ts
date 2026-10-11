@@ -34,6 +34,17 @@ const amountMinor = z
   .min(0, "cannot be negative")
   .max(MAX_AMOUNT_MINOR, "is too large");
 
+/**
+ * The property's part of its public URL (/stay/<slug>); the database checks
+ * the same (prisma/migrations/20261011010000_public_listing).
+ */
+export const SLUG = /^[a-z0-9]+(-[a-z0-9]+)*$/;
+
+export const SLUG_FORMAT =
+  "must be 3 to 60 lowercase letters, digits and single hyphens, e.g. lake-house";
+export const SLUG_REQUIRED = "needs a web address (slug) first";
+export const SLUG_TAKEN = "is already used by another property";
+
 const fields = {
   name: z.string().trim().min(1, "is required").max(100, "must be at most 100 characters"),
   address: z
@@ -66,18 +77,36 @@ const fields = {
     .trim()
     .toLowerCase()
     .regex(/^#[0-9a-f]{6}$/, "must be a hex colour like #0f766e"),
+  slug: z
+    .string()
+    .trim()
+    .toLowerCase()
+    .refine((slug) => slug === "" || (SLUG.test(slug) && slug.length >= 3 && slug.length <= 60), {
+      error: SLUG_FORMAT,
+    })
+    .nullable()
+    // A blank slug means none.
+    .transform((value) => value || null),
+  publiclyListed: z.boolean({ error: "must be true or false" }),
 };
 
 /** POST /api/properties. Unknown fields are rejected rather than ignored. */
-export const createPropertySchema = z.strictObject({
-  name: fields.name,
-  address: fields.address.optional(),
-  timezone: fields.timezone,
-  currency: fields.currency,
-  defaultNightlyRateMinor: fields.defaultNightlyRateMinor.default(0),
-  defaultCleaningFeeMinor: fields.defaultCleaningFeeMinor.default(0),
-  color: fields.color.default(DEFAULT_PROPERTY_COLOR),
-});
+export const createPropertySchema = z
+  .strictObject({
+    name: fields.name,
+    address: fields.address.optional(),
+    timezone: fields.timezone,
+    currency: fields.currency,
+    defaultNightlyRateMinor: fields.defaultNightlyRateMinor.default(0),
+    defaultCleaningFeeMinor: fields.defaultCleaningFeeMinor.default(0),
+    color: fields.color.default(DEFAULT_PROPERTY_COLOR),
+    slug: fields.slug.optional(),
+    publiclyListed: fields.publiclyListed.default(false),
+  })
+  .refine((property) => !property.publiclyListed || property.slug, {
+    path: ["publiclyListed"],
+    error: SLUG_REQUIRED,
+  });
 
 /** PATCH /api/properties/:id. Any subset of fields, but at least one. */
 export const updatePropertySchema = z
@@ -89,9 +118,16 @@ export const updatePropertySchema = z
     defaultNightlyRateMinor: fields.defaultNightlyRateMinor,
     defaultCleaningFeeMinor: fields.defaultCleaningFeeMinor,
     color: fields.color,
+    slug: fields.slug,
+    publiclyListed: fields.publiclyListed,
   })
   .partial()
-  .refine((update) => Object.keys(update).length > 0, "at least one field is required");
+  .refine((update) => Object.keys(update).length > 0, "at least one field is required")
+  // Judged against the stored slug too, by the service.
+  .refine((update) => !(update.publiclyListed && update.slug === null), {
+    path: ["publiclyListed"],
+    error: SLUG_REQUIRED,
+  });
 
 export type CreatePropertyInput = z.infer<typeof createPropertySchema>;
 export type UpdatePropertyInput = z.infer<typeof updatePropertySchema>;

@@ -184,7 +184,12 @@
       "cleaningFee": "Cleaning fee",
       "color": "Calendar colour",
       "colorHint": "Bookings for this property use it on the calendar.",
-      "add": "Add property"
+      "add": "Add property",
+      "publicListing": "Public booking site",
+      "publicListingHint": "Guests can see a listed property and its availability without signing in. Archived properties are never shown.",
+      "slug": "Web address",
+      "slugHint": "Its page: {path}. Lowercase letters, digits and hyphens.",
+      "publiclyListed": "Show on the public booking site"
     },
     "doubleBookings": {
       "title": "{count, plural, one {# double booking} other {# double bookings}}",
@@ -1078,6 +1083,13 @@
     "thumbnailJpeg": "must be a small JPEG",
     "tooManyReceipts": "is one too many: at most {max} receipts per transaction",
     "receiptNotFound": "Receipt not found.",
-    "notFormData": "The request body is not valid form data."
+    "notFormData": "The request body is not valid form data.",
+    "slugFormat": "must be 3 to 60 lowercase letters, digits and single hyphens, e.g. lake-house",
+    "slugRequired": "needs a web address (slug) first",
+    "slugTaken": "is already used by another property",
+    "trueOrFalse": "must be true or false"
+  },
+  "stay": {
+    "intro": "Details, photos and availability are coming soon."
   }
 }

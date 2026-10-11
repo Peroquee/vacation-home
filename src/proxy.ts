@@ -2,7 +2,7 @@ import { type NextFetchEvent, type NextRequest, NextResponse } from "next/server
 
 import { auth, SESSION_COOKIES, SIGN_IN_PATH } from "@/auth";
 import { apiError } from "@/lib/api";
-import { decideAccess } from "@/lib/access";
+import { decideAccess, isPublicSitePath } from "@/lib/access";
 import { isAllowedEmail } from "@/lib/allowed-emails";
 import { db } from "@/lib/db";
 import { isCrossSiteMutation } from "@/lib/csrf";
@@ -14,6 +14,7 @@ import {
   type HeaderOptions,
   newNonce,
   pagePolicy,
+  publicPagePolicy,
 } from "@/lib/security-headers";
 import { env } from "@/env";
 
@@ -33,6 +34,12 @@ import { env } from "@/env";
  *   with a 429;
  * - sets the security headers, with a fresh CSP nonce for every page
  *   (src/lib/security-headers.ts).
+ *
+ * The public booking site (`isPublicSitePath`) takes a separate path that
+ * never involves Auth.js: no session is read, refreshed or revoked, the
+ * session cookie is not even passed on to the page, and so no response
+ * there can set one. Its pages get a stricter policy, and every request to
+ * it is rate-limited per client.
  */
 const limiter = new RateLimiter();
 
@@ -56,6 +63,82 @@ function clientAddress(request: NextRequest): string | null {
   if (!env.TRUST_PROXY_HEADERS) return null;
   return request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || null;
 }
+
+function isApiPath(pathname: string): boolean {
+  return pathname === "/api" || pathname.startsWith("/api/");
+}
+
+/** The 403 or 429 a request gets before access is even considered, or null. */
+function refusal(request: NextRequest, limited: ReturnType<typeof rateLimitKey>): Response | null {
+  if (
+    isCrossSiteMutation(
+      { method: request.method, pathname: request.nextUrl.pathname, headers: request.headers },
+      [new URL(env.APP_URL).origin, request.nextUrl.origin],
+    )
+  ) {
+    return apiError(403, "forbidden", "Cross-site requests to the API are refused.");
+  }
+  const retryAfter = limited
+    ? limiter.hit(limited.key, limited.rule.limit, limited.rule.windowMs)
+    : null;
+  if (retryAfter === null) return null;
+  const response = apiError(429, "rate_limited", "Too many requests; try again later.", undefined, {
+    retryAfterSeconds: retryAfter,
+  });
+  response.headers.set("Retry-After", String(retryAfter));
+  return response;
+}
+
+/** The request id, the CSP and the common security headers, on any response. */
+function withHeaders(
+  response: Response,
+  requestId: string,
+  policy: string,
+  options: HeaderOptions,
+): Response {
+  response.headers.set(REQUEST_ID_HEADER, requestId);
+  response.headers.set("Content-Security-Policy", policy);
+  for (const [name, value] of Object.entries(commonHeaders(options))) {
+    response.headers.set(name, value);
+  }
+  return response;
+}
+
+/** Auth.js's cookies: the session and its sign-in helpers, under any prefix. */
+const AUTH_COOKIE = /^(__Secure-|__Host-)?authjs\./;
+
+/** The public booking site: never signed in, whoever asks. */
+function publicSite(request: NextRequest): Response {
+  const requestId = requestIdFrom(request.headers.get(REQUEST_ID_HEADER));
+  const { pathname } = request.nextUrl;
+  const options = headerOptions();
+  const nonce = isApiPath(pathname) ? null : newNonce();
+  const policy = nonce ? publicPagePolicy(nonce, options) : API_POLICY;
+  const limited = rateLimitKey(request.method, pathname, {
+    user: null,
+    client: clientAddress(request),
+  });
+
+  let response = refusal(request, limited);
+  if (!response) {
+    const headers = new Headers(request.headers);
+    headers.set(REQUEST_ID_HEADER, requestId);
+    // The page cannot see a session it is not given.
+    const cookies = (request.headers.get("cookie") ?? "")
+      .split(";")
+      .map((pair) => pair.trim())
+      .filter((pair) => pair && !AUTH_COOKIE.test(pair))
+      .join("; ");
+    if (cookies) headers.set("cookie", cookies);
+    else headers.delete("cookie");
+    if (nonce) {
+      headers.set("x-nonce", nonce);
+      headers.set("Content-Security-Policy", policy);
+    }
+    response = NextResponse.next({ request: { headers } });
+  }
+  return withHeaders(response, requestId, policy, options);
+}
 // With a lazily built configuration (see src/auth.ts), auth(handler) resolves
 // to the middleware rather than returning it.
 const withSession = auth(async (request) => {
@@ -70,46 +153,32 @@ const withSession = auth(async (request) => {
   }
 
   const { pathname } = request.nextUrl;
-  const isApi = pathname === "/api" || pathname.startsWith("/api/");
   const options = headerOptions();
-  const nonce = isApi ? null : newNonce();
+  const nonce = isApiPath(pathname) ? null : newNonce();
   const decision = decideAccess(request.nextUrl, signedIn);
   const limited = rateLimitKey(request.method, pathname, {
     user: signedIn ? (request.auth?.user?.id ?? request.auth?.user?.email ?? null) : null,
     client: clientAddress(request),
   });
-  const retryAfter = limited
-    ? limiter.hit(limited.key, limited.rule.limit, limited.rule.windowMs)
-    : null;
 
-  let response: Response;
-  if (
-    isCrossSiteMutation({ method: request.method, pathname, headers: request.headers }, [
-      new URL(env.APP_URL).origin,
-      request.nextUrl.origin,
-    ])
-  ) {
-    response = apiError(403, "forbidden", "Cross-site requests to the API are refused.");
-  } else if (retryAfter !== null) {
-    response = apiError(429, "rate_limited", "Too many requests; try again later.", undefined, {
-      retryAfterSeconds: retryAfter,
-    });
-    response.headers.set("Retry-After", String(retryAfter));
-  } else if (decision.kind === "unauthorized") {
-    response = apiError(401, "unauthorized", "Sign in to use the API.");
-  } else if (decision.kind === "sign-in") {
-    const url = new URL(SIGN_IN_PATH, request.nextUrl);
-    url.searchParams.set("callbackUrl", decision.callbackUrl);
-    response = NextResponse.redirect(url);
-  } else {
-    const headers = new Headers(request.headers);
-    headers.set(REQUEST_ID_HEADER, requestId);
-    if (nonce) {
-      // Next reads the policy from the request to put the nonce on its scripts.
-      headers.set("x-nonce", nonce);
-      headers.set("Content-Security-Policy", pagePolicy(nonce, options));
+  let response = refusal(request, limited);
+  if (!response) {
+    if (decision.kind === "unauthorized") {
+      response = apiError(401, "unauthorized", "Sign in to use the API.");
+    } else if (decision.kind === "sign-in") {
+      const url = new URL(SIGN_IN_PATH, request.nextUrl);
+      url.searchParams.set("callbackUrl", decision.callbackUrl);
+      response = NextResponse.redirect(url);
+    } else {
+      const headers = new Headers(request.headers);
+      headers.set(REQUEST_ID_HEADER, requestId);
+      if (nonce) {
+        // Next reads the policy from the request to put the nonce on its scripts.
+        headers.set("x-nonce", nonce);
+        headers.set("Content-Security-Policy", pagePolicy(nonce, options));
+      }
+      response = NextResponse.next({ request: { headers } });
     }
-    response = NextResponse.next({ request: { headers } });
   }
 
   if (revoke) {
@@ -121,16 +190,12 @@ const withSession = auth(async (request) => {
       );
     }
   }
-  response.headers.set(REQUEST_ID_HEADER, requestId);
-  response.headers.set("Content-Security-Policy", nonce ? pagePolicy(nonce, options) : API_POLICY);
-  for (const [name, value] of Object.entries(commonHeaders(options))) {
-    response.headers.set(name, value);
-  }
-  return response;
+  return withHeaders(response, requestId, nonce ? pagePolicy(nonce, options) : API_POLICY, options);
 }) as unknown as Promise<(request: NextRequest, event: NextFetchEvent) => Promise<Response>>;
 
 // Next requires a function exported under this name.
 export async function proxy(request: NextRequest, event: NextFetchEvent) {
+  if (isPublicSitePath(request.nextUrl.pathname)) return publicSite(request);
   return (await withSession)(request, event);
 }
 

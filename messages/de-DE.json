@@ -184,7 +184,12 @@
       "cleaningFee": "Reinigungsgebühr",
       "color": "Kalenderfarbe",
       "colorHint": "Buchungen dieser Unterkunft erscheinen im Kalender in dieser Farbe.",
-      "add": "Unterkunft hinzufügen"
+      "add": "Unterkunft hinzufügen",
+      "publicListing": "Öffentliche Buchungsseite",
+      "publicListingHint": "Gäste sehen eine freigegebene Unterkunft und ihre freien Termine ohne Anmeldung. Archivierte Unterkünfte werden nie gezeigt.",
+      "slug": "Webadresse",
+      "slugHint": "Ihre Seite: {path}. Kleinbuchstaben, Ziffern und Bindestriche.",
+      "publiclyListed": "Auf der öffentlichen Buchungsseite zeigen"
     },
     "doubleBookings": {
       "title": "{count, plural, one {# Doppelbuchung} other {# Doppelbuchungen}}",
@@ -1078,6 +1083,13 @@
     "thumbnailJpeg": "muss ein kleines JPEG sein",
     "tooManyReceipts": "ist einer zu viel: höchstens {max} Belege pro Posten",
     "receiptNotFound": "Beleg nicht gefunden.",
-    "notFormData": "Der Inhalt der Anfrage sind keine gültigen Formulardaten."
+    "notFormData": "Der Inhalt der Anfrage sind keine gültigen Formulardaten.",
+    "slugFormat": "muss aus 3 bis 60 Kleinbuchstaben, Ziffern und einzelnen Bindestrichen bestehen, z. B. haus-am-see",
+    "slugRequired": "braucht zuerst eine Webadresse (Slug)",
+    "slugTaken": "wird schon von einer anderen Unterkunft verwendet",
+    "trueOrFalse": "muss wahr oder falsch sein"
+  },
+  "stay": {
+    "intro": "Beschreibung, Fotos und freie Termine folgen in Kürze."
   }
 }

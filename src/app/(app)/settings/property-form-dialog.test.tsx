@@ -27,6 +27,8 @@ const property: PropertyDto = {
   defaultNightlyRateMinor: 18000,
   defaultCleaningFeeMinor: 6000,
   color: "#0f766e",
+  slug: null,
+  publiclyListed: false,
   archived: false,
   archivedAt: null,
   createdAt: "2026-01-01T00:00:00.000Z",
@@ -89,6 +91,47 @@ describe("PropertyFormDialog", () => {
       defaultNightlyRateMinor: 18000,
       defaultCleaningFeeMinor: 6000,
     });
+  });
+
+  it("lists a property on the public site under its slug", async () => {
+    fetchMock.mockResolvedValue(Response.json(property));
+    const user = renderDialog({ property });
+
+    await user.click(screen.getByRole("button", { name: "Open" }));
+    expect(
+      screen.getByRole("checkbox", { name: "Show on the public booking site" }),
+    ).not.toBeChecked();
+    await user.type(screen.getByLabelText("Web address"), "casa-azul");
+    expect(screen.getByText(/Its page: \/stay\/casa-azul\./)).toBeInTheDocument();
+    await user.click(screen.getByRole("checkbox", { name: "Show on the public booking site" }));
+    await user.click(screen.getByRole("button", { name: "Save" }));
+
+    await waitFor(() => expect(refresh).toHaveBeenCalled());
+    expect(lastBody()).toMatchObject({ slug: "casa-azul", publiclyListed: true });
+  });
+
+  it("shows why a property cannot be listed next to the switch", async () => {
+    fetchMock.mockResolvedValue(
+      Response.json(
+        {
+          error: {
+            code: "validation_failed",
+            message: "The request has invalid fields.",
+            fields: { publiclyListed: ["needs a web address (slug) first"] },
+          },
+        },
+        { status: 422 },
+      ),
+    );
+    const user = renderDialog({ property });
+
+    await user.click(screen.getByRole("button", { name: "Open" }));
+    await user.click(screen.getByRole("checkbox", { name: "Show on the public booking site" }));
+    await user.click(screen.getByRole("button", { name: "Save" }));
+
+    expect(
+      await screen.findByText("Show on the public booking site needs a web address (slug) first"),
+    ).toBeInTheDocument();
   });
 
   it("refuses an amount it would have to round, without calling the API", async () => {

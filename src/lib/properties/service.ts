@@ -7,7 +7,7 @@ import { invalidateWindows } from "@/lib/availability/cache";
 import { db } from "@/lib/db";
 import { isPrismaError, orNullIfMissing } from "@/lib/db-errors";
 
-import type { CreatePropertyInput, UpdatePropertyInput } from "./schema";
+import { type CreatePropertyInput, SLUG, type UpdatePropertyInput } from "./schema";
 
 /** The API's view of a property: `archived` spelled out alongside its time. */
 /** A property as the API shows it. The iCal export token is never in it. */
@@ -47,20 +47,52 @@ export async function getProperty(id: string): Promise<Property | null> {
   return db.property.findUnique({ where: { id } });
 }
 
-export async function createProperty(input: CreatePropertyInput): Promise<Property> {
-  return db.property.create({ data: input });
+/** "slug_taken" when another property already has the slug. */
+export async function createProperty(input: CreatePropertyInput): Promise<Property | "slug_taken"> {
+  try {
+    return await db.property.create({ data: input });
+  } catch (error) {
+    // The slug is the only unique field a client chooses.
+    if (isPrismaError(error, "P2002")) return "slug_taken";
+    throw error;
+  }
 }
 
-/** Null when there is no such property. */
+/**
+ * The property behind a public page, or null: only a listed, active one. An
+ * unlisted or archived property is to the public site what a missing one
+ * is, so no answer tells them apart.
+ */
+export async function getListedProperty(
+  slug: string,
+): Promise<(Property & { slug: string }) | null> {
+  if (!SLUG.test(slug)) return null;
+  const property = await db.property.findFirst({
+    where: { slug, publiclyListed: true, archivedAt: null },
+  });
+  return property?.slug ? { ...property, slug: property.slug } : null;
+}
+
 /**
  * Null when there is no such property; "currency_locked" when the currency
  * would change while transactions are recorded in the old one (the
- * database refuses: their amounts are minor units of that currency).
+ * database refuses: their amounts are minor units of that currency);
+ * "slug_taken" when another property has the slug; "slug_required" when
+ * the property would end up listed without a slug (the database refuses
+ * that too, but without a usable error).
  */
 export async function updateProperty(
   id: string,
   input: UpdatePropertyInput,
-): Promise<Property | null | "currency_locked"> {
+): Promise<Property | null | "currency_locked" | "slug_taken" | "slug_required"> {
+  const listingNeedsStoredSlug = input.publiclyListed === true && input.slug === undefined;
+  const slugRemovedWhileListed = input.slug === null && input.publiclyListed === undefined;
+  if (listingNeedsStoredSlug || slugRemovedWhileListed) {
+    const current = await getProperty(id);
+    if (!current) return null;
+    if (listingNeedsStoredSlug && current.slug === null) return "slug_required";
+    if (slugRemovedWhileListed && current.publiclyListed) return "slug_required";
+  }
   try {
     const property = await orNullIfMissing(db.property.update({ where: { id }, data: input }));
     // Name and colour show in every calendar window of the property.
@@ -68,6 +100,7 @@ export async function updateProperty(
     return property;
   } catch (error) {
     if (input.currency !== undefined && isPrismaError(error, "P2003")) return "currency_locked";
+    if (isPrismaError(error, "P2002")) return "slug_taken";
     throw error;
   }
 }

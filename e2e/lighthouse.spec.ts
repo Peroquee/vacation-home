@@ -4,19 +4,22 @@ import { chromium, expect, test } from "@playwright/test";
 
 import { STORAGE_STATE, withE2eDb } from "./database";
 
-// Lighthouse on the calendar and the dashboard (GitLab #97), signed in, on
+// Lighthouse on the calendar and the dashboard (GitLab #97), signed in, and
+// on the public booking site's property page (GitLab #105), on
 // the built server with a realistic amount of data, under Lighthouse's
 // default mobile throttling (a slow 4G connection, a 4x slower CPU). The
 // reports land in lighthouse/ (a CI artifact). Run on its own:
 //
 //   npx playwright test --project=lighthouse
 //
-// Both pages must reach a performance score of at least 90. Lighthouse
+// Every page must reach a performance score of at least 90. Lighthouse
 // scores move a few points between identical runs, so each page is measured
 // LIGHTHOUSE_RUNS times (default 3) and judged by the median - or, with
 // fewer than three runs, by the best one. Every run's report is kept.
 
-const PAGES = { calendar: "/calendar", dashboard: "/dashboard" };
+// The public page ignores the session cookie sent along (src/proxy.ts), so
+// it is measured as a stranger sees it.
+const PAGES = { calendar: "/calendar", dashboard: "/dashboard", stay: "/stay/lake-house" };
 const PORT = 9223;
 // Configures this measurement, not the app.
 const RUNS = Math.max(1, Number(process.env.LIGHTHOUSE_RUNS ?? 3) || 3);
@@ -37,7 +40,10 @@ test.afterAll(async () => {
   });
 });
 
-test("calendar and dashboard score at least 90 under throttling", async ({ request, baseURL }) => {
+test("calendar, dashboard and the public page score at least 90 under throttling", async ({
+  request,
+  baseURL,
+}) => {
   test.setTimeout(120_000 + RUNS * 2 * 60_000);
 
   // About a year of a busy two-property business.
@@ -51,7 +57,13 @@ test("calendar and dashboard score at least 90 under throttling", async ({ reque
   for (const name of ["Lake House", "Sea View"]) {
     const property = await (
       await request.post("/api/properties", {
-        data: { name, timezone: "Europe/Berlin", currency: "EUR", defaultNightlyRateMinor: 12_000 },
+        data: {
+          name,
+          timezone: "Europe/Berlin",
+          currency: "EUR",
+          defaultNightlyRateMinor: 12_000,
+          ...(name === "Lake House" && { slug: "lake-house", publiclyListed: true }),
+        },
       })
     ).json();
     for (let i = 0; i < 40; i++) {

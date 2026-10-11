@@ -42,6 +42,28 @@ export function pagePolicy(nonce: string, options: HeaderOptions): string {
   ].join("; ");
 }
 
+/**
+ * The public booking site's pages (GitLab #105): the page policy minus
+ * what only the signed-in app needs. No outside images (account pictures),
+ * forms post only here (no Google sign-in), and no <base>, plugins or
+ * framing at all.
+ */
+export function publicPagePolicy(nonce: string, options: HeaderOptions): string {
+  return [
+    "default-src 'self'",
+    `script-src 'self' 'nonce-${nonce}' 'strict-dynamic'${options.dev ? " 'unsafe-eval'" : ""}`,
+    "style-src 'self' 'unsafe-inline'",
+    "img-src 'self' data: blob:",
+    "font-src 'self'",
+    `connect-src 'self'${options.reportOrigin ? ` ${options.reportOrigin}` : ""}`,
+    "object-src 'none'",
+    "base-uri 'none'",
+    "form-action 'self'",
+    "frame-ancestors 'none'",
+    ...(options.https ? ["upgrade-insecure-requests"] : []),
+  ].join("; ");
+}
+
 export const API_POLICY = "default-src 'none'; frame-ancestors 'none'";
 
 /** The headers every response carries, besides the CSP. */
