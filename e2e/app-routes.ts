@@ -33,6 +33,8 @@ export const PUBLIC_ROUTES = [
   "/api/public/properties/[slug]/stay-check",
   "/robots.txt",
   "/stay/[slug]",
+  // The guest's own booking page (GitLab #115): a 128-bit token, stored hashed.
+  "/stay/booking/[token]",
   "/stay/legal/imprint",
   "/stay/legal/privacy",
   // Signing in, and what has its own secret or reveals nothing.
@@ -75,6 +77,8 @@ function sample(segment: string): string {
   if (segment === "[id]") return "6f1c2a3b-4d5e-4f60-8a7b-9c0d1e2f3a4b";
   if (segment === "[slug]") return "lake-house";
   if (segment === "[photoId]") return "0c7a3e2b-1d4f-4a6b-9c8d-7e6f5a4b3c2d";
+  if (segment === "[paymentId]") return "5d1b7a2c-3e4f-4b6a-8c9d-0e1f2a3b4c5d";
+  if (segment === "[token]") return "AAAAAAAAAAAAAAAAAAAAAA";
   if (segment === "[file]") return `${"a".repeat(64)}.webp`;
   return "sample";
 }

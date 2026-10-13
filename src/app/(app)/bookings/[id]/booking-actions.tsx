@@ -47,24 +47,12 @@ const patchStatus = (id: string, status: Status, fail: (body: unknown, status: n
  * Moves a booking between statuses. Confirming or reserving re-checks
  * availability on the server, so an inquiry whose dates were taken since is
  * refused, and the refusal says what is in the way. Reserving (GitLab #114)
- * holds the dates until the payment deadline. Then: the deposit received
- * confirms, the rest received marks paid. Cancelling asks first and frees
+ * holds the dates until the payment deadline; recording the payments
+ * (./payments.tsx) confirms it and marks it paid. Cancelling asks first and frees
  * the dates at once; a cancelled or expired booking can be reinstated as an
  * inquiry.
  */
-export function BookingActions({
-  id,
-  status,
-  balanceDue = false,
-}: {
-  id: string;
-  status: Status;
-  /**
-   * A reservation with a balance after the deposit. Without one, the first
-   * payment was the full amount: receiving it means paid.
-   */
-  balanceDue?: boolean;
-}) {
+export function BookingActions({ id, status }: { id: string; status: Status }) {
   const router = useRouter();
   const [pending, setPending] = useState(false);
   const [refusal, setRefusal] = useState<RequestError | null>(null);
@@ -119,32 +107,6 @@ export function BookingActions({
               {t("confirm")}
             </Button>
           </>
-        ) : null}
-        {status === "reserved" ? (
-          <Button
-            disabled={pending}
-            aria-busy={pending}
-            onClick={() =>
-              balanceDue
-                ? run(
-                    () => patchStatus(id, "confirmed", fail),
-                    t("depositConfirmed"),
-                    t("paymentFailed"),
-                  )
-                : run(() => patchStatus(id, "paid", fail), t("paid"), t("paymentFailed"))
-            }
-          >
-            {balanceDue ? t("depositReceived") : t("fullReceived")}
-          </Button>
-        ) : null}
-        {status === "confirmed" && balanceDue ? (
-          <Button
-            disabled={pending}
-            aria-busy={pending}
-            onClick={() => run(() => patchStatus(id, "paid", fail), t("paid"), t("paymentFailed"))}
-          >
-            {t("balanceReceived")}
-          </Button>
         ) : null}
         {status === "cancelled" || status === "expired" ? (
           <Button

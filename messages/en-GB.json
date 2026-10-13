@@ -325,6 +325,24 @@
         "retentionMonths": "Then the guest’s details are erased, unless they have other bookings."
       },
       "summary": "{days, plural, one {answer within # day} other {answer within # days}} · {months, plural, one {kept # month} other {kept # months}}"
+    },
+    "bankDetails": {
+      "title": "Bank details",
+      "description": "Where guests transfer their payments to. Guests see them on their booking page with the amount due, the reference to quote and a GiroCode their banking app can scan.",
+      "none": "Not entered yet: guests are told you will send them.",
+      "edit": "Edit the bank details of {name}",
+      "dialogTitle": "Bank details: {name}",
+      "saved": "Bank details saved",
+      "saveFailed": "Could not save the bank details",
+      "fields": {
+        "accountHolder": "Account holder",
+        "iban": "IBAN",
+        "bic": "BIC",
+        "bankName": "Bank name"
+      },
+      "hints": {
+        "optional": "Optional."
+      }
     }
   },
   "forms": {
@@ -430,13 +448,7 @@
       "takenHint": "Change the dates, or cancel the other booking first.",
       "reserve": "Accept and reserve",
       "reserved": "Dates reserved until the payment deadline",
-      "reserveFailed": "Could not reserve",
-      "depositReceived": "Deposit received",
-      "depositConfirmed": "Booking confirmed: deposit received",
-      "fullReceived": "Full amount received",
-      "balanceReceived": "Balance received",
-      "paid": "Booking marked as paid",
-      "paymentFailed": "Could not record the payment"
+      "reserveFailed": "Could not reserve"
     },
     "filters": {
       "whichStays": "Which stays",
@@ -587,6 +599,50 @@
         "balance": "Balance {amount}"
       },
       "dueOn": "due {date}"
+    },
+    "payments": {
+      "received": "Received {received} of {total}",
+      "next": {
+        "deposit": "deposit {amount} still due by {date}",
+        "full": "{amount} still due by {date}",
+        "balance": "balance {amount} due by {date}"
+      },
+      "kind": {
+        "deposit": "Deposit",
+        "balance": "Balance",
+        "full": "Full amount",
+        "other": "Other payment",
+        "refund": "Refund"
+      },
+      "method": {
+        "bank_transfer": "Bank transfer",
+        "cash": "Cash",
+        "card": "Card",
+        "other": "Other"
+      },
+      "deleteLabel": "Delete the payment of {amount}",
+      "deleteTitle": "Delete this payment?",
+      "deleteDescription": "For a payment recorded by mistake: it is removed with its ledger entry. The booking’s status stays as it is.",
+      "deleted": "Payment deleted",
+      "record": "Record payment",
+      "recordHint": "When money has arrived, or gone back as a refund. The first amount due confirms a reservation; the whole total marks the booking paid.",
+      "fields": {
+        "kind": "Kind",
+        "amount": "Amount ({currency})",
+        "receivedOn": "Received on",
+        "method": "Method",
+        "note": "Note"
+      },
+      "noteHint": "Optional, for you, e.g. the bank’s transaction text.",
+      "recorded": "Payment recorded",
+      "refundRecorded": "Refund recorded",
+      "recordFailed": "Could not record the payment",
+      "guestLink": "Guest link",
+      "guestLinkHint": "A link for the guest to see their booking, what to pay, by when and to whom, with a GiroCode for their banking app. It is shown only now: copy it and send it to the guest. Each one keeps working.",
+      "copy": "Copy link",
+      "copied": "Link copied",
+      "copyFailed": "Could not copy; select the link and copy it by hand.",
+      "linkFailed": "Could not make a link"
     }
   },
   "guests": {
@@ -1275,7 +1331,12 @@
     "notAfterBalance": "must not be after the balance is due",
     "notBeforeDeposit": "must not be before the deposit is due",
     "depositOneOf": "give either a percentage or a fixed amount",
-    "onlyInquiriesDecline": "only a request (an inquiry) can be declined"
+    "onlyInquiriesDecline": "only a request (an inquiry) can be declined",
+    "notPayable": "can be recorded only for a reserved, confirmed or paid booking",
+    "moreThanReceived": "cannot be more than was received",
+    "inTheFuture": "must not be in the future",
+    "validIban": "must be a valid IBAN, e.g. DE89 3704 0044 0532 0130 00",
+    "validBic": "must be a BIC of 8 or 11 characters"
   },
   "stay": {
     "photoOf": "Photo {n} of {title}",
@@ -1344,6 +1405,36 @@
       "guests": "Guests",
       "estimate": "Estimated total",
       "keepReference": "Please quote this reference if you contact the owner."
+    },
+    "booking": {
+      "title": "Your booking",
+      "reference": "Reference",
+      "dates": "Dates",
+      "nights": "{count, plural, one {# night} other {# nights}}",
+      "guests": "Guests",
+      "total": "Total",
+      "received": "Received so far",
+      "status": {
+        "inquiry": "Your request has been received",
+        "reserved": "Reserved for you: awaiting your payment",
+        "confirmed": "Confirmed",
+        "paid": "Confirmed and paid in full",
+        "expired": "This reservation has expired",
+        "cancelled": "Cancelled"
+      },
+      "next": {
+        "deposit": "Please pay the deposit of {amount} by {date}",
+        "full": "Please pay {amount} by {date}",
+        "balance": "Please pay the balance of {amount} by {date}"
+      },
+      "holdNote": "The dates are held for you until then. If the payment has not arrived by the end of that day, the reservation lapses and the dates become free again.",
+      "holder": "Account holder",
+      "bank": "Bank",
+      "amount": "Amount",
+      "remittance": "Reference to quote",
+      "girocode": "Scan with your banking app (GiroCode)",
+      "girocodeAlt": "GiroCode: a QR code with this transfer for your banking app",
+      "noBankDetails": "The owner will send you the bank details."
     }
   },
   "listing": {

@@ -325,6 +325,24 @@
         "retentionMonths": "Danach werden die Daten des Gastes gelöscht, außer er hat weitere Buchungen."
       },
       "summary": "{days, plural, one {Antwort binnen # Tag} other {Antwort binnen # Tagen}} · {months, plural, one {# Monat aufbewahrt} other {# Monate aufbewahrt}}"
+    },
+    "bankDetails": {
+      "title": "Bankverbindung",
+      "description": "Wohin Gäste ihre Zahlungen überweisen. Gäste sehen sie auf ihrer Buchungsseite mit dem fälligen Betrag, dem Verwendungszweck und einem GiroCode, den ihre Banking-App scannen kann.",
+      "none": "Noch nicht eingetragen: Gästen wird gesagt, dass Sie sie schicken.",
+      "edit": "Bankverbindung von {name} bearbeiten",
+      "dialogTitle": "Bankverbindung: {name}",
+      "saved": "Bankverbindung gespeichert",
+      "saveFailed": "Bankverbindung konnte nicht gespeichert werden",
+      "fields": {
+        "accountHolder": "Kontoinhaber",
+        "iban": "IBAN",
+        "bic": "BIC",
+        "bankName": "Name der Bank"
+      },
+      "hints": {
+        "optional": "Optional."
+      }
     }
   },
   "forms": {
@@ -430,13 +448,7 @@
       "takenHint": "Ändern Sie die Daten oder stornieren Sie zuerst die andere Buchung.",
       "reserve": "Annehmen und reservieren",
       "reserved": "Termin bis zur Zahlungsfrist reserviert",
-      "reserveFailed": "Reservieren nicht möglich",
-      "depositReceived": "Anzahlung erhalten",
-      "depositConfirmed": "Buchung bestätigt: Anzahlung erhalten",
-      "fullReceived": "Gesamtbetrag erhalten",
-      "balanceReceived": "Restzahlung erhalten",
-      "paid": "Buchung als bezahlt markiert",
-      "paymentFailed": "Zahlung konnte nicht erfasst werden"
+      "reserveFailed": "Reservieren nicht möglich"
     },
     "filters": {
       "whichStays": "Welche Aufenthalte",
@@ -587,6 +599,50 @@
         "balance": "Restzahlung {amount}"
       },
       "dueOn": "fällig am {date}"
+    },
+    "payments": {
+      "received": "Eingegangen {received} von {total}",
+      "next": {
+        "deposit": "Anzahlung {amount} noch fällig bis {date}",
+        "full": "{amount} noch fällig bis {date}",
+        "balance": "Restzahlung {amount} fällig bis {date}"
+      },
+      "kind": {
+        "deposit": "Anzahlung",
+        "balance": "Restzahlung",
+        "full": "Gesamtbetrag",
+        "other": "Sonstige Zahlung",
+        "refund": "Erstattung"
+      },
+      "method": {
+        "bank_transfer": "Überweisung",
+        "cash": "Bar",
+        "card": "Karte",
+        "other": "Sonstiges"
+      },
+      "deleteLabel": "Zahlung über {amount} löschen",
+      "deleteTitle": "Diese Zahlung löschen?",
+      "deleteDescription": "Für eine versehentlich erfasste Zahlung: Sie wird mit ihrer Buchung im Kassenbuch entfernt. Der Status der Buchung bleibt, wie er ist.",
+      "deleted": "Zahlung gelöscht",
+      "record": "Zahlung erfassen",
+      "recordHint": "Wenn Geld eingegangen ist oder als Erstattung zurückging. Der erste fällige Betrag bestätigt eine Reservierung; der Gesamtbetrag markiert die Buchung als bezahlt.",
+      "fields": {
+        "kind": "Art",
+        "amount": "Betrag ({currency})",
+        "receivedOn": "Eingegangen am",
+        "method": "Zahlungsweg",
+        "note": "Notiz"
+      },
+      "noteHint": "Optional, für Sie, z. B. der Buchungstext der Bank.",
+      "recorded": "Zahlung erfasst",
+      "refundRecorded": "Erstattung erfasst",
+      "recordFailed": "Zahlung konnte nicht erfasst werden",
+      "guestLink": "Link für den Gast",
+      "guestLinkHint": "Ein Link, mit dem der Gast seine Buchung sieht: was zu zahlen ist, bis wann und an wen, mit GiroCode für die Banking-App. Er wird nur jetzt angezeigt: Kopieren Sie ihn und schicken Sie ihn dem Gast. Jeder Link bleibt gültig.",
+      "copy": "Link kopieren",
+      "copied": "Link kopiert",
+      "copyFailed": "Kopieren nicht möglich; bitte den Link markieren und von Hand kopieren.",
+      "linkFailed": "Link konnte nicht erstellt werden"
     }
   },
   "guests": {
@@ -1275,7 +1331,12 @@
     "notAfterBalance": "darf nicht nach der Fälligkeit der Restzahlung liegen",
     "notBeforeDeposit": "darf nicht vor der Fälligkeit der Anzahlung liegen",
     "depositOneOf": "entweder einen Prozentsatz oder einen festen Betrag angeben",
-    "onlyInquiriesDecline": "nur eine Anfrage kann abgelehnt werden"
+    "onlyInquiriesDecline": "nur eine Anfrage kann abgelehnt werden",
+    "notPayable": "kann nur für eine reservierte, bestätigte oder bezahlte Buchung erfasst werden",
+    "moreThanReceived": "darf nicht mehr sein als eingegangen ist",
+    "inTheFuture": "darf nicht in der Zukunft liegen",
+    "validIban": "muss eine gültige IBAN sein, z. B. DE89 3704 0044 0532 0130 00",
+    "validBic": "muss eine BIC mit 8 oder 11 Zeichen sein"
   },
   "stay": {
     "photoOf": "Foto {n} von {title}",
@@ -1344,6 +1405,36 @@
       "guests": "Gäste",
       "estimate": "Geschätzter Gesamtpreis",
       "keepReference": "Bitte geben Sie diese Referenz an, wenn Sie den Gastgeber kontaktieren."
+    },
+    "booking": {
+      "title": "Ihre Buchung",
+      "reference": "Referenz",
+      "dates": "Zeitraum",
+      "nights": "{count, plural, one {# Nacht} other {# Nächte}}",
+      "guests": "Gäste",
+      "total": "Gesamtpreis",
+      "received": "Bisher eingegangen",
+      "status": {
+        "inquiry": "Ihre Anfrage ist eingegangen",
+        "reserved": "Für Sie reserviert: Zahlung ausstehend",
+        "confirmed": "Bestätigt",
+        "paid": "Bestätigt und vollständig bezahlt",
+        "expired": "Diese Reservierung ist abgelaufen",
+        "cancelled": "Storniert"
+      },
+      "next": {
+        "deposit": "Bitte zahlen Sie die Anzahlung von {amount} bis {date}",
+        "full": "Bitte zahlen Sie {amount} bis {date}",
+        "balance": "Bitte zahlen Sie den Restbetrag von {amount} bis {date}"
+      },
+      "holdNote": "Bis dahin ist der Termin für Sie reserviert. Ist die Zahlung bis zum Ende dieses Tages nicht eingegangen, verfällt die Reservierung und der Termin wird wieder frei.",
+      "holder": "Kontoinhaber",
+      "bank": "Bank",
+      "amount": "Betrag",
+      "remittance": "Verwendungszweck",
+      "girocode": "Mit Ihrer Banking-App scannen (GiroCode)",
+      "girocodeAlt": "GiroCode: ein QR-Code mit dieser Überweisung für Ihre Banking-App",
+      "noBankDetails": "Der Gastgeber schickt Ihnen die Bankverbindung."
     }
   },
   "listing": {

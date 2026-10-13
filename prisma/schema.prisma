@@ -49,6 +49,7 @@ model Property {
   bookingRules            BookingRules?
   paymentTerms            PaymentTerms?
   requestSettings         RequestSettings?
+  bankDetails             BankDetails?
   listing                 PropertyListing?
   photos                  PropertyPhoto[]
   recurringExpenses       RecurringExpense[]
@@ -194,6 +195,8 @@ model Booking {
   transactions  Transaction[]
   calendarLinks CalendarEventLink[]
   events        BookingEvent[]
+  payments      BookingPayment[]
+  guestTokens   GuestAccessToken[]
 
   // Target of the transactions' (booking, property) foreign key, which keeps
   // a transaction's booking on the transaction's own property.
@@ -212,6 +215,8 @@ enum BookingEventKind {
   balance_overdue
   declined
   request_expired
+  deposit_received
+  fully_paid
 
   @@map("booking_event_kind")
 }
@@ -230,6 +235,61 @@ model BookingEvent {
 
   @@unique([bookingId, kind, key])
   @@map("booking_events")
+}
+
+enum PaymentKind {
+  deposit
+  balance
+  full
+  other
+  /// Money paid back to the guest.
+  refund
+
+  @@map("payment_kind")
+}
+
+enum PaymentMethod {
+  bank_transfer
+  cash
+  card
+  other
+
+  @@map("payment_method")
+}
+
+/// Money received for a booking, or paid back (GitLab #115). Recorded by the
+/// owner when it arrives; it moves a reservation on (src/lib/payments) and
+/// is entered in the ledger once.
+model BookingPayment {
+  id          String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  bookingId   String        @map("booking_id") @db.Uuid
+  kind        PaymentKind
+  method      PaymentMethod @default(bank_transfer)
+  /// Always positive; a refund is money going back.
+  amountMinor Int           @map("amount_minor")
+  receivedOn  DateTime      @map("received_on") @db.Date
+  note        String?
+  createdAt   DateTime      @default(now()) @map("created_at")
+
+  booking     Booking      @relation(fields: [bookingId], references: [id], onDelete: Restrict)
+  transaction Transaction?
+
+  @@index([bookingId])
+  @@map("booking_payments")
+}
+
+/// A link that lets the guest see their booking (GitLab #115). Only the
+/// SHA-256 of the token is kept; the token is in the link alone.
+model GuestAccessToken {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  bookingId String   @map("booking_id") @db.Uuid
+  tokenHash String   @unique @map("token_hash")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  booking Booking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+
+  @@index([bookingId])
+  @@map("guest_access_tokens")
 }
 
 // --- Blocks -------------------------------------------------------------------
@@ -584,6 +644,23 @@ model RequestSettings {
   @@map("request_settings")
 }
 
+/// Where guests transfer to (GitLab #115), per property: shown with the
+/// amount due and in the GiroCode.
+model BankDetails {
+  propertyId    String   @id @map("property_id") @db.Uuid
+  accountHolder String   @map("account_holder")
+  /// Validated, without spaces, upper case.
+  iban          String
+  bic           String?
+  bankName      String?  @map("bank_name")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  property Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+
+  @@map("bank_details")
+}
+
 /// What guests see of a property on the public booking site (GitLab #106).
 /// Text comes in both languages; the page shows the visitor's, falling back
 /// to the other. Never the exact address: `location` is a town or region.
@@ -712,6 +789,9 @@ model Transaction {
   /// The recurring expense rule that created this entry, if any (GitLab #81).
   /// Kept as history when the rule is deleted.
   recurringExpenseId String?         @map("recurring_expense_id") @db.Uuid
+  /// The payment this entry records (GitLab #115): income received, or a
+  /// refund as an expense. At most one per payment.
+  paymentId          String?         @unique @map("payment_id") @db.Uuid
   createdAt          DateTime        @default(now()) @map("created_at")
   updatedAt          DateTime        @updatedAt @map("updated_at")
 
@@ -723,6 +803,7 @@ model Transaction {
   booking  Booking? @relation(fields: [bookingId, propertyId], references: [id, propertyId], onDelete: Restrict, onUpdate: Restrict)
 
   recurringExpense RecurringExpense?       @relation(fields: [recurringExpenseId], references: [id], onDelete: SetNull)
+  payment          BookingPayment?         @relation(fields: [paymentId], references: [id], onDelete: SetNull)
   attachments      TransactionAttachment[]
 
   @@unique([bookingId, generated])

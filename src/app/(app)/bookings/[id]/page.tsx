@@ -15,10 +15,14 @@ import { getBooking, toDto } from "@/lib/bookings/service";
 import { bookingSyncStatus } from "@/lib/google/sync-status";
 import { guestDisplayName } from "@/lib/guests/display";
 import { getGuest } from "@/lib/guests/service";
+import { todayIn } from "@/lib/finance/recurring";
+import { getProperty } from "@/lib/properties/service";
+import { listPayments, netReceived, nextDue } from "@/lib/payments/service";
 import { cn } from "@/lib/utils";
 
 import { BookingActions } from "./booking-actions";
 import { PaymentHold } from "./payment-hold";
+import { Payments } from "./payments";
 
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getTranslations("bookings.detail");
@@ -42,10 +46,16 @@ export default async function BookingPage({ params }: PageProps<"/bookings/[id]"
   if (!record) notFound();
 
   const booking = toDto(record);
-  const [guest, syncStatus] = await Promise.all([
+  const [guest, syncStatus, payments] = await Promise.all([
     getGuest(booking.guestId),
     bookingSyncStatus([booking.id]),
+    listPayments(booking.id),
   ]);
+  const received = netReceived(payments);
+  const timezone = (await getProperty(booking.propertyId))?.timezone ?? "UTC";
+  // Money is recorded on bookings that hold their dates, and refunds on any
+  // that took some.
+  const payable = ["reserved", "confirmed", "paid"].includes(booking.status) || payments.length > 0;
   const sync = syncStatus[booking.id];
   const t = await getTranslations("bookings");
   const tCommon = await getTranslations("common");
@@ -108,11 +118,7 @@ export default async function BookingPage({ params }: PageProps<"/bookings/[id]"
             ) : null}
           </div>
         ) : null}
-        <BookingActions
-          id={booking.id}
-          status={booking.status}
-          balanceDue={booking.balanceDueOn !== null}
-        />
+        <BookingActions id={booking.id} status={booking.status} />
       </div>
 
       <div className="grid gap-4 md:grid-cols-2">
@@ -175,22 +181,33 @@ export default async function BookingPage({ params }: PageProps<"/bookings/[id]"
           </CardContent>
         </Card>
 
-        {booking.depositAmountMinor !== null && booking.depositDueOn ? (
+        {payable ? (
           <Card>
             <CardHeader>
               <CardTitle>{t("hold.title")}</CardTitle>
             </CardHeader>
-            <CardContent>
-              <PaymentHold
+            <CardContent className="space-y-4">
+              {booking.depositAmountMinor !== null && booking.depositDueOn ? (
+                <PaymentHold
+                  id={booking.id}
+                  hold={{
+                    status: booking.status,
+                    currency: booking.currency,
+                    totalAmountMinor: booking.totalAmountMinor,
+                    depositAmountMinor: booking.depositAmountMinor,
+                    depositDueOn: booking.depositDueOn,
+                    balanceDueOn: booking.balanceDueOn,
+                  }}
+                />
+              ) : null}
+              <Payments
                 id={booking.id}
-                hold={{
-                  status: booking.status,
-                  currency: booking.currency,
-                  totalAmountMinor: booking.totalAmountMinor,
-                  depositAmountMinor: booking.depositAmountMinor,
-                  depositDueOn: booking.depositDueOn,
-                  balanceDueOn: booking.balanceDueOn,
-                }}
+                currency={booking.currency}
+                totalAmountMinor={booking.totalAmountMinor}
+                payments={payments}
+                received={received}
+                next={nextDue(booking, received)}
+                today={todayIn(timezone)}
               />
             </CardContent>
           </Card>

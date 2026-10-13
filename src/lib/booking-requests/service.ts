@@ -12,8 +12,6 @@
  * the name and phone as given with this request are kept on the request
  * too, with the guest's message - all cleared by the DSGVO purge.
  */
-import { randomInt } from "node:crypto";
-
 import type { Property } from "@/generated/prisma/client";
 import type { CalendarDate } from "@/lib/calendar-date";
 import { violationFields } from "@/lib/booking-rules/rules";
@@ -24,15 +22,10 @@ import { isPrismaError } from "@/lib/db-errors";
 import { findOrCreateGuest } from "@/lib/guests/service";
 import { getListing } from "@/lib/listing/service";
 
+import { newReference } from "./reference";
 import type { BookingRequestInput } from "./schema";
 
-/** Letters and digits that cannot be mistaken for each other: no I, L, O, 0, 1. */
-const ALPHABET = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
-
-/** A new random reference: 8 characters, about 40 bits. */
-export function newReference(): string {
-  return Array.from({ length: 8 }, () => ALPHABET[randomInt(ALPHABET.length)]).join("");
-}
+export { newReference };
 
 /** What the guest is told about a request sent: nothing they did not send. */
 export type SentRequest = {

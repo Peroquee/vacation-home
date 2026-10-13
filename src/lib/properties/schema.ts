@@ -45,8 +45,8 @@ export const SLUG_FORMAT =
 export const SLUG_REQUIRED = "needs a web address (slug) first";
 export const SLUG_TAKEN = "is already used by another property";
 export const SLUG_RESERVED = "is reserved for the site's own pages";
-/** Paths of the public site itself (/stay/legal/...), never a property's. */
-export const RESERVED_SLUGS: readonly string[] = ["legal"];
+/** Paths of the public site itself (/stay/legal/..., /stay/booking/...), never a property's. */
+export const RESERVED_SLUGS: readonly string[] = ["legal", "booking"];
 
 const fields = {
   name: z.string().trim().min(1, "is required").max(100, "must be at most 100 characters"),
