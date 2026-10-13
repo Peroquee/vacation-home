@@ -19,6 +19,7 @@ import type { BookingSort } from "@/lib/bookings/schema";
 import { type BookingDto, listBookings, toDto } from "@/lib/bookings/service";
 import { bookingSyncStatus } from "@/lib/google/sync-status";
 import { listProperties } from "@/lib/properties/service";
+import { countOpenRequests } from "@/lib/booking-requests/inbox";
 import { cn } from "@/lib/utils";
 
 import { BookingFilters } from "./booking-filters";
@@ -40,6 +41,17 @@ function NewBookingLink() {
   return (
     <Link href="/bookings/new" className={buttonVariants()}>
       {t("new")}
+    </Link>
+  );
+}
+
+/** The inbox of requests from the public site (GitLab #110), with how many wait. */
+function RequestsLink({ open }: { open: number }) {
+  const t = useTranslations("bookings.list");
+  return (
+    <Link href="/bookings/requests" className={buttonVariants({ variant: "outline" })}>
+      {t("requests")}
+      {open > 0 ? ` (${open})` : null}
     </Link>
   );
 }
@@ -226,7 +238,12 @@ export default async function BookingsPage({ searchParams }: PageProps<"/booking
     <PageHeader
       title={t("list.title")}
       description={t("list.description")}
-      actions={<NewBookingLink />}
+      actions={
+        <>
+          <RequestsLink open={await countOpenRequests()} />
+          <NewBookingLink />
+        </>
+      }
     />
   );
 

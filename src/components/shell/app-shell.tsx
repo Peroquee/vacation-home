@@ -7,6 +7,7 @@ import { MobileNav } from "@/components/shell/mobile-nav";
 import { SidebarNav } from "@/components/shell/sidebar-nav";
 import { UserMenu } from "@/components/shell/user-menu";
 import { SIGN_IN_PATH } from "@/auth";
+import { countOpenRequests } from "@/lib/booking-requests/inbox";
 import { getCurrentUser } from "@/lib/session";
 
 /**
@@ -21,13 +22,15 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
   // that ended in between.
   const user = await getCurrentUser();
   if (!user) redirect(SIGN_IN_PATH);
+  // Requests waiting for an answer (GitLab #110), as a badge on Bookings.
+  const badges = { bookings: await countOpenRequests() };
 
   return (
     <div className="min-h-dvh">
       {/* Desktop sidebar */}
       <aside className="bg-sidebar text-sidebar-foreground fixed inset-y-0 left-0 z-40 hidden w-64 flex-col border-r md:flex">
         <Brand />
-        <SidebarNav />
+        <SidebarNav badges={badges} />
         <div className="border-t p-2">
           <UserMenu user={user} />
         </div>
@@ -45,7 +48,7 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
           sidebar plus a 1rem gutter, so it is deliberately not pl-64. */}
       <main className="px-4 pt-4 pb-16 md:pb-8 md:pl-68">{children}</main>
 
-      <MobileNav />
+      <MobileNav badges={badges} />
     </div>
   );
 }

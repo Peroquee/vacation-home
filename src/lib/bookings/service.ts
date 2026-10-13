@@ -72,6 +72,7 @@ export function toDto(booking: BookingWithRelations) {
     depositDueOn,
     balanceDueOn,
     expiredAt,
+    declinedAt,
     privacyConsentAt,
     ...rest
   } = booking;
@@ -85,6 +86,7 @@ export function toDto(booking: BookingWithRelations) {
     depositDueOn: depositDueOn && fromUtcDate(depositDueOn),
     balanceDueOn: balanceDueOn && fromUtcDate(balanceDueOn),
     expiredAt: expiredAt?.toISOString() ?? null,
+    declinedAt: declinedAt?.toISOString() ?? null,
     privacyConsentAt: privacyConsentAt?.toISOString() ?? null,
     createdAt: createdAt.toISOString(),
     updatedAt: updatedAt.toISOString(),
@@ -219,6 +221,10 @@ export async function createBooking(
     currency: property.currency,
     notes: input.notes ?? null,
     ...website,
+    // The owner and the guest are to hear of a request (GitLab #111).
+    ...(website?.reference && {
+      events: { create: { kind: "requested", key: website.reference } },
+    }),
   };
 
   const result = await locked(

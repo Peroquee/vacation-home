@@ -4,8 +4,10 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useTranslations } from "next-intl";
 
-import { NAV_ITEMS, isActive } from "@/lib/navigation";
+import { type NavBadges, NAV_ITEMS, isActive } from "@/lib/navigation";
 import { cn } from "@/lib/utils";
+
+import { Badge } from "./sidebar-nav";
 
 /**
  * Mobile navigation: a fixed bottom bar, so the five destinations stay within
@@ -14,7 +16,7 @@ import { cn } from "@/lib/utils";
  * The matching `pb-16` on the main content keeps this from covering the last
  * few lines of a scrolled page.
  */
-export function MobileNav() {
+export function MobileNav({ badges = {} }: { badges?: NavBadges }) {
   const pathname = usePathname();
   const t = useTranslations("nav");
 
@@ -39,7 +41,10 @@ export function MobileNav() {
                     : "text-sidebar-foreground/70",
                 )}
               >
-                <Icon aria-hidden className="size-5" />
+                <span className="relative">
+                  <Icon aria-hidden className="size-5" />
+                  <Badge count={badges[label]} className="absolute -top-1.5 -right-3" />
+                </span>
                 <span className="truncate">{t(label)}</span>
               </Link>
             </li>

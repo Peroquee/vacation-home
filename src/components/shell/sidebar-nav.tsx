@@ -4,11 +4,28 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useTranslations } from "next-intl";
 
-import { NAV_ITEMS, isActive } from "@/lib/navigation";
+import { type NavBadges, NAV_ITEMS, isActive } from "@/lib/navigation";
 import { cn } from "@/lib/utils";
 
+/** A count next to a nav entry: things waiting there. Read out as "3 waiting". */
+export function Badge({ count, className }: { count?: number; className?: string }) {
+  const t = useTranslations("nav");
+  if (!count) return null;
+  return (
+    <span
+      className={cn(
+        "bg-primary text-primary-foreground ml-auto rounded-full px-1.5 text-xs font-medium tabular-nums",
+        className,
+      )}
+    >
+      {count}
+      <span className="sr-only"> {t("waiting")}</span>
+    </span>
+  );
+}
+
 /** Desktop navigation. Hidden below the md breakpoint, where MobileNav takes over. */
-export function SidebarNav() {
+export function SidebarNav({ badges = {} }: { badges?: NavBadges }) {
   const pathname = usePathname();
   const t = useTranslations("nav");
 
@@ -32,6 +49,7 @@ export function SidebarNav() {
           >
             <Icon aria-hidden className="size-4 shrink-0" />
             {t(label)}
+            <Badge count={badges[label]} />
           </Link>
         );
       })}
