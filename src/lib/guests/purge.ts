@@ -6,8 +6,10 @@
  * Art. 17(3)(b) DSGVO), and they reference the guest. In one transaction:
  * - the guest's name becomes a neutral placeholder and email, phone and
  *   notes are cleared; `purgedAt` is set;
- * - the free-text notes of the guest's bookings are cleared - the only
- *   personal data a booking row can hold (it references the guest by id);
+ * - the personal data a booking row can hold is cleared: its free-text
+ *   notes, and for a request from the public site (GitLab #109) the
+ *   guest's message and the name and phone given with it. Otherwise a
+ *   booking references the guest by id only;
  * - an audit event records that it happened, when and by whom, without any
  *   of the removed data.
  * A guest without bookings is simply deleted, with the same audit event.
@@ -89,6 +91,17 @@ async function purgeInTransaction(id: string, actorUserId: string | null): Promi
     const { count: notesCleared } = await tx.booking.updateMany({
       where: { guestId: id, notes: { not: null } },
       data: { notes: null },
+    });
+    await tx.booking.updateMany({
+      where: {
+        guestId: id,
+        OR: [
+          { guestMessage: { not: null } },
+          { requesterName: { not: null } },
+          { requesterPhone: { not: null } },
+        ],
+      },
+      data: { guestMessage: null, requesterName: null, requesterPhone: null },
     });
     const guest = await tx.guest.update({
       where: { id },

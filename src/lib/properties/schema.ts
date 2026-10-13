@@ -44,6 +44,9 @@ export const SLUG_FORMAT =
   "must be 3 to 60 lowercase letters, digits and single hyphens, e.g. lake-house";
 export const SLUG_REQUIRED = "needs a web address (slug) first";
 export const SLUG_TAKEN = "is already used by another property";
+export const SLUG_RESERVED = "is reserved for the site's own pages";
+/** Paths of the public site itself (/stay/legal/...), never a property's. */
+export const RESERVED_SLUGS: readonly string[] = ["legal"];
 
 const fields = {
   name: z.string().trim().min(1, "is required").max(100, "must be at most 100 characters"),
@@ -84,6 +87,7 @@ const fields = {
     .refine((slug) => slug === "" || (SLUG.test(slug) && slug.length >= 3 && slug.length <= 60), {
       error: SLUG_FORMAT,
     })
+    .refine((slug) => !RESERVED_SLUGS.includes(slug), { error: SLUG_RESERVED })
     .nullable()
     // A blank slug means none.
     .transform((value) => value || null),

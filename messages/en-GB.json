@@ -328,7 +328,8 @@
       "direct": "Direct",
       "airbnb": "Airbnb",
       "bookingCom": "Booking.com",
-      "other": "Other"
+      "other": "Other",
+      "website": "Website"
     },
     "form": {
       "unavailable": "Those dates are no longer available.",
@@ -1149,7 +1150,14 @@
     "amenityList": "must be amenities from the list",
     "photoIds": "must be photo ids",
     "photosChanged": "The photos have changed; reload and try again.",
-    "photoNotFound": "Photo not found."
+    "photoNotFound": "Photo not found.",
+    "websiteOnly": "is set by the public booking site only",
+    "slugReserved": "is reserved for the site's own pages",
+    "requestCheckFailed": "the automatic spam check failed; please send the request again",
+    "requestNotSent": "The request could not be sent. Please try again.",
+    "sleepsAtMostOne": "this home sleeps at most 1 guest",
+    "sleepsAtMost": "this home sleeps at most {max} guests",
+    "consentRequired": "must be accepted to send the request"
   },
   "stay": {
     "photoOf": "Photo {n} of {title}",
@@ -1183,7 +1191,41 @@
       "breakdownWithCleaning": "{nights, plural, one {# night} other {# nights}} × {rate} + {cleaning} cleaning",
       "total": "Estimated total: {total}",
       "estimateNote": "An estimate: the owner confirms the price with your request.",
-      "clear": "Choose other dates"
+      "clear": "Choose other dates",
+      "request": "Request these dates"
+    },
+    "request": {
+      "heading": "Your request",
+      "intro": "Send the owner your request. It is not a booking yet: the owner answers by email, and the dates are only held once they accept.",
+      "fields": {
+        "name": "Name",
+        "email": "Email",
+        "phone": "Phone",
+        "guestCount": "Guests",
+        "message": "Message to the owner",
+        "consent": "Consent"
+      },
+      "optional": "Optional.",
+      "maxGuests": "{count, plural, one {At most # guest.} other {At most # guests.}}",
+      "consent": "I agree that my details are used to answer this request, as described in the <link>privacy policy</link>.",
+      "honeypot": "Leave this field empty",
+      "send": "Send request",
+      "sending": "Sending…",
+      "noBooking": "Sending a request does not commit you to anything and costs nothing.",
+      "arrival": "Arrival",
+      "departure": "Departure",
+      "failed": "The request could not be sent (the server answered {status}). Please try again.",
+      "offline": "The request could not be sent. Please check your connection and try again."
+    },
+    "sent": {
+      "heading": "Thank you, your request has been sent",
+      "body": "The owner will answer by email. The dates are not held for you until then.",
+      "reference": "Reference",
+      "dates": "Dates",
+      "nights": "{count, plural, one {# night} other {# nights}}",
+      "guests": "Guests",
+      "estimate": "Estimated total",
+      "keepReference": "Please quote this reference if you contact the owner."
     }
   },
   "listing": {
@@ -1259,5 +1301,15 @@
       "highChair": "High chair",
       "petsAllowed": "Pets allowed"
     }
+  },
+  "legal": {
+    "privacy": {
+      "title": "Privacy policy"
+    },
+    "imprint": {
+      "title": "Imprint"
+    },
+    "notYet": "This page is not available yet. Please check back later.",
+    "footer": "Legal"
   }
 }

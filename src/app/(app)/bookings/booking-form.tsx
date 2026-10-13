@@ -404,7 +404,10 @@ export function BookingForm({
               value={values.source}
               onChange={(event) => set("source", event.target.value)}
             >
-              {BOOKING_SOURCES.map((source) => (
+              {/* Only the public site makes a booking a website request. */}
+              {BOOKING_SOURCES.filter(
+                (source) => source !== "website" || values.source === "website",
+              ).map((source) => (
                 <NativeSelectOption key={source} value={source}>
                   {t(`source.${SOURCE_KEYS[source]}`)}
                 </NativeSelectOption>

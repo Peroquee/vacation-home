@@ -12,9 +12,10 @@
  * (src/lib/finance/booking-income.ts) and schedules its Google Calendar event
  * (src/lib/google/outbound.ts), in the same transaction.
  *
- * Bookings hold no guest personal data except free-text `notes`: the guest
- * is referenced by id only, so purging a guest (GitLab #100) never needs to
- * touch booking amounts or dates.
+ * Bookings hold no guest personal data except free-text `notes` and, for a
+ * request from the public site, what the guest sent with it: the guest is
+ * referenced by id only, so purging a guest (GitLab #100) clears those and
+ * never needs to touch booking amounts or dates.
  */
 import type { BookingSource, Prisma } from "@/generated/prisma/client";
 import { invalidateWindows } from "@/lib/availability/cache";
@@ -40,6 +41,7 @@ import {
   type ListBookingsQuery,
   stayProblem,
   type UpdateBookingInput,
+  WEBSITE_ONLY,
 } from "./schema";
 
 export const toDbSource = (source: ApiBookingSource): BookingSource =>
@@ -140,7 +142,25 @@ async function check(
   return available ? null : { error: "conflict", conflicts };
 }
 
-export async function createBooking(input: CreateBookingInput): Promise<WriteResult> {
+/** What only a request from the public site (GitLab #109) records. */
+export type WebsiteRequestFields = Pick<
+  Prisma.BookingUncheckedCreateInput,
+  | "reference"
+  | "guestMessage"
+  | "requesterName"
+  | "requesterPhone"
+  | "guestLocale"
+  | "privacyConsentAt"
+>;
+
+/**
+ * Creates a booking. `website` is for the public site's requests only
+ * (src/lib/booking-requests/service.ts), which the API cannot create.
+ */
+export async function createBooking(
+  input: Omit<CreateBookingInput, "source"> & { source: ApiBookingSource },
+  website?: WebsiteRequestFields,
+): Promise<WriteResult> {
   const [property, guest] = await Promise.all([
     db.property.findUnique({ where: { id: input.propertyId } }),
     db.guest.findUnique({ where: { id: input.guestId }, select: { id: true, purgedAt: true } }),
@@ -177,6 +197,7 @@ export async function createBooking(input: CreateBookingInput): Promise<WriteRes
     totalIsManual: manual,
     currency: property.currency,
     notes: input.notes ?? null,
+    ...website,
   };
 
   const result = await locked(
@@ -229,6 +250,9 @@ export async function updateBooking(id: string, input: UpdateBookingInput): Prom
       });
       if (!current) return { error: "not_found" };
       before = { start: fromUtcDate(current.checkIn), end: fromUtcDate(current.checkOut) };
+      if (input.source === "website" && current.source !== "website") {
+        return { error: "invalid", field: "source", message: WEBSITE_ONLY };
+      }
       // An erased guest's bookings keep their facts but take no new notes.
       if (current.guest.purgedAt && input.notes && input.guestId === undefined) {
         return { error: "invalid", field: "notes", message: "cannot be set: the guest was erased" };

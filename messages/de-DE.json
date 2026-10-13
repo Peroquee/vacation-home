@@ -328,7 +328,8 @@
       "direct": "Direkt",
       "airbnb": "Airbnb",
       "bookingCom": "Booking.com",
-      "other": "Sonstige"
+      "other": "Sonstige",
+      "website": "Website"
     },
     "form": {
       "unavailable": "Diese Tage sind nicht mehr frei.",
@@ -1149,7 +1150,14 @@
     "amenityList": "muss Ausstattung aus der Liste sein",
     "photoIds": "müssen Foto-IDs sein",
     "photosChanged": "Die Fotos wurden geändert; laden Sie neu und versuchen Sie es erneut.",
-    "photoNotFound": "Foto nicht gefunden."
+    "photoNotFound": "Foto nicht gefunden.",
+    "websiteOnly": "wird nur von der öffentlichen Buchungsseite gesetzt",
+    "slugReserved": "ist für die Seiten der Website selbst reserviert",
+    "requestCheckFailed": "die automatische Spam-Prüfung ist fehlgeschlagen; bitte senden Sie die Anfrage erneut",
+    "requestNotSent": "Die Anfrage konnte nicht gesendet werden. Bitte versuchen Sie es erneut.",
+    "sleepsAtMostOne": "diese Unterkunft bietet Platz für höchstens 1 Gast",
+    "sleepsAtMost": "diese Unterkunft bietet Platz für höchstens {max} Gäste",
+    "consentRequired": "muss akzeptiert werden, um die Anfrage zu senden"
   },
   "stay": {
     "photoOf": "Foto {n} von {title}",
@@ -1183,7 +1191,41 @@
       "breakdownWithCleaning": "{nights, plural, one {# Nacht} other {# Nächte}} × {rate} + {cleaning} Reinigung",
       "total": "Voraussichtlich gesamt: {total}",
       "estimateNote": "Eine Schätzung: den Preis bestätigt die Vermieterin oder der Vermieter mit Ihrer Anfrage.",
-      "clear": "Andere Termine wählen"
+      "clear": "Andere Termine wählen",
+      "request": "Diese Daten anfragen"
+    },
+    "request": {
+      "heading": "Ihre Anfrage",
+      "intro": "Senden Sie dem Gastgeber Ihre Anfrage. Sie ist noch keine Buchung: Der Gastgeber antwortet per E-Mail, und die Daten werden erst reserviert, wenn er zusagt.",
+      "fields": {
+        "name": "Name",
+        "email": "E-Mail",
+        "phone": "Telefon",
+        "guestCount": "Gäste",
+        "message": "Nachricht an den Gastgeber",
+        "consent": "Einwilligung"
+      },
+      "optional": "Optional.",
+      "maxGuests": "{count, plural, one {Höchstens # Gast.} other {Höchstens # Gäste.}}",
+      "consent": "Ich bin einverstanden, dass meine Angaben zur Beantwortung dieser Anfrage verwendet werden, wie in der <link>Datenschutzerklärung</link> beschrieben.",
+      "honeypot": "Dieses Feld bitte leer lassen",
+      "send": "Anfrage senden",
+      "sending": "Wird gesendet …",
+      "noBooking": "Eine Anfrage ist unverbindlich und kostenlos.",
+      "arrival": "Anreise",
+      "departure": "Abreise",
+      "failed": "Die Anfrage konnte nicht gesendet werden (der Server antwortete {status}). Bitte versuchen Sie es erneut.",
+      "offline": "Die Anfrage konnte nicht gesendet werden. Bitte prüfen Sie Ihre Verbindung und versuchen Sie es erneut."
+    },
+    "sent": {
+      "heading": "Vielen Dank, Ihre Anfrage wurde gesendet",
+      "body": "Der Gastgeber antwortet Ihnen per E-Mail. Bis dahin sind die Daten nicht für Sie reserviert.",
+      "reference": "Referenz",
+      "dates": "Zeitraum",
+      "nights": "{count, plural, one {# Nacht} other {# Nächte}}",
+      "guests": "Gäste",
+      "estimate": "Geschätzter Gesamtpreis",
+      "keepReference": "Bitte geben Sie diese Referenz an, wenn Sie den Gastgeber kontaktieren."
     }
   },
   "listing": {
@@ -1259,5 +1301,15 @@
       "highChair": "Hochstuhl",
       "petsAllowed": "Haustiere erlaubt"
     }
+  },
+  "legal": {
+    "privacy": {
+      "title": "Datenschutz"
+    },
+    "imprint": {
+      "title": "Impressum"
+    },
+    "notYet": "Diese Seite ist noch nicht verfügbar. Bitte schauen Sie später wieder vorbei.",
+    "footer": "Rechtliches"
   }
 }

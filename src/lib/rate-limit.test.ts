@@ -32,6 +32,13 @@ describe("rateLimitKey", () => {
       "public-api:203.0.113.7",
     );
     expect(rateLimitKey("POST", "/api/public/anything", client)?.rule.name).toBe("public-api");
+    // Booking requests have a tighter window of their own; their challenge does not.
+    expect(rateLimitKey("POST", "/api/public/properties/lake-house/requests", client)?.key).toBe(
+      "public-request:203.0.113.7",
+    );
+    expect(
+      rateLimitKey("GET", "/api/public/properties/lake-house/request-challenge", client)?.rule.name,
+    ).toBe("public-api");
     expect(
       rateLimitKey("GET", `/api/public/properties/lake-house/photos/${"a".repeat(64)}.webp`, client)
         ?.rule.name,
