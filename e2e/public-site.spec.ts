@@ -79,8 +79,12 @@ test.describe("a listed property", () => {
     await expect(
       page.getByRole("heading", { level: 1, name: "Public site Lake House" }),
     ).toBeVisible();
-    // No app shell, and nothing private.
-    await expect(page.getByRole("navigation")).toHaveCount(0);
+    // No app shell - neither its navigation nor the account menu - and
+    // nothing private. Only the public footer's legal links.
+    await expect(page.getByRole("navigation", { name: "Main" })).toHaveCount(0);
+    await expect(page.getByRole("button", { name: /account/i })).toHaveCount(0);
+    const legal = page.getByRole("navigation", { name: "Legal" });
+    await expect(legal.getByRole("link")).toHaveText(["Imprint", "Privacy policy"]);
     await expect(page.getByText("Secretville")).toHaveCount(0);
     const headers = response!.headers();
     expect(headers["set-cookie"]).toBeUndefined();

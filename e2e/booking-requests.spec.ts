@@ -69,7 +69,9 @@ test("a guest requests a stay and the owner finds it as an inquiry from the webs
   await page.getByLabel("Email").fill("Ada@Example.test");
   await page.getByLabel("Guests").fill("5");
   await page.getByLabel("Message to the owner").fill("Arriving late, around 9 pm.");
-  await expect(page.getByRole("link", { name: "privacy policy" })).toHaveAttribute(
+  // The consent's own link; the footer has one too.
+  const form = page.getByRole("form", { name: "Your request" });
+  await expect(form.getByRole("link", { name: "privacy policy" })).toHaveAttribute(
     "href",
     "/stay/legal/privacy",
   );
