@@ -47,11 +47,16 @@ describe("the request form's proof of work", () => {
     expect((await checkRequestChallenge(payload, "lake-house", later)).ok).toBe(true);
   });
 
-  it("refuses a request sent faster than a person fills the form", async () => {
+  it("refuses a request sent faster than a person fills the form, and spends its challenge", async () => {
     const payload = await solved("lake-house", T0);
     expect(await checkRequestChallenge(payload, "lake-house", T0 + MIN_FILL_MS - 1)).toEqual({
       ok: false,
       reason: "too_fast",
+    });
+    // Waiting and sending it again does not help.
+    expect(await checkRequestChallenge(payload, "lake-house", T0 + MIN_FILL_MS)).toEqual({
+      ok: false,
+      reason: "spent",
     });
   });
 

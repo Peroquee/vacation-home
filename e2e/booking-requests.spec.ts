@@ -6,8 +6,8 @@ import { withE2eDb } from "./database";
 
 // Booking requests from the public site (GitLab #109): a guest picks a stay
 // and sends a request; it reaches the owner as an inquiry from the website.
-// Refused: dates not available, too many guests, no consent, the honeypot,
-// a spent spam check.
+// Refused: dates not available, too many guests, no consent, the honeypot -
+// whose spam check is then spent for good.
 //
 // Without TRUST_PROXY_HEADERS every visitor shares the request rate limit
 // (10 per 10 minutes), so this file sends fewer than that.
@@ -131,14 +131,18 @@ test.describe("the request API refuses", () => {
     ).toBe(201);
 
     const stranger = await browser.newContext({ storageState: { cookies: [], origins: [] } });
-    const challenge = await (
-      await stranger.request.get("/api/public/properties/requests-lake/request-challenge")
-    ).json();
-    const solution = (await solveChallenge({ challenge, deriveKey }))!;
-    const altcha = {
-      challenge: { parameters: challenge.parameters, signature: challenge.signature },
-      solution: { counter: solution.counter, derivedKey: solution.derivedKey },
+    const solved = async () => {
+      const challenge = await (
+        await stranger.request.get("/api/public/properties/requests-lake/request-challenge")
+      ).json();
+      const solution = (await solveChallenge({ challenge, deriveKey }))!;
+      return {
+        challenge: { parameters: challenge.parameters, signature: challenge.signature },
+        solution: { counter: solution.counter, derivedKey: solution.derivedKey },
+      };
     };
+    // One for a guest, one for a bot.
+    const [altcha, botAltcha] = [await solved(), await solved()];
     // A person takes a few seconds to fill the form; the server insists.
     await new Promise((resolve) => setTimeout(resolve, 3_500));
 
@@ -169,10 +173,6 @@ test.describe("the request API refuses", () => {
       [{ checkIn: day(22), checkOut: day(24) }, { checkIn: ["these dates are not available"] }],
       [{ guestCount: 5 }, { guestCount: ["this home sleeps at most 4 guests"] }],
       [{ consent: false }, { consent: ["must be accepted to send the request"] }],
-      [
-        { homepage: "https://spam.example" },
-        { _: ["The request could not be sent. Please try again."] },
-      ],
     ];
     for (const [change, fields] of refusals) {
       const { status, body } = await send({ ...valid, ...change });
@@ -188,9 +188,20 @@ test.describe("the request API refuses", () => {
       1,
     );
 
-    // The refusals gave the spam check back; the request it lets through spends it.
+    // Refusals the guest can correct give the spam check back.
     expect((await send(valid)).status).toBe(201);
-    expect(await send({ ...valid, email: "eve2@example.test" })).toEqual({
+
+    // The honeypot spends it for good: the same check does not pass again.
+    const bot = { ...valid, email: "bot@example.test", altcha: botAltcha };
+    expect(await send({ ...bot, homepage: "https://spam.example" })).toEqual({
+      status: 422,
+      body: {
+        error: expect.objectContaining({
+          fields: { _: ["The request could not be sent. Please try again."] },
+        }),
+      },
+    });
+    expect(await send(bot)).toEqual({
       status: 422,
       body: {
         error: expect.objectContaining({

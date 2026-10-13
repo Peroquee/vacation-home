@@ -1,5 +1,5 @@
 import { apiError, notFound, validationError } from "@/lib/api";
-import { checkRequestChallenge } from "@/lib/booking-requests/challenge";
+import { challengePayloadSchema, checkRequestChallenge } from "@/lib/booking-requests/challenge";
 import { hitEmailLimit } from "@/lib/booking-requests/limits";
 import { bookingRequestSchema } from "@/lib/booking-requests/schema";
 import { createBookingRequest } from "@/lib/booking-requests/service";
@@ -16,6 +16,10 @@ const invalid = (fields: Record<string, string[]>) =>
  * first: the honeypot, the fields, the proof of work and form time, the
  * limit per email address, then the stay against the booking rules and
  * what is taken. 201 with the reference and the stay as stored.
+ *
+ * Only the last of these gives the spam check back for another try (see
+ * src/lib/booking-requests/challenge.ts): the guest can correct them. The
+ * fields are judged before the check is spent at all.
  */
 export async function POST(request: Request, { params }: Context) {
   const { slug } = await params;
@@ -28,9 +32,12 @@ export async function POST(request: Request, { params }: Context) {
   } catch {
     return apiError(400, "invalid_json", "The request body is not valid JSON.");
   }
-  // Filled in: a bot. Told no more than that it failed.
+  // Filled in: a bot. Its spam check is spent for good, and it is told no
+  // more than that it failed.
   const honeypot = (body as Record<string, unknown> | null)?.[HONEYPOT_FIELD];
   if (typeof honeypot !== "string" ? honeypot != null : honeypot.trim() !== "") {
+    const altcha = challengePayloadSchema.safeParse((body as Record<string, unknown>).altcha);
+    if (altcha.success) await checkRequestChallenge(altcha.data, property.slug);
     return invalid({ _: [NOT_SENT] });
   }
   const parsed = bookingRequestSchema.safeParse(body);
@@ -42,9 +49,9 @@ export async function POST(request: Request, { params }: Context) {
     return invalid(check.reason === "too_fast" ? { _: [NOT_SENT] } : { altcha: [CHECK_FAILED] });
   }
   try {
+    // Over the limit: spent, like any attempt.
     const retryAfter = hitEmailLimit(input.email);
     if (retryAfter !== null) {
-      check.release();
       const response = apiError(
         429,
         "rate_limited",

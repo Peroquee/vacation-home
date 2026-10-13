@@ -10,10 +10,14 @@
  * the form's start time: a request sent faster than a person can fill the
  * form is refused.
  *
- * A challenge is spent by the request it lets through, and only then: a
- * request refused for its dates gives it back, to be corrected and sent
- * again with the same one. Spent challenges are remembered in memory until they expire -
- * the app runs as one process, and the rate limits back this up.
+ * A valid challenge is spent as soon as it is checked, for good, unless the
+ * request is then refused for something the guest can correct (the dates,
+ * the rules, the capacity): only that gives it back, to be sent again. A
+ * request that looks like a bot's - the honeypot filled, sent too fast, over
+ * the per-address limit - spends it, so one proof of work never buys more
+ * than one such attempt. Spent challenges are remembered in memory until
+ * they expire - the app runs as one process, and the rate limits back this
+ * up.
  */
 import { hkdfSync } from "node:crypto";
 
@@ -107,9 +111,10 @@ function forgetExpired(now: number) {
 
 /**
  * Whether `payload` is a solved challenge of ours for the property `slug`,
- * issued long enough ago and not yet spent - and if so, spends it at once,
- * so two requests sent together cannot both use it. `release()` gives it
- * back when the request it came with is refused.
+ * not yet spent, and issued long enough ago. A valid one is spent at once,
+ * so two requests sent together cannot both use it - also when it came too
+ * fast, which is refused. `release()` gives it back, only for a refusal the
+ * guest can correct.
  */
 export async function checkRequestChallenge(
   payload: ChallengePayload,
@@ -132,10 +137,11 @@ export async function checkRequestChallenge(
   if (data?.slug !== slug || typeof data.issuedAt !== "number") {
     return { ok: false, reason: "invalid" };
   }
-  if (now - data.issuedAt < MIN_FILL_MS) return { ok: false, reason: "too_fast" };
   forgetExpired(now);
   const id = payload.challenge.signature;
   if (spent.has(id)) return { ok: false, reason: "spent" };
   spent.set(id, expiresAt ? expiresAt * 1000 : now + CHALLENGE_LIFETIME_MS);
+  // Spent all the same: waiting and sending it again does not help.
+  if (now - data.issuedAt < MIN_FILL_MS) return { ok: false, reason: "too_fast" };
   return { ok: true, release: () => spent.delete(id) };
 }
