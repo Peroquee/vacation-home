@@ -10,6 +10,8 @@ import {
   BOOKING_SORTS,
   BOOKING_SOURCES,
   BOOKING_STATUSES,
+  FLOW_ONLY,
+  FLOW_STATUSES,
   stayProblem,
   WEBSITE_ONLY,
 } from "./values";
@@ -70,7 +72,11 @@ export const createBookingSchema = z
     guestId: fields.guestId,
     checkIn: fields.checkIn,
     checkOut: fields.checkOut,
-    status: fields.status.default("inquiry"),
+    // Reserved and expired come with the flow's own data (the payment
+    // terms, the expiry), so only the flow sets them; see updateBooking too.
+    status: fields.status
+      .refine((status) => !(FLOW_STATUSES as readonly string[]).includes(status), FLOW_ONLY)
+      .default("inquiry"),
     source: fields.source.refine((source) => source !== "website", WEBSITE_ONLY).default("direct"),
     guestCount: fields.guestCount.default(1),
     nightlyRateMinor: fields.nightlyRateMinor.optional(),

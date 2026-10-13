@@ -21,7 +21,7 @@ import {
   turnoverFix,
 } from "@/lib/bookings/form";
 import { SOURCE_KEYS } from "@/lib/bookings/labels";
-import { BOOKING_SOURCES } from "@/lib/bookings/values";
+import { BOOKING_SOURCES, type BookingStatus, holdsDates } from "@/lib/bookings/values";
 import type { RuleViolation } from "@/lib/booking-rules/rules";
 import type { BookingDto } from "@/lib/bookings/service";
 import { addDays, isCalendarDate } from "@/lib/calendar-date";
@@ -157,7 +157,7 @@ export function BookingForm({
   const conflicts = availability.state === "checked" ? availability.conflicts : [];
   const guestNames = availability.state === "checked" ? availability.guestNames : new Map();
   // Only a confirmed booking is refused for taken dates; an inquiry may overlap.
-  const conflictBlocks = values.status === "confirmed" && conflicts.length > 0;
+  const conflictBlocks = holdsDates(values.status as BookingStatus) && conflicts.length > 0;
 
   function set<K extends keyof Values>(key: K, value: Values[K]) {
     setValues((current) => ({ ...current, [key]: value }));
@@ -290,10 +290,12 @@ export function BookingForm({
   }
 
   const shownConflicts = serverConflicts ?? conflicts;
-  const statusOptions =
-    booking?.status === "cancelled"
-      ? (["inquiry", "confirmed", "cancelled"] as const)
-      : (["inquiry", "confirmed"] as const);
+  // The booking's own status stays choosable; reserved and expired are
+  // otherwise the booking flow's to set (GitLab #114).
+  const statusOptions: BookingStatus[] =
+    booking && !["inquiry", "confirmed"].includes(booking.status)
+      ? ["inquiry", "confirmed", booking.status]
+      : ["inquiry", "confirmed"];
 
   return (
     <form onSubmit={submit} noValidate className="max-w-2xl">

@@ -23,6 +23,7 @@ import {
   type Weekday,
 } from "@/lib/calendar/month";
 import { type Conflict, previewTotalMinor, stayConflicts, turnoverFix } from "@/lib/bookings/form";
+import { holdsDates } from "@/lib/bookings/values";
 import {
   hover,
   IDLE,
@@ -116,7 +117,12 @@ function barLabel(bar: Bar, t: Translate, format: Formatters, guest: string): st
       (isPending(bar.block.id) ? t("saving") : "")
     );
   }
-  const status = bar.booking.status === "inquiry" ? t("inquiry") : t("confirmed");
+  const status =
+    bar.booking.status === "inquiry"
+      ? t("inquiry")
+      : bar.booking.status === "reserved"
+        ? t("reserved")
+        : t("confirmed");
   return t("bookingLabel", { guest, property, status, when });
 }
 
@@ -472,7 +478,7 @@ export function MonthCalendar({
       ? stayConflicts(drag.to, dragCalendar, drag.bookingId)
       : [];
   // Like the API: only a confirmed booking is refused for taken dates.
-  const dragRefused = drag?.status === "confirmed" && dragConflicts.length > 0;
+  const dragRefused = !!drag && holdsDates(drag.status) && dragConflicts.length > 0;
 
   function startDrag(
     event: React.PointerEvent,
@@ -525,7 +531,7 @@ export function MonthCalendar({
       const calendar = calendars.find((c) => c.property.id === current.propertyId);
       if (!current.to || !calendar) return;
       const refused =
-        current.status === "confirmed" &&
+        holdsDates(current.status) &&
         stayConflicts(current.to, calendar, current.bookingId).length > 0;
       if (refused) return;
       onBookingDrag?.({

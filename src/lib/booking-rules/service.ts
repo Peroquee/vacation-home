@@ -4,6 +4,7 @@
  * owner's booking form shows it as warnings. The rules themselves are in
  * ./rules.ts. Server-side only.
  */
+import { HOLDING_STATUSES } from "@/lib/bookings/values";
 import type { BookingRules as BookingRulesRow } from "@/generated/prisma/client";
 import { addDays, fromUtcDate, toUtcDate } from "@/lib/calendar-date";
 import { findOverlappingBlocks } from "@/lib/blocks/service";
@@ -64,7 +65,7 @@ export async function saveBookingRules(
 
 /**
  * What `stay` breaks at `property`, judged against its rules, today in its
- * timezone, and its confirmed bookings and blocks near the stay (the
+ * timezone, and the bookings holding dates and blocks near the stay (the
  * booking being edited, `ignoreBookingId`, left out). Empty when acceptable.
  * `mode` is "public" for the booking site (refuse) and "owner" for the
  * owner's own form (warn); see `checkStay`.
@@ -89,7 +90,7 @@ export async function checkStayAt(
     client.booking.findMany({
       where: {
         propertyId: property.id,
-        status: "confirmed",
+        status: { in: [...HOLDING_STATUSES] },
         ...(ignoreBookingId && { id: { not: ignoreBookingId } }),
         // Touching counts here: a stay ending on the day this one starts
         // leaves no free night between them.

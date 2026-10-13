@@ -5,10 +5,10 @@
  *
  * Concurrency. The database itself refuses a double booking, whatever the
  * timing and whichever code writes:
- * - the exclusion constraint `bookings_no_overlapping_confirmed` keeps
- *   confirmed bookings of a property apart;
- * - triggers raising `bookings_blocks_no_overlap` keep confirmed bookings
- *   and blocks apart, taking the property row lock as they check.
+ * - the exclusion constraint `bookings_no_overlapping_held` keeps the
+ *   bookings of a property that hold their dates (HOLDING_STATUSES) apart;
+ * - triggers raising `bookings_blocks_no_overlap` keep those bookings and
+ *   blocks apart, taking the property row lock as they check.
  * `withPropertyLock` adds the same lock around an application-level
  * check-then-write, so the check can report *what* is in the way (a 409
  * naming the conflict) and stays true until the write commits.
@@ -34,13 +34,13 @@ export type { Conflict, DayAvailability };
 
 /** The database rules behind availability; see the migration that adds them. */
 export const OVERLAP_CONSTRAINTS = [
-  "bookings_no_overlapping_confirmed",
+  "bookings_no_overlapping_held",
   "bookings_blocks_no_overlap",
 ] as const;
 
 /**
- * Whether `error` is the database refusing overlapping dates: a confirmed
- * booking against another, or a confirmed booking against a block.
+ * Whether `error` is the database refusing overlapping dates: a booking
+ * holding its dates against another, or against a block.
  */
 export function isOverlapViolation(error: unknown): boolean {
   return OVERLAP_CONSTRAINTS.some((name) => isExclusionViolation(error, name));
@@ -83,7 +83,7 @@ async function loadSpans(client: DbClient, propertyId: string, range: DateRange)
     client.booking.findMany({
       where: {
         propertyId,
-        status: { not: "cancelled" },
+        status: { notIn: ["cancelled", "expired"] },
         checkIn: { lt: toUtcDate(range.end) },
         checkOut: { gte: toUtcDate(range.start) },
       },

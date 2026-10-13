@@ -5,15 +5,17 @@
  *
  * - A stay or block covers the half-open range `[start, end)`: the end day is
  *   free for the next arrival.
- * - Confirmed bookings and blocks make dates unavailable.
+ * - Bookings that hold their dates (reserved, confirmed, paid:
+ *   HOLDING_STATUSES) and blocks make dates unavailable.
  * - Inquiries are shown, but do not block: the dates can still be confirmed
  *   for someone else.
- * - Cancelled bookings are ignored entirely.
+ * - Expired and cancelled bookings are ignored entirely.
  */
 import { addDays, type CalendarDate, daysBetween } from "@/lib/calendar-date";
+import { type BookingStatus, holdsDates } from "@/lib/bookings/values";
 import { assertNonEmptyRange, type DateRange, rangesOverlap } from "@/lib/date-range";
 
-export type BookingStatus = "inquiry" | "confirmed" | "cancelled";
+export type { BookingStatus };
 
 export type BookingSpan = DateRange & { id: string; status: BookingStatus };
 export type BlockSpan = DateRange & {
@@ -35,7 +37,7 @@ export type Conflict =
 
 /** Whether a booking holds its dates against everyone else. */
 export function blocksDates(status: BookingStatus): boolean {
-  return status === "confirmed";
+  return holdsDates(status);
 }
 
 /**

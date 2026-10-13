@@ -38,6 +38,10 @@ import {
   type ApiBookingSource,
   type BookingSort,
   type CreateBookingInput,
+  FLOW_ONLY,
+  FLOW_STATUSES,
+  holdsDates,
+  isBooked,
   type ListBookingsQuery,
   stayProblem,
   type UpdateBookingInput,
@@ -49,7 +53,7 @@ export const toDbSource = (source: ApiBookingSource): BookingSource =>
 export const toApiSource = (source: BookingSource): ApiBookingSource =>
   source === "booking_com" ? "booking.com" : source;
 
-const withRelations = {
+export const withRelations = {
   property: { select: { id: true, name: true } },
   guest: { select: { id: true, name: true } },
 } satisfies Prisma.BookingInclude;
@@ -58,13 +62,30 @@ type BookingWithRelations = Prisma.BookingGetPayload<{ include: typeof withRelat
 
 /** The API's view of a booking: dates as YYYY-MM-DD, with its night count. */
 export function toDto(booking: BookingWithRelations) {
-  const { checkIn, checkOut, source, createdAt, updatedAt, ...rest } = booking;
+  const {
+    checkIn,
+    checkOut,
+    source,
+    createdAt,
+    updatedAt,
+    reservedAt,
+    depositDueOn,
+    balanceDueOn,
+    expiredAt,
+    privacyConsentAt,
+    ...rest
+  } = booking;
   const stay = { checkIn: fromUtcDate(checkIn), checkOut: fromUtcDate(checkOut) };
   return {
     ...rest,
     ...stay,
     nights: nights(stay.checkIn, stay.checkOut),
     source: toApiSource(source),
+    reservedAt: reservedAt?.toISOString() ?? null,
+    depositDueOn: depositDueOn && fromUtcDate(depositDueOn),
+    balanceDueOn: balanceDueOn && fromUtcDate(balanceDueOn),
+    expiredAt: expiredAt?.toISOString() ?? null,
+    privacyConsentAt: privacyConsentAt?.toISOString() ?? null,
     createdAt: createdAt.toISOString(),
     updatedAt: updatedAt.toISOString(),
   };
@@ -86,7 +107,7 @@ export type WriteResult =
  * way, a vanished guest into a field error. `ifMissing` answers for a
  * property that no longer exists.
  */
-async function locked(
+export async function locked(
   propertyId: string,
   ifMissing: WriteResult,
   work: (tx: DbClient) => Promise<WriteResult>,
@@ -130,7 +151,7 @@ function calculatedTotal(
 }
 
 /** Whether a booking may take its dates, or what is in the way. */
-async function check(
+export async function check(
   tx: DbClient,
   stay: { propertyId: string; checkIn: CalendarDate; checkOut: CalendarDate },
   ignoreBookingId?: string,
@@ -204,12 +225,12 @@ export async function createBooking(
     property.id,
     noProperty,
     async (tx) => {
-      if (input.status === "confirmed") {
+      if (holdsDates(input.status)) {
         const conflict = await check(tx, input);
         if (conflict) return conflict;
       }
       const booking = await tx.booking.create({ data, include: withRelations });
-      await syncBookingIncome(booking.id, tx, { justConfirmed: booking.status === "confirmed" });
+      await syncBookingIncome(booking.id, tx, { justConfirmed: isBooked(booking.status) });
       await scheduleBookingSync(booking.id, tx);
       return { booking };
     },
@@ -252,6 +273,14 @@ export async function updateBooking(id: string, input: UpdateBookingInput): Prom
       before = { start: fromUtcDate(current.checkIn), end: fromUtcDate(current.checkOut) };
       if (input.source === "website" && current.source !== "website") {
         return { error: "invalid", field: "source", message: WEBSITE_ONLY };
+      }
+      // Kept as it is, a flow status may be sent back; changed to, never.
+      if (
+        input.status &&
+        input.status !== current.status &&
+        (FLOW_STATUSES as readonly string[]).includes(input.status)
+      ) {
+        return { error: "invalid", field: "status", message: FLOW_ONLY };
       }
       // An erased guest's bookings keep their facts but take no new notes.
       if (current.guest.purgedAt && input.notes && input.guestId === undefined) {
@@ -298,7 +327,7 @@ export async function updateBooking(id: string, input: UpdateBookingInput): Prom
       const datesChanged =
         stay.checkIn !== fromUtcDate(current.checkIn) ||
         stay.checkOut !== fromUtcDate(current.checkOut);
-      if (status === "confirmed" && (datesChanged || current.status !== "confirmed")) {
+      if (holdsDates(status) && (datesChanged || !holdsDates(current.status))) {
         const conflict = await check(tx, { propertyId: current.propertyId, ...stay }, id);
         if (conflict) return conflict;
       }
@@ -320,7 +349,7 @@ export async function updateBooking(id: string, input: UpdateBookingInput): Prom
         include: withRelations,
       });
       await syncBookingIncome(id, tx, {
-        justConfirmed: status === "confirmed" && current.status !== "confirmed",
+        justConfirmed: isBooked(status) && !isBooked(current.status),
       });
       await scheduleBookingSync(id, tx);
       return { booking };

@@ -15,22 +15,18 @@ function exclusionError(message: string) {
 describe("isExclusionViolation", () => {
   it("recognises the constraint whatever the server's language quotes it with", () => {
     for (const message of [
-      'conflicting key value violates exclusion constraint "bookings_no_overlapping_confirmed"',
-      "kollidierender Schlüsselwert verletzt Exclusion-Constraint »bookings_no_overlapping_confirmed«",
+      'conflicting key value violates exclusion constraint "bookings_no_overlapping_held"',
+      "kollidierender Schlüsselwert verletzt Exclusion-Constraint »bookings_no_overlapping_held«",
     ]) {
-      expect(
-        isExclusionViolation(exclusionError(message), "bookings_no_overlapping_confirmed"),
-      ).toBe(true);
+      expect(isExclusionViolation(exclusionError(message), "bookings_no_overlapping_held")).toBe(
+        true,
+      );
     }
   });
 
   it("does not match another constraint, a longer name, or another error", () => {
-    const error = exclusionError(
-      'violates exclusion constraint "bookings_no_overlapping_confirmed_v2"',
-    );
-    expect(isExclusionViolation(error, "bookings_no_overlapping_confirmed")).toBe(false);
-    expect(isExclusionViolation(new Error("nope"), "bookings_no_overlapping_confirmed")).toBe(
-      false,
-    );
+    const error = exclusionError('violates exclusion constraint "bookings_no_overlapping_held_v2"');
+    expect(isExclusionViolation(error, "bookings_no_overlapping_held")).toBe(false);
+    expect(isExclusionViolation(new Error("nope"), "bookings_no_overlapping_held")).toBe(false);
   });
 });

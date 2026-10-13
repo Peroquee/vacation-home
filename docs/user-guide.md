@@ -53,7 +53,7 @@ a colour for the calendar.
   pick an arrival and a departure day; only stays your booking rules allow
   can be picked, and they see an estimate (nights × nightly rate + cleaning
   fee, from the property's defaults). They never see why a night is taken,
-  and requests you have not confirmed do not block anything.
+  and requests you have not accepted do not block anything.
 - **Booking rules** (Settings → Booking rules) limit what guests can request
   on the public site: minimum and maximum nights, how many days ahead a stay
   must be requested (lead time) and may be (horizon), which weekdays guests
@@ -111,16 +111,36 @@ calendar) asks for:
 
 **Statuses**
 
-| Status    | Holds the dates | In Google Calendar | Counts as income and occupancy |
-| --------- | --------------- | ------------------ | ------------------------------ |
-| Inquiry   | No              | No                 | No                             |
-| Confirmed | Yes             | Yes                | Yes                            |
-| Cancelled | No              | No (removed)       | No                             |
+| Status    | Holds the dates | In Google Calendar and the iCal export | Counts as income and revenue |
+| --------- | --------------- | -------------------------------------- | ---------------------------- |
+| Inquiry   | No              | No                                     | No                           |
+| Reserved  | Yes             | Yes                                    | No                           |
+| Confirmed | Yes             | Yes                                    | Yes                          |
+| Paid      | Yes             | Yes                                    | Yes                          |
+| Expired   | No              | No (removed)                           | No                           |
+| Cancelled | No              | No (removed)                           | No                           |
+
+Occupancy on the dashboard counts the nights held. A request from the
+public site arrives as an inquiry with the source "Website".
 
 An inquiry may overlap other stays; **Confirm booking** checks the dates
 again and refuses if they have been taken since. **Cancel booking** frees the
 dates at once, keeps the booking (marked cancelled) and does not notify the
-guest. A cancelled booking can be **reinstated as an inquiry**.
+guest. A cancelled or expired booking can be **reinstated as an inquiry**.
+
+**Accepting a request and payment.** **Accept and reserve** holds an
+inquiry's dates for the guest until their first payment is due, under the
+property's **payment terms** (Settings → Payment terms; by default a 20%
+deposit within 7 days of accepting and the balance 30 days before arrival;
+when arrival is 30 days off or closer, the full amount within 3 days). The
+booking's **Payment** card shows what is due and when; **Change deadlines**
+gives the guest more time. **Deposit received** confirms the booking,
+**Balance received** (or **Full amount received**) marks it paid. A
+reservation not paid by the end of its deadline day expires by itself
+within the hour and its dates are free again. A confirmed booking whose
+balance is overdue is never cancelled automatically: that is your call.
+Reminders and notices for each of these steps are recorded for the emails
+to guests and to you, which come with a later update.
 
 ## Guests and their personal data
 

@@ -47,6 +47,7 @@ model Property {
   calendarSyncIssues      CalendarSyncIssue[]
   incomeAutomation        IncomeAutomation?
   bookingRules            BookingRules?
+  paymentTerms            PaymentTerms?
   listing                 PropertyListing?
   photos                  PropertyPhoto[]
   recurringExpenses       RecurringExpense[]
@@ -92,11 +93,22 @@ model Guest {
 
 // --- Bookings -----------------------------------------------------------------
 
+/// The booking flow (GitLab #114): inquiry (a request) -> reserved ->
+/// confirmed -> paid, or expired. Which of them hold the dates:
+/// HOLDING_STATUSES in src/lib/bookings/values.ts.
 enum BookingStatus {
-  /// Asked about, not committed: does not block the dates.
+  /// Asked about, not committed: does not block the dates. A request from
+  /// the public site is one too.
   inquiry
-  /// Committed: blocks the dates (see the availability rules).
+  /// Accepted, awaiting the deposit (or the full amount) by its deadline:
+  /// holds the dates.
+  reserved
+  /// Committed (for a reservation: the deposit arrived): holds the dates.
   confirmed
+  /// Paid in full: holds the dates.
+  paid
+  /// A reservation not paid in time; never blocks.
+  expired
   /// Kept for history; never blocks.
   cancelled
 
@@ -129,37 +141,46 @@ enum BookingSource {
 /// rate and fee are copied from the property's defaults and then belong to
 /// the booking.
 model Booking {
-  id               String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  propertyId       String        @map("property_id") @db.Uuid
-  guestId          String        @map("guest_id") @db.Uuid
-  checkIn          DateTime      @map("check_in") @db.Date
+  id                 String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  propertyId         String        @map("property_id") @db.Uuid
+  guestId            String        @map("guest_id") @db.Uuid
+  checkIn            DateTime      @map("check_in") @db.Date
   /// Exclusive: the departure day, when the stay no longer occupies the night.
-  checkOut         DateTime      @map("check_out") @db.Date
-  status           BookingStatus @default(inquiry)
-  source           BookingSource @default(direct)
-  guestCount       Int           @default(1) @map("guest_count")
-  nightlyRateMinor Int           @map("nightly_rate_minor")
-  cleaningFeeMinor Int           @map("cleaning_fee_minor")
+  checkOut           DateTime      @map("check_out") @db.Date
+  status             BookingStatus @default(inquiry)
+  source             BookingSource @default(direct)
+  guestCount         Int           @default(1) @map("guest_count")
+  nightlyRateMinor   Int           @map("nightly_rate_minor")
+  cleaningFeeMinor   Int           @map("cleaning_fee_minor")
   /// Normally nights x nightly rate + cleaning fee, kept up to date by the
   /// API; `totalIsManual` marks a total set by hand, which is then left alone.
-  totalAmountMinor Int           @map("total_amount_minor")
-  totalIsManual    Boolean       @default(false) @map("total_is_manual")
-  currency         String        @db.Char(3)
-  notes            String?
+  totalAmountMinor   Int           @map("total_amount_minor")
+  totalIsManual      Boolean       @default(false) @map("total_is_manual")
+  currency           String        @db.Char(3)
+  notes              String?
   /// A request from the public site (GitLab #109): the code the guest quotes,
   /// e.g. as payment reference. Never a credential: it unlocks nothing.
-  reference        String?       @unique
+  reference          String?       @unique
   /// What the guest wrote, and the name and phone they gave, as sent; the
   /// guest record may be an existing one (matched by email). Personal data:
   /// cleared by the DSGVO purge, like `notes`.
-  guestMessage     String?       @map("guest_message")
-  requesterName    String?       @map("requester_name")
-  requesterPhone   String?       @map("requester_phone")
+  guestMessage       String?       @map("guest_message")
+  requesterName      String?       @map("requester_name")
+  requesterPhone     String?       @map("requester_phone")
   /// The page language of the request, for the emails to the guest.
-  guestLocale      String?       @map("guest_locale")
-  privacyConsentAt DateTime?     @map("privacy_consent_at")
-  createdAt        DateTime      @default(now()) @map("created_at")
-  updatedAt        DateTime      @updatedAt @map("updated_at")
+  guestLocale        String?       @map("guest_locale")
+  privacyConsentAt   DateTime?     @map("privacy_consent_at")
+  /// The hold (GitLab #114), set when the booking is reserved: what is due
+  /// first (the deposit, or the full amount at short notice) and by when,
+  /// and when the balance is due (null when the first payment is all of
+  /// it). Calendar days in the property's timezone.
+  reservedAt         DateTime?     @map("reserved_at")
+  depositAmountMinor Int?          @map("deposit_amount_minor")
+  depositDueOn       DateTime?     @map("deposit_due_on") @db.Date
+  balanceDueOn       DateTime?     @map("balance_due_on") @db.Date
+  expiredAt          DateTime?     @map("expired_at")
+  createdAt          DateTime      @default(now()) @map("created_at")
+  updatedAt          DateTime      @updatedAt @map("updated_at")
 
   // Restrict: a property or guest with bookings cannot be deleted (their
   // APIs answer 409 and suggest archiving instead).
@@ -167,6 +188,7 @@ model Booking {
   guest         Guest               @relation(fields: [guestId], references: [id], onDelete: Restrict)
   transactions  Transaction[]
   calendarLinks CalendarEventLink[]
+  events        BookingEvent[]
 
   // Target of the transactions' (booking, property) foreign key, which keeps
   // a transaction's booking on the transaction's own property.
@@ -174,6 +196,32 @@ model Booking {
   @@index([propertyId, checkIn, checkOut])
   @@index([guestId])
   @@map("bookings")
+}
+
+enum BookingEventKind {
+  reserved
+  deposit_reminder
+  reservation_expired
+  balance_reminder
+  balance_overdue
+
+  @@map("booking_event_kind")
+}
+
+/// What happened to a booking that the guest or owner is to be told about
+/// (GitLab #114); the emails go out from these (GitLab #111). Once per
+/// (booking, kind, key): the key names the occasion, e.g. the deadline.
+model BookingEvent {
+  id        String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  bookingId String           @map("booking_id") @db.Uuid
+  kind      BookingEventKind
+  key       String
+  createdAt DateTime         @default(now()) @map("created_at")
+
+  booking Booking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+
+  @@unique([bookingId, kind, key])
+  @@map("booking_events")
 }
 
 // --- Blocks -------------------------------------------------------------------
@@ -487,6 +535,29 @@ model BookingRules {
   property Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
 
   @@map("booking_rules")
+}
+
+/// How a reserved booking is paid (GitLab #114), per property. No row
+/// means the defaults: 20% deposit within 7 days, the balance 30 days
+/// before arrival, the full amount within 3 days at shorter notice.
+model PaymentTerms {
+  propertyId           String   @id @map("property_id") @db.Uuid
+  /// The deposit: a percentage of the total or a fixed amount, one of them.
+  depositPercent       Int?     @default(20) @map("deposit_percent")
+  depositFixedMinor    Int?     @map("deposit_fixed_minor")
+  /// Days after acceptance the deposit is due.
+  depositDueDays       Int      @default(7) @map("deposit_due_days")
+  /// Days before arrival the balance is due. Arrival this close or closer
+  /// at acceptance: the full amount is due at once instead.
+  balanceDueDaysBefore Int      @default(30) @map("balance_due_days_before")
+  /// Days after acceptance the full amount is due at short notice.
+  fullPaymentDueDays   Int      @default(3) @map("full_payment_due_days")
+  createdAt            DateTime @default(now()) @map("created_at")
+  updatedAt            DateTime @updatedAt @map("updated_at")
+
+  property Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+
+  @@map("payment_terms")
 }
 
 /// What guests see of a property on the public booking site (GitLab #106).

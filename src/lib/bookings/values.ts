@@ -20,7 +20,57 @@ export function stayProblem(checkIn: string, checkOut: string): string | null {
   return null;
 }
 
-export const BOOKING_STATUSES = ["inquiry", "confirmed", "cancelled"] as const;
+/**
+ * The booking flow (GitLab #114): inquiry (also a request from the public
+ * site) -> reserved (accepted, awaiting payment) -> confirmed (deposit
+ * received) -> paid; a reservation not paid in time -> expired. A booking
+ * the owner enters is simply inquiry, confirmed or cancelled, as ever.
+ */
+export const BOOKING_STATUSES = [
+  "inquiry",
+  "reserved",
+  "confirmed",
+  "paid",
+  "expired",
+  "cancelled",
+] as const;
+export type BookingStatus = (typeof BOOKING_STATUSES)[number];
+
+/**
+ * The statuses that hold a booking's dates against every other booking and
+ * block. THE list: the database's exclusion constraint and triggers
+ * (prisma/migrations/20261013030000_reservation_hold) name the same, and a
+ * DB test proves they agree.
+ */
+export const HOLDING_STATUSES = [
+  "reserved",
+  "confirmed",
+  "paid",
+] as const satisfies readonly BookingStatus[];
+
+/** Whether a booking in `status` holds its dates. */
+export function holdsDates(status: BookingStatus): boolean {
+  return (HOLDING_STATUSES as readonly string[]).includes(status);
+}
+
+/**
+ * The statuses of a stay that will happen and earn: the deposit, or all of
+ * it, received. Income, revenue and occupancy count these; a reservation
+ * still awaiting payment holds the dates but is not counted yet.
+ */
+export const BOOKED_STATUSES = ["confirmed", "paid"] as const satisfies readonly BookingStatus[];
+
+export function isBooked(status: BookingStatus): boolean {
+  return (BOOKED_STATUSES as readonly string[]).includes(status);
+}
+
+/**
+ * Statuses only the flow sets: accepting a request reserves it (with its
+ * payment terms), and the hold job lets an unpaid one expire. Neither can
+ * be chosen when creating or editing a booking.
+ */
+export const FLOW_STATUSES = ["reserved", "expired"] as const satisfies readonly BookingStatus[];
+export const FLOW_ONLY = "is set by the booking flow only";
 /**
  * As the API speaks them; stored as the BookingSource enum. "website" is a
  * request from the public booking site (GitLab #109): only that site

@@ -47,7 +47,8 @@ async function loadCalendars(
     db.booking.findMany({
       where: {
         propertyId: { in: propertyIds },
-        status: { not: "cancelled" },
+        // Expired and cancelled bookings are history, not on the calendar.
+        status: { notIn: ["cancelled", "expired"] },
         checkIn: { lt: toUtcDate(range.end) },
         // Including stays ending on the first day, for their check-out marker.
         checkOut: { gte: toUtcDate(range.start) },

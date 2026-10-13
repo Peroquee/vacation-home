@@ -22,6 +22,7 @@
  * the booking. The description holds the booking's id only, never guest
  * personal data.
  */
+import { isBooked } from "@/lib/bookings/values";
 import type { GeneratedEntry } from "@/generated/prisma/client";
 import { fromUtcDate } from "@/lib/calendar-date";
 import type { DbClient } from "@/lib/db";
@@ -67,7 +68,9 @@ export async function syncBookingIncome(
   // Hands off anything edited by hand.
   const managed = entries.filter((entry) => entry.detachedAt === null);
 
-  if (booking.status !== "confirmed") {
+  // Income is counted once the stay is booked: a reservation awaiting its
+  // deposit is not yet.
+  if (!isBooked(booking.status)) {
     const ids = managed.map((entry) => entry.id);
     if (ids.length === 0) return;
     if (settings.onCancel === "delete") {

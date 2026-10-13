@@ -21,6 +21,7 @@
  *   disconnected Google account stops all pushes; events already in Google
  *   are left as they are.
  */
+import { holdsDates } from "@/lib/bookings/values";
 import { env } from "@/env";
 import type { BookingStatus, CalendarEventLink } from "@/generated/prisma/client";
 import {
@@ -121,7 +122,8 @@ export async function scheduleBookingSync(bookingId: string, client: DbClient = 
   });
 }
 
-const hasEvent = (status: BookingStatus) => status === "confirmed";
+/** Bookings holding their dates are in the owner's calendar; a reservation too. */
+const hasEvent = (status: BookingStatus) => holdsDates(status);
 
 /**
  * Schedules every booking of a property that is current or still to come
