@@ -10,4 +10,5 @@ export const SOURCE_KEYS = {
   airbnb: "airbnb",
   "booking.com": "bookingCom",
   other: "other",
+  website: "website",
 } as const satisfies Record<ApiBookingSource, string>;

@@ -1,10 +1,13 @@
 "use client";
 
 import { ChevronLeft, ChevronRight } from "lucide-react";
+import dynamic from "next/dynamic";
 import { useTranslations } from "next-intl";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import { useFormat } from "@/i18n/use-format";
+import type { SentRequest } from "@/lib/booking-requests/service";
+import { formatReference } from "@/lib/booking-requests/values";
 import type { PublicAvailability } from "@/lib/booking-rules/public-availability";
 import { checkOutOptions, type PublicNight } from "@/lib/booking-rules/public-nights";
 import { calculateTotalMinor } from "@/lib/bookings/pricing";
@@ -19,6 +22,11 @@ import {
 
 type Stay = { checkIn: CalendarDate | null; checkOut: CalendarDate | null };
 
+/** Loaded once the guest asks to request a stay, not with the page. */
+const RequestForm = dynamic(() => import("./request-form").then((m) => m.RequestForm), {
+  ssr: false,
+});
+
 /** Months shown side by side on wider screens; one at a time on a phone. */
 const MONTHS = 2;
 
@@ -28,15 +36,28 @@ const MONTHS = 2;
  * picked, then only departures that keep every night free and the stay
  * within its minimum and maximum length. Shows a price estimate computed
  * exactly as a booking's default total. Mobile first: one month, swiped
- * through with the arrows; two side by side from `sm` up.
+ * through with the arrows; two side by side from `sm` up. Then the request
+ * form (GitLab #109), and once sent, its confirmation in place of it all.
  */
-export function StayPicker({ slug, firstMonth }: { slug: string; firstMonth: MonthKey }) {
+export function StayPicker({
+  slug,
+  firstMonth,
+  maxGuests,
+}: {
+  slug: string;
+  firstMonth: MonthKey;
+  maxGuests: number | null;
+}) {
   const t = useTranslations("stay.picker");
   const format = useFormat();
   const [month, setMonth] = useState(firstMonth);
   const [data, setData] = useState<{ key: string; value: PublicAvailability } | null>(null);
   const [failed, setFailed] = useState(false);
   const [stay, setStay] = useState<Stay>({ checkIn: null, checkOut: null });
+  const [requesting, setRequesting] = useState(false);
+  const [sent, setSent] = useState<SentRequest | null>(null);
+  // Bumped to load the free dates again, past the browser's cache.
+  const [reload, setReload] = useState(0);
   const weekStart = weekStartFor(format.locale);
 
   const months = useMemo(
@@ -59,6 +80,7 @@ export function StayPicker({ slug, firstMonth }: { slug: string; firstMonth: Mon
         const params = new URLSearchParams(window);
         const response = await fetch(`/api/public/properties/${slug}/availability?${params}`, {
           signal: controller.signal,
+          ...(reload > 0 && { cache: "reload" as const }),
         });
         if (!response.ok) throw new Error(String(response.status));
         const value: PublicAvailability = await response.json();
@@ -69,7 +91,7 @@ export function StayPicker({ slug, firstMonth }: { slug: string; firstMonth: Mon
       }
     })();
     return () => controller.abort();
-  }, [slug, key, window]);
+  }, [slug, key, window, reload]);
 
   const availability = data?.key === key ? data.value : null;
   const nights = useMemo(
@@ -85,6 +107,7 @@ export function StayPicker({ slug, firstMonth }: { slug: string; firstMonth: Mon
   );
 
   function choose(date: CalendarDate) {
+    setRequesting(false);
     if (stay.checkIn && !stay.checkOut && departures.has(date)) {
       setStay({ checkIn: stay.checkIn, checkOut: date });
     } else if (nights.get(date)?.checkIn) {
@@ -102,6 +125,8 @@ export function StayPicker({ slug, firstMonth }: { slug: string; firstMonth: Mon
           cleaningFeeMinor: availability.cleaningFeeMinor,
         })
       : null;
+
+  if (sent) return <RequestSent request={sent} />;
 
   return (
     <section aria-labelledby="stay-picker-heading" className="space-y-4">
@@ -192,15 +217,83 @@ export function StayPicker({ slug, firstMonth }: { slug: string; firstMonth: Mon
             {t("total", { total: format.money(total, availability.currency) })}
           </p>
           <p className="text-muted-foreground text-xs">{t("estimateNote")}</p>
-          <button
-            type="button"
-            className="text-sm underline"
-            onClick={() => setStay({ checkIn: null, checkOut: null })}
-          >
-            {t("clear")}
-          </button>
+          <div className="flex flex-wrap items-center gap-4 pt-2">
+            {!requesting ? (
+              <button
+                type="button"
+                className="bg-primary text-primary-foreground rounded-md px-4 py-2 text-sm font-medium"
+                onClick={() => setRequesting(true)}
+              >
+                {t("request")}
+              </button>
+            ) : null}
+            <button
+              type="button"
+              className="text-sm underline"
+              onClick={() => {
+                setRequesting(false);
+                setStay({ checkIn: null, checkOut: null });
+              }}
+            >
+              {t("clear")}
+            </button>
+          </div>
+          {requesting ? (
+            <div className="border-t pt-4">
+              <RequestForm
+                slug={slug}
+                checkIn={stay.checkIn}
+                checkOut={stay.checkOut}
+                maxGuests={maxGuests}
+                onSent={setSent}
+                onDatesRefused={() => setReload((n) => n + 1)}
+              />
+            </div>
+          ) : null}
         </div>
       ) : null}
+    </section>
+  );
+}
+
+/** The confirmation once a request is sent: its reference and what was asked for. */
+function RequestSent({ request }: { request: SentRequest }) {
+  const t = useTranslations("stay.sent");
+  const format = useFormat();
+  const heading = useRef<HTMLHeadingElement>(null);
+  useEffect(() => {
+    heading.current?.focus();
+    heading.current?.scrollIntoView({ block: "start" });
+  }, []);
+  return (
+    <section
+      aria-labelledby="request-sent-heading"
+      className="space-y-3 rounded-xl border p-4"
+      data-testid="request-sent"
+    >
+      <h2
+        id="request-sent-heading"
+        ref={heading}
+        tabIndex={-1}
+        className="text-lg font-semibold outline-none"
+      >
+        {t("heading")}
+      </h2>
+      <p>{t("body")}</p>
+      <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-sm">
+        <dt className="text-muted-foreground">{t("reference")}</dt>
+        <dd className="font-mono text-base font-semibold">{formatReference(request.reference)}</dd>
+        <dt className="text-muted-foreground">{t("dates")}</dt>
+        <dd>
+          {format.dateRange(request.checkIn, request.checkOut)} ·{" "}
+          {t("nights", { count: request.nights })}
+        </dd>
+        <dt className="text-muted-foreground">{t("guests")}</dt>
+        <dd>{request.guestCount}</dd>
+        <dt className="text-muted-foreground">{t("estimate")}</dt>
+        <dd>{format.money(request.totalAmountMinor, request.currency)}</dd>
+      </dl>
+      <p className="text-muted-foreground text-sm">{t("keepReference")}</p>
     </section>
   );
 }

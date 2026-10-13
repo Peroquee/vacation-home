@@ -37,6 +37,7 @@
     "@prisma/client": "7.10.0",
     "@react-pdf/renderer": "4.9.0",
     "@sentry/nextjs": "11.6.0",
+    "altcha-lib": "2.5.0",
     "class-variance-authority": "^0.7.1",
     "cn": "^0.4.0",
     "ical.js": "2.2.1",

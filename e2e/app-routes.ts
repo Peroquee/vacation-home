@@ -28,9 +28,13 @@ export const PUBLIC_ROUTES = [
   "/api/public/properties/[slug]",
   "/api/public/properties/[slug]/availability",
   "/api/public/properties/[slug]/photos/[file]",
+  "/api/public/properties/[slug]/request-challenge",
+  "/api/public/properties/[slug]/requests",
   "/api/public/properties/[slug]/stay-check",
   "/robots.txt",
   "/stay/[slug]",
+  "/stay/legal/imprint",
+  "/stay/legal/privacy",
   // Signing in, and what has its own secret or reveals nothing.
   "/api/auth/[...nextauth]",
   "/api/google/webhook",

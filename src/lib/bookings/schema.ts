@@ -6,7 +6,13 @@ import { csv, fromBeforeTo, page, pageSize } from "@/lib/query";
 
 import { MAX_AMOUNT_MINOR } from "./pricing";
 
-import { BOOKING_SORTS, BOOKING_SOURCES, BOOKING_STATUSES, stayProblem } from "./values";
+import {
+  BOOKING_SORTS,
+  BOOKING_SOURCES,
+  BOOKING_STATUSES,
+  stayProblem,
+  WEBSITE_ONLY,
+} from "./values";
 
 export * from "./values";
 
@@ -65,7 +71,7 @@ export const createBookingSchema = z
     checkIn: fields.checkIn,
     checkOut: fields.checkOut,
     status: fields.status.default("inquiry"),
-    source: fields.source.default("direct"),
+    source: fields.source.refine((source) => source !== "website", WEBSITE_ONLY).default("direct"),
     guestCount: fields.guestCount.default(1),
     nightlyRateMinor: fields.nightlyRateMinor.optional(),
     cleaningFeeMinor: fields.cleaningFeeMinor.optional(),

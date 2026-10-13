@@ -46,6 +46,19 @@ export const RULES: Rule[] = [
     by: "client",
   },
   {
+    // Booking requests (GitLab #109): each one stores a guest and a booking
+    // and asks the owner for an answer. Enough for a guest correcting a
+    // refused request a few times; a flood is also limited per email
+    // address (src/lib/booking-requests/limits.ts) and slowed by the proof
+    // of work.
+    name: "public-request",
+    matches: (method, path) =>
+      method === "POST" && /^\/api\/public\/properties\/[^/]+\/requests$/.test(path),
+    limit: 10,
+    windowMs: 10 * MINUTE,
+    by: "client",
+  },
+  {
     name: "public-api",
     matches: (_method, path) => path.startsWith("/api/public/"),
     limit: 60,

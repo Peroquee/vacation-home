@@ -28,6 +28,9 @@ const fields = {
   notes: optionalText(2000),
 };
 
+/** The fields one by one, for forms that collect a guest's details too. */
+export { fields as guestFields };
+
 export const createGuestSchema = z.strictObject({
   name: fields.name,
   email: fields.email.optional(),

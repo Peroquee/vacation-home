@@ -108,6 +108,8 @@ enum BookingSource {
   airbnb
   booking_com @map("booking.com")
   other
+  /// Requested by the guest on the public booking site (GitLab #109).
+  website
 
   @@map("booking_source")
 }
@@ -144,6 +146,18 @@ model Booking {
   totalIsManual    Boolean       @default(false) @map("total_is_manual")
   currency         String        @db.Char(3)
   notes            String?
+  /// A request from the public site (GitLab #109): the code the guest quotes,
+  /// e.g. as payment reference. Never a credential: it unlocks nothing.
+  reference        String?       @unique
+  /// What the guest wrote, and the name and phone they gave, as sent; the
+  /// guest record may be an existing one (matched by email). Personal data:
+  /// cleared by the DSGVO purge, like `notes`.
+  guestMessage     String?       @map("guest_message")
+  requesterName    String?       @map("requester_name")
+  requesterPhone   String?       @map("requester_phone")
+  /// The page language of the request, for the emails to the guest.
+  guestLocale      String?       @map("guest_locale")
+  privacyConsentAt DateTime?     @map("privacy_consent_at")
   createdAt        DateTime      @default(now()) @map("created_at")
   updatedAt        DateTime      @updatedAt @map("updated_at")
 

@@ -21,9 +21,14 @@ export function stayProblem(checkIn: string, checkOut: string): string | null {
 }
 
 export const BOOKING_STATUSES = ["inquiry", "confirmed", "cancelled"] as const;
-/** As the API speaks them; stored as the BookingSource enum. */
-export const BOOKING_SOURCES = ["direct", "airbnb", "booking.com", "other"] as const;
+/**
+ * As the API speaks them; stored as the BookingSource enum. "website" is a
+ * request from the public booking site (GitLab #109): only that site
+ * creates one, with its reference and the guest's privacy consent.
+ */
+export const BOOKING_SOURCES = ["direct", "airbnb", "booking.com", "other", "website"] as const;
 export type ApiBookingSource = (typeof BOOKING_SOURCES)[number];
+export const WEBSITE_ONLY = "is set by the public booking site only";
 
 /** List orders: a column, ascending, or with a leading "-", descending. */
 export const BOOKING_SORTS = [
