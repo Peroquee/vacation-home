@@ -15,6 +15,9 @@ function day(offset: number): string {
 
 test.afterEach(async () => {
   await withE2eDb(async (db) => {
+    // A booking with payments is an accounting record: its entries first.
+    await db.query("DELETE FROM transactions WHERE booking_id IS NOT NULL");
+    await db.query("DELETE FROM booking_payments");
     await db.query("DELETE FROM bookings");
     await db.query("DELETE FROM guests");
     await db.query("DELETE FROM properties");
@@ -92,7 +95,7 @@ test("an accepted request holds its dates until it is paid", async ({ request, b
   expect(patched.status()).toBe(422);
 });
 
-test("the owner sees what is due, moves a deadline and records the deposit", async ({
+test("the owner sees what is due, moves a deadline, and records the deposit and the balance", async ({
   request,
   page,
 }) => {
@@ -112,10 +115,26 @@ test("the owner sees what is due, moves a deadline and records the deposit", asy
   const stored = await (await request.get(`/api/bookings/${booking.id}`)).json();
   expect(stored.depositDueOn).toBe(day(10));
 
-  await page.getByRole("button", { name: "Deposit received" }).click();
+  // The deposit arrives (GitLab #115): recorded, it confirms the booking.
+  await page.getByRole("button", { name: "Record payment" }).click();
+  const payment = page.getByRole("dialog");
+  await expect(payment.getByLabel("Kind")).toHaveValue("deposit");
+  await expect(payment.getByLabel("Amount (EUR)")).toHaveValue("220.00");
+  await payment.getByRole("button", { name: "Record payment" }).click();
+  await expect(payment).toBeHidden();
   await expect(page.getByText("Confirmed", { exact: true })).toBeVisible();
-  await page.getByRole("button", { name: "Balance received" }).click();
+  await expect(
+    page.getByText(/Received €220.00 of €1,100.00 · balance €880.00 due by/),
+  ).toBeVisible();
+
+  // Then the balance: paid.
+  await page.getByRole("button", { name: "Record payment" }).click();
+  await expect(payment.getByLabel("Kind")).toHaveValue("balance");
+  await expect(payment.getByLabel("Amount (EUR)")).toHaveValue("880.00");
+  await payment.getByRole("button", { name: "Record payment" }).click();
+  await expect(payment).toBeHidden();
   await expect(page.getByText("Paid", { exact: true })).toBeVisible();
+  await expect(page.getByText("Received €1,100.00 of €1,100.00")).toBeVisible();
 });
 
 test("the payment terms are set per property in settings", async ({ request, page }) => {
