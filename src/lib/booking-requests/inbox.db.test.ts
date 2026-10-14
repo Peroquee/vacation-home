@@ -211,9 +211,17 @@ describe("retention", () => {
       },
     });
 
-    // Not yet: six months after declining are not over.
+    // Declined at noon on 1 July, expired at noon on 6 July: each is erased
+    // six calendar months later to the minute, not a moment before. 31
+    // December is the month-end case (less six months: 30 June).
     expect(await anonymiseOldRequests(new Date("2026-12-31T12:00:00Z"))).toBe(0);
-    expect(await anonymiseOldRequests(new Date("2027-01-07T12:00:00Z"))).toBe(2);
+    expect(await anonymiseOldRequests(new Date("2027-01-01T11:59:59Z"))).toBe(0);
+    expect(await anonymiseOldRequests(new Date("2027-01-01T12:00:00Z"))).toBe(1);
+    expect(await db.guest.findUniqueOrThrow({ where: { id: expired.guestId } })).toMatchObject({
+      purgedAt: null,
+    });
+    expect(await anonymiseOldRequests(new Date("2027-01-06T11:59:59Z"))).toBe(0);
+    expect(await anonymiseOldRequests(new Date("2027-01-06T12:00:00Z"))).toBe(1);
 
     for (const { booking, guestId } of [declined, expired]) {
       expect(await db.guest.findUniqueOrThrow({ where: { id: guestId } })).toMatchObject({
