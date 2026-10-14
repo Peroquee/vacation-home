@@ -6,7 +6,7 @@ import { useTranslations } from "next-intl";
 import { useState } from "react";
 
 import { toastError, toastSuccess } from "@/components/toast";
-import { useConflictText } from "@/components/use-conflict-text";
+import { conflictGuestNames, useConflictText } from "@/components/use-conflict-text";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -35,6 +35,7 @@ export function RequestActions({ id, name }: { id: string; name: string }) {
   const router = useRouter();
   const [pending, setPending] = useState(false);
   const [conflicts, setConflicts] = useState<Conflict[]>([]);
+  const [names, setNames] = useState<ReadonlyMap<string, string>>(new Map());
   const [open, setOpen] = useState(false);
   const [reason, setReason] = useState("");
 
@@ -49,6 +50,7 @@ export function RequestActions({ id, name }: { id: string; name: string }) {
     if (response.ok) return true;
     const data = await response.json().catch(() => null);
     if (response.status === 409 && data?.error?.conflicts) {
+      setNames(await conflictGuestNames(data.error.conflicts));
       setConflicts(data.error.conflicts);
       return false;
     }
@@ -148,7 +150,7 @@ export function RequestActions({ id, name }: { id: string; name: string }) {
               <li key={`${conflict.kind}-${conflict.id}`}>
                 {conflict.kind === "booking" ? (
                   <Link href={`/bookings/${conflict.id}`} className="underline">
-                    {text.describe(conflict)}
+                    {text.describe(conflict, names)}
                   </Link>
                 ) : (
                   text.describe(conflict)
