@@ -7,7 +7,7 @@ import { useState } from "react";
 
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { toastError, toastSuccess } from "@/components/toast";
-import { useConflictText } from "@/components/use-conflict-text";
+import { conflictGuestNames, useConflictText } from "@/components/use-conflict-text";
 import { Button } from "@/components/ui/button";
 import { type Conflict } from "@/lib/bookings/form";
 import type { BookingStatus } from "@/lib/bookings/values";
@@ -68,6 +68,7 @@ export function BookingActions({
   const router = useRouter();
   const [pending, setPending] = useState(false);
   const [refusal, setRefusal] = useState<RequestError | null>(null);
+  const [names, setNames] = useState<ReadonlyMap<string, string>>(new Map());
   const t = useTranslations("bookings.actions");
   const tCommon = useTranslations("common");
   const text = useConflictText();
@@ -83,8 +84,10 @@ export function BookingActions({
       toastSuccess(done);
       router.refresh();
     } catch (error) {
-      if (error instanceof RequestError && error.conflicts.length > 0) setRefusal(error);
-      else toastError(error, failed);
+      if (error instanceof RequestError && error.conflicts.length > 0) {
+        setNames(await conflictGuestNames(error.conflicts));
+        setRefusal(error);
+      } else toastError(error, failed);
     } finally {
       setPending(false);
     }
@@ -189,7 +192,7 @@ export function BookingActions({
               <li key={`${conflict.kind}-${conflict.id}`}>
                 {conflict.kind === "booking" ? (
                   <Link href={`/bookings/${conflict.id}`} className="underline">
-                    {text.describe(conflict)}
+                    {text.describe(conflict, names)}
                   </Link>
                 ) : (
                   text.describe(conflict)
