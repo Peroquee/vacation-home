@@ -13,6 +13,7 @@ import { db } from "@/lib/db";
 import { type Formatters } from "@/i18n/format";
 import { getFormat } from "@/i18n/get-format";
 import { getBookingRulesFor } from "@/lib/booking-rules/service";
+import { getPaymentTermsFor } from "@/lib/payment-terms/service";
 import { fromUtcDate } from "@/lib/calendar-date";
 import { toDto as calendarDto } from "@/lib/google/calendar-settings";
 import { calendarConnectAvailable, getConnectionStatus } from "@/lib/google/connection";
@@ -27,6 +28,7 @@ import {
   type PropertySync,
 } from "./google-calendar-section";
 import { BookingRulesSection } from "./booking-rules-section";
+import { PaymentTermsSection } from "./payment-terms-section";
 import { DoubleBookings } from "./double-bookings";
 import { IcalSection } from "./ical-section";
 import { PropertyArchiveButton } from "./property-archive-button";
@@ -117,10 +119,11 @@ export default async function SettingsPage({ searchParams }: PageProps<"/setting
   const active = properties.filter((p) => !p.archived);
   const archived = properties.filter((p) => p.archived);
   const google = await googleSettings(active.map((p) => ({ id: p.id, name: p.name })));
-  const [ical, doubleBookings, bookingRules] = await Promise.all([
+  const [ical, doubleBookings, bookingRules, paymentTerms] = await Promise.all([
     icalSettings(active.map((p) => p.id)),
     openDoubleBookings(),
     getBookingRulesFor(active.map((p) => p.id)),
+    getPaymentTermsFor(active.map((p) => p.id)),
   ]);
   const t = await getTranslations("settings.page");
   const tCommon = await getTranslations("common");
@@ -190,6 +193,15 @@ export default async function SettingsPage({ searchParams }: PageProps<"/setting
             properties={active.map((p) => ({
               property: { id: p.id, name: p.name },
               rules: bookingRules.get(p.id)!,
+            }))}
+          />
+        ) : null}
+
+        {active.length > 0 ? (
+          <PaymentTermsSection
+            properties={active.map((p) => ({
+              property: { id: p.id, name: p.name, currency: p.currency },
+              terms: paymentTerms.get(p.id)!,
             }))}
           />
         ) : null}

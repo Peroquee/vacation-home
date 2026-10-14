@@ -13,6 +13,7 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import { useFormat } from "@/i18n/use-format";
+import type { BookingStatus } from "@/lib/bookings/values";
 import { guestDisplayName } from "@/lib/guests/display";
 
 type Detail = {
@@ -20,7 +21,7 @@ type Detail = {
   checkIn: string;
   checkOut: string;
   nights: number;
-  status: "inquiry" | "confirmed" | "cancelled";
+  status: BookingStatus;
   guestCount: number;
   totalAmountMinor: number;
   currency: string;

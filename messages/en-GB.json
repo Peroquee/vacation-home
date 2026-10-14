@@ -278,6 +278,36 @@
         "weekdays": "arrive on {days}",
         "buffer": "{days, plural, one {# night} other {# nights}} between stays"
       }
+    },
+    "paymentTerms": {
+      "title": "Payment terms",
+      "description": "What guests pay once you accept their request, and by when. Accepting holds the dates until the first payment is due; if it does not arrive in time, the reservation lapses by itself and the dates are free again.",
+      "edit": "Edit the payment terms of {name}",
+      "dialogTitle": "Payment terms: {name}",
+      "dialogDescription": "Reservations already made keep their terms.",
+      "saved": "Payment terms saved",
+      "saveFailed": "Could not save the payment terms",
+      "kind": {
+        "percent": "Percentage of the total",
+        "fixed": "Fixed amount"
+      },
+      "fields": {
+        "deposit": "Deposit",
+        "depositPercent": "Deposit (%)",
+        "depositFixed": "Deposit ({currency})",
+        "depositDueDays": "Deposit due (days after accepting)",
+        "balanceDueDaysBefore": "Balance due (days before arrival)",
+        "fullPaymentDueDays": "Full amount due at short notice (days)"
+      },
+      "hints": {
+        "fullPaymentDueDays": "When arrival is no further off than the balance’s days before arrival, the full amount is due at once, within these days."
+      },
+      "summary": {
+        "percent": "{percent}% deposit within {days, plural, one {# day} other {# days}}",
+        "fixed": "{amount} deposit within {days, plural, one {# day} other {# days}}",
+        "balance": "balance {days, plural, one {# day} other {# days}} before arrival",
+        "full": "at short notice all within {days, plural, one {# day} other {# days}}"
+      }
     }
   },
   "forms": {
@@ -321,7 +351,10 @@
   "bookings": {
     "status": {
       "inquiry": "Inquiry",
+      "reserved": "Reserved",
       "confirmed": "Confirmed",
+      "paid": "Paid",
+      "expired": "Expired",
       "cancelled": "Cancelled"
     },
     "source": {
@@ -377,7 +410,16 @@
       "keep": "Keep booking",
       "cancelled": "Booking cancelled",
       "taken": "This booking cannot be confirmed: its dates are taken.",
-      "takenHint": "Change the dates, or cancel the other booking first."
+      "takenHint": "Change the dates, or cancel the other booking first.",
+      "reserve": "Accept and reserve",
+      "reserved": "Dates reserved until the payment deadline",
+      "reserveFailed": "Could not reserve",
+      "depositReceived": "Deposit received",
+      "depositConfirmed": "Booking confirmed: deposit received",
+      "fullReceived": "Full amount received",
+      "balanceReceived": "Balance received",
+      "paid": "Booking marked as paid",
+      "paymentFailed": "Could not record the payment"
     },
     "filters": {
       "whichStays": "Which stays",
@@ -480,6 +522,21 @@
       "phone": "Phone",
       "adding": "Adding…",
       "add": "Add guest"
+    },
+    "hold": {
+      "title": "Payment",
+      "deposit": "Deposit",
+      "fullAmount": "Full amount",
+      "balance": "Balance",
+      "due": "due {date}",
+      "settled": "received",
+      "expired": "Not paid in time: the reservation expired and its dates are free again.",
+      "changeDeadlines": "Change deadlines",
+      "changeDeadlinesHint": "For example when the guest asked for a few more days. A new deadline gets its own reminder.",
+      "depositDue": "Deposit due",
+      "balanceDue": "Balance due",
+      "deadlinesSaved": "Deadlines changed",
+      "deadlinesFailed": "Could not change the deadlines"
     }
   },
   "guests": {
@@ -539,7 +596,8 @@
       "legendConfirmed": "Confirmed",
       "legendInquiry": "Inquiry (dates not held)",
       "dragTo": "{guest}: {range}, {nights, plural, one {# night} other {# nights}}",
-      "dragHint": "Drag to the new dates, or press Escape."
+      "dragHint": "Drag to the new dates, or press Escape.",
+      "reserved": "reserved, awaiting payment"
     },
     "view": {
       "blocked": "Dates blocked",
@@ -585,7 +643,8 @@
       "inquiry": " · inquiry",
       "fromGoogle": " · from Google Calendar",
       "loading": "Loading…",
-      "more": "Show next month"
+      "more": "Show next month",
+      "reserved": " · reserved, awaiting payment"
     },
     "page": {
       "title": "Calendar",
@@ -1157,7 +1216,15 @@
     "requestNotSent": "The request could not be sent. Please try again.",
     "sleepsAtMostOne": "this home sleeps at most 1 guest",
     "sleepsAtMost": "this home sleeps at most {max} guests",
-    "consentRequired": "must be accepted to send the request"
+    "consentRequired": "must be accepted to send the request",
+    "flowOnly": "is set by the booking flow only",
+    "onlyRequests": "only a request (an inquiry) can be reserved",
+    "notReserved": "can be changed only while the booking is reserved",
+    "noBalance": "can be changed only for a booking with a balance still to pay",
+    "notPast": "must not be in the past",
+    "notAfterBalance": "must not be after the balance is due",
+    "notBeforeDeposit": "must not be before the deposit is due",
+    "depositOneOf": "give either a percentage or a fixed amount"
   },
   "stay": {
     "photoOf": "Photo {n} of {title}",

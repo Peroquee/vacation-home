@@ -1,8 +1,12 @@
 /** Upcoming arrivals for the dashboard. Server-side only. */
 import { addDays, type CalendarDate, toUtcDate } from "@/lib/calendar-date";
+import { HOLDING_STATUSES } from "@/lib/bookings/values";
 import { db } from "@/lib/db";
 
-/** Confirmed bookings checking in from `today` for the next `days` days. */
+/**
+ * Bookings holding their dates (reserved, confirmed, paid) checking in from
+ * `today` for the next `days` days.
+ */
 export async function countUpcoming(
   today: CalendarDate,
   days: number,
@@ -10,7 +14,7 @@ export async function countUpcoming(
 ): Promise<number> {
   return db.booking.count({
     where: {
-      status: "confirmed",
+      status: { in: [...HOLDING_STATUSES] },
       ...(propertyId && { propertyId }),
       checkIn: { gte: toUtcDate(today), lt: toUtcDate(addDays(today, days)) },
     },

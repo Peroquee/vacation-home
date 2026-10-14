@@ -18,6 +18,7 @@ import { getGuest } from "@/lib/guests/service";
 import { cn } from "@/lib/utils";
 
 import { BookingActions } from "./booking-actions";
+import { PaymentHold } from "./payment-hold";
 
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getTranslations("bookings.detail");
@@ -107,7 +108,11 @@ export default async function BookingPage({ params }: PageProps<"/bookings/[id]"
             ) : null}
           </div>
         ) : null}
-        <BookingActions id={booking.id} status={booking.status} />
+        <BookingActions
+          id={booking.id}
+          status={booking.status}
+          balanceDue={booking.balanceDueOn !== null}
+        />
       </div>
 
       <div className="grid gap-4 md:grid-cols-2">
@@ -169,6 +174,27 @@ export default async function BookingPage({ params }: PageProps<"/bookings/[id]"
             </Link>
           </CardContent>
         </Card>
+
+        {booking.depositAmountMinor !== null && booking.depositDueOn ? (
+          <Card>
+            <CardHeader>
+              <CardTitle>{t("hold.title")}</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <PaymentHold
+                id={booking.id}
+                hold={{
+                  status: booking.status,
+                  currency: booking.currency,
+                  totalAmountMinor: booking.totalAmountMinor,
+                  depositAmountMinor: booking.depositAmountMinor,
+                  depositDueOn: booking.depositDueOn,
+                  balanceDueOn: booking.balanceDueOn,
+                }}
+              />
+            </CardContent>
+          </Card>
+        ) : null}
 
         <Card>
           <CardHeader>

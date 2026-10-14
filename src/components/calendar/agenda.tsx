@@ -95,7 +95,9 @@ export function Agenda({
                         {format.dateRange(item.start, item.end)} · {item.property.name}
                         {item.kind === "booking" && item.booking.status === "inquiry"
                           ? t("inquiry")
-                          : ""}
+                          : item.kind === "booking" && item.booking.status === "reserved"
+                            ? t("reserved")
+                            : ""}
                         {item.kind === "block" && item.block.origin === "google"
                           ? t("fromGoogle")
                           : ""}

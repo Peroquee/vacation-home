@@ -278,6 +278,36 @@
         "weekdays": "Anreise {days}",
         "buffer": "{days, plural, one {# Nacht} other {# Nächte}} Puffer"
       }
+    },
+    "paymentTerms": {
+      "title": "Zahlungsbedingungen",
+      "description": "Was Gäste zahlen, sobald Sie ihre Anfrage annehmen, und bis wann. Mit dem Annehmen wird der Termin bis zur ersten Zahlungsfrist reserviert; kommt die Zahlung nicht rechtzeitig, verfällt die Reservierung von selbst und der Termin ist wieder frei.",
+      "edit": "Zahlungsbedingungen von {name} bearbeiten",
+      "dialogTitle": "Zahlungsbedingungen: {name}",
+      "dialogDescription": "Bestehende Reservierungen behalten ihre Bedingungen.",
+      "saved": "Zahlungsbedingungen gespeichert",
+      "saveFailed": "Zahlungsbedingungen konnten nicht gespeichert werden",
+      "kind": {
+        "percent": "Prozent des Gesamtpreises",
+        "fixed": "Fester Betrag"
+      },
+      "fields": {
+        "deposit": "Anzahlung",
+        "depositPercent": "Anzahlung (%)",
+        "depositFixed": "Anzahlung ({currency})",
+        "depositDueDays": "Anzahlung fällig (Tage nach Annahme)",
+        "balanceDueDaysBefore": "Restzahlung fällig (Tage vor Anreise)",
+        "fullPaymentDueDays": "Gesamtbetrag bei kurzfristiger Buchung fällig (Tage)"
+      },
+      "hints": {
+        "fullPaymentDueDays": "Liegt die Anreise nicht weiter entfernt als die Tage vor Anreise für die Restzahlung, ist sofort der Gesamtbetrag fällig, innerhalb dieser Tage."
+      },
+      "summary": {
+        "percent": "{percent} % Anzahlung binnen {days, plural, one {# Tag} other {# Tagen}}",
+        "fixed": "{amount} Anzahlung binnen {days, plural, one {# Tag} other {# Tagen}}",
+        "balance": "Rest {days, plural, one {# Tag} other {# Tage}} vor Anreise",
+        "full": "kurzfristig alles binnen {days, plural, one {# Tag} other {# Tagen}}"
+      }
     }
   },
   "forms": {
@@ -321,7 +351,10 @@
   "bookings": {
     "status": {
       "inquiry": "Anfrage",
+      "reserved": "Reserviert",
       "confirmed": "Bestätigt",
+      "paid": "Bezahlt",
+      "expired": "Abgelaufen",
       "cancelled": "Storniert"
     },
     "source": {
@@ -377,7 +410,16 @@
       "keep": "Buchung behalten",
       "cancelled": "Buchung storniert",
       "taken": "Diese Buchung kann nicht bestätigt werden: Ihre Tage sind belegt.",
-      "takenHint": "Ändern Sie die Daten oder stornieren Sie zuerst die andere Buchung."
+      "takenHint": "Ändern Sie die Daten oder stornieren Sie zuerst die andere Buchung.",
+      "reserve": "Annehmen und reservieren",
+      "reserved": "Termin bis zur Zahlungsfrist reserviert",
+      "reserveFailed": "Reservieren nicht möglich",
+      "depositReceived": "Anzahlung erhalten",
+      "depositConfirmed": "Buchung bestätigt: Anzahlung erhalten",
+      "fullReceived": "Gesamtbetrag erhalten",
+      "balanceReceived": "Restzahlung erhalten",
+      "paid": "Buchung als bezahlt markiert",
+      "paymentFailed": "Zahlung konnte nicht erfasst werden"
     },
     "filters": {
       "whichStays": "Welche Aufenthalte",
@@ -480,6 +522,21 @@
       "phone": "Telefon",
       "adding": "Wird angelegt…",
       "add": "Gast anlegen"
+    },
+    "hold": {
+      "title": "Zahlung",
+      "deposit": "Anzahlung",
+      "fullAmount": "Gesamtbetrag",
+      "balance": "Restzahlung",
+      "due": "fällig am {date}",
+      "settled": "erhalten",
+      "expired": "Nicht rechtzeitig bezahlt: Die Reservierung ist abgelaufen, der Termin ist wieder frei.",
+      "changeDeadlines": "Fristen ändern",
+      "changeDeadlinesHint": "Zum Beispiel, wenn der Gast um ein paar Tage mehr gebeten hat. Eine neue Frist bekommt ihre eigene Erinnerung.",
+      "depositDue": "Anzahlung fällig",
+      "balanceDue": "Restzahlung fällig",
+      "deadlinesSaved": "Fristen geändert",
+      "deadlinesFailed": "Fristen konnten nicht geändert werden"
     }
   },
   "guests": {
@@ -539,7 +596,8 @@
       "legendConfirmed": "Bestätigt",
       "legendInquiry": "Anfrage (Tage nicht gehalten)",
       "dragTo": "{guest}: {range}, {nights, plural, one {# Nacht} other {# Nächte}}",
-      "dragHint": "Auf die neuen Tage ziehen oder Escape drücken."
+      "dragHint": "Auf die neuen Tage ziehen oder Escape drücken.",
+      "reserved": "reserviert, Zahlung ausstehend"
     },
     "view": {
       "blocked": "Tage blockiert",
@@ -585,7 +643,8 @@
       "inquiry": " · Anfrage",
       "fromGoogle": " · aus Google Kalender",
       "loading": "Wird geladen…",
-      "more": "Nächsten Monat anzeigen"
+      "more": "Nächsten Monat anzeigen",
+      "reserved": " · reserviert, Zahlung ausstehend"
     },
     "page": {
       "title": "Kalender",
@@ -1157,7 +1216,15 @@
     "requestNotSent": "Die Anfrage konnte nicht gesendet werden. Bitte versuchen Sie es erneut.",
     "sleepsAtMostOne": "diese Unterkunft bietet Platz für höchstens 1 Gast",
     "sleepsAtMost": "diese Unterkunft bietet Platz für höchstens {max} Gäste",
-    "consentRequired": "muss akzeptiert werden, um die Anfrage zu senden"
+    "consentRequired": "muss akzeptiert werden, um die Anfrage zu senden",
+    "flowOnly": "wird nur vom Buchungsablauf gesetzt",
+    "onlyRequests": "nur eine Anfrage kann reserviert werden",
+    "notReserved": "kann nur geändert werden, solange die Buchung reserviert ist",
+    "noBalance": "kann nur bei einer Buchung mit offener Restzahlung geändert werden",
+    "notPast": "darf nicht in der Vergangenheit liegen",
+    "notAfterBalance": "darf nicht nach der Fälligkeit der Restzahlung liegen",
+    "notBeforeDeposit": "darf nicht vor der Fälligkeit der Anzahlung liegen",
+    "depositOneOf": "entweder einen Prozentsatz oder einen festen Betrag angeben"
   },
   "stay": {
     "photoOf": "Foto {n} von {title}",

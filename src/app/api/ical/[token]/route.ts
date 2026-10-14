@@ -1,4 +1,5 @@
 import { toUtcDate } from "@/lib/calendar-date";
+import { HOLDING_STATUSES } from "@/lib/bookings/values";
 import { db } from "@/lib/db";
 import { buildFeed, FEED_HISTORY_DAYS } from "@/lib/ical/export";
 import { propertyForToken } from "@/lib/ical/feeds";
@@ -20,7 +21,11 @@ export async function GET(_request: Request, { params }: RouteContext<"/api/ical
   const since = toUtcDate(addDays(today, -FEED_HISTORY_DAYS));
   const [bookings, blocks] = await Promise.all([
     db.booking.findMany({
-      where: { propertyId: property.id, status: "confirmed", checkOut: { gt: since } },
+      where: {
+        propertyId: property.id,
+        status: { in: [...HOLDING_STATUSES] },
+        checkOut: { gt: since },
+      },
       select: { id: true, checkIn: true, checkOut: true },
     }),
     db.block.findMany({

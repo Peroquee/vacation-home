@@ -4,6 +4,7 @@
  * in ./rules.ts. One aggregation layer, so the dashboard only displays.
  * Server-side only.
  */
+import { BOOKED_STATUSES } from "@/lib/bookings/values";
 import { z } from "zod";
 
 import { daysBetween, fromUtcDate, isCalendarDate, toUtcDate } from "@/lib/calendar-date";
@@ -92,7 +93,8 @@ async function buildReport(
     db.booking.findMany({
       where: {
         propertyId: { in: propertyIds },
-        status: "confirmed",
+        // Booked stays: a reservation awaiting its deposit does not count yet.
+        status: { in: [...BOOKED_STATUSES] },
         checkIn: overlapping,
         checkOut: { gt: toUtcDate(span.start) },
       },

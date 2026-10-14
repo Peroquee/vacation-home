@@ -10,9 +10,10 @@ import { toastError, toastSuccess } from "@/components/toast";
 import { useConflictText } from "@/components/use-conflict-text";
 import { Button } from "@/components/ui/button";
 import { type Conflict } from "@/lib/bookings/form";
+import type { BookingStatus } from "@/lib/bookings/values";
 import { useApiText } from "@/i18n/use-api-text";
 
-type Status = "inquiry" | "confirmed" | "cancelled";
+type Status = BookingStatus;
 
 /** A failed request, with the API's message and, for a 409, what is in the way. */
 class RequestError extends Error {
@@ -43,12 +44,27 @@ const patchStatus = (id: string, status: Status, fail: (body: unknown, status: n
   });
 
 /**
- * Moves a booking between statuses. Confirming re-checks availability on the
- * server, so an inquiry whose dates were taken since is refused, and the
- * refusal says what is in the way. Cancelling asks first and frees the dates
- * at once; a cancelled booking can be reinstated as an inquiry.
+ * Moves a booking between statuses. Confirming or reserving re-checks
+ * availability on the server, so an inquiry whose dates were taken since is
+ * refused, and the refusal says what is in the way. Reserving (GitLab #114)
+ * holds the dates until the payment deadline. Then: the deposit received
+ * confirms, the rest received marks paid. Cancelling asks first and frees
+ * the dates at once; a cancelled or expired booking can be reinstated as an
+ * inquiry.
  */
-export function BookingActions({ id, status }: { id: string; status: Status }) {
+export function BookingActions({
+  id,
+  status,
+  balanceDue = false,
+}: {
+  id: string;
+  status: Status;
+  /**
+   * A reservation with a balance after the deposit. Without one, the first
+   * payment was the full amount: receiving it means paid.
+   */
+  balanceDue?: boolean;
+}) {
   const router = useRouter();
   const [pending, setPending] = useState(false);
   const [refusal, setRefusal] = useState<RequestError | null>(null);
@@ -78,17 +94,59 @@ export function BookingActions({ id, status }: { id: string; status: Status }) {
     <div className="space-y-3">
       <div className="flex flex-wrap gap-2">
         {status === "inquiry" ? (
+          <>
+            <Button
+              disabled={pending}
+              aria-busy={pending}
+              onClick={() =>
+                run(
+                  () => send(`/api/bookings/${id}/reserve`, fail, { method: "POST" }),
+                  t("reserved"),
+                  t("reserveFailed"),
+                )
+              }
+            >
+              {t("reserve")}
+            </Button>
+            <Button
+              variant="outline"
+              disabled={pending}
+              aria-busy={pending}
+              onClick={() =>
+                run(() => patchStatus(id, "confirmed", fail), t("confirmed"), t("confirmFailed"))
+              }
+            >
+              {t("confirm")}
+            </Button>
+          </>
+        ) : null}
+        {status === "reserved" ? (
           <Button
             disabled={pending}
             aria-busy={pending}
             onClick={() =>
-              run(() => patchStatus(id, "confirmed", fail), t("confirmed"), t("confirmFailed"))
+              balanceDue
+                ? run(
+                    () => patchStatus(id, "confirmed", fail),
+                    t("depositConfirmed"),
+                    t("paymentFailed"),
+                  )
+                : run(() => patchStatus(id, "paid", fail), t("paid"), t("paymentFailed"))
             }
           >
-            {t("confirm")}
+            {balanceDue ? t("depositReceived") : t("fullReceived")}
           </Button>
         ) : null}
-        {status === "cancelled" ? (
+        {status === "confirmed" && balanceDue ? (
+          <Button
+            disabled={pending}
+            aria-busy={pending}
+            onClick={() => run(() => patchStatus(id, "paid", fail), t("paid"), t("paymentFailed"))}
+          >
+            {t("balanceReceived")}
+          </Button>
+        ) : null}
+        {status === "cancelled" || status === "expired" ? (
           <Button
             variant="outline"
             disabled={pending}
