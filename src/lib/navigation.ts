@@ -14,6 +14,9 @@ export type NavItem = {
   icon: LucideIcon;
 };
 
+/** Counts shown next to nav entries, by label: e.g. open requests on Bookings. */
+export type NavBadges = Partial<Record<NavItem["label"], number>>;
+
 /**
  * One list, rendered by both the desktop sidebar and the mobile bottom bar, so
  * the two can never drift apart.

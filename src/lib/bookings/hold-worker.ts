@@ -1,11 +1,16 @@
 /**
- * Runs the reservation hold job (./hold.ts) in the server process: at start
- * and every hour after, so a deadline passes within the hour after
- * midnight where the property is. A missed run (the app was down) is
- * caught up by the next. Server-side only.
+ * Runs the reservation hold job (./hold.ts) in the server process, with the
+ * requests' own (GitLab #110): unanswered ones expire, and those that came
+ * to nothing are anonymised after their retention. At start and every hour
+ * after, so a deadline passes within the hour after midnight where the
+ * property is. A missed run (the app was down) is caught up by the next.
+ * Server-side only.
  */
 import { runJob } from "@/lib/jobs";
 import { logger } from "@/lib/logger";
+
+import { expireRequests } from "@/lib/booking-requests/inbox";
+import { anonymiseOldRequests } from "@/lib/booking-requests/retention";
 
 import { runHold } from "./hold";
 
@@ -20,7 +25,9 @@ async function run(): Promise<void> {
   try {
     await runJob("bookings.reservation-hold", {}, async (log) => {
       const result = await runHold();
-      log.info(result, "reservation hold checked");
+      const requestsExpired = await expireRequests();
+      const requestersAnonymised = await anonymiseOldRequests();
+      log.info({ ...result, requestsExpired, requestersAnonymised }, "reservation hold checked");
     });
   } catch (err) {
     logger.error({ err }, "reservation hold run failed");

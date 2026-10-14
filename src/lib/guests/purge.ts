@@ -8,7 +8,8 @@
  *   notes are cleared; `purgedAt` is set;
  * - the personal data a booking row can hold is cleared: its free-text
  *   notes, and for a request from the public site (GitLab #109) the
- *   guest's message and the name and phone given with it. Otherwise a
+ *   guest's message and the name and phone given with it, and the reason
+ *   given when it was declined (GitLab #110). Otherwise a
  *   booking references the guest by id only;
  * - an audit event records that it happened, when and by whom, without any
  *   of the removed data.
@@ -99,9 +100,10 @@ async function purgeInTransaction(id: string, actorUserId: string | null): Promi
           { guestMessage: { not: null } },
           { requesterName: { not: null } },
           { requesterPhone: { not: null } },
+          { declineReason: { not: null } },
         ],
       },
-      data: { guestMessage: null, requesterName: null, requesterPhone: null },
+      data: { guestMessage: null, requesterName: null, requesterPhone: null, declineReason: null },
     });
     const guest = await tx.guest.update({
       where: { id },

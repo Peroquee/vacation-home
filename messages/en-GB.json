@@ -47,7 +47,8 @@
     "finance": "Finance",
     "dashboard": "Dashboard",
     "settings": "Settings",
-    "label": "Main"
+    "label": "Main",
+    "waiting": "waiting"
   },
   "signin": {
     "title": "Sign in",
@@ -308,6 +309,22 @@
         "balance": "balance {days, plural, one {# day} other {# days}} before arrival",
         "full": "at short notice all within {days, plural, one {# day} other {# days}}"
       }
+    },
+    "requestSettings": {
+      "title": "Booking requests",
+      "description": "How long a request from your public page waits for your answer before it expires, and how long declined and expired requests are kept before the guest’s details are erased.",
+      "edit": "Edit the request settings of {name}",
+      "dialogTitle": "Booking requests: {name}",
+      "saved": "Request settings saved",
+      "saveFailed": "Could not save the request settings",
+      "fields": {
+        "expiryDays": "Answer within (days)",
+        "retentionMonths": "Keep declined and expired requests (months)"
+      },
+      "hints": {
+        "retentionMonths": "Then the guest’s details are erased, unless they have other bookings."
+      },
+      "summary": "{days, plural, one {answer within # day} other {answer within # days}} · {months, plural, one {kept # month} other {kept # months}}"
     }
   },
   "forms": {
@@ -471,7 +488,8 @@
         "source": "Source",
         "google": "Google",
         "total": "Total"
-      }
+      },
+      "requests": "Requests"
     },
     "detail": {
       "title": "Booking",
@@ -537,6 +555,38 @@
       "balanceDue": "Balance due",
       "deadlinesSaved": "Deadlines changed",
       "deadlinesFailed": "Could not change the deadlines"
+    },
+    "requests": {
+      "title": "Requests",
+      "description": "Booking requests from your public page, waiting for your answer, and bookings with a payment still to come.",
+      "open": "{count, plural, =0 {Open requests} one {# open request} other {# open requests}}",
+      "none": "No requests waiting",
+      "noneHint": "Requests guests send from your public page appear here.",
+      "nights": "{count, plural, one {# night} other {# nights}}",
+      "guests": "{count, plural, one {# guest} other {# guests}}",
+      "estimate": "estimate {total}",
+      "reference": "ref. {reference}",
+      "received": "received {date}",
+      "answerBy": "answer by {date}",
+      "accept": "Accept and reserve",
+      "accepted": "{name}’s dates are reserved until the payment deadline",
+      "acceptFailed": "Could not accept the request",
+      "decline": "Decline",
+      "declineTitle": "Decline {name}’s request?",
+      "declineDescription": "The guest is told by email once emails are set up. The dates stay free.",
+      "reason": "Reason for the guest (optional)",
+      "reasonHint": "For example: \"Those dates are already taken.\" Leave blank to give none.",
+      "declined": "{name}’s request declined",
+      "declineFailed": "Could not decline the request",
+      "taken": "This request cannot be accepted: its dates are taken.",
+      "awaiting": "{count, plural, =0 {Awaiting payment} other {Awaiting payment (#)}}",
+      "noneAwaiting": "No payments outstanding.",
+      "due": {
+        "deposit": "Deposit {amount}",
+        "full": "Full amount {amount}",
+        "balance": "Balance {amount}"
+      },
+      "dueOn": "due {date}"
     }
   },
   "guests": {
@@ -1224,7 +1274,8 @@
     "notPast": "must not be in the past",
     "notAfterBalance": "must not be after the balance is due",
     "notBeforeDeposit": "must not be before the deposit is due",
-    "depositOneOf": "give either a percentage or a fixed amount"
+    "depositOneOf": "give either a percentage or a fixed amount",
+    "onlyInquiriesDecline": "only a request (an inquiry) can be declined"
   },
   "stay": {
     "photoOf": "Photo {n} of {title}",

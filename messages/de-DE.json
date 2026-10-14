@@ -47,7 +47,8 @@
     "finance": "Finanzen",
     "dashboard": "Übersicht",
     "settings": "Einstellungen",
-    "label": "Hauptmenü"
+    "label": "Hauptmenü",
+    "waiting": "warten"
   },
   "signin": {
     "title": "Anmelden",
@@ -308,6 +309,22 @@
         "balance": "Rest {days, plural, one {# Tag} other {# Tage}} vor Anreise",
         "full": "kurzfristig alles binnen {days, plural, one {# Tag} other {# Tagen}}"
       }
+    },
+    "requestSettings": {
+      "title": "Buchungsanfragen",
+      "description": "Wie lange eine Anfrage von Ihrer öffentlichen Seite auf Ihre Antwort wartet, bevor sie verfällt, und wie lange abgelehnte und verfallene Anfragen aufbewahrt werden, bevor die Daten des Gastes gelöscht werden.",
+      "edit": "Anfrage-Einstellungen von {name} bearbeiten",
+      "dialogTitle": "Buchungsanfragen: {name}",
+      "saved": "Anfrage-Einstellungen gespeichert",
+      "saveFailed": "Anfrage-Einstellungen konnten nicht gespeichert werden",
+      "fields": {
+        "expiryDays": "Antworten innerhalb von (Tagen)",
+        "retentionMonths": "Abgelehnte und verfallene Anfragen aufbewahren (Monate)"
+      },
+      "hints": {
+        "retentionMonths": "Danach werden die Daten des Gastes gelöscht, außer er hat weitere Buchungen."
+      },
+      "summary": "{days, plural, one {Antwort binnen # Tag} other {Antwort binnen # Tagen}} · {months, plural, one {# Monat aufbewahrt} other {# Monate aufbewahrt}}"
     }
   },
   "forms": {
@@ -471,7 +488,8 @@
         "source": "Quelle",
         "google": "Google",
         "total": "Gesamt"
-      }
+      },
+      "requests": "Anfragen"
     },
     "detail": {
       "title": "Buchung",
@@ -537,6 +555,38 @@
       "balanceDue": "Restzahlung fällig",
       "deadlinesSaved": "Fristen geändert",
       "deadlinesFailed": "Fristen konnten nicht geändert werden"
+    },
+    "requests": {
+      "title": "Anfragen",
+      "description": "Buchungsanfragen von Ihrer öffentlichen Seite, die auf Ihre Antwort warten, und Buchungen, bei denen noch eine Zahlung aussteht.",
+      "open": "{count, plural, =0 {Offene Anfragen} one {# offene Anfrage} other {# offene Anfragen}}",
+      "none": "Keine offenen Anfragen",
+      "noneHint": "Anfragen, die Gäste über Ihre öffentliche Seite senden, erscheinen hier.",
+      "nights": "{count, plural, one {# Nacht} other {# Nächte}}",
+      "guests": "{count, plural, one {# Gast} other {# Gäste}}",
+      "estimate": "geschätzt {total}",
+      "reference": "Ref. {reference}",
+      "received": "eingegangen {date}",
+      "answerBy": "antworten bis {date}",
+      "accept": "Annehmen und reservieren",
+      "accepted": "Der Termin von {name} ist bis zur Zahlungsfrist reserviert",
+      "acceptFailed": "Anfrage konnte nicht angenommen werden",
+      "decline": "Ablehnen",
+      "declineTitle": "Anfrage von {name} ablehnen?",
+      "declineDescription": "Der Gast erfährt es per E-Mail, sobald E-Mails eingerichtet sind. Der Termin bleibt frei.",
+      "reason": "Begründung für den Gast (optional)",
+      "reasonHint": "Zum Beispiel: „Der Zeitraum ist leider schon vergeben.“ Leer lassen für keine.",
+      "declined": "Anfrage von {name} abgelehnt",
+      "declineFailed": "Anfrage konnte nicht abgelehnt werden",
+      "taken": "Diese Anfrage kann nicht angenommen werden: Der Zeitraum ist belegt.",
+      "awaiting": "{count, plural, =0 {Zahlung ausstehend} other {Zahlung ausstehend (#)}}",
+      "noneAwaiting": "Keine offenen Zahlungen.",
+      "due": {
+        "deposit": "Anzahlung {amount}",
+        "full": "Gesamtbetrag {amount}",
+        "balance": "Restzahlung {amount}"
+      },
+      "dueOn": "fällig am {date}"
     }
   },
   "guests": {
@@ -1224,7 +1274,8 @@
     "notPast": "darf nicht in der Vergangenheit liegen",
     "notAfterBalance": "darf nicht nach der Fälligkeit der Restzahlung liegen",
     "notBeforeDeposit": "darf nicht vor der Fälligkeit der Anzahlung liegen",
-    "depositOneOf": "entweder einen Prozentsatz oder einen festen Betrag angeben"
+    "depositOneOf": "entweder einen Prozentsatz oder einen festen Betrag angeben",
+    "onlyInquiriesDecline": "nur eine Anfrage kann abgelehnt werden"
   },
   "stay": {
     "photoOf": "Foto {n} von {title}",

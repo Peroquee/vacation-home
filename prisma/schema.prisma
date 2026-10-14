@@ -48,6 +48,7 @@ model Property {
   incomeAutomation        IncomeAutomation?
   bookingRules            BookingRules?
   paymentTerms            PaymentTerms?
+  requestSettings         RequestSettings?
   listing                 PropertyListing?
   photos                  PropertyPhoto[]
   recurringExpenses       RecurringExpense[]
@@ -179,6 +180,10 @@ model Booking {
   depositDueOn       DateTime?     @map("deposit_due_on") @db.Date
   balanceDueOn       DateTime?     @map("balance_due_on") @db.Date
   expiredAt          DateTime?     @map("expired_at")
+  /// A request the owner declined (GitLab #110), with the reason the guest
+  /// is told, if any. Personal data: cleared by the purge.
+  declinedAt         DateTime?     @map("declined_at")
+  declineReason      String?       @map("decline_reason")
   createdAt          DateTime      @default(now()) @map("created_at")
   updatedAt          DateTime      @updatedAt @map("updated_at")
 
@@ -199,11 +204,14 @@ model Booking {
 }
 
 enum BookingEventKind {
+  requested
   reserved
   deposit_reminder
   reservation_expired
   balance_reminder
   balance_overdue
+  declined
+  request_expired
 
   @@map("booking_event_kind")
 }
@@ -558,6 +566,22 @@ model PaymentTerms {
   property Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
 
   @@map("payment_terms")
+}
+
+/// How booking requests are handled (GitLab #110), per property. No row
+/// means the defaults.
+model RequestSettings {
+  propertyId      String   @id @map("property_id") @db.Uuid
+  /// Days a request may wait for an answer before it expires.
+  expiryDays      Int      @default(3) @map("expiry_days")
+  /// Months after which declined and expired requests are anonymised.
+  retentionMonths Int      @default(6) @map("retention_months")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  property Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+
+  @@map("request_settings")
 }
 
 /// What guests see of a property on the public booking site (GitLab #106).

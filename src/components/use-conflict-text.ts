@@ -48,3 +48,26 @@ export function useConflictText() {
 
   return { describe, fix, open };
 }
+
+/**
+ * The guests of the bookings in the way, by booking id, for `describe`:
+ * the owner's API refuses with the dates only, so the names are looked up
+ * here (signed in; the public site never gets them). A booking that cannot
+ * be read is simply left unnamed.
+ */
+export async function conflictGuestNames(conflicts: Conflict[]): Promise<Map<string, string>> {
+  const ids = [...new Set(conflicts.filter((c) => c.kind === "booking").map((c) => c.id))];
+  const named = await Promise.all(
+    ids.map(async (id) => {
+      try {
+        const response = await fetch(`/api/bookings/${id}`);
+        if (!response.ok) return null;
+        const booking = (await response.json()) as { guest?: { name?: unknown } };
+        return typeof booking.guest?.name === "string" ? ([id, booking.guest.name] as const) : null;
+      } catch {
+        return null;
+      }
+    }),
+  );
+  return new Map(named.filter((entry) => entry !== null));
+}

@@ -45,7 +45,7 @@ export const NOT_BEFORE_DEPOSIT = "must not be before the deposit is due";
  * Records an event once: again for the same occasion, nothing happens.
  * Whether it is new.
  */
-async function recordEvent(
+export async function recordEvent(
   client: DbClient,
   bookingId: string,
   kind: BookingEventKind,

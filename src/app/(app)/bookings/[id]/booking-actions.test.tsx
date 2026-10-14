@@ -42,16 +42,24 @@ describe("BookingActions", () => {
   });
 
   it("says clearly why an inquiry cannot be confirmed, linking what is in the way", async () => {
-    serve(
-      Response.json(
-        {
-          error: {
-            code: "conflict",
-            message: "Those dates overlap booking …",
-            conflicts: [{ kind: "booking", id: OTHER, start: "2026-07-15", end: "2026-07-20" }],
-          },
-        },
-        { status: 409 },
+    vi.stubGlobal(
+      "fetch",
+      vi.fn<typeof fetch>(async (_input, init) =>
+        init?.method === "PATCH"
+          ? Response.json(
+              {
+                error: {
+                  code: "conflict",
+                  message: "Those dates overlap booking …",
+                  conflicts: [
+                    { kind: "booking", id: OTHER, start: "2026-07-15", end: "2026-07-20" },
+                  ],
+                },
+              },
+              { status: 409 },
+            )
+          : // The owner's own API names the guest in the way.
+            Response.json({ id: OTHER, guest: { id: "g", name: "Bea Smith" } }),
       ),
     );
     const user = userEvent.setup();
@@ -62,6 +70,7 @@ describe("BookingActions", () => {
     const alert = await screen.findByRole("alert");
     expect(alert).toHaveTextContent("This booking cannot be confirmed: its dates are taken.");
     expect(within(alert).getByRole("link")).toHaveAttribute("href", `/bookings/${OTHER}`);
+    expect(within(alert).getByRole("link")).toHaveTextContent(/^Booked by Bea Smith, 15/);
     expect(refresh).not.toHaveBeenCalled();
   });
 

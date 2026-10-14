@@ -128,6 +128,18 @@ again and refuses if they have been taken since. **Cancel booking** frees the
 dates at once, keeps the booking (marked cancelled) and does not notify the
 guest. A cancelled or expired booking can be **reinstated as an inquiry**.
 
+**Requests** (Bookings → Requests; the number next to Bookings in the
+menu counts them) lists the requests guests sent from your public page:
+dates, guests, their message, the estimate, and the day to answer by.
+**Accept and reserve** holds the dates (see below); if another booking took
+them meanwhile, it is refused and shows which. **Decline** asks for an
+optional reason for the guest. A request not answered in time expires by
+itself (Settings → Booking requests: 3 days unless you choose otherwise).
+Declined and expired requests are kept for 6 months (also adjustable),
+then the guest's details are erased as with **Erase personal data** -
+unless the guest has other bookings with you. Below the requests, the page
+lists every booking with a payment still to come and its deadline.
+
 **Accepting a request and payment.** **Accept and reserve** holds an
 inquiry's dates for the guest until their first payment is due, under the
 property's **payment terms** (Settings → Payment terms; by default a 20%
