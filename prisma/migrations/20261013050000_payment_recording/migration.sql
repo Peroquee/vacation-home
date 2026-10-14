@@ -56,19 +56,21 @@ ALTER TABLE "booking_payments"
   ADD CONSTRAINT "booking_payments_amount" CHECK ("amount_minor" > 0),
   ADD CONSTRAINT "booking_payments_note" CHECK (char_length("note") <= 500);
 
--- A payment's ledger entry: income, or for a refund an expense. One each;
+-- A payment's ledger entry: income, a refund negative income. One each;
 -- the entry goes with the payment.
 ALTER TABLE "transactions" ADD COLUMN "payment_id" UUID;
 CREATE UNIQUE INDEX "transactions_payment_id_key" ON "transactions"("payment_id");
 ALTER TABLE "transactions" ADD CONSTRAINT "transactions_payment_id_fkey" FOREIGN KEY ("payment_id") REFERENCES "booking_payments"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
--- Refunds go to a system category of their own. An expense category the
--- owner already called "Refunds" becomes it, rather than clash by name.
-UPDATE "categories" SET "is_system" = true, "system_key" = 'refunds'
-  WHERE "type" = 'expense' AND lower(btrim("name")) = 'refunds' AND "system_key" IS NULL;
-INSERT INTO "categories" ("name", "type", "color", "is_system", "system_key", "updated_at")
-  SELECT 'Refunds', 'expense', '#be123c', true, 'refunds', now()
-  WHERE NOT EXISTS (SELECT 1 FROM "categories" WHERE "system_key" = 'refunds');
+-- A refund is income given back: a negative income entry in the payment's
+-- own category, so revenue is net of it and costs are untouched. Only a
+-- payment's entry may be negative.
+ALTER TABLE "transactions" DROP CONSTRAINT "transactions_amount_positive";
+ALTER TABLE "transactions" ADD CONSTRAINT "transactions_amount_positive" CHECK (
+  "amount_minor" > 0
+  OR ("amount_minor" = 0 AND "generated" IS NOT NULL)
+  OR ("amount_minor" < 0 AND "payment_id" IS NOT NULL AND "type" = 'income')
+);
 
 -- CreateTable: links that let a guest see their booking (status, what to
 -- pay, the bank details). Only a hash of each token is stored: the token

@@ -11,8 +11,8 @@
  * such, and moves nothing. Taking a payment back (deleting it) never moves
  * a booking back: the owner decides.
  *
- * The ledger: each payment is one entry, dated the day it arrived - income
- * in "Booking income", a refund an expense in "Refunds". A booking with
+ * The ledger: each payment is one entry, dated the day it arrived, in
+ * "Booking income" - a refund as negative income, so revenue is net of it. A booking with
  * payments takes its income from them alone: the entries #80's automation
  * generated for it are removed, and it generates none from then on
  * (src/lib/finance/booking-income.ts), so nothing is counted twice. An entry
@@ -106,7 +106,11 @@ export function nextDue(
   return null;
 }
 
-/** The ledger entry of a payment, in `tx`. */
+/**
+ * The ledger entry of a payment, in `tx`: income in "Booking income", a
+ * refund as negative income there - money given back reduces revenue, it is
+ * not a cost.
+ */
 async function enterInLedger(
   tx: DbClient,
   booking: { id: string; propertyId: string; currency: string },
@@ -114,7 +118,7 @@ async function enterInLedger(
 ): Promise<void> {
   const refund = payment.kind === "refund";
   const category = await tx.category.findUniqueOrThrow({
-    where: { systemKey: refund ? "refunds" : "booking_income" },
+    where: { systemKey: "booking_income" },
     select: { id: true },
   });
   await tx.transaction.create({
@@ -122,9 +126,9 @@ async function enterInLedger(
       propertyId: booking.propertyId,
       bookingId: booking.id,
       paymentId: payment.id,
-      type: refund ? "expense" : "income",
+      type: "income",
       categoryId: category.id,
-      amountMinor: payment.amountMinor,
+      amountMinor: refund ? -payment.amountMinor : payment.amountMinor,
       currency: booking.currency,
       date: payment.receivedOn,
       // The booking's id only, never guest personal data.

@@ -5,6 +5,7 @@ import { reserveBooking } from "@/lib/bookings/hold";
 import { createBooking, updateBooking } from "@/lib/bookings/service";
 import { addDays } from "@/lib/calendar-date";
 import { db } from "@/lib/db";
+import { FROM_PAYMENT, updateTransaction } from "@/lib/finance/transactions";
 
 import { saveBankDetails } from "./bank";
 import { bookingForToken, issueGuestToken } from "./guest-link";
@@ -164,16 +165,29 @@ describe("the ledger", () => {
     expect(await ledger(id)).toEqual(["income booking_income 110000"]);
   });
 
-  it("enters a refund as an expense, and takes a payment back with its entry", async () => {
+  it("enters a refund as negative income, and takes a payment back with its entry", async () => {
     const { id } = await booking(day(60));
     await reserveBooking(id, NOW);
     const deposit = await pay(id, { amountMinor: 22_000 });
     await pay(id, { kind: "refund", amountMinor: 2_000, note: "Bank fee returned" });
-    expect(await ledger(id)).toEqual(["income booking_income 22000", "expense refunds 2000"]);
+    expect(await ledger(id)).toEqual([
+      "income booking_income 22000",
+      "income booking_income -2000",
+    ]);
+    // Revenue is net of the refund; nothing is a cost.
+    const entries = await db.transaction.findMany({ where: { bookingId: id } });
+    expect(entries.every((e) => e.type === "income")).toBe(true);
+    expect(entries.reduce((sum, e) => sum + e.amountMinor, 0)).toBe(20_000);
+    // Its entry follows the payment, not a hand edit.
+    expect(await updateTransaction(entries[1]!.id, { amountMinor: 100 })).toEqual({
+      error: "invalid",
+      field: "_",
+      message: FROM_PAYMENT,
+    });
 
     if (!("payment" in deposit)) throw new Error("not recorded");
     expect(await deletePayment(id, deposit.payment.id)).toBe(true);
-    expect(await ledger(id)).toEqual(["expense refunds 2000"]);
+    expect(await ledger(id)).toEqual(["income booking_income -2000"]);
     // The status stays: the owner decides.
     expect(await status(id)).toBe("confirmed");
     expect(await deletePayment(id, deposit.payment.id)).toBe(false);

@@ -1336,7 +1336,8 @@
     "moreThanReceived": "cannot be more than was received",
     "inTheFuture": "must not be in the future",
     "validIban": "must be a valid IBAN, e.g. DE89 3704 0044 0532 0130 00",
-    "validBic": "must be a BIC of 8 or 11 characters"
+    "validBic": "must be a BIC of 8 or 11 characters",
+    "fromPayment": "is recorded from a payment: change the payment on its booking instead"
   },
   "stay": {
     "photoOf": "Photo {n} of {title}",
