@@ -12,10 +12,18 @@ import { purgeGuest } from "@/lib/guests/purge";
 
 import { DEFAULT_REQUEST_SETTINGS, getRequestSettingsFor } from "./settings";
 
-/** `months` calendar months before `date`. */
+/**
+ * `months` calendar months before `date`, at the same time of day. A day
+ * the earlier month does not have becomes its last: 31 December less six
+ * months is 30 June, not "31 June" - which Date would roll over to 1 July,
+ * a cut-off a day late and data erased a day early.
+ */
 export function monthsBefore(date: Date, months: number): Date {
+  const year = date.getUTCFullYear();
+  const month = date.getUTCMonth() - months;
+  const lastDay = new Date(Date.UTC(year, month + 1, 0)).getUTCDate();
   const result = new Date(date);
-  result.setUTCMonth(result.getUTCMonth() - months);
+  result.setUTCFullYear(year, month, Math.min(date.getUTCDate(), lastDay));
   return result;
 }
 
