@@ -104,6 +104,8 @@ export type TransactionWrite =
 
 const invalid = (field: string, message: string): Invalid => ({ error: "invalid", field, message });
 
+export const FROM_PAYMENT = "is recorded from a payment: change the payment on its booking instead";
+
 /** Field-level checks the database would otherwise refuse without saying which field. */
 async function checkReferences(
   propertyId: string,
@@ -182,6 +184,9 @@ export async function updateTransaction(
 ): Promise<TransactionWrite> {
   const current = await db.transaction.findUnique({ where: { id } });
   if (!current) return { error: "not_found" };
+  // A payment's entry (GitLab #115) follows its payment: a refund's is
+  // negative, which no edit here could keep.
+  if (current.paymentId !== null) return invalid("_", FROM_PAYMENT);
 
   const type = input.type ?? current.type;
   if (type !== current.type && input.categoryId === undefined) {

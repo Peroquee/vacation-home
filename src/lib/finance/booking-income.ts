@@ -18,6 +18,10 @@
  * (a unique index), found and updated on every change. An entry someone
  * edited by hand is detached (`detachedAt`) and left alone from then on.
  *
+ * A booking with payments recorded (GitLab #115) is left to them: its
+ * income is the payments' entries (src/lib/payments/service.ts), and its
+ * generated entries are removed, so nothing is counted twice.
+ *
  * Runs in the booking write's own transaction, so the ledger always matches
  * the booking. The description holds the booking's id only, never guest
  * personal data.
@@ -57,10 +61,22 @@ export async function syncBookingIncome(
 ): Promise<void> {
   const booking = await tx.booking.findUnique({
     where: { id: bookingId },
-    include: { property: { select: { incomeAutomation: true } } },
+    include: {
+      property: { select: { incomeAutomation: true } },
+      payments: { select: { id: true }, take: 1 },
+    },
   });
-  const settings = booking?.property.incomeAutomation;
-  if (!booking || !settings?.enabled) return;
+  if (!booking) return;
+  // Payments recorded (GitLab #115): the income comes from them alone, so
+  // the generated entries go, and none come back.
+  if (booking.payments.length > 0) {
+    await tx.transaction.deleteMany({
+      where: { bookingId, generated: { not: null }, detachedAt: null },
+    });
+    return;
+  }
+  const settings = booking.property.incomeAutomation;
+  if (!settings?.enabled) return;
 
   const entries = await tx.transaction.findMany({
     where: { bookingId, generated: { not: null } },

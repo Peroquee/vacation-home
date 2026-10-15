@@ -29,6 +29,7 @@ import { todayIn } from "@/lib/finance/recurring";
 import { scheduleBookingSync } from "@/lib/google/outbound";
 import { kickOutboundSync } from "@/lib/google/sync-worker";
 import type { DeadlinesInput } from "@/lib/payment-terms/schema";
+import { newReference } from "@/lib/booking-requests/reference";
 import { getPaymentTerms } from "@/lib/payment-terms/service";
 import { BALANCE_REMINDER_DAYS, DEPOSIT_REMINDER_DAYS, holdFor } from "@/lib/payment-terms/terms";
 
@@ -95,6 +96,9 @@ export async function reserveBooking(id: string, now = new Date()): Promise<Writ
         data: {
           status: "reserved",
           reservedAt: now,
+          // What the guest quotes on the transfer (GitLab #115); a request
+          // from the public site has one already.
+          ...(current.reference === null && { reference: newReference() }),
           depositAmountMinor: hold.depositAmountMinor,
           depositDueOn: toUtcDate(hold.depositDueOn),
           balanceDueOn: hold.balanceDueOn && toUtcDate(hold.balanceDueOn),
