@@ -154,7 +154,9 @@ test("the payment terms are set per property in settings", async ({ request, pag
   await dialog.getByLabel("Deposit (%)").fill("30");
   await dialog.getByLabel("Deposit due (days after accepting)").fill("5");
   // The cancellation policy (GitLab #116): on by default.
-  const nonRefundable = dialog.getByLabel("Deposit non-refundable if the guest cancels");
+  const nonRefundable = dialog.getByRole("checkbox", {
+    name: "Deposit non-refundable if the guest cancels",
+  });
   await expect(nonRefundable).toBeChecked();
   await nonRefundable.click();
   await dialog.getByRole("button", { name: "Save" }).click();
