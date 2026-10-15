@@ -31,8 +31,9 @@ export async function bootstrap(): Promise<void> {
 
     // Background jobs: Google Calendar outbound sync and inbound polling,
     // recurring expenses, the booking platforms' iCal feeds, the receipt
-    // cleanup and the reservation hold. Not while `next build` loads the app; NEXT_PHASE is Next's
-    // own, not part of the validated schema.
+    // cleanup, the reservation hold and the email outbox. Not while
+    // `next build` loads the app; NEXT_PHASE is Next's own, not part of the
+    // validated schema.
     // eslint-disable-next-line no-restricted-properties
     if (process.env.NEXT_PHASE !== PHASE_PRODUCTION_BUILD) {
       const { startOutboundSyncWorker } = await import("./lib/google/sync-worker");
@@ -47,6 +48,8 @@ export async function bootstrap(): Promise<void> {
       startReceiptCleanupWorker();
       const { startReservationHoldWorker } = await import("./lib/bookings/hold-worker");
       startReservationHoldWorker();
+      const { startOutboxWorker } = await import("./lib/email/worker");
+      startOutboxWorker();
     }
   } catch (error) {
     // A configuration failure is already a formatted, readable report, so its

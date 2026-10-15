@@ -343,6 +343,39 @@
       "hints": {
         "optional": "Optional."
       }
+    },
+    "email": {
+      "title": "E-Mails",
+      "description": "Gäste bekommen bei jedem Schritt ihrer Buchung eine E-Mail, Sie bei allem, was Sie braucht. Jede E-Mail geht einmal hinaus; schlägt der Mailserver fehl, wird es erneut versucht.",
+      "noSmtp": "Kein Mailserver eingerichtet (SMTP_HOST, SMTP_FROM): Gäste bekommen keine E-Mails, bis er eingerichtet ist. Es geht nichts verloren: Sie werden dann verschickt.",
+      "noOwnerEmail": "OWNER_EMAIL ist nicht gesetzt: Ihre eigenen Benachrichtigungen warten, bis es gesetzt ist.",
+      "counts": "{pending} wartend · {sent} gesendet · {failed} fehlgeschlagen · {skipped} nicht gesendet",
+      "sendNow": "Jetzt senden",
+      "ran": "E-Mails geprüft",
+      "runFailed": "E-Mails konnten nicht gesendet werden",
+      "kind": {
+        "requested": "Anfrage erhalten",
+        "reserved": "Anfrage angenommen",
+        "deposit_reminder": "Zahlungserinnerung",
+        "reservation_expired": "Reservierung verfallen",
+        "balance_reminder": "Erinnerung Restzahlung",
+        "balance_overdue": "Restzahlung überfällig",
+        "declined": "Anfrage abgelehnt",
+        "request_expired": "Anfrage verfallen",
+        "deposit_received": "Anzahlung erhalten",
+        "fully_paid": "Vollständig bezahlt"
+      },
+      "recipient": {
+        "guest": "an den Gast",
+        "owner": "an Sie"
+      },
+      "status": {
+        "pending": "wird wiederholt",
+        "failed": "fehlgeschlagen",
+        "skipped": "nicht gesendet",
+        "sent": "gesendet"
+      },
+      "attempts": "{count, plural, one {# Versuch} other {# Versuche}}"
     }
   },
   "forms": {
@@ -1464,7 +1497,12 @@
       "languageDe": "Deutsch",
       "title": "Titel",
       "description": "Beschreibung",
-      "houseRules": "Hausregeln"
+      "houseRules": "Hausregeln",
+      "private": "Nur für bestätigte Gäste",
+      "privateHint": "Nie auf der öffentlichen Seite: Wird nur in der abschließenden Bestätigungs-E-Mail verschickt, wenn der Gast vollständig bezahlt hat. Leer lassen, um es wegzulassen.",
+      "exactAddress": "Genaue Adresse",
+      "arrivalNotes": "Hinweise zur Anreise",
+      "arrivalNotesHint": "Zum Beispiel, wo der Schlüsselkasten ist und sein Code, oder zum Parken."
     },
     "photos": {
       "heading": "Fotos",
@@ -1521,5 +1559,92 @@
     },
     "notYet": "Diese Seite ist noch nicht verfügbar. Bitte schauen Sie später wieder vorbei.",
     "footer": "Rechtliches"
+  },
+  "email": {
+    "hello": "Hallo {name},",
+    "replyHint": "Fragen? Antworten Sie einfach auf diese E-Mail.",
+    "guestLink": "Ihre Buchung online: Status, was zu zahlen ist und wie",
+    "footer": {
+      "imprint": "Impressum",
+      "privacy": "Datenschutz"
+    },
+    "facts": {
+      "home": "Ferienhaus",
+      "dates": "Zeitraum",
+      "nights": "{count, plural, one {# Nacht} other {# Nächte}}",
+      "guests": "Gäste",
+      "total": "Gesamtpreis",
+      "reference": "Referenz"
+    },
+    "pay": {
+      "deposit": "Bitte zahlen Sie die Anzahlung von {amount} bis zum {date}.",
+      "full": "Bitte zahlen Sie den Gesamtbetrag von {amount} bis zum {date}.",
+      "balance": "Bitte zahlen Sie den Restbetrag von {amount} bis zum {date}.",
+      "detailsFollow": "Die Bankverbindung schicken wir Ihnen gesondert.",
+      "holder": "Kontoinhaber",
+      "amount": "Betrag",
+      "remittance": "Verwendungszweck",
+      "girocode": "GiroCode: Mit Ihrer Banking-App scannen, um die Überweisung auszufüllen"
+    },
+    "guest": {
+      "requested": {
+        "subject": "Ihre Anfrage für {title}",
+        "body": "Vielen Dank für Ihre Anfrage. Wir haben sie erhalten und melden uns in Kürze.",
+        "next": "Das ist noch keine Buchung: Sobald wir zusagen, ist der Termin bis zu Ihrer ersten Zahlung für Sie reserviert."
+      },
+      "reserved": {
+        "subject": "Ihr Termin in {title} ist reserviert",
+        "body": "Gute Nachricht: Wir haben Ihre Anfrage angenommen und den Termin für Sie reserviert.",
+        "hold": "Bis dahin ist der Termin für Sie reserviert. Ist die Zahlung bis zum Ende dieses Tages nicht eingegangen, verfällt die Reservierung und der Termin wird wieder frei."
+      },
+      "depositReminder": {
+        "subject": "Erinnerung: Ihre Zahlung für {title}",
+        "body": "Eine freundliche Erinnerung: Die Zahlung, die Ihre Reservierung bestätigt, ist bald fällig."
+      },
+      "reservationExpired": {
+        "subject": "Ihre Reservierung für {title} ist verfallen",
+        "body": "Ihre Zahlung ist leider nicht rechtzeitig eingegangen, daher ist die Reservierung verfallen und der Termin wieder frei. Wenn Sie trotzdem kommen möchten, senden Sie einfach eine neue Anfrage."
+      },
+      "requestExpired": {
+        "subject": "Ihre Anfrage für {title}",
+        "body": "Leider konnten wir Ihre Anfrage nicht rechtzeitig beantworten. Wenn Sie trotzdem kommen möchten, senden Sie bitte eine neue Anfrage."
+      },
+      "declined": {
+        "subject": "Ihre Anfrage für {title}",
+        "body": "Leider können wir Ihre Anfrage nicht annehmen."
+      },
+      "depositReceived": {
+        "subject": "Ihre Buchung in {title} ist bestätigt",
+        "body": "Wir haben Ihre Zahlung über {received} erhalten. Ihre Buchung ist bestätigt."
+      },
+      "balanceReminder": {
+        "subject": "Erinnerung: der Restbetrag für {title}",
+        "body": "Eine freundliche Erinnerung: Der Restbetrag für Ihren Aufenthalt ist bald fällig."
+      },
+      "paid": {
+        "subject": "Alles bezahlt: bis bald in {title}",
+        "body": "Wir haben den vollständigen Betrag erhalten. Vielen Dank – wir freuen uns auf Ihren Aufenthalt.",
+        "checkIn": "Anreise ab {time}",
+        "checkOut": "Abreise bis {time}",
+        "address": "Die Adresse:",
+        "arrival": "Zur Anreise:",
+        "rules": "Hausregeln:"
+      }
+    },
+    "owner": {
+      "open": "In der App öffnen",
+      "requested": {
+        "subject": "Neue Anfrage: {name}, {when}",
+        "body": "{name} hat eine Buchungsanfrage gesendet."
+      },
+      "expired": {
+        "subject": "Reservierung verfallen: {name}, {when}",
+        "body": "Die Reservierung von {name} ist verfallen: Die erste Zahlung ist nicht rechtzeitig eingegangen. Der Termin ist wieder frei."
+      },
+      "overdue": {
+        "subject": "Restzahlung überfällig: {name}, {when}",
+        "body": "Die Restzahlung von {name} ist überfällig: {outstanding} stehen noch aus. Die Buchung bleibt bestätigt; wie es weitergeht, entscheiden Sie."
+      }
+    }
   }
 }

@@ -9,6 +9,7 @@ below are the English ones; the German interface uses the same layout.
 - [Properties](#properties)
 - [The calendar](#the-calendar)
 - [Bookings](#bookings)
+- [Emails](#emails)
 - [Guests and their personal data](#guests-and-their-personal-data)
 - [Google Calendar sync](#google-calendar-sync)
 - [Booking platforms (iCal)](#booking-platforms-ical)
@@ -153,6 +154,33 @@ within the hour and its dates are free again. A confirmed booking whose
 balance is overdue is never cancelled automatically: that is your call.
 Reminders and notices for each of these steps are recorded for the emails
 to guests and to you, which come with a later update.
+
+## Emails
+
+Once mail is set up ([deployment guide](deployment.md#email-optional)), the
+app writes to guests who sent a request from the public site, in the
+language they used there:
+
+| When                                 | The guest gets                                                                                                |
+| ------------------------------------ | ------------------------------------------------------------------------------------------------------------- |
+| They send a request                  | A confirmation that it arrived                                                                                |
+| You accept it                        | That the dates are reserved, what to pay by when, bank details, a GiroCode and the link to their booking page |
+| Shortly before a payment is due      | A reminder (only while it is still unpaid)                                                                    |
+| The first payment arrives            | That the booking is confirmed, and what is left to pay                                                        |
+| Everything is paid                   | Check-in and check-out times, the exact address, arrival notes and the house rules                            |
+| You decline, or it lapses or expires | That it did not work out, with your reason if you gave one                                                    |
+
+You get an email for each new request, each reservation that lapsed and
+each balance that is overdue.
+
+The exact address and arrival notes are under **Settings → Properties →
+Listing**, "For confirmed guests only". They never appear on the public
+site; only the "everything is paid" email contains them.
+
+Each email is sent once. One that is no longer true when its turn comes,
+such as a reminder for a payment that has since arrived, is not sent.
+**Settings → Emails** lists what is waiting and what went wrong, and
+**Send now** sends what is waiting at once.
 
 ## Guests and their personal data
 

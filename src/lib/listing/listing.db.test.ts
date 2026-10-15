@@ -133,10 +133,15 @@ describe("photos", () => {
 });
 
 describe("the public face", () => {
-  it("shows the profile and photos, never the address or the internal name", async () => {
+  it("shows the profile and photos, never the address, arrival notes or internal name", async () => {
     await saveListing(
       propertyId,
-      listingSchema.parse({ titleEn: "Lake house with a view", location: "Lake Garda" }),
+      listingSchema.parse({
+        titleEn: "Lake house with a view",
+        location: "Lake Garda",
+        exactAddress: "Uferweg 7, 37000 Seedorf",
+        arrivalNotes: "Key box code 4711",
+      }),
     );
     await upload(40);
     const property = await getPublicProperty("lake-house");
@@ -150,7 +155,7 @@ describe("the public face", () => {
       /^\/api\/public\/properties\/lake-house\/photos\/[0-9a-f]{64}\.webp$/,
     );
     const json = JSON.stringify(property);
-    expect(json).not.toMatch(/Secret Street|Hiddenville|Lake House"/);
+    expect(json).not.toMatch(/Secret Street|Hiddenville|Lake House"|Uferweg|Seedorf|4711/);
     expect(json).not.toContain(propertyId);
   });
 

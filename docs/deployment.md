@@ -166,6 +166,31 @@ sudo chown 999:999 backups                                    # give it to the b
 sudo chmod 750 backups                                        # only they (and root) may read it
 ```
 
+### Email (optional)
+
+The app emails guests at each step of a booking request (received,
+reserved with what to pay, payment received, fully paid with the address)
+and you about new requests, lapsed reservations and overdue balances. It
+needs an SMTP account, for example your mail provider's. In `.env`:
+
+- `SMTP_HOST`, `SMTP_PORT` (587 for STARTTLS, or 465 with
+  `SMTP_SECURE="true"`), `SMTP_USER`, `SMTP_PASSWORD`: from your provider.
+- `SMTP_FROM`: the sender guests see, such as
+  `"Haus am See <stay@example.com>"`. Use an address your provider lets
+  you send from, or the mails land in spam.
+- `OWNER_EMAIL`: where your own notifications go. Guests' replies go
+  there too.
+
+Without these the app runs as before and sends nothing: the emails wait,
+and go out once SMTP is set (anything older than 30 days is dropped
+instead). **Settings → Emails** shows whether mail is set up, what is
+waiting and what failed, and **Send now** sends at once. A mail server
+that fails is tried again for a day, then the email is marked failed.
+
+The app insists on an encrypted connection to the mail server.
+`SMTP_REQUIRE_TLS="false"` turns that off: only for a mail server on your
+own network that has no TLS.
+
 ## 6. Google sign-in
 
 Follow [google-cloud-setup.md](google-cloud-setup.md): a Google Cloud

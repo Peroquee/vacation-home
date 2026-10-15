@@ -31,7 +31,9 @@ type TextKey =
   | "descriptionDe"
   | "houseRulesEn"
   | "houseRulesDe"
-  | "location";
+  | "location"
+  | "exactAddress"
+  | "arrivalNotes";
 type Values = Record<TextKey, string> & {
   maxGuests: string;
   bedrooms: string;
@@ -51,6 +53,8 @@ function toValues(listing: ListingDto): Values {
     houseRulesEn: listing.houseRulesEn,
     houseRulesDe: listing.houseRulesDe,
     location: listing.location,
+    exactAddress: listing.exactAddress,
+    arrivalNotes: listing.arrivalNotes,
     maxGuests: count(listing.maxGuests),
     bedrooms: count(listing.bedrooms),
     bathrooms: count(listing.bathrooms),
@@ -255,6 +259,21 @@ export function ListingForm({ propertyId, initial }: { propertyId: string; initi
               {language("En")}
               {language("De")}
             </div>
+            <FieldSet>
+              <FieldLegend>{t("private")}</FieldLegend>
+              <FieldDescription>{t("privateHint")}</FieldDescription>
+              {field(
+                "exactAddress",
+                t("exactAddress"),
+                textArea("exactAddress", LISTING_LIMITS.exactAddress),
+              )}
+              {field(
+                "arrivalNotes",
+                t("arrivalNotes"),
+                textArea("arrivalNotes", LISTING_LIMITS.arrivalNotes),
+                t("arrivalNotesHint"),
+              )}
+            </FieldSet>
             {errors._ ? <FieldError errors={errors._.map((message) => ({ message }))} /> : null}
             <div>
               <Button type="submit" disabled={pending} aria-busy={pending}>
