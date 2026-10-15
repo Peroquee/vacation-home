@@ -5,6 +5,12 @@ import { E2E_DATABASE_URL, E2E_USER, STORAGE_STATE } from "./e2e/database";
 const PORT = 3100;
 const baseURL = `http://localhost:${PORT}`;
 const isCI = Boolean(process.env.CI);
+/**
+ * Mail goes to Mailpit when E2E_SMTP_HOST names one (the CI job's service);
+ * e2e/emails.spec.ts reads it back through E2E_MAILPIT_URL. Without it the
+ * app runs without SMTP, as it may.
+ */
+const SMTP_HOST = process.env.E2E_SMTP_HOST;
 
 export default defineConfig({
   testDir: "e2e",
@@ -57,6 +63,14 @@ export default defineConfig({
       AUTH_GOOGLE_SECRET: "e2e-google-secret",
       AUTH_ALLOWED_EMAILS: E2E_USER.email,
       APP_URL: baseURL,
+      ...(SMTP_HOST && {
+        SMTP_HOST,
+        SMTP_PORT: "1025",
+        // Mailpit speaks plain SMTP; a real server never should.
+        SMTP_REQUIRE_TLS: "false",
+        SMTP_FROM: "Holiday home <stay@e2e.example.test>",
+        OWNER_EMAIL: "owner@e2e.example.test",
+      }),
     },
   },
 });

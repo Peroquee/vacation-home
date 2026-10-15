@@ -133,12 +133,18 @@ e2e:
   services:
     - name: postgres:16.15
       alias: postgres
+    # Catches the app's emails for e2e/emails.spec.ts (GitLab #111): SMTP on
+    # 1025, its API on 8025.
+    - name: axllent/mailpit:v1.31.3
+      alias: mailpit
   variables:
     POSTGRES_USER: vacation
     POSTGRES_PASSWORD: vacation
     POSTGRES_DB: vacation_home
     E2E_DATABASE_URL: postgresql://vacation:vacation@postgres:5432/vacation_home_e2e
     TEST_DATABASE_URL: postgresql://vacation:vacation@postgres:5432/vacation_home_test
+    E2E_SMTP_HOST: mailpit
+    E2E_MAILPIT_URL: http://mailpit:8025
     # Inside the project directory so the cache below can carry the browser.
     PLAYWRIGHT_BROWSERS_PATH: "$CI_PROJECT_DIR/.cache/ms-playwright"
   cache:
