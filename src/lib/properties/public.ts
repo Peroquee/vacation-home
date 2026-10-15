@@ -7,6 +7,7 @@
  */
 import type { Property } from "@/generated/prisma/client";
 import type { ListingDto, PhotoDto } from "@/lib/listing/service";
+import type { PaymentTerms } from "@/lib/payment-terms/terms";
 
 /** A text in both languages; the page shows the visitor's (`pickText`). */
 export type PublicText = { en: string; de: string };
@@ -16,6 +17,12 @@ export type PublicPhotoDto = {
   /** Smallest first, for `srcset`. */
   sizes: { width: number; height: number; url: string }[];
 };
+
+/** The cancellation policy (GitLab #116), with the deposit it is about. */
+export type PublicCancellation = Pick<
+  PaymentTerms,
+  "depositNonRefundable" | "depositPercent" | "depositFixedMinor"
+>;
 
 export type PublicPropertyDto = {
   slug: string;
@@ -36,12 +43,14 @@ export type PublicPropertyDto = {
   checkOutTime: string | null;
   /** The cover first. */
   photos: PublicPhotoDto[];
+  cancellation: PublicCancellation;
 };
 
 export function toPublicDto(
   property: Property & { slug: string },
   listing: ListingDto,
   photos: PhotoDto[],
+  terms: PaymentTerms,
 ): PublicPropertyDto {
   const base = `/api/public/properties/${property.slug}/photos`;
   // Untitled in both languages: the property's own name rather than nothing.
@@ -69,6 +78,11 @@ export function toPublicDto(
         url: `${base}/${file}`,
       })),
     })),
+    cancellation: {
+      depositNonRefundable: terms.depositNonRefundable,
+      depositPercent: terms.depositPercent,
+      depositFixedMinor: terms.depositFixedMinor,
+    },
   };
 }
 

@@ -55,6 +55,7 @@ export function RequestForm({
   checkIn,
   checkOut,
   maxGuests,
+  cancellation,
   onSent,
   onDatesRefused,
 }: {
@@ -62,6 +63,8 @@ export function RequestForm({
   checkIn: CalendarDate;
   checkOut: CalendarDate;
   maxGuests: number | null;
+  /** The cancellation policy (GitLab #116), shown above the consent. */
+  cancellation?: React.ReactNode;
   onSent: (request: SentRequest) => void;
   /** The dates were taken or became impossible since they were shown. */
   onDatesRefused: () => void;
@@ -249,6 +252,7 @@ export function RequestForm({
           <FieldDescription>{t("optional")}</FieldDescription>
           <FieldError errors={messages("message", t("fields.message"))} />
         </Field>
+        {cancellation}
         <Field orientation="horizontal" data-invalid={errors.consent ? true : undefined}>
           <input
             id="request-consent"

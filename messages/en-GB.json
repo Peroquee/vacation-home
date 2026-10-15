@@ -298,16 +298,20 @@
         "depositFixed": "Deposit ({currency})",
         "depositDueDays": "Deposit due (days after accepting)",
         "balanceDueDaysBefore": "Balance due (days before arrival)",
-        "fullPaymentDueDays": "Full amount due at short notice (days)"
+        "fullPaymentDueDays": "Full amount due at short notice (days)",
+        "depositNonRefundable": "Deposit non-refundable if the guest cancels"
       },
       "hints": {
-        "fullPaymentDueDays": "When arrival is no further off than the balance’s days before arrival, the full amount is due at once, within these days."
+        "fullPaymentDueDays": "When arrival is no further off than the balance’s days before arrival, the full amount is due at once, within these days.",
+        "depositNonRefundable": "When a guest cancels, you keep the deposit and refund anything paid beyond it. Unticked, guests get everything back. If you cancel, guests always get everything back. Bookings keep the policy they were requested under."
       },
       "summary": {
         "percent": "{percent}% deposit within {days, plural, one {# day} other {# days}}",
         "fixed": "{amount} deposit within {days, plural, one {# day} other {# days}}",
         "balance": "balance {days, plural, one {# day} other {# days}} before arrival",
-        "full": "at short notice all within {days, plural, one {# day} other {# days}}"
+        "full": "at short notice all within {days, plural, one {# day} other {# days}}",
+        "nonRefundable": "deposit non-refundable",
+        "refundable": "deposit refundable"
       }
     },
     "requestSettings": {
@@ -474,7 +478,7 @@
       "reinstate": "Reinstate as inquiry",
       "cancel": "Cancel booking",
       "cancelTitle": "Cancel this booking?",
-      "cancelDescription": "Its dates become free straight away. The booking is kept, marked cancelled, and can be reinstated as an inquiry later. The guest is not notified.",
+      "cancelDescription": "Its dates become free straight away. The booking is kept, marked cancelled, and can be reinstated as an inquiry later. The guest gets an email if mail is set up.",
       "keep": "Keep booking",
       "cancelled": "Booking cancelled",
       "taken": "This booking cannot be confirmed: its dates are taken.",
@@ -675,7 +679,24 @@
       "copy": "Copy link",
       "copied": "Link copied",
       "copyFailed": "Could not copy; select the link and copy it by hand.",
-      "linkFailed": "Could not make a link"
+      "linkFailed": "Could not make a link",
+      "refundDue": "Refund due: {amount}"
+    },
+    "cancel": {
+      "who": "Who is cancelling?",
+      "by": {
+        "guest": "The guest",
+        "owner": "You"
+      },
+      "received": "Received so far: {amount}.",
+      "ownerRule": "When you cancel, the guest gets everything back.",
+      "guestRule": "Under the booking’s policy the deposit of {deposit} is kept and the rest refunded.",
+      "guestRuleRefundable": "Under the booking’s policy the guest gets everything back.",
+      "refund": "Refund ({currency})",
+      "refundHint": "To be paid back. Record it under Payments once you have sent it.",
+      "loading": "Working out the refund…",
+      "loadFailed": "Could not work out the refund",
+      "failed": "Could not cancel"
     }
   },
   "guests": {
@@ -1629,6 +1650,13 @@
         "address": "The address:",
         "arrival": "Arriving:",
         "rules": "House rules:"
+      },
+      "cancelled": {
+        "subject": "Your booking at {title} is cancelled",
+        "byGuest": "As you asked, we have cancelled your booking.",
+        "byOwner": "We are very sorry: we have had to cancel your booking.",
+        "refund": "We will refund {amount} to you.",
+        "noRefund": "Under the cancellation policy, no refund is due."
       }
     },
     "owner": {
@@ -1644,7 +1672,17 @@
       "overdue": {
         "subject": "Balance overdue: {name}, {when}",
         "body": "The balance of {name} is overdue: {outstanding} is still outstanding. The booking stays confirmed; what happens now is your call."
+      },
+      "guestCancelled": {
+        "subject": "Guest cancelled: {name}, {when}",
+        "body": "{name} has cancelled. The refund due is {amount}; record it with the payments once sent."
       }
     }
+  },
+  "cancellation": {
+    "title": "Cancellation policy",
+    "nonRefundable": "The deposit of {deposit} is non-refundable if you cancel. Anything paid beyond the deposit is refunded in full.",
+    "refundable": "If you cancel, everything you have paid is refunded in full.",
+    "percentOfTotal": "{percent}% of the total"
   }
 }

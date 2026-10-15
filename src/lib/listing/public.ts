@@ -4,6 +4,7 @@
  * property alike.
  */
 import { type PublicPropertyDto, toPublicDto } from "@/lib/properties/public";
+import { getPaymentTerms } from "@/lib/payment-terms/service";
 import { getListedProperty } from "@/lib/properties/service";
 
 import { getListing, listPhotos } from "./service";
@@ -11,6 +12,10 @@ import { getListing, listPhotos } from "./service";
 export async function getPublicProperty(slug: string): Promise<PublicPropertyDto | null> {
   const property = await getListedProperty(slug);
   if (!property) return null;
-  const [listing, photos] = await Promise.all([getListing(property.id), listPhotos(property.id)]);
-  return toPublicDto(property, listing, photos);
+  const [listing, photos, terms] = await Promise.all([
+    getListing(property.id),
+    listPhotos(property.id),
+    getPaymentTerms(property.id),
+  ]);
+  return toPublicDto(property, listing, photos, terms);
 }

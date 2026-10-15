@@ -34,6 +34,8 @@ type Props = {
   payments: PaymentDto[];
   received: number;
   next: NextDue | null;
+  /** Of a cancelled booking's refund (GitLab #116), what is still to send. */
+  refundDue: number;
   /** Today in the property's timezone: the default day a payment arrived. */
   today: CalendarDate;
 };
@@ -51,6 +53,7 @@ export function Payments({
   payments,
   received,
   next,
+  refundDue,
   today,
 }: Props) {
   const t = useTranslations("bookings.payments");
@@ -84,6 +87,12 @@ export function Payments({
               amount: money(next.amountMinor),
               date: format.date(next.dueOn),
             })}
+          </>
+        ) : null}
+        {refundDue > 0 ? (
+          <>
+            {" · "}
+            <strong>{t("refundDue", { amount: money(refundDue) })}</strong>
           </>
         ) : null}
       </p>
@@ -125,7 +134,13 @@ export function Payments({
         </ul>
       ) : null}
       <div className="flex flex-wrap gap-2">
-        <RecordPayment id={id} currency={currency} next={next} today={today} />
+        <RecordPayment
+          id={id}
+          currency={currency}
+          next={next}
+          refundDue={refundDue}
+          today={today}
+        />
         <GuestLink id={id} />
       </div>
     </div>
@@ -136,18 +151,25 @@ function RecordPayment({
   id,
   currency,
   next,
+  refundDue,
   today,
-}: Pick<Props, "id" | "currency" | "next" | "today">) {
+}: Pick<Props, "id" | "currency" | "next" | "refundDue" | "today">) {
   const t = useTranslations("bookings.payments");
   const tForms = useTranslations("forms");
   const tCommon = useTranslations("common");
   const api = useApiText();
   const amountHint = useAmountHint();
   const router = useRouter();
+  // A refund still to send comes first; else the next amount due.
   const initial = () => ({
-    kind: (next?.kind ?? "other") as (typeof PAYMENT_KINDS)[number],
+    kind: (refundDue > 0 ? "refund" : (next?.kind ?? "other")) as (typeof PAYMENT_KINDS)[number],
     method: "bank_transfer" as (typeof PAYMENT_METHODS)[number],
-    amount: next && next.amountMinor > 0 ? minorToInput(next.amountMinor, currency) : "",
+    amount:
+      refundDue > 0
+        ? minorToInput(refundDue, currency)
+        : next && next.amountMinor > 0
+          ? minorToInput(next.amountMinor, currency)
+          : "",
     receivedOn: today,
     note: "",
   });

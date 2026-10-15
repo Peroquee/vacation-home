@@ -16,6 +16,7 @@ export const RECIPIENTS: Record<BookingEventKind, readonly EmailRecipient[]> = {
   request_expired: ["guest"],
   deposit_received: ["guest"],
   fully_paid: ["guest"],
+  cancelled: ["guest", "owner"],
 };
 
 /** Mail nothing older than this, whatever it is: a second guard. */
@@ -31,6 +32,8 @@ export type Relevance = {
   received: number;
   /** Today in the property's timezone. */
   today: CalendarDate;
+  /** Who cancelled, for a cancelled booking (GitLab #116). */
+  cancelledBy: "guest" | "owner" | null;
 };
 
 /**
@@ -68,6 +71,10 @@ export function irrelevance(
     case "reservation_expired":
     case "request_expired":
       return b.status !== "expired" ? "no longer expired" : null;
+    case "cancelled":
+      if (b.status !== "cancelled") return "no longer cancelled";
+      // The owner hears of the guest's cancellation; their own they know of.
+      return recipient === "owner" && b.cancelledBy !== "guest" ? "cancelled by the owner" : null;
     case "deposit_received":
     case "fully_paid":
     case "declined":

@@ -30,6 +30,7 @@ import { scheduleBookingSync } from "@/lib/google/outbound";
 import { kickOutboundSync } from "@/lib/google/sync-worker";
 import type { DeadlinesInput } from "@/lib/payment-terms/schema";
 import { newReference } from "@/lib/booking-requests/reference";
+import { policySnapshot } from "@/lib/cancellation/service";
 import { getPaymentTerms } from "@/lib/payment-terms/service";
 import { BALANCE_REMINDER_DAYS, DEPOSIT_REMINDER_DAYS, holdFor } from "@/lib/payment-terms/terms";
 
@@ -103,6 +104,15 @@ export async function reserveBooking(id: string, now = new Date()): Promise<Writ
           depositDueOn: toUtcDate(hold.depositDueOn),
           balanceDueOn: hold.balanceDueOn && toUtcDate(hold.balanceDueOn),
           expiredAt: null,
+          // The request's policy stands (GitLab #116); a booking without one
+          // takes the property's now.
+          ...(current.cancellationPolicy === null && {
+            cancellationPolicy: await policySnapshot(
+              current.propertyId,
+              current.totalAmountMinor,
+              tx,
+            ),
+          }),
         },
         include: withRelations,
       });

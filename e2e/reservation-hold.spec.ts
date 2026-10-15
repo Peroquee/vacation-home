@@ -145,6 +145,7 @@ test("the payment terms are set per property in settings", async ({ request, pag
     depositDueDays: 7,
     balanceDueDaysBefore: 30,
     fullPaymentDueDays: 3,
+    depositNonRefundable: true,
   });
 
   await page.goto("/settings");
@@ -152,9 +153,14 @@ test("the payment terms are set per property in settings", async ({ request, pag
   const dialog = page.getByRole("dialog");
   await dialog.getByLabel("Deposit (%)").fill("30");
   await dialog.getByLabel("Deposit due (days after accepting)").fill("5");
+  // The cancellation policy (GitLab #116): on by default.
+  const nonRefundable = dialog.getByLabel("Deposit non-refundable if the guest cancels");
+  await expect(nonRefundable).toBeChecked();
+  await nonRefundable.click();
   await dialog.getByRole("button", { name: "Save" }).click();
   await expect(dialog).toBeHidden();
   await expect(page.locator("#payment-terms")).toContainText("30% deposit within 5 days");
+  await expect(page.locator("#payment-terms")).toContainText("deposit refundable");
 
   const refused = await request.put(`/api/properties/${property.id}/payment-terms`, {
     data: {

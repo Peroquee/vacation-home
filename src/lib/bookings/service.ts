@@ -26,6 +26,9 @@ import {
   withPropertyLock,
 } from "@/lib/availability/service";
 import { type CalendarDate, fromUtcDate, toUtcDate } from "@/lib/calendar-date";
+import { guestRefund } from "@/lib/cancellation/policy";
+import type { CancelInput } from "@/lib/cancellation/schema";
+import { bookingPolicy, policySnapshot } from "@/lib/cancellation/service";
 import { db, type DbClient } from "@/lib/db";
 import { isPrismaError, raisedByDatabase } from "@/lib/db-errors";
 import { syncBookingIncome } from "@/lib/finance/booking-income";
@@ -74,6 +77,7 @@ export function toDto(booking: BookingWithRelations) {
     expiredAt,
     declinedAt,
     privacyConsentAt,
+    cancelledAt,
     ...rest
   } = booking;
   const stay = { checkIn: fromUtcDate(checkIn), checkOut: fromUtcDate(checkOut) };
@@ -88,6 +92,7 @@ export function toDto(booking: BookingWithRelations) {
     expiredAt: expiredAt?.toISOString() ?? null,
     declinedAt: declinedAt?.toISOString() ?? null,
     privacyConsentAt: privacyConsentAt?.toISOString() ?? null,
+    cancelledAt: cancelledAt?.toISOString() ?? null,
     createdAt: createdAt.toISOString(),
     updatedAt: updatedAt.toISOString(),
   };
@@ -235,6 +240,11 @@ export async function createBooking(
         const conflict = await check(tx, input);
         if (conflict) return conflict;
       }
+      // The cancellation policy the guest agrees to (GitLab #116): shown with
+      // the request's consent, or in force when the owner makes the booking.
+      if (website || holdsDates(input.status)) {
+        data.cancellationPolicy = await policySnapshot(property.id, amount.totalAmountMinor, tx);
+      }
       const booking = await tx.booking.create({ data, include: withRelations });
       await syncBookingIncome(booking.id, tx, { justConfirmed: isBooked(booking.status) });
       await scheduleBookingSync(booking.id, tx);
@@ -371,30 +381,78 @@ export async function updateBooking(id: string, input: UpdateBookingInput): Prom
 }
 
 /**
- * Cancels a booking, keeping it for history, under the property lock so it
- * cannot interleave with an update. Cancelling twice is harmless.
+ * Cancels a booking (GitLab #116): its dates are freed, the record is kept -
+ * bookings are never deleted, they are accounting records. The owner
+ * cancelling refunds everything received; the guest cancelling, what the
+ * booking's cancellation policy gives back (all but a non-refundable
+ * deposit). `refundMinor` overrides either, up to what was
+ * received. The refund itself is recorded as a payment once sent; until
+ * then the booking shows it as due. Idempotent: a cancelled booking stays
+ * as it was cancelled.
  */
-export async function cancelBooking(id: string): Promise<BookingWithRelations | null> {
+export async function cancelBooking(
+  id: string,
+  input: CancelInput = { by: "owner" },
+  now = new Date(),
+): Promise<WriteResult> {
   const head = await db.booking.findUnique({ where: { id }, select: { propertyId: true } });
-  if (!head) return null;
+  if (!head) return { error: "not_found" };
+  let changed = false;
   const result = await locked(head.propertyId, { error: "not_found" }, async (tx) => {
-    const { count } = await tx.booking.updateMany({
-      where: { id, status: { not: "cancelled" } },
-      data: { status: "cancelled" },
+    const current = await tx.booking.findUnique({
+      where: { id },
+      include: { payments: { select: { kind: true, amountMinor: true } } },
     });
-    if (count > 0) {
+    if (!current) return { error: "not_found" };
+    if (current.status !== "cancelled") {
+      const received = Math.max(0, receivedOf(current.payments));
+      const refund =
+        input.refundMinor ??
+        (input.by === "owner"
+          ? received
+          : guestRefund(await bookingPolicy(current, tx), received).refundMinor);
+      if (refund > received) {
+        return { error: "invalid", field: "refundMinor", message: REFUND_ABOVE_RECEIVED };
+      }
+      await tx.booking.update({
+        where: { id },
+        data: {
+          status: "cancelled",
+          cancelledBy: input.by,
+          cancelledAt: now,
+          refundDueMinor: refund,
+        },
+      });
+      // The guest hears of it, and the owner of a guest's cancellation (GitLab #111).
+      await tx.bookingEvent.createMany({
+        data: [{ bookingId: id, kind: "cancelled", key: now.toISOString() }],
+        skipDuplicates: true,
+      });
       await syncBookingIncome(id, tx);
       await scheduleBookingSync(id, tx);
+      changed = true;
     }
     const booking = await tx.booking.findUnique({ where: { id }, include: withRelations });
     return booking ? { booking } : { error: "not_found" };
   });
-  if (!("booking" in result)) return null;
-  kickOutboundSync();
-  invalidateWindows(head.propertyId, [
-    { start: fromUtcDate(result.booking.checkIn), end: fromUtcDate(result.booking.checkOut) },
-  ]);
-  return result.booking;
+  if (!("booking" in result)) return result;
+  if (changed) {
+    kickOutboundSync();
+    invalidateWindows(head.propertyId, [
+      { start: fromUtcDate(result.booking.checkIn), end: fromUtcDate(result.booking.checkOut) },
+    ]);
+  }
+  return result;
+}
+
+export const REFUND_ABOVE_RECEIVED = "cannot be more than was received";
+
+/** Received less refunded, from a booking's payments. */
+function receivedOf(payments: { kind: string; amountMinor: number }[]): number {
+  return payments.reduce(
+    (sum, p) => sum + (p.kind === "refund" ? -p.amountMinor : p.amountMinor),
+    0,
+  );
 }
 
 /**

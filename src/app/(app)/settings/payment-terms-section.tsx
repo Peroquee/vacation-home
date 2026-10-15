@@ -25,6 +25,7 @@ import {
   FieldLegend,
   FieldSet,
 } from "@/components/ui/field";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { useAmountHint } from "@/i18n/use-amount-hint";
 import { useApiText } from "@/i18n/use-api-text";
@@ -41,7 +42,8 @@ type FieldErrors = Record<string, string[] | undefined>;
 
 /**
  * Payment terms per property (GitLab #114): what a guest pays once their
- * request is accepted, and by when. Accepting holds the dates until the
+ * request is accepted, and by when, and whether the deposit is kept when
+ * the guest cancels (GitLab #116). Accepting holds the dates until the
  * first payment's deadline; unpaid, the reservation lapses by itself.
  */
 export function PaymentTermsSection({ properties }: { properties: PropertyTerms[] }) {
@@ -60,6 +62,7 @@ export function PaymentTermsSection({ properties }: { properties: PropertyTerms[
       deposit,
       t("summary.balance", { days: terms.balanceDueDaysBefore }),
       t("summary.full", { days: terms.fullPaymentDueDays }),
+      t(terms.depositNonRefundable ? "summary.nonRefundable" : "summary.refundable"),
     ].join(" · ");
   }
 
@@ -96,6 +99,7 @@ type Values = {
   depositDueDays: string;
   balanceDueDaysBefore: string;
   fullPaymentDueDays: string;
+  depositNonRefundable: boolean;
 };
 
 function toValues(terms: PaymentTerms, currency: string): Values {
@@ -107,6 +111,7 @@ function toValues(terms: PaymentTerms, currency: string): Values {
     depositDueDays: String(terms.depositDueDays),
     balanceDueDaysBefore: String(terms.balanceDueDaysBefore),
     fullPaymentDueDays: String(terms.fullPaymentDueDays),
+    depositNonRefundable: terms.depositNonRefundable,
   };
 }
 
@@ -154,6 +159,7 @@ function PaymentTermsDialog({ property, terms }: PropertyTerms) {
           depositDueDays: toNumber(values.depositDueDays),
           balanceDueDaysBefore: toNumber(values.balanceDueDaysBefore),
           fullPaymentDueDays: toNumber(values.fullPaymentDueDays),
+          depositNonRefundable: values.depositNonRefundable,
         }),
       });
       if (!response.ok) {
@@ -177,7 +183,7 @@ function PaymentTermsDialog({ property, terms }: PropertyTerms) {
   }
 
   function field(
-    key: Exclude<keyof Values, "kind">,
+    key: Exclude<keyof Values, "kind" | "depositNonRefundable">,
     name: string,
     label: string,
     hint?: string,
@@ -269,6 +275,18 @@ function PaymentTermsDialog({ property, terms }: PropertyTerms) {
               t("fields.fullPaymentDueDays"),
               t("hints.fullPaymentDueDays"),
             )}
+            {/* The cancellation policy (GitLab #116). */}
+            <Field orientation="horizontal">
+              <Checkbox
+                id={`${prefix}-depositNonRefundable`}
+                checked={values.depositNonRefundable}
+                onCheckedChange={(checked) => set("depositNonRefundable", checked)}
+              />
+              <FieldLabel htmlFor={`${prefix}-depositNonRefundable`}>
+                {t("fields.depositNonRefundable")}
+              </FieldLabel>
+            </Field>
+            <FieldDescription>{t("hints.depositNonRefundable")}</FieldDescription>
             {errors._ ? <FieldError errors={errors._.map((message) => ({ message }))} /> : null}
           </FieldGroup>
         </form>

@@ -5,13 +5,14 @@ import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
 
-import { ConfirmDialog } from "@/components/confirm-dialog";
 import { toastError, toastSuccess } from "@/components/toast";
 import { conflictGuestNames, useConflictText } from "@/components/use-conflict-text";
 import { Button } from "@/components/ui/button";
 import { type Conflict } from "@/lib/bookings/form";
 import type { BookingStatus } from "@/lib/bookings/values";
 import { useApiText } from "@/i18n/use-api-text";
+
+import { CancelDialog } from "./cancel-dialog";
 
 type Status = BookingStatus;
 
@@ -48,11 +49,19 @@ const patchStatus = (id: string, status: Status, fail: (body: unknown, status: n
  * availability on the server, so an inquiry whose dates were taken since is
  * refused, and the refusal says what is in the way. Reserving (GitLab #114)
  * holds the dates until the payment deadline; recording the payments
- * (./payments.tsx) confirms it and marks it paid. Cancelling asks first and frees
- * the dates at once; a cancelled or expired booking can be reinstated as an
+ * (./payments.tsx) confirms it and marks it paid. Cancelling (./cancel-dialog.tsx)
+ * asks who cancels and what is refunded, and frees the dates at once; a cancelled or expired booking can be reinstated as an
  * inquiry.
  */
-export function BookingActions({ id, status }: { id: string; status: Status }) {
+export function BookingActions({
+  id,
+  status,
+  currency,
+}: {
+  id: string;
+  status: Status;
+  currency: string;
+}) {
   const router = useRouter();
   const [pending, setPending] = useState(false);
   const [refusal, setRefusal] = useState<RequestError | null>(null);
@@ -123,23 +132,7 @@ export function BookingActions({ id, status }: { id: string; status: Status }) {
             {t("reinstate")}
           </Button>
         ) : (
-          <ConfirmDialog
-            trigger={
-              <Button variant="destructive" disabled={pending}>
-                {t("cancel")}
-              </Button>
-            }
-            title={t("cancelTitle")}
-            description={t("cancelDescription")}
-            confirmLabel={t("cancel")}
-            cancelLabel={t("keep")}
-            destructive
-            onConfirm={async () => {
-              await send(`/api/bookings/${id}/cancel`, fail, { method: "POST" });
-              toastSuccess(t("cancelled"));
-              router.refresh();
-            }}
-          />
+          <CancelDialog id={id} currency={currency} />
         )}
       </div>
 

@@ -19,6 +19,9 @@ import {
   monthWeeks,
   weekStartFor,
 } from "@/lib/calendar/month";
+import type { PublicCancellation } from "@/lib/properties/public";
+
+import { CancellationNote } from "./cancellation-note";
 
 type Stay = { checkIn: CalendarDate | null; checkOut: CalendarDate | null };
 
@@ -43,10 +46,12 @@ export function StayPicker({
   slug,
   firstMonth,
   maxGuests,
+  cancellation,
 }: {
   slug: string;
   firstMonth: MonthKey;
   maxGuests: number | null;
+  cancellation: PublicCancellation;
 }) {
   const t = useTranslations("stay.picker");
   const format = useFormat();
@@ -217,6 +222,15 @@ export function StayPicker({
             {t("total", { total: format.money(total, availability.currency) })}
           </p>
           <p className="text-muted-foreground text-xs">{t("estimateNote")}</p>
+          {/* The policy, by this total; in the form, above the consent. */}
+          {!requesting ? (
+            <CancellationNote
+              policy={cancellation}
+              currency={availability.currency}
+              totalMinor={total}
+              className="text-muted-foreground text-xs"
+            />
+          ) : null}
           <div className="flex flex-wrap items-center gap-4 pt-2">
             {!requesting ? (
               <button
@@ -245,6 +259,14 @@ export function StayPicker({
                 checkIn={stay.checkIn}
                 checkOut={stay.checkOut}
                 maxGuests={maxGuests}
+                cancellation={
+                  <CancellationNote
+                    policy={cancellation}
+                    currency={availability.currency}
+                    totalMinor={total}
+                    className="text-sm"
+                  />
+                }
                 onSent={setSent}
                 onDatesRefused={() => setReload((n) => n + 1)}
               />
