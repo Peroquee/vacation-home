@@ -6,6 +6,8 @@
  */
 import type { BookingStatus } from "@/generated/prisma/client";
 import { type CalendarDate, fromUtcDate } from "@/lib/calendar-date";
+import type { CancellationTerms } from "@/lib/cancellation/policy";
+import { bookingPolicy } from "@/lib/cancellation/service";
 import { db } from "@/lib/db";
 import { getListing } from "@/lib/listing/service";
 
@@ -26,6 +28,8 @@ export type GuestView = {
   receivedMinor: number;
   currency: string;
   next: NextDue | null;
+  /** The cancellation policy the guest agreed to (GitLab #116). */
+  policy: CancellationTerms;
   transfer: {
     accountHolder: string;
     iban: string;
@@ -97,6 +101,7 @@ export async function guestView(token: string): Promise<GuestView | null> {
     receivedMinor: received,
     currency: booking.currency,
     next,
+    policy: await bookingPolicy(booking),
     transfer,
   };
 }

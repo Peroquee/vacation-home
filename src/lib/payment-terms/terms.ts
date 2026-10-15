@@ -23,6 +23,8 @@ export type PaymentTerms = {
   balanceDueDaysBefore: number;
   /** Days after acceptance the full amount is due at short notice. */
   fullPaymentDueDays: number;
+  /** The cancellation policy (GitLab #116): a guest who cancels forfeits the deposit. */
+  depositNonRefundable: boolean;
 };
 
 /**
@@ -36,6 +38,7 @@ export const DEFAULT_TERMS: PaymentTerms = {
   depositDueDays: 7,
   balanceDueDaysBefore: 30,
   fullPaymentDueDays: 3,
+  depositNonRefundable: true,
 };
 
 export type Hold = {
@@ -50,7 +53,10 @@ const later = (a: CalendarDate, b: CalendarDate) => (a > b ? a : b);
 const earlier = (a: CalendarDate, b: CalendarDate) => (a < b ? a : b);
 
 /** The deposit for `totalMinor`: rounded to the minor unit, never more than the total. */
-export function depositFor(totalMinor: number, terms: PaymentTerms): number {
+export function depositFor(
+  totalMinor: number,
+  terms: Pick<PaymentTerms, "depositPercent" | "depositFixedMinor">,
+): number {
   const amount =
     terms.depositPercent !== null
       ? Math.round((totalMinor * terms.depositPercent) / 100)

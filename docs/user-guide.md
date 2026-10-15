@@ -126,8 +126,9 @@ public site arrives as an inquiry with the source "Website".
 
 An inquiry may overlap other stays; **Confirm booking** checks the dates
 again and refuses if they have been taken since. **Cancel booking** frees the
-dates at once, keeps the booking (marked cancelled) and does not notify the
-guest. A cancelled or expired booking can be **reinstated as an inquiry**.
+dates at once and keeps the booking (marked cancelled); see
+[Cancellations](#cancellations) for the refund. A cancelled or expired
+booking can be **reinstated as an inquiry**.
 
 **Requests** (Bookings → Requests; the number next to Bookings in the
 menu counts them) lists the requests guests sent from your public page:
@@ -147,13 +148,28 @@ property's **payment terms** (Settings → Payment terms; by default a 20%
 deposit within 7 days of accepting and the balance 30 days before arrival;
 when arrival is 30 days off or closer, the full amount within 3 days). The
 booking's **Payment** card shows what is due and when; **Change deadlines**
-gives the guest more time. **Deposit received** confirms the booking,
-**Balance received** (or **Full amount received**) marks it paid. A
+gives the guest more time. **Record payment** enters money as it arrives:
+the first payment confirms the booking, the whole total marks it paid. A
 reservation not paid by the end of its deadline day expires by itself
 within the hour and its dates are free again. A confirmed booking whose
 balance is overdue is never cancelled automatically: that is your call.
-Reminders and notices for each of these steps are recorded for the emails
-to guests and to you, which come with a later update.
+
+**Cancellations.** Under the payment terms, **Deposit non-refundable if the
+guest cancels** (on by default) is your cancellation policy: a guest who
+cancels forfeits the deposit and gets back anything paid beyond it. Off,
+they get everything back. There is no other fee. Guests read the policy
+next to the price on your public page, above the consent when they send a
+request, and in the emails asking them to pay. A booking keeps the policy the guest
+requested (or you made it) under, even if you change it later; the deposit
+kept is the one they were asked to pay when you accepted.
+
+**Cancel booking** asks who is cancelling. For the guest it works out the
+refund from the booking's policy; for you it is everything received, since
+you always refund in full. You can change the amount, up to what was
+received. The dates are free at once, the guest gets an email (and you,
+when the guest cancelled), and the booking shows **Refund due** until you
+send the money and enter it with **Record payment**, which suggests the
+refund. The refund then appears in Finance as negative income.
 
 ## Emails
 
@@ -168,10 +184,11 @@ language they used there:
 | Shortly before a payment is due      | A reminder (only while it is still unpaid)                                                                    |
 | The first payment arrives            | That the booking is confirmed, and what is left to pay                                                        |
 | Everything is paid                   | Check-in and check-out times, the exact address, arrival notes and the house rules                            |
+| You or the guest cancel              | That the booking is cancelled, and what is refunded                                                           |
 | You decline, or it lapses or expires | That it did not work out, with your reason if you gave one                                                    |
 
-You get an email for each new request, each reservation that lapsed and
-each balance that is overdue.
+You get an email for each new request, each reservation that lapsed, each
+balance that is overdue and each cancellation by a guest.
 
 The exact address and arrival notes are under **Settings → Properties →
 Listing**, "For confirmed guests only". They never appear on the public

@@ -38,7 +38,12 @@ function serve() {
 function renderPicker() {
   render(
     <NextIntlClientProvider locale="en-GB" messages={messages}>
-      <StayPicker slug="lake-house" firstMonth="2026-07" maxGuests={4} />
+      <StayPicker
+        slug="lake-house"
+        firstMonth="2026-07"
+        maxGuests={4}
+        cancellation={{ depositNonRefundable: true, depositPercent: 20, depositFixedMinor: null }}
+      />
     </NextIntlClientProvider>,
   );
   return userEvent.setup();

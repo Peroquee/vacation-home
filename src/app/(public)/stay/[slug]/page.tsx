@@ -8,6 +8,7 @@ import { getPublicProperty } from "@/lib/listing/public";
 import { monthOf } from "@/lib/calendar/month";
 import { pickText, type PublicPhotoDto } from "@/lib/properties/public";
 
+import { CancellationNote } from "./cancellation-note";
 import { StayPicker } from "./stay-picker";
 
 /** Once per request, for the metadata and the page alike. */
@@ -72,6 +73,11 @@ export default async function StayPage({ params }: PageProps<"/stay/[slug]">) {
             })}
           </p>
         ) : null}
+        <CancellationNote
+          policy={property.cancellation}
+          currency={property.currency}
+          className="text-muted-foreground text-sm"
+        />
       </header>
 
       {more.length > 0 ? (
@@ -93,6 +99,7 @@ export default async function StayPage({ params }: PageProps<"/stay/[slug]">) {
         slug={property.slug}
         firstMonth={monthOf(new Date().toISOString().slice(0, 10))}
         maxGuests={property.maxGuests}
+        cancellation={property.cancellation}
       />
 
       {description ? (

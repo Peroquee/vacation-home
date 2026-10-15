@@ -15,6 +15,7 @@ function toTerms(row: PaymentTermsRow | null): PaymentTerms {
     depositDueDays: row.depositDueDays,
     balanceDueDaysBefore: row.balanceDueDaysBefore,
     fullPaymentDueDays: row.fullPaymentDueDays,
+    depositNonRefundable: row.depositNonRefundable,
   };
 }
 
@@ -35,7 +36,10 @@ export async function getPaymentTermsFor(
   return new Map(propertyIds.map((id) => [id, byProperty.get(id) ?? DEFAULT_TERMS]));
 }
 
-/** Replaces a property's terms. Bookings already reserved keep theirs. */
+/**
+ * Replaces a property's terms; `depositNonRefundable` left out stays as it
+ * was. Bookings already reserved keep theirs, and their cancellation policy.
+ */
 export async function savePaymentTerms(
   propertyId: string,
   input: PaymentTermsInput,

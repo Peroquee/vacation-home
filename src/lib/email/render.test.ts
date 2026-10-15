@@ -19,6 +19,9 @@ const base: EmailContext = {
     next: { kind: "deposit", amountMinor: 33_000, dueOn: "2026-07-08" },
     declineReason: null,
     guestMessage: null,
+    cancelledBy: null,
+    refundDueMinor: null,
+    policy: { depositNonRefundable: true, depositAmountMinor: 33_000 },
   },
   guestName: "Ada",
   property: {
@@ -97,6 +100,62 @@ describe("the emails", () => {
     expect(email.html).not.toContain("<script>");
     expect(email.html).not.toContain("<b>");
     expect(email.html).toContain("&#60;script&#62;");
+  });
+
+  it("repeat the cancellation policy with what asks for payment", async () => {
+    expect((await render({})).text).toContain(
+      "The deposit of €330.00 is non-refundable if you cancel. Anything paid beyond the deposit is refunded in full.",
+    );
+    const german = await render({ kind: "deposit_received", locale: "de-DE" });
+    expect(german.text).toMatch(
+      /Die Anzahlung von 330,00\s€ wird bei einer Stornierung nicht erstattet\./,
+    );
+    const refundable = await render({
+      booking: {
+        ...base.booking,
+        policy: { depositNonRefundable: false, depositAmountMinor: 33_000 },
+      },
+    });
+    expect(refundable.text).toContain(
+      "If you cancel, everything you have paid is refunded in full.",
+    );
+    expect((await render({ kind: "requested" })).text).not.toContain("If you cancel");
+  });
+
+  it("name the regular deposit as kept, even when the full amount is due at short notice", async () => {
+    const email = await render({
+      booking: {
+        ...base.booking,
+        next: { kind: "full", amountMinor: 110_000, dueOn: "2026-07-04" },
+        policy: { depositNonRefundable: true, depositAmountMinor: 22_000 },
+      },
+    });
+    expect(email.text).toContain("Please pay the full amount of €1,100.00");
+    expect(email.text).toContain("The deposit of €220.00 is non-refundable if you cancel.");
+  });
+
+  it("tell of a cancellation and its refund, and the owner of the guest's", async () => {
+    const cancelled = { ...base.booking, cancelledBy: "guest" as const, received: 33_000 };
+    const toGuest = await render({
+      kind: "cancelled",
+      booking: { ...cancelled, refundDueMinor: 0 },
+    });
+    expect(toGuest.subject).toBe("Your booking at Lake house is cancelled");
+    expect(toGuest.text).toContain("As you asked, we have cancelled your booking.");
+    expect(toGuest.text).toContain("Under the cancellation policy, no refund is due.");
+    const byOwner = await render({
+      kind: "cancelled",
+      booking: { ...cancelled, cancelledBy: "owner", refundDueMinor: 33_000 },
+    });
+    expect(byOwner.text).toContain("we have had to cancel your booking");
+    expect(byOwner.text).toContain("We will refund €330.00 to you.");
+    const toOwner = await render({
+      kind: "cancelled",
+      recipient: "owner",
+      booking: { ...cancelled, refundDueMinor: 16_500 },
+    });
+    expect(toOwner.subject).toMatch(/^Gast hat storniert: Ada/);
+    expect(toOwner.text).toContain("Zu erstatten sind 165,00");
   });
 
   it("link the legal pages on every email", async () => {

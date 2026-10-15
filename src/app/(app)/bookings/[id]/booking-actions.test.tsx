@@ -29,7 +29,7 @@ describe("BookingActions", () => {
   it("confirms an inquiry", async () => {
     const fetchMock = serve(Response.json({}));
     const user = userEvent.setup();
-    render(<BookingActions id={ID} status="inquiry" />);
+    render(<BookingActions id={ID} status="inquiry" currency="EUR" />);
 
     await user.click(screen.getByRole("button", { name: "Confirm booking" }));
 
@@ -63,7 +63,7 @@ describe("BookingActions", () => {
       ),
     );
     const user = userEvent.setup();
-    render(<BookingActions id={ID} status="inquiry" />);
+    render(<BookingActions id={ID} status="inquiry" currency="EUR" />);
 
     await user.click(screen.getByRole("button", { name: "Confirm booking" }));
 
@@ -74,32 +74,52 @@ describe("BookingActions", () => {
     expect(refresh).not.toHaveBeenCalled();
   });
 
-  it("cancels only after asking", async () => {
-    const fetchMock = serve(Response.json({}));
+  it("cancels for the guest under the policy, or with the refund changed", async () => {
+    const preview = {
+      policy: { depositNonRefundable: true, depositAmountMinor: 22_000 },
+      guest: { receivedMinor: 110_000, retainedMinor: 22_000, refundMinor: 88_000 },
+      ownerRefundMinor: 110_000,
+    };
+    const fetchMock = vi.fn<typeof fetch>(async (url) =>
+      String(url).endsWith("/cancellation") ? Response.json(preview) : Response.json({}),
+    );
+    vi.stubGlobal("fetch", fetchMock);
     const user = userEvent.setup();
-    render(<BookingActions id={ID} status="confirmed" />);
+    render(<BookingActions id={ID} status="confirmed" currency="EUR" />);
 
     await user.click(screen.getByRole("button", { name: "Cancel booking" }));
-    const dialog = await screen.findByRole("alertdialog");
-    expect(fetchMock).not.toHaveBeenCalled();
+    const dialog = await screen.findByRole("dialog");
+    const refund = await within(dialog).findByLabelText("Refund (EUR)");
+    expect(refund).toHaveValue("880.00");
+    expect(dialog).toHaveTextContent("the deposit of €220.00 is kept");
+
+    // The owner cancelling: everything back.
+    await user.click(within(dialog).getByRole("radio", { name: "You" }));
+    expect(refund).toHaveValue("1100.00");
+    await user.click(within(dialog).getByRole("radio", { name: "The guest" }));
+    await user.clear(refund);
+    await user.type(refund, "900");
     await user.click(within(dialog).getByRole("button", { name: "Cancel booking" }));
 
     await waitFor(() => expect(refresh).toHaveBeenCalled());
     expect(fetchMock).toHaveBeenCalledWith(
       `/api/bookings/${ID}/cancel`,
-      expect.objectContaining({ method: "POST" }),
+      expect.objectContaining({
+        method: "POST",
+        body: JSON.stringify({ by: "guest", refundMinor: 90_000 }),
+      }),
     );
   });
 
   it("offers no confirm on a confirmed booking", () => {
-    render(<BookingActions id={ID} status="confirmed" />);
+    render(<BookingActions id={ID} status="confirmed" currency="EUR" />);
     expect(screen.queryByRole("button", { name: "Confirm booking" })).not.toBeInTheDocument();
   });
 
   it("reinstates a cancelled booking as an inquiry", async () => {
     const fetchMock = serve(Response.json({}));
     const user = userEvent.setup();
-    render(<BookingActions id={ID} status="cancelled" />);
+    render(<BookingActions id={ID} status="cancelled" currency="EUR" />);
 
     expect(screen.queryByRole("button", { name: "Cancel booking" })).not.toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Reinstate as inquiry" }));

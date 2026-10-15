@@ -298,16 +298,20 @@
         "depositFixed": "Anzahlung ({currency})",
         "depositDueDays": "Anzahlung fällig (Tage nach Annahme)",
         "balanceDueDaysBefore": "Restzahlung fällig (Tage vor Anreise)",
-        "fullPaymentDueDays": "Gesamtbetrag bei kurzfristiger Buchung fällig (Tage)"
+        "fullPaymentDueDays": "Gesamtbetrag bei kurzfristiger Buchung fällig (Tage)",
+        "depositNonRefundable": "Anzahlung bei Stornierung durch den Gast nicht erstattbar"
       },
       "hints": {
-        "fullPaymentDueDays": "Liegt die Anreise nicht weiter entfernt als die Tage vor Anreise für die Restzahlung, ist sofort der Gesamtbetrag fällig, innerhalb dieser Tage."
+        "fullPaymentDueDays": "Liegt die Anreise nicht weiter entfernt als die Tage vor Anreise für die Restzahlung, ist sofort der Gesamtbetrag fällig, innerhalb dieser Tage.",
+        "depositNonRefundable": "Storniert ein Gast, behalten Sie die Anzahlung und erstatten, was darüber hinaus gezahlt wurde. Ohne Haken erhalten Gäste alles zurück. Sagen Sie ab, erhalten Gäste immer alles zurück. Buchungen behalten die Bedingungen, unter denen sie angefragt wurden."
       },
       "summary": {
         "percent": "{percent} % Anzahlung binnen {days, plural, one {# Tag} other {# Tagen}}",
         "fixed": "{amount} Anzahlung binnen {days, plural, one {# Tag} other {# Tagen}}",
         "balance": "Rest {days, plural, one {# Tag} other {# Tage}} vor Anreise",
-        "full": "kurzfristig alles binnen {days, plural, one {# Tag} other {# Tagen}}"
+        "full": "kurzfristig alles binnen {days, plural, one {# Tag} other {# Tagen}}",
+        "nonRefundable": "Anzahlung nicht erstattbar",
+        "refundable": "Anzahlung erstattbar"
       }
     },
     "requestSettings": {
@@ -474,7 +478,7 @@
       "reinstate": "Als Anfrage wiederherstellen",
       "cancel": "Buchung stornieren",
       "cancelTitle": "Diese Buchung stornieren?",
-      "cancelDescription": "Ihre Tage werden sofort frei. Die Buchung bleibt als storniert erhalten und kann später als Anfrage wiederhergestellt werden. Der Gast wird nicht benachrichtigt.",
+      "cancelDescription": "Ihre Tage werden sofort frei. Die Buchung bleibt als storniert erhalten und kann später als Anfrage wiederhergestellt werden. Ist E-Mail eingerichtet, erhält der Gast eine Nachricht.",
       "keep": "Buchung behalten",
       "cancelled": "Buchung storniert",
       "taken": "Diese Buchung kann nicht bestätigt werden: Ihre Tage sind belegt.",
@@ -675,7 +679,24 @@
       "copy": "Link kopieren",
       "copied": "Link kopiert",
       "copyFailed": "Kopieren nicht möglich; bitte den Link markieren und von Hand kopieren.",
-      "linkFailed": "Link konnte nicht erstellt werden"
+      "linkFailed": "Link konnte nicht erstellt werden",
+      "refundDue": "Zu erstatten: {amount}"
+    },
+    "cancel": {
+      "who": "Wer storniert?",
+      "by": {
+        "guest": "Der Gast",
+        "owner": "Sie"
+      },
+      "received": "Bisher eingegangen: {amount}.",
+      "ownerRule": "Sagen Sie ab, erhält der Gast alles zurück.",
+      "guestRule": "Nach den Bedingungen der Buchung wird die Anzahlung von {deposit} einbehalten und der Rest erstattet.",
+      "guestRuleRefundable": "Nach den Bedingungen der Buchung erhält der Gast alles zurück.",
+      "refund": "Erstattung ({currency})",
+      "refundHint": "Zurückzuzahlen. Tragen Sie die Erstattung bei den Zahlungen ein, sobald Sie sie überwiesen haben.",
+      "loading": "Erstattung wird berechnet…",
+      "loadFailed": "Die Erstattung konnte nicht berechnet werden",
+      "failed": "Stornierung fehlgeschlagen"
     }
   },
   "guests": {
@@ -1629,6 +1650,13 @@
         "address": "Die Adresse:",
         "arrival": "Zur Anreise:",
         "rules": "Hausregeln:"
+      },
+      "cancelled": {
+        "subject": "Ihre Buchung in {title} ist storniert",
+        "byGuest": "Wie gewünscht haben wir Ihre Buchung storniert.",
+        "byOwner": "Es tut uns sehr leid: Wir mussten Ihre Buchung absagen.",
+        "refund": "Wir erstatten Ihnen {amount}.",
+        "noRefund": "Nach den Stornobedingungen steht keine Erstattung zu."
       }
     },
     "owner": {
@@ -1644,7 +1672,17 @@
       "overdue": {
         "subject": "Restzahlung überfällig: {name}, {when}",
         "body": "Die Restzahlung von {name} ist überfällig: {outstanding} stehen noch aus. Die Buchung bleibt bestätigt; wie es weitergeht, entscheiden Sie."
+      },
+      "guestCancelled": {
+        "subject": "Gast hat storniert: {name}, {when}",
+        "body": "{name} hat storniert. Zu erstatten sind {amount}; tragen Sie die Erstattung nach der Überweisung bei den Zahlungen ein."
       }
     }
+  },
+  "cancellation": {
+    "title": "Stornobedingungen",
+    "nonRefundable": "Die Anzahlung von {deposit} wird bei einer Stornierung nicht erstattet. Was Sie darüber hinaus gezahlt haben, erhalten Sie vollständig zurück.",
+    "refundable": "Wenn Sie stornieren, erhalten Sie alles, was Sie gezahlt haben, vollständig zurück.",
+    "percentOfTotal": "{percent} % des Gesamtpreises"
   }
 }

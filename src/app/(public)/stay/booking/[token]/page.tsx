@@ -23,8 +23,9 @@ export async function generateMetadata(): Promise<Metadata> {
 export default async function GuestBookingPage({ params }: PageProps<"/stay/booking/[token]">) {
   const view = await guestView((await params).token);
   if (!view) notFound();
-  const [t, locale, format] = await Promise.all([
+  const [t, tCancellation, locale, format] = await Promise.all([
     getTranslations("stay.booking"),
+    getTranslations("cancellation"),
     getLocale(),
     getFormat(),
   ]);
@@ -116,6 +117,21 @@ export default async function GuestBookingPage({ params }: PageProps<"/stay/book
           ) : (
             <p className="text-sm">{t("noBankDetails")}</p>
           )}
+        </section>
+      ) : null}
+
+      {view.status !== "cancelled" && view.status !== "expired" ? (
+        <section aria-labelledby="booking-cancellation" className="space-y-1 rounded-xl border p-4">
+          <h2 id="booking-cancellation" className="font-semibold">
+            {tCancellation("title")}
+          </h2>
+          <p className="text-sm">
+            {view.policy.depositNonRefundable
+              ? tCancellation("nonRefundable", {
+                  deposit: money(view.policy.depositAmountMinor),
+                })
+              : tCancellation("refundable")}
+          </p>
         </section>
       ) : null}
     </main>

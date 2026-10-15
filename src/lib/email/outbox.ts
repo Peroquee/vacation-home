@@ -22,6 +22,7 @@
 import type { EmailOutbox, EmailRecipient } from "@/generated/prisma/client";
 import { env } from "@/env";
 import { fromUtcDate } from "@/lib/calendar-date";
+import { bookingPolicy } from "@/lib/cancellation/service";
 import { db } from "@/lib/db";
 import { todayIn } from "@/lib/finance/recurring";
 import { logger } from "@/lib/logger";
@@ -115,6 +116,7 @@ async function deliver(row: EmailOutbox, setup: MailSetup, now: Date): Promise<O
     totalAmountMinor: booking.totalAmountMinor,
     received,
     today: todayIn(booking.property.timezone, now),
+    cancelledBy: booking.cancelledBy,
   });
   if (stale) return { skipped: stale };
 
@@ -153,6 +155,9 @@ async function deliver(row: EmailOutbox, setup: MailSetup, now: Date): Promise<O
       ),
       declineReason: booking.declineReason,
       guestMessage: booking.guestMessage,
+      cancelledBy: booking.cancelledBy,
+      refundDueMinor: booking.refundDueMinor,
+      policy: await bookingPolicy(booking),
     },
     guestName: booking.requesterName ?? booking.guest.name,
     property: {

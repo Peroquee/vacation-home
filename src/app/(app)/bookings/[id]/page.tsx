@@ -17,6 +17,7 @@ import { guestDisplayName } from "@/lib/guests/display";
 import { getGuest } from "@/lib/guests/service";
 import { todayIn } from "@/lib/finance/recurring";
 import { getProperty } from "@/lib/properties/service";
+import { refundOutstanding } from "@/lib/cancellation/preview";
 import { listPayments, netReceived, nextDue } from "@/lib/payments/service";
 import { cn } from "@/lib/utils";
 
@@ -46,10 +47,11 @@ export default async function BookingPage({ params }: PageProps<"/bookings/[id]"
   if (!record) notFound();
 
   const booking = toDto(record);
-  const [guest, syncStatus, payments] = await Promise.all([
+  const [guest, syncStatus, payments, refundDue] = await Promise.all([
     getGuest(booking.guestId),
     bookingSyncStatus([booking.id]),
     listPayments(booking.id),
+    refundOutstanding(record),
   ]);
   const received = netReceived(payments);
   const timezone = (await getProperty(booking.propertyId))?.timezone ?? "UTC";
@@ -118,7 +120,7 @@ export default async function BookingPage({ params }: PageProps<"/bookings/[id]"
             ) : null}
           </div>
         ) : null}
-        <BookingActions id={booking.id} status={booking.status} />
+        <BookingActions id={booking.id} status={booking.status} currency={booking.currency} />
       </div>
 
       <div className="grid gap-4 md:grid-cols-2">
@@ -207,6 +209,7 @@ export default async function BookingPage({ params }: PageProps<"/bookings/[id]"
                 payments={payments}
                 received={received}
                 next={nextDue(booking, received)}
+                refundDue={refundDue}
                 today={todayIn(timezone)}
               />
             </CardContent>

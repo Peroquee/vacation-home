@@ -117,6 +117,15 @@ enum BookingStatus {
   @@map("booking_status")
 }
 
+/// Who cancelled a booking (GitLab #116): the guest, under the cancellation
+/// policy, or the owner, who refunds in full.
+enum CancelledBy {
+  guest
+  owner
+
+  @@map("cancelled_by")
+}
+
 enum BookingSource {
   direct
   airbnb
@@ -185,6 +194,14 @@ model Booking {
   /// is told, if any. Personal data: cleared by the purge.
   declinedAt         DateTime?     @map("declined_at")
   declineReason      String?       @map("decline_reason")
+  /// The cancellation policy the guest agreed to (GitLab #116), as in
+  /// src/lib/cancellation/policy.ts: taken when they sent the request, or
+  /// when a booking without one is reserved or made.
+  cancellationPolicy Json?         @map("cancellation_policy")
+  /// A cancelled booking: who cancelled, when, and what is to be paid back.
+  cancelledBy        CancelledBy?  @map("cancelled_by")
+  cancelledAt        DateTime?     @map("cancelled_at")
+  refundDueMinor     Int?          @map("refund_due_minor")
   createdAt          DateTime      @default(now()) @map("created_at")
   updatedAt          DateTime      @updatedAt @map("updated_at")
 
@@ -217,6 +234,7 @@ enum BookingEventKind {
   request_expired
   deposit_received
   fully_paid
+  cancelled
 
   @@map("booking_event_kind")
 }
@@ -663,6 +681,9 @@ model PaymentTerms {
   balanceDueDaysBefore Int      @default(30) @map("balance_due_days_before")
   /// Days after acceptance the full amount is due at short notice.
   fullPaymentDueDays   Int      @default(3) @map("full_payment_due_days")
+  /// The cancellation policy (GitLab #116): the deposit is kept when a guest
+  /// cancels; anything paid beyond it is refunded in full.
+  depositNonRefundable Boolean  @default(true) @map("deposit_non_refundable")
   createdAt            DateTime @default(now()) @map("created_at")
   updatedAt            DateTime @updatedAt @map("updated_at")
 

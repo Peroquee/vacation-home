@@ -12,6 +12,7 @@ import { formattersFor } from "@/i18n/format";
 import { DEFAULT_LOCALE, isLocale, type Locale } from "@/i18n/locales";
 import { formatReference } from "@/lib/booking-requests/values";
 import { type CalendarDate, daysBetween } from "@/lib/calendar-date";
+import type { CancellationTerms } from "@/lib/cancellation/policy";
 import type { BankDetails } from "@/lib/payments/bank";
 import { epcPayload, remittanceFor } from "@/lib/payments/girocode";
 import { formatIban } from "@/lib/payments/iban";
@@ -40,6 +41,11 @@ export type EmailContext = {
     next: NextDue | null;
     declineReason: string | null;
     guestMessage: string | null;
+    /** A cancelled booking (GitLab #116): who cancelled, and what is to be paid back. */
+    cancelledBy: "guest" | "owner" | null;
+    refundDueMinor: number | null;
+    /** The cancellation policy the guest agreed to. */
+    policy: CancellationTerms;
   };
   guestName: string;
   property: {
@@ -114,6 +120,7 @@ export async function renderEmail(context: EmailContext): Promise<RenderedEmail>
       ? context.locale
       : DEFAULT_LOCALE;
   const t = createTranslator({ locale, messages: MESSAGES[locale], namespace: "email" });
+  const tc = createTranslator({ locale, messages: MESSAGES[locale], namespace: "cancellation" });
   const format = formattersFor(locale);
   const { booking, property } = context;
   const money = (minor: number) => format.money(minor, booking.currency);
@@ -188,6 +195,15 @@ export async function renderEmail(context: EmailContext): Promise<RenderedEmail>
     return out;
   }
 
+  // The policy the guest agreed to, with what asks them to pay (GitLab #116).
+  const policy: Block[] = [
+    {
+      p: booking.policy.depositNonRefundable
+        ? tc("nonRefundable", { deposit: money(booking.policy.depositAmountMinor) })
+        : tc("refundable"),
+    },
+  ];
+
   const guestLink: Block[] = context.guestLink
     ? [{ link: t("guestLink"), url: context.guestLink }]
     : [];
@@ -227,6 +243,16 @@ export async function renderEmail(context: EmailContext): Promise<RenderedEmail>
           ownerLink(`/bookings/${booking.id}`),
         );
         break;
+      case "cancelled":
+        subject = t("owner.guestCancelled.subject", { name, when });
+        blocks.push(
+          {
+            p: t("owner.guestCancelled.body", { name, amount: money(booking.refundDueMinor ?? 0) }),
+          },
+          stay,
+          ownerLink(`/bookings/${booking.id}`),
+        );
+        break;
       default:
         throw new Error(`no owner email for ${context.kind}`);
     }
@@ -248,6 +274,7 @@ export async function renderEmail(context: EmailContext): Promise<RenderedEmail>
           {
             p: t("guest.reserved.hold"),
           },
+          ...policy,
           ...guestLink,
         );
         break;
@@ -282,6 +309,7 @@ export async function renderEmail(context: EmailContext): Promise<RenderedEmail>
           { p: t("guest.depositReceived.body", { received: money(booking.received) }) },
           stay,
           ...(await payment()),
+          ...policy,
           ...guestLink,
         );
         break;
@@ -312,6 +340,19 @@ export async function renderEmail(context: EmailContext): Promise<RenderedEmail>
         const rules = pick(property.houseRules);
         if (rules) blocks.push({ p: t("guest.paid.rules") }, { pre: rules });
         blocks.push(...guestLink);
+        break;
+      }
+      case "cancelled": {
+        subject = t("guest.cancelled.subject", { title });
+        const byGuest = booking.cancelledBy === "guest";
+        blocks.push(
+          hello,
+          { p: t(byGuest ? "guest.cancelled.byGuest" : "guest.cancelled.byOwner") },
+          stay,
+        );
+        const refund = booking.refundDueMinor ?? 0;
+        if (refund > 0) blocks.push({ p: t("guest.cancelled.refund", { amount: money(refund) }) });
+        else if (byGuest && booking.received > 0) blocks.push({ p: t("guest.cancelled.noRefund") });
         break;
       }
       default:

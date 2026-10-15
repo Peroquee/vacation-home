@@ -10,6 +10,7 @@ const reserved: Relevance = {
   totalAmountMinor: 110_000,
   received: 0,
   today: "2026-07-06",
+  cancelledBy: null,
 };
 
 describe("whether an email is still worth sending", () => {
@@ -53,6 +54,15 @@ describe("whether an email is still worth sending", () => {
     ).toBe("no longer expired");
     expect(irrelevance("requested", "owner", "REF", { ...reserved, status: "inquiry" })).toBeNull();
     expect(irrelevance("requested", "owner", "REF", reserved)).toBe("already answered");
+  });
+
+  it("tells the guest of a cancellation, and the owner only of the guest's", () => {
+    const byGuest = { ...reserved, status: "cancelled" as const, cancelledBy: "guest" as const };
+    expect(irrelevance("cancelled", "guest", "x", byGuest)).toBeNull();
+    expect(irrelevance("cancelled", "owner", "x", byGuest)).toBeNull();
+    const byOwner = { ...byGuest, cancelledBy: "owner" as const };
+    expect(irrelevance("cancelled", "guest", "x", byOwner)).toBeNull();
+    expect(irrelevance("cancelled", "owner", "x", byOwner)).toBe("cancelled by the owner");
   });
 
   it("sends confirmations of what happened however late", () => {

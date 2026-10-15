@@ -30,8 +30,14 @@ import { scheduleBookingSync } from "@/lib/google/outbound";
 import { kickOutboundSync } from "@/lib/google/sync-worker";
 import type { DeadlinesInput } from "@/lib/payment-terms/schema";
 import { newReference } from "@/lib/booking-requests/reference";
+import { parseSnapshot } from "@/lib/cancellation/schema";
 import { getPaymentTerms } from "@/lib/payment-terms/service";
-import { BALANCE_REMINDER_DAYS, DEPOSIT_REMINDER_DAYS, holdFor } from "@/lib/payment-terms/terms";
+import {
+  BALANCE_REMINDER_DAYS,
+  DEPOSIT_REMINDER_DAYS,
+  depositFor,
+  holdFor,
+} from "@/lib/payment-terms/terms";
 
 import { check, locked, withRelations, type WriteResult } from "./service";
 
@@ -87,9 +93,10 @@ export async function reserveBooking(id: string, now = new Date()): Promise<Writ
       if (conflict) return conflict;
 
       const today = todayIn(current.property.timezone, now);
+      const terms = await getPaymentTerms(current.propertyId, tx);
       const hold = holdFor(
         { totalMinor: current.totalAmountMinor, checkIn: stay.checkIn, today },
-        await getPaymentTerms(current.propertyId, tx),
+        terms,
       );
       const booking = await tx.booking.update({
         where: { id },
@@ -103,6 +110,15 @@ export async function reserveBooking(id: string, now = new Date()): Promise<Writ
           depositDueOn: toUtcDate(hold.depositDueOn),
           balanceDueOn: hold.balanceDueOn && toUtcDate(hold.balanceDueOn),
           expiredAt: null,
+          // The cancellation policy (GitLab #116): the request's term stands,
+          // a booking without one takes the property's now; the deposit it
+          // keeps is the one the guest is now asked for, by today's total.
+          cancellationPolicy: {
+            depositNonRefundable:
+              parseSnapshot(current.cancellationPolicy)?.depositNonRefundable ??
+              terms.depositNonRefundable,
+            depositAmountMinor: depositFor(current.totalAmountMinor, terms),
+          },
         },
         include: withRelations,
       });

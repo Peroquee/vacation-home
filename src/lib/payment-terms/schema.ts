@@ -27,6 +27,8 @@ export const paymentTermsSchema = z
     depositDueDays: whole(1, 60),
     balanceDueDaysBefore: whole(0, 365),
     fullPaymentDueDays: whole(1, 60),
+    // The cancellation policy (GitLab #116); left out, it stays as it was.
+    depositNonRefundable: z.boolean().optional(),
   })
   .superRefine((terms, context) => {
     if ((terms.depositPercent === null) === (terms.depositFixedMinor === null)) {
