@@ -26,6 +26,8 @@ export const EMPTY_LISTING: ListingDto = {
   amenities: [],
   checkInTime: null,
   checkOutTime: null,
+  exactAddress: "",
+  arrivalNotes: "",
 };
 
 function toListingDto(row: PropertyListing | null): ListingDto {

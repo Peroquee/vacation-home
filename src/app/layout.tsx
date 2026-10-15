@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { connection } from "next/server";
 
 import { NextIntlClientProvider } from "next-intl";
-import { getLocale, getTranslations } from "next-intl/server";
+import { getLocale, getMessages, getTranslations } from "next-intl/server";
 
 import { Toaster } from "@/components/ui/sonner";
 
@@ -21,10 +21,13 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
   // The request's language (src/i18n/request.ts), for the page and for the
   // client components, which get its messages from the provider.
   const locale = await getLocale();
+  // Less the emails' words (GitLab #111): only the server writes emails.
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars -- left out on purpose
+  const { email, ...messages } = await getMessages();
   return (
     <html lang={locale}>
       <body>
-        <NextIntlClientProvider>{children}</NextIntlClientProvider>
+        <NextIntlClientProvider messages={messages}>{children}</NextIntlClientProvider>
         {/* Clears the fixed mobile bottom bar (h-16). */}
         <Toaster position="bottom-right" mobileOffset={{ bottom: "5rem" }} />
       </body>

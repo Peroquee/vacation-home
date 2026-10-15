@@ -343,6 +343,39 @@
       "hints": {
         "optional": "Optional."
       }
+    },
+    "email": {
+      "title": "Emails",
+      "description": "Guests are emailed at every step of their booking, and you about anything that needs you. Each email goes out once; a mail server that fails is tried again.",
+      "noSmtp": "No mail server is set up (SMTP_HOST, SMTP_FROM): guests get no emails until it is. Nothing is lost: they go out once it is set.",
+      "noOwnerEmail": "OWNER_EMAIL is not set: your own notifications wait until it is.",
+      "counts": "{pending} waiting · {sent} sent · {failed} failed · {skipped} not sent",
+      "sendNow": "Send now",
+      "ran": "Emails checked",
+      "runFailed": "Could not send the emails",
+      "kind": {
+        "requested": "Request received",
+        "reserved": "Request accepted",
+        "deposit_reminder": "Payment reminder",
+        "reservation_expired": "Reservation lapsed",
+        "balance_reminder": "Balance reminder",
+        "balance_overdue": "Balance overdue",
+        "declined": "Request declined",
+        "request_expired": "Request expired",
+        "deposit_received": "Deposit received",
+        "fully_paid": "Fully paid"
+      },
+      "recipient": {
+        "guest": "to the guest",
+        "owner": "to you"
+      },
+      "status": {
+        "pending": "retrying",
+        "failed": "failed",
+        "skipped": "not sent",
+        "sent": "sent"
+      },
+      "attempts": "{count, plural, one {# attempt} other {# attempts}}"
     }
   },
   "forms": {
@@ -1464,7 +1497,12 @@
       "languageDe": "German",
       "title": "Title",
       "description": "Description",
-      "houseRules": "House rules"
+      "houseRules": "House rules",
+      "private": "For confirmed guests only",
+      "privateHint": "Never shown on the public page: sent only in the final confirmation email, once the guest has paid in full. Leave blank to leave it out.",
+      "exactAddress": "Exact address",
+      "arrivalNotes": "Arrival notes",
+      "arrivalNotesHint": "For example where the key box is and its code, or parking."
     },
     "photos": {
       "heading": "Photos",
@@ -1521,5 +1559,92 @@
     },
     "notYet": "This page is not available yet. Please check back later.",
     "footer": "Legal"
+  },
+  "email": {
+    "hello": "Hello {name},",
+    "replyHint": "Questions? Just reply to this email.",
+    "guestLink": "Your booking online: status, what to pay and how",
+    "footer": {
+      "imprint": "Imprint",
+      "privacy": "Privacy policy"
+    },
+    "facts": {
+      "home": "Holiday home",
+      "dates": "Dates",
+      "nights": "{count, plural, one {# night} other {# nights}}",
+      "guests": "Guests",
+      "total": "Total",
+      "reference": "Reference"
+    },
+    "pay": {
+      "deposit": "Please pay the deposit of {amount} by {date}.",
+      "full": "Please pay the full amount of {amount} by {date}.",
+      "balance": "Please pay the balance of {amount} by {date}.",
+      "detailsFollow": "We will send you the bank details separately.",
+      "holder": "Account holder",
+      "amount": "Amount",
+      "remittance": "Reference to quote",
+      "girocode": "GiroCode: scan it with your banking app to fill in the transfer"
+    },
+    "guest": {
+      "requested": {
+        "subject": "Your request for {title}",
+        "body": "Thank you for your request. We have received it and will get back to you shortly.",
+        "next": "This is not a booking yet: once we accept, the dates are reserved for you until your first payment."
+      },
+      "reserved": {
+        "subject": "Your dates at {title} are reserved",
+        "body": "Good news: we have accepted your request and reserved the dates for you.",
+        "hold": "The dates are held for you until then. If the payment has not arrived by the end of that day, the reservation lapses and the dates become free again."
+      },
+      "depositReminder": {
+        "subject": "Reminder: your payment for {title}",
+        "body": "A friendly reminder: the payment that confirms your reservation is due soon."
+      },
+      "reservationExpired": {
+        "subject": "Your reservation for {title} has lapsed",
+        "body": "We did not receive your payment in time, so the reservation has lapsed and the dates are free again. If you would still like to come, just send a new request."
+      },
+      "requestExpired": {
+        "subject": "Your request for {title}",
+        "body": "Unfortunately we could not answer your request in time. If you would still like to come, please send a new request."
+      },
+      "declined": {
+        "subject": "Your request for {title}",
+        "body": "Unfortunately we cannot accept your request."
+      },
+      "depositReceived": {
+        "subject": "Your booking at {title} is confirmed",
+        "body": "We have received your payment of {received}. Your booking is confirmed."
+      },
+      "balanceReminder": {
+        "subject": "Reminder: the balance for {title}",
+        "body": "A friendly reminder: the balance for your stay is due soon."
+      },
+      "paid": {
+        "subject": "Everything is paid: see you at {title}",
+        "body": "We have received the full amount. Thank you - we look forward to your stay.",
+        "checkIn": "Check-in from {time}",
+        "checkOut": "check-out until {time}",
+        "address": "The address:",
+        "arrival": "Arriving:",
+        "rules": "House rules:"
+      }
+    },
+    "owner": {
+      "open": "Open in the app",
+      "requested": {
+        "subject": "New request: {name}, {when}",
+        "body": "{name} has sent a booking request."
+      },
+      "expired": {
+        "subject": "Reservation lapsed: {name}, {when}",
+        "body": "The reservation of {name} has lapsed: the first payment did not arrive in time. The dates are free again."
+      },
+      "overdue": {
+        "subject": "Balance overdue: {name}, {when}",
+        "body": "The balance of {name} is overdue: {outstanding} is still outstanding. The booking stays confirmed; what happens now is your call."
+      }
+    }
   }
 }

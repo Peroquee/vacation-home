@@ -16,6 +16,7 @@ import { getBookingRulesFor } from "@/lib/booking-rules/service";
 import { getPaymentTermsFor } from "@/lib/payment-terms/service";
 import { getRequestSettingsFor } from "@/lib/booking-requests/settings";
 import { getBankDetailsFor } from "@/lib/payments/bank";
+import { outboxStatus } from "@/lib/email/outbox";
 import { fromUtcDate } from "@/lib/calendar-date";
 import { toDto as calendarDto } from "@/lib/google/calendar-settings";
 import { calendarConnectAvailable, getConnectionStatus } from "@/lib/google/connection";
@@ -33,6 +34,7 @@ import { BookingRulesSection } from "./booking-rules-section";
 import { PaymentTermsSection } from "./payment-terms-section";
 import { RequestSettingsSection } from "./request-settings-section";
 import { BankDetailsSection } from "./bank-details-section";
+import { EmailSection } from "./email-section";
 import { DoubleBookings } from "./double-bookings";
 import { IcalSection } from "./ical-section";
 import { PropertyArchiveButton } from "./property-archive-button";
@@ -132,6 +134,7 @@ export default async function SettingsPage({ searchParams }: PageProps<"/setting
       getRequestSettingsFor(active.map((p) => p.id)),
       getBankDetailsFor(active.map((p) => p.id)),
     ]);
+  const email = await outboxStatus();
   const t = await getTranslations("settings.page");
   const tCommon = await getTranslations("common");
   const columns = columnsFor(t, await getFormat(), tCommon("edit"));
@@ -212,6 +215,8 @@ export default async function SettingsPage({ searchParams }: PageProps<"/setting
             }))}
           />
         ) : null}
+
+        <EmailSection status={email} />
 
         {active.length > 0 ? (
           <BankDetailsSection

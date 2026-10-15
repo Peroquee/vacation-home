@@ -231,10 +231,53 @@ model BookingEvent {
   key       String
   createdAt DateTime         @default(now()) @map("created_at")
 
-  booking Booking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  booking Booking       @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  emails  EmailOutbox[]
 
   @@unique([bookingId, kind, key])
   @@map("booking_events")
+}
+
+enum EmailRecipient {
+  guest
+  owner
+
+  @@map("email_recipient")
+}
+
+enum EmailStatus {
+  pending
+  sent
+  /// Gave up after retrying for a day.
+  failed
+  /// Not sent on purpose: no longer true, too old, or no address.
+  skipped
+
+  @@map("email_status")
+}
+
+/// An email to send for a booking event (GitLab #111): once per (event,
+/// recipient). Holds no address, subject or body - the mail is written when
+/// it is sent (src/lib/email).
+model EmailOutbox {
+  id            String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  eventId       String         @map("event_id") @db.Uuid
+  recipient     EmailRecipient
+  status        EmailStatus    @default(pending)
+  attempts      Int            @default(0)
+  nextAttemptAt DateTime       @default(now()) @map("next_attempt_at")
+  lastError     String?        @map("last_error")
+  skipReason    String?        @map("skip_reason")
+  messageId     String?        @map("message_id")
+  sentAt        DateTime?      @map("sent_at")
+  createdAt     DateTime       @default(now()) @map("created_at")
+  updatedAt     DateTime       @updatedAt @map("updated_at")
+
+  event BookingEvent @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  @@unique([eventId, recipient])
+  @@index([status, nextAttemptAt])
+  @@map("email_outbox")
 }
 
 enum PaymentKind {
@@ -682,6 +725,10 @@ model PropertyListing {
   /// "HH:MM" in the property's timezone.
   checkInTime   String?  @map("check_in_time")
   checkOutTime  String?  @map("check_out_time")
+  /// Owner-only (GitLab #111): never on the public page, only in the
+  /// final confirmation email once the guest has paid in full.
+  exactAddress  String   @default("") @map("exact_address")
+  arrivalNotes  String   @default("") @map("arrival_notes")
   createdAt     DateTime @default(now()) @map("created_at")
   updatedAt     DateTime @updatedAt @map("updated_at")
 

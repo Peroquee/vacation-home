@@ -45,6 +45,9 @@ export const listingSchema = z.strictObject({
     .transform((list) => [...new Set(list)].sort()),
   checkInTime: time,
   checkOutTime: time,
+  // Owner-only (GitLab #111): sent in the final confirmation, never public.
+  exactAddress: text(LISTING_LIMITS.exactAddress),
+  arrivalNotes: text(LISTING_LIMITS.arrivalNotes),
 });
 export type ListingInput = z.infer<typeof listingSchema>;
 

@@ -34,6 +34,8 @@ export const LISTING_LIMITS = {
   description: 5000,
   houseRules: 3000,
   alt: 200,
+  exactAddress: 300,
+  arrivalNotes: 2000,
   count: 50,
 };
 

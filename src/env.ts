@@ -214,6 +214,34 @@ const envSchema = z.object({
    */
   RECEIPTS_DIR: optionalExact(z.string().min(1)).default("./data/receipts"),
 
+  /**
+   * Outgoing mail (GitLab #111): the SMTP server the guest and owner emails
+   * go through. Unset, nothing is sent - the emails wait, and go out once
+   * it is set; the settings page says so. SMTP_SECURE "true" for implicit
+   * TLS (usually port 465); otherwise STARTTLS is required (port 587).
+   */
+  SMTP_HOST: optionalExact(z.string().trim().min(1)),
+  SMTP_PORT: optional(z.coerce.number().int().min(1).max(65535)).default(587),
+  SMTP_SECURE: optional(z.enum(["true", "false", "1", "0", "yes", "no"]))
+    .default("false")
+    .transform((value) => ["true", "1", "yes"].includes(value)),
+  /**
+   * "false" only for a mail server on the LAN without TLS (a test mail
+   * catcher): otherwise STARTTLS is required on a plain port.
+   */
+  SMTP_REQUIRE_TLS: optional(z.enum(["true", "false", "1", "0", "yes", "no"]))
+    .default("true")
+    .transform((value) => ["true", "1", "yes"].includes(value)),
+  SMTP_USER: optionalExact(z.string().min(1)),
+  SMTP_PASSWORD: optionalExact(z.string().min(1)),
+  /** The sender, e.g. "Ferienhaus am See <buchung@example.com>". */
+  SMTP_FROM: optionalExact(z.string().trim().min(3)),
+  /**
+   * The owner's mailbox: notifications go here, and guests' replies (it is
+   * their Reply-To). Unset, owner emails wait like the rest.
+   */
+  OWNER_EMAIL: optionalExact(z.email("must be an email address")),
+
   /** Minimum level written by the logger in src/lib/logger.ts. */
   LOG_LEVEL: optional(z.enum(["trace", "debug", "info", "warn", "error", "fatal"])).default("info"),
 
