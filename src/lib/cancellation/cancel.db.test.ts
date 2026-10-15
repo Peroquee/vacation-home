@@ -18,6 +18,7 @@ let guestId: string;
 /** 4 nights at 250.00 plus 100.00 cleaning: 1100.00, a 20% deposit of 220.00. */
 const STAY = { checkIn: "2027-03-01", checkOut: "2027-03-05" };
 
+/** A request as the public site stores it: with its reference and the guest's consent. */
 async function request() {
   const result = await createBooking(
     {
@@ -28,7 +29,7 @@ async function request() {
       source: "website",
       guestCount: 2,
     },
-    { reference: newReference(), guestLocale: "en-GB" },
+    { reference: newReference(), guestLocale: "en-GB", privacyConsentAt: new Date() },
   );
   if (!("booking" in result)) throw new Error(JSON.stringify(result));
   return result.booking;
@@ -113,7 +114,7 @@ describe("the policy a booking is under", () => {
         source: "website",
         guestCount: 2,
       },
-      { reference: newReference(), guestLocale: "en-GB" },
+      { reference: newReference(), guestLocale: "en-GB", privacyConsentAt: new Date() },
     );
     if (!("booking" in result)) throw new Error(JSON.stringify(result));
     await reserveBooking(result.booking.id);

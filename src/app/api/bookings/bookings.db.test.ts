@@ -80,6 +80,17 @@ afterAll(async () => {
 });
 
 describe("POST /api/bookings", () => {
+  it("refuses the website as a source: only the public site's requests have it", async () => {
+    const { status, body } = await post({
+      checkIn: "2026-07-14",
+      checkOut: "2026-07-18",
+      source: "website",
+    });
+    expect(status).toBe(422);
+    expect(body.error.fields).toEqual({ source: ["is set by the public booking site only"] });
+    expect(await db.booking.count()).toBe(0);
+  });
+
   it("creates a booking with the property's rates and currency and a calculated total", async () => {
     const { status, body, response } = await post({
       checkIn: "2026-07-14",
