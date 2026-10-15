@@ -122,6 +122,18 @@ describe("the emails", () => {
     expect((await render({ kind: "requested" })).text).not.toContain("If you cancel");
   });
 
+  it("name the regular deposit as kept, even when the full amount is due at short notice", async () => {
+    const email = await render({
+      booking: {
+        ...base.booking,
+        next: { kind: "full", amountMinor: 110_000, dueOn: "2026-07-04" },
+        policy: { depositNonRefundable: true, depositAmountMinor: 22_000 },
+      },
+    });
+    expect(email.text).toContain("Please pay the full amount of €1,100.00");
+    expect(email.text).toContain("The deposit of €220.00 is non-refundable if you cancel.");
+  });
+
   it("tell of a cancellation and its refund, and the owner of the guest's", async () => {
     const cancelled = { ...base.booking, cancelledBy: "guest" as const, received: 33_000 };
     const toGuest = await render({

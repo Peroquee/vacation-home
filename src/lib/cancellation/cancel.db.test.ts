@@ -2,6 +2,7 @@ import { beforeAll, beforeEach, describe, expect, it } from "vitest";
 
 import type { Property } from "@/generated/prisma/client";
 import { isAvailable } from "@/lib/availability/service";
+import { newReference } from "@/lib/booking-requests/reference";
 import { reserveBooking } from "@/lib/bookings/hold";
 import { cancelBooking, createBooking, updateBooking } from "@/lib/bookings/service";
 import { db } from "@/lib/db";
@@ -27,7 +28,7 @@ async function request() {
       source: "website",
       guestCount: 2,
     },
-    { reference: `R${Math.random().toString(36).slice(2, 9).toUpperCase()}`, guestLocale: "en-GB" },
+    { reference: newReference(), guestLocale: "en-GB" },
   );
   if (!("booking" in result)) throw new Error(JSON.stringify(result));
   return result.booking;
@@ -97,6 +98,33 @@ describe("the policy a booking is under", () => {
       cancellationPolicy: { depositNonRefundable: true, depositAmountMinor: 55_000 },
     });
     expect((await cancellationPreview(booking.id))!.policy.depositNonRefundable).toBe(true);
+  });
+
+  it("keeps only the regular deposit when the full amount is due at short notice", async () => {
+    const soon = new Date(Date.now() + 10 * 86_400_000).toISOString().slice(0, 10);
+    const later = new Date(Date.now() + 14 * 86_400_000).toISOString().slice(0, 10);
+    const result = await createBooking(
+      {
+        propertyId: property.id,
+        guestId,
+        checkIn: soon,
+        checkOut: later,
+        status: "inquiry",
+        source: "website",
+        guestCount: 2,
+      },
+      { reference: newReference(), guestLocale: "en-GB" },
+    );
+    if (!("booking" in result)) throw new Error(JSON.stringify(result));
+    await reserveBooking(result.booking.id);
+    expect(await row(result.booking.id)).toMatchObject({
+      depositAmountMinor: 110_000,
+      balanceDueOn: null,
+      cancellationPolicy: { depositNonRefundable: true, depositAmountMinor: 22_000 },
+    });
+    await pay(result.booking.id, "deposit", 110_000);
+    await cancelBooking(result.booking.id, { by: "guest" });
+    expect((await row(result.booking.id)).refundDueMinor).toBe(88_000);
   });
 
   it("keeps the deposit asked for at reserve, by the total then", async () => {
