@@ -1,7 +1,9 @@
 /**
  * The cancellation policy a booking is under (GitLab #116): a snapshot of
  * the property's at the time the guest agreed, so a later change to the
- * terms never changes an existing booking. Server-side only.
+ * terms never changes an existing booking. Reserving keeps its
+ * `depositNonRefundable` and sets the deposit to the one the guest is then
+ * asked for (src/lib/bookings/hold.ts). Server-side only.
  */
 import type { Prisma } from "@/generated/prisma/client";
 import { db, type DbClient } from "@/lib/db";

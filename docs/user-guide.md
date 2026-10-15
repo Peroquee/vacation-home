@@ -159,8 +159,9 @@ guest cancels** (on by default) is your cancellation policy: a guest who
 cancels forfeits the deposit and gets back anything paid beyond it. Off,
 they get everything back. There is no other fee. Guests read the policy
 next to the price on your public page, above the consent when they send a
-request, and in the emails asking them to pay. A booking keeps the policy
-it was requested (or made) under, even if you change it later.
+request, and in the emails asking them to pay. A booking keeps the policy the guest
+requested (or you made it) under, even if you change it later; the deposit
+kept is the one they were asked to pay when you accepted.
 
 **Cancel booking** asks who is cancelling. For the guest it works out the
 refund from the booking's policy; for you it is everything received, since

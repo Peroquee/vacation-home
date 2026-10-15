@@ -3,7 +3,7 @@ import { beforeAll, beforeEach, describe, expect, it } from "vitest";
 import type { Property } from "@/generated/prisma/client";
 import { isAvailable } from "@/lib/availability/service";
 import { reserveBooking } from "@/lib/bookings/hold";
-import { cancelBooking, createBooking } from "@/lib/bookings/service";
+import { cancelBooking, createBooking, updateBooking } from "@/lib/bookings/service";
 import { db } from "@/lib/db";
 import { savePaymentTerms } from "@/lib/payment-terms/service";
 import { DEFAULT_TERMS } from "@/lib/payment-terms/terms";
@@ -89,12 +89,35 @@ describe("the policy a booking is under", () => {
       depositPercent: 50,
       depositNonRefundable: false,
     });
+    // Reserving keeps the term consented to; the deposit kept is the one
+    // the guest is now asked for, under the terms of the day.
     await reserveBooking(booking.id);
-    expect((await row(booking.id)).cancellationPolicy).toEqual({
-      depositNonRefundable: true,
-      depositAmountMinor: 22_000,
+    expect(await row(booking.id)).toMatchObject({
+      depositAmountMinor: 55_000,
+      cancellationPolicy: { depositNonRefundable: true, depositAmountMinor: 55_000 },
     });
     expect((await cancellationPreview(booking.id))!.policy.depositNonRefundable).toBe(true);
+  });
+
+  it("keeps the deposit asked for at reserve, by the total then", async () => {
+    const booking = await request();
+    // The owner changes the total before accepting: 2000.00, a 400.00 deposit.
+    const changed = await updateBooking(booking.id, { totalAmountMinor: 200_000 });
+    if (!("booking" in changed)) throw new Error(JSON.stringify(changed));
+    await reserveBooking(booking.id);
+    expect((await row(booking.id)).depositAmountMinor).toBe(40_000);
+    await pay(booking.id, "deposit", 40_000);
+    await pay(booking.id, "balance", 160_000);
+
+    // A later change by hand does not move what is kept.
+    await db.booking.update({ where: { id: booking.id }, data: { totalAmountMinor: 250_000 } });
+    expect((await cancellationPreview(booking.id))!.guest).toEqual({
+      receivedMinor: 200_000,
+      retainedMinor: 40_000,
+      refundMinor: 160_000,
+    });
+    await cancelBooking(booking.id, { by: "guest" });
+    expect((await row(booking.id)).refundDueMinor).toBe(160_000);
   });
 
   it("is taken when the owner makes a booking, or reserves one that has none", async () => {
