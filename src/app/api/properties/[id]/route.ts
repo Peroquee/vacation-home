@@ -1,4 +1,5 @@
 import { apiError, fieldError, isUuid, notFound, parseBody } from "@/lib/api";
+import { LEGAL_REQUIRED } from "@/lib/legal/legal";
 import { SLUG_REQUIRED, SLUG_TAKEN, updatePropertySchema } from "@/lib/properties/schema";
 import { deleteProperty, getProperty, toDto, updateProperty } from "@/lib/properties/service";
 
@@ -46,6 +47,7 @@ export async function PATCH(request: Request, { params }: Context) {
   }
   if (property === "slug_taken") return fieldError("slug", SLUG_TAKEN);
   if (property === "slug_required") return fieldError("publiclyListed", SLUG_REQUIRED);
+  if (property === "legal_required") return fieldError("publiclyListed", LEGAL_REQUIRED);
   return property ? Response.json(toDto(property)) : notFound("Property");
 }
 

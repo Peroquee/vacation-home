@@ -35,7 +35,7 @@ const property: PropertyDto = {
   updatedAt: "2026-01-01T00:00:00.000Z",
 };
 
-function renderDialog(props: { property?: PropertyDto } = {}) {
+function renderDialog(props: { property?: PropertyDto; canList?: boolean } = {}) {
   render(<PropertyFormDialog {...props} trigger={<Button>Open</Button>} />);
   return userEvent.setup();
 }
@@ -108,6 +108,32 @@ describe("PropertyFormDialog", () => {
 
     await waitFor(() => expect(refresh).toHaveBeenCalled());
     expect(lastBody()).toMatchObject({ slug: "casa-azul", publiclyListed: true });
+  });
+
+  it("keeps the switch off until the legal pages are filled in", async () => {
+    fetchMock.mockResolvedValue(Response.json(property));
+    const user = renderDialog({ property: { ...property, slug: "casa-azul" }, canList: false });
+
+    await user.click(screen.getByRole("button", { name: "Open" }));
+    const toggle = screen.getByRole("checkbox", { name: "Show on the public booking site" });
+    expect(toggle).toHaveAttribute("aria-disabled", "true");
+    expect(toggle).toHaveAccessibleDescription(
+      "Fill in the imprint and privacy policy under Legal pages first.",
+    );
+    await user.click(toggle);
+    expect(toggle).not.toBeChecked();
+  });
+
+  it("lets a listed property be unlisted whatever the legal pages say", async () => {
+    fetchMock.mockResolvedValue(Response.json(property));
+    const user = renderDialog({ property: { ...property, publiclyListed: true }, canList: false });
+
+    await user.click(screen.getByRole("button", { name: "Open" }));
+    const toggle = screen.getByRole("checkbox", { name: "Show on the public booking site" });
+    await user.click(toggle);
+    await user.click(screen.getByRole("button", { name: "Save" }));
+    await waitFor(() => expect(refresh).toHaveBeenCalled());
+    expect(lastBody()).toMatchObject({ publiclyListed: false });
   });
 
   it("shows why a property cannot be listed next to the switch", async () => {

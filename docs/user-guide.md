@@ -7,6 +7,7 @@ below are the English ones; the German interface uses the same layout.
 
 - [Getting around](#getting-around)
 - [Properties](#properties)
+- [Legal pages and going live](#legal-pages-and-going-live)
 - [The calendar](#the-calendar)
 - [Bookings](#bookings)
 - [Emails](#emails)
@@ -42,7 +43,8 @@ a colour for the calendar.
   `lake-house`) and tick **Show on the public booking site**. Guests can then
   open `/stay/lake-house` without signing in. It is off for every property
   until you turn it on, and an archived property is never shown. The page
-  never shows the address you entered here.
+  never shows the address you entered here. The tick box stays off until the
+  [legal pages](#legal-pages-and-going-live) are filled in.
 - **Listing**: **Settings → Properties → Listing** is what guests see on
   the public page: a title, description and house rules in English and
   German, the number of guests, bedrooms and bathrooms, amenities, check-in
@@ -60,6 +62,42 @@ a colour for the calendar.
   must be requested (lead time) and may be (horizon), which weekdays guests
   can arrive on, and free nights to keep between stays (for cleaning). Your
   own bookings may break them: the booking form warns you, but saves.
+
+## Legal pages and going live
+
+A public booking site in Germany needs an **Impressum** (§ 5 DDG) and a
+**privacy policy** (Art. 13 GDPR). Fill them in under **Settings → Legal
+pages**; they are one set for the whole site and appear at
+`/stay/legal/imprint` and `/stay/legal/privacy`, linked at the bottom of every
+public page and in every email.
+
+- **Impressum**: your name, a postal address where you can be reached and an
+  email address are required; a phone number, a VAT ID and a free-text
+  addition (for example a supervisory authority) are optional.
+- **Privacy policy**: one text in German and one in English. The first time you
+  open it, both start from a **template** written from what this app really
+  does: the request form (name, email, phone, dates, guests, message, the time
+  of consent and the language), payments by bank transfer (no card data), the
+  automatic emails, the photos and listing, the self-hosted spam protection
+  (ALTCHA, no third parties) and the rate limits by IP address, server logs,
+  hosting on your own server, the Google Calendar sync if you use it (without
+  guests' personal data), how long data is kept (declined and expired requests
+  anonymised after your retention setting, bookings and payments kept 8 years
+  under § 147 AO, backups rolling out after their retention) and the guest's
+  rights (Art. 15–21 GDPR, complaint to a supervisory authority).
+  **The template is a starting point, not legal advice: have it checked.**
+  Fill in the parts in [square brackets] and delete the note at the top. **Start
+  again from the template** puts it back.
+- The texts are Markdown: `## Heading`, `- list item`, `**bold**`,
+  `[text](https://…)`. HTML and images are not shown, and links work only to
+  `http`, `https` and `mailto` addresses.
+
+**Going live** at the top of Settings is the checklist. Until the Impressum and
+both privacy texts are filled in, **no property can be listed**, and while one
+is listed, they cannot be emptied (unlist it first). It also warns, without
+stopping you, while the privacy policy still has the template's note and for
+every property without bank details, whose guests would not be told where to
+transfer.
 
 ## The calendar
 

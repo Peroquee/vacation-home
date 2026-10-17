@@ -1,4 +1,5 @@
 import { fieldError, parseBody } from "@/lib/api";
+import { LEGAL_REQUIRED } from "@/lib/legal/legal";
 import { createPropertySchema, SLUG_TAKEN } from "@/lib/properties/schema";
 import { createProperty, listProperties, toDto } from "@/lib/properties/service";
 
@@ -19,6 +20,7 @@ export async function POST(request: Request) {
 
   const property = await createProperty(body.data);
   if (property === "slug_taken") return fieldError("slug", SLUG_TAKEN);
+  if (property === "legal_required") return fieldError("publiclyListed", LEGAL_REQUIRED);
   return Response.json(toDto(property), {
     status: 201,
     headers: { Location: `/api/properties/${property.id}` },

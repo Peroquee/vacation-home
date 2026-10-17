@@ -5,7 +5,8 @@
 import type { Property } from "@/generated/prisma/client";
 import { invalidateWindows } from "@/lib/availability/cache";
 import { db } from "@/lib/db";
-import { isPrismaError, orNullIfMissing } from "@/lib/db-errors";
+import { isPrismaError, orNullIfMissing, raisedByDatabase } from "@/lib/db-errors";
+import { isLegalComplete } from "@/lib/legal/service";
 
 import { type CreatePropertyInput, SLUG, type UpdatePropertyInput } from "./schema";
 
@@ -48,12 +49,16 @@ export async function getProperty(id: string): Promise<Property | null> {
 }
 
 /** "slug_taken" when another property already has the slug. */
-export async function createProperty(input: CreatePropertyInput): Promise<Property | "slug_taken"> {
+export async function createProperty(
+  input: CreatePropertyInput,
+): Promise<Property | "slug_taken" | "legal_required"> {
+  if (input.publiclyListed && !(await isLegalComplete())) return "legal_required";
   try {
     return await db.property.create({ data: input });
   } catch (error) {
     // The slug is the only unique field a client chooses.
     if (isPrismaError(error, "P2002")) return "slug_taken";
+    if (raisedByDatabase(error, "legal_required")) return "legal_required";
     throw error;
   }
 }
@@ -79,12 +84,15 @@ export async function getListedProperty(
  * database refuses: their amounts are minor units of that currency);
  * "slug_taken" when another property has the slug; "slug_required" when
  * the property would end up listed without a slug (the database refuses
- * that too, but without a usable error).
+ * that too, but without a usable error); "legal_required" when it would be
+ * listed before the legal pages are filled in (GitLab #112).
  */
 export async function updateProperty(
   id: string,
   input: UpdatePropertyInput,
-): Promise<Property | null | "currency_locked" | "slug_taken" | "slug_required"> {
+): Promise<
+  Property | null | "currency_locked" | "slug_taken" | "slug_required" | "legal_required"
+> {
   const listingNeedsStoredSlug = input.publiclyListed === true && input.slug === undefined;
   const slugRemovedWhileListed = input.slug === null && input.publiclyListed === undefined;
   if (listingNeedsStoredSlug || slugRemovedWhileListed) {
@@ -93,6 +101,9 @@ export async function updateProperty(
     if (listingNeedsStoredSlug && current.slug === null) return "slug_required";
     if (slugRemovedWhileListed && current.publiclyListed) return "slug_required";
   }
+  // While one is listed the legal pages stay complete, so a listed property
+  // saved again passes too.
+  if (input.publiclyListed === true && !(await isLegalComplete())) return "legal_required";
   try {
     const property = await orNullIfMissing(db.property.update({ where: { id }, data: input }));
     // Name and colour show in every calendar window of the property.
@@ -101,6 +112,7 @@ export async function updateProperty(
   } catch (error) {
     if (input.currency !== undefined && isPrismaError(error, "P2003")) return "currency_locked";
     if (isPrismaError(error, "P2002")) return "slug_taken";
+    if (raisedByDatabase(error, "legal_required")) return "legal_required";
     throw error;
   }
 }
