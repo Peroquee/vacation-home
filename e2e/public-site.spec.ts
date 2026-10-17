@@ -45,7 +45,11 @@ test.describe("signed out", () => {
 
   test("the root is the public start page, without any session cookie", async ({ request }) => {
     await withE2eDb((db) => db.query("UPDATE properties SET publicly_listed = false"));
-    const response = await request.get(START_PAGE_ROOT, { maxRedirects: 0 });
+    // The API context sends no Accept-Language; the page would be German.
+    const response = await request.get(START_PAGE_ROOT, {
+      maxRedirects: 0,
+      headers: { "accept-language": "en-GB" },
+    });
     // No property is listed here: the start page's neutral note, not sign-in.
     expect(response.status()).toBe(200);
     expect(response.headers()["set-cookie"]).toBeUndefined();
@@ -60,7 +64,10 @@ test.describe("signed out", () => {
     await withE2eDb((db) => db.query("UPDATE properties SET publicly_listed = false"));
     const request = await playwright.request.newContext({
       baseURL,
-      extraHTTPHeaders: { cookie: "authjs.session-token=no-such-session" },
+      extraHTTPHeaders: {
+        cookie: "authjs.session-token=no-such-session",
+        "accept-language": "en-GB",
+      },
     });
     const response = await request.get(START_PAGE_ROOT, { maxRedirects: 0 });
     expect(response.status()).toBe(200);
