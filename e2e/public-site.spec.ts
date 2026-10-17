@@ -53,6 +53,25 @@ test.describe("signed out", () => {
     expect(await response.text()).toContain("Coming soon");
   });
 
+  test("a dead session at the root gets the start page and only that session cleared", async ({
+    playwright,
+    baseURL,
+  }) => {
+    await withE2eDb((db) => db.query("UPDATE properties SET publicly_listed = false"));
+    const request = await playwright.request.newContext({
+      baseURL,
+      extraHTTPHeaders: { cookie: "authjs.session-token=no-such-session" },
+    });
+    const response = await request.get(START_PAGE_ROOT, { maxRedirects: 0 });
+    expect(response.status()).toBe(200);
+    expect(await response.text()).toContain("Coming soon");
+    // No Auth.js helper cookie (CSRF token, callback URL); at most the dead
+    // session's own cookie, emptied.
+    const cookies = response.headersArray().filter((h) => h.name.toLowerCase() === "set-cookie");
+    for (const { value } of cookies) expect(value).toMatch(/^(__Secure-)?authjs\.session-token=;/);
+    await request.dispose();
+  });
+
   test("robots.txt lets search engines see the public pages only", async ({ request }) => {
     const response = await request.get("/robots.txt");
     expect(response.status()).toBe(200);
@@ -99,6 +118,11 @@ test.describe("a listed property", () => {
     await expect(page.getByRole("button", { name: /account/i })).toHaveCount(0);
     const legal = page.getByRole("navigation", { name: "Legal" });
     await expect(legal.getByRole("link")).toHaveText(["Imprint", "Privacy policy"]);
+    // The owner's way in, beside the legal links rather than among them.
+    await expect(page.getByRole("link", { name: "Owner sign-in" })).toHaveAttribute(
+      "href",
+      "/signin",
+    );
     await expect(page.getByText("Secretville")).toHaveCount(0);
     const headers = response!.headers();
     expect(headers["set-cookie"]).toBeUndefined();

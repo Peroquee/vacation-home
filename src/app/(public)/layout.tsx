@@ -14,18 +14,20 @@ export default async function PublicLayout({ children }: LayoutProps<"/">) {
     <div className="bg-background text-foreground flex min-h-dvh flex-col">
       <div className="flex-1">{children}</div>
       <footer className="text-muted-foreground mx-auto w-full max-w-3xl px-4 py-6 text-sm">
-        <nav aria-label={t("footer")} className="flex gap-4">
-          <Link href="/stay/legal/imprint" className="underline">
-            {t("imprint.title")}
-          </Link>
-          <Link href="/stay/legal/privacy" className="underline">
-            {t("privacy.title")}
-          </Link>
-          {/* A plain link to another page: nothing of the session is read here. */}
+        <div className="flex flex-wrap gap-4">
+          <nav aria-label={t("footer")} className="flex gap-4">
+            <Link href="/stay/legal/imprint" className="underline">
+              {t("imprint.title")}
+            </Link>
+            <Link href="/stay/legal/privacy" className="underline">
+              {t("privacy.title")}
+            </Link>
+          </nav>
+          {/* Not a legal page: on its own. A plain link; no session is read here. */}
           <Link href="/signin" prefetch={false} className="ms-auto">
             {t("ownerSignIn")}
           </Link>
-        </nav>
+        </div>
       </footer>
     </div>
   );
