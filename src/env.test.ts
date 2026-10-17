@@ -31,6 +31,16 @@ describe("optional settings", () => {
     );
   });
 
+  it("name the proxy whose client address is trusted", async () => {
+    expect((await loadEnv({})).TRUST_PROXY_HEADERS).toBe("none");
+    expect((await loadEnv({ TRUST_PROXY_HEADERS: "true" })).TRUST_PROXY_HEADERS).toBe("forwarded");
+    expect((await loadEnv({ TRUST_PROXY_HEADERS: "no" })).TRUST_PROXY_HEADERS).toBe("none");
+    expect((await loadEnv({ TRUST_PROXY_HEADERS: "Cloudflare" })).TRUST_PROXY_HEADERS).toBe(
+      "cloudflare",
+    );
+    await expect(loadEnv({ TRUST_PROXY_HEADERS: "caddy" })).rejects.toThrow(/TRUST_PROXY_HEADERS/);
+  });
+
   it("still reject a value that means nothing", async () => {
     await expect(loadEnv({ LOG_LEVEL: "verbose" })).rejects.toThrow(/LOG_LEVEL/);
   });

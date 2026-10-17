@@ -6,6 +6,7 @@
 # commands in this folder use this file, not the development one.
 #
 #   docker compose --profile https --profile backup up -d   start everything
+#   (with a Cloudflare Tunnel instead of Caddy: --profile tunnel)
 #   docker compose ps                                       what is running
 #   docker compose logs -f app                              the app's log
 #
@@ -83,6 +84,26 @@ services:
       # Certificates and Caddy's state survive restarts and rebuilds.
       - caddy-data:/data
       - caddy-config:/config
+    depends_on:
+      - app
+
+  # The way in through a Cloudflare Tunnel, for a server without a public
+  # IPv4 address (option C). cloudflared connects out to Cloudflare, which
+  # sends the requests for the public hostname back through it to
+  # http://app:3000 - nothing listens for the internet here, so no port is
+  # published. The tunnel and its public hostname are set up in Cloudflare's
+  # dashboard ("remotely managed"); TUNNEL_TOKEN in .env is its credential.
+  # Only with `--profile tunnel` (or COMPOSE_PROFILES=tunnel in .env).
+  tunnel:
+    image: cloudflare/cloudflared:2026.9.3
+    profiles: [tunnel]
+    restart: unless-stopped
+    # Updates come with this file, like every other image, not by itself.
+    command: tunnel --no-autoupdate run
+    environment:
+      # Not required here (":-"): Compose reads the whole file whichever
+      # profiles are on. Without it, cloudflared stops and says so.
+      TUNNEL_TOKEN: ${TUNNEL_TOKEN:-}
     depends_on:
       - app
 

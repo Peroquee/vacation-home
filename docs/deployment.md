@@ -17,10 +17,11 @@ run **on the server** unless a step says otherwise. Copy them one at a time.
 6. [Google sign-in](#6-google-sign-in)
 7. [Option A: https on your own domain](#7-option-a-https-on-your-own-domain)
 8. [Option B: no domain, through an SSH tunnel](#8-option-b-no-domain-through-an-ssh-tunnel)
-9. [First start](#9-first-start)
-10. [Automatic deploys from GitLab](#10-automatic-deploys-from-gitlab)
-11. [Rolling back](#11-rolling-back)
-12. [Day to day](#12-day-to-day)
+9. [Option C: Cloudflare Tunnel (no public IP)](#9-option-c-cloudflare-tunnel-no-public-ip)
+10. [First start](#10-first-start)
+11. [Automatic deploys from GitLab](#11-automatic-deploys-from-gitlab)
+12. [Rolling back](#12-rolling-back)
+13. [Day to day](#13-day-to-day)
 
 ## 1. Choose how you will reach the app
 
@@ -32,7 +33,8 @@ address it accepts. It accepts two kinds:
   IP address, or plain http;
 - **`http://localhost`**, the computer you are sitting at.
 
-So there are two ways to run the app on your LAN:
+So there are two ways to run the app on your LAN, and a third to put it on
+the internet:
 
 |                   | Option A: your own domain                                                                           | Option B: SSH tunnel                                              |
 | ----------------- | --------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------- |
@@ -45,7 +47,14 @@ So there are two ways to run the app on your LAN:
 a year). Option B works without one, but each computer needs the tunnel
 running, and phones are out.
 
-Either way, the app stays on your LAN, and Google Calendar sync still works:
+**Option C puts the app on the internet** - needed for the public booking
+site, where guests find the home and send requests - without a public IP
+address or an open port: a Cloudflare Tunnel, which the server opens to
+Cloudflare from the inside. It works behind DS-Lite and other internet
+connections without a public IPv4 address. See
+[Option C](#9-option-c-cloudflare-tunnel-no-public-ip).
+
+With A or B, the app stays on your LAN, and Google Calendar sync still works:
 the app polls Google every few minutes. Instant updates from Google (push
 notifications) would need the app reachable from the internet, which this
 setup deliberately avoids; see [Google push notifications](#google-push-notifications).
@@ -106,7 +115,7 @@ sudo docker run --rm hello-world                              # check: prints "H
 ## 4. Get the app
 
 The app lives in `/opt/vacation-home`, owned by a user `deploy` that runs it
-(and that GitLab logs in as for automatic deploys, step 10):
+(and that GitLab logs in as for automatic deploys, step 11):
 
 ```bash
 sudo adduser --disabled-password --gecos "" deploy            # create the user "deploy" (no password: SSH keys only)
@@ -147,13 +156,16 @@ In `.env`, set at least these. Each is explained in the file itself.
   password manager: the backups cannot restore it.
 - `AUTH_ALLOWED_EMAILS`: the Google accounts that may sign in.
 - `APP_URL`: `https://vacation.example.com` for option A,
-  `http://localhost:3000` for option B.
+  `http://localhost:3000` for option B, `https://robbenplate.com` (your
+  public hostname) for option C.
 - `AUTH_GOOGLE_ID`, `AUTH_GOOGLE_SECRET`: from step 6.
 - `DATABASE_URL` can stay as it is: the server's settings override it.
 
 For option A also set `APP_DOMAIN`, `ACME_EMAIL`, `CLOUDFLARE_API_TOKEN`
 (step 7) and `TRUST_PROXY_HEADERS="true"`. For option B, set
-`COMPOSE_PROFILES="backup"` (no `https`).
+`COMPOSE_PROFILES="backup"` (no `https`). For option C, see step 9:
+`COMPOSE_PROFILES="tunnel,backup"`, `TUNNEL_TOKEN` and
+`TRUST_PROXY_HEADERS="cloudflare"`.
 
 With the `backup` profile, the folder `BACKUP_HOST_DIR` must belong to user
 999, the backup services' user. `scripts/deploy/deploy.sh` creates or fixes a
@@ -201,7 +213,11 @@ your `APP_URL`:
 - `<APP_URL>/api/google/callback`
 
 For option B that is `http://localhost:3000/api/auth/callback/google` and
-`http://localhost:3000/api/google/callback`. With calendar sync, publish the
+`http://localhost:3000/api/google/callback`; for option C
+`https://robbenplate.com/api/auth/callback/google` and
+`https://robbenplate.com/api/google/callback`. Changing `APP_URL` later
+means adding its two redirect URIs to the client first: Google refuses a
+sign-in to an address it does not list. With calendar sync, publish the
 app there (its step 4): in "Testing", Google ends the calendar access every
 7 days.
 
@@ -240,7 +256,7 @@ Check it from your own computer:
 nslookup vacation.example.com                                 # should answer 192.168.178.50
 ```
 
-Caddy starts with everything else in step 9. The first certificate takes up
+Caddy starts with everything else in step 10. The first certificate takes up
 to a minute.
 
 ### Another DNS provider
@@ -293,7 +309,136 @@ On Windows, the same command works in PowerShell (OpenSSH is built in). You
 need SSH access as `deploy`: add your computer's public key to
 `/home/deploy/.ssh/authorized_keys` on the server.
 
-## 9. First start
+## 9. Option C: Cloudflare Tunnel (no public IP)
+
+For the public booking site the app must be reachable from the internet.
+Many connections (DS-Lite, most cable and fibre lines) have no public IPv4
+address, so nothing from outside can connect in. A **Cloudflare Tunnel**
+turns this around: a small program, `cloudflared`, runs next to the app
+(the `tunnel` service in `compose.prod.yml`) and connects **out** to
+Cloudflare. Visitors open `https://robbenplate.com`; Cloudflare answers
+with its own certificate and passes each request back through the tunnel
+to the app. No port is opened on the router or the server, and Caddy
+(option A) is not needed.
+
+You need the domain's DNS at Cloudflare (the free plan is enough). At the
+registrar (IONOS, for example), the domain's name servers are set to the
+two Cloudflare shows when you add the domain.
+
+**1. Create the tunnel.** In the Cloudflare dashboard, open **Zero Trust**
+(on first use it asks for a team name; the free plan is fine) → **Networks
+→ Tunnels → Create a tunnel** → type **Cloudflared** → name it, e.g.
+`vacation-home` → save. The next page, "Install and run a connector",
+shows commands with a long token after `--token`. Copy only that token;
+you do not need to run the commands, `compose.prod.yml` does that.
+(Cloudflare renames these menus now and then; the steps stay the same.)
+
+**2. The public hostname.** On the same tunnel, tab **Public Hostname**
+(also called "Published application routes") → **Add**:
+
+- Subdomain: empty; Domain: `robbenplate.com`; Path: empty;
+- Service: type `HTTP`, URL `app:3000` (the app's name on the Compose
+  network, not `localhost`).
+
+Cloudflare creates the matching DNS record itself (a proxied `CNAME` to
+`<id>.cfargotunnel.com`). If the domain already has an `A` or `CNAME`
+record for that name (the registrar's parking page, say), delete it first.
+Under **SSL/TLS → Edge Certificates**, turn on **Always Use HTTPS**.
+
+**3. `.env`.** Settings for this option:
+
+```bash
+nano .env                                                     # edit the settings (save: Ctrl+O, Enter; leave: Ctrl+X)
+```
+
+In it, set (each comment line explains the line below it):
+
+```dotenv
+# The public address; sign-in and links use it.
+APP_URL="https://robbenplate.com"
+# The token from step 1. A secret: keep it out of chats and tickets.
+TUNNEL_TOKEN="eyJh..."
+# Rate limits count per visitor, from Cloudflare's CF-Connecting-IP.
+TRUST_PROXY_HEADERS="cloudflare"
+# Start the tunnel and the backups with the app ("https" is not needed: no Caddy).
+COMPOSE_PROFILES="tunnel,backup"
+```
+
+Also add `https://robbenplate.com/api/auth/callback/google` and
+`https://robbenplate.com/api/google/callback` to the Google OAuth client
+(step 6) **before** changing `APP_URL`, or sign-in stops working. With the
+app on the internet, Google push notifications can be turned on too: set
+`GOOGLE_WEBHOOK_URL="https://robbenplate.com/api/google/webhook"` (see
+[Google push notifications](#google-push-notifications)). `ICAL_PUBLIC_URL`
+can stay empty: the feed links use `APP_URL`, which booking platforms can
+now reach.
+
+**4. Start it.**
+
+```bash
+scripts/deploy/deploy.sh                                      # restarts the app with the new settings and starts the tunnel
+docker compose ps tunnel                                      # check: the tunnel service is "Up"
+docker compose logs tunnel | grep -i "registered"             # check: lines like "Registered tunnel connection"
+curl -fsS https://robbenplate.com/api/ready                   # check from anywhere: prints {"status":"ready"}
+```
+
+The tunnel's dashboard page then shows the connector as **Healthy**.
+
+**Moving from a tailscale serve address.** If the app was served on your
+tailnet before (e.g. `https://vacation.tail395dc6.ts.net`), it is now
+reached at one address only, `APP_URL`: sign-in and the protection against
+cross-site requests accept that one. Tailscale stays for SSH and
+operations. On the server:
+
+```bash
+sudo tailscale serve status                                   # shows what is served on the tailnet, if anything
+sudo tailscale serve reset                                    # stop serving the app on the tailnet; it would no longer sign in
+```
+
+Afterwards, the old `ts.net` redirect URIs can be removed from the Google
+OAuth client.
+
+**If the tunnel is down,** the public site and sign-in are unreachable;
+there is deliberately no second way in. Over SSH (Tailscale or the LAN),
+check the app itself, then the tunnel:
+
+```bash
+curl -fsS http://127.0.0.1:3000/api/ready                     # the app and its database: prints {"status":"ready"}
+docker compose logs --tail 50 tunnel                          # the tunnel's recent messages (an invalid token, no connection)
+docker compose restart tunnel                                 # reconnects to Cloudflare
+```
+
+Fixing the tunnel restores access. A new token (Cloudflare: the tunnel →
+**Configure** → refresh the token) goes into `.env`, followed by
+`docker compose up -d tunnel`.
+
+### Optional: Cloudflare Access for the owner's pages
+
+The tunnel makes **every** page reachable from the internet; the owner's
+pages are protected by the Google sign-in and the allow-list
+(`AUTH_ALLOWED_EMAILS`). For a second lock, Cloudflare Access can ask for
+a one-time code by email (or a Google sign-in) before a request even
+reaches the app. Docs only - decide later; nothing in the app depends on
+it.
+
+In **Zero Trust → Access → Applications**:
+
+1. **Add an application → Self-hosted**, domain `robbenplate.com`, path
+   empty, with a policy **Allow** → Include → **Emails**: your own
+   addresses. This covers everything.
+2. **Add another self-hosted application** for the paths that must stay
+   open to everyone, with a policy **Bypass** → Include → **Everyone**.
+   Add one domain entry per path: `robbenplate.com` with path `stay`,
+   `api/public`, `api/ical`, `robots.txt`, `api/google/webhook`, and
+   `_next` (the scripts and styles the public pages load). Access applies
+   the most specific path, so these stay public.
+
+Check it in a private browser window: `https://robbenplate.com/stay/<slug>`
+opens without a code, `https://robbenplate.com/calendar` asks for one.
+Booking platforms fetching the iCal feeds and Google's push notifications
+keep working, as their paths are bypassed.
+
+## 10. First start
 
 As `deploy`, in `/opt/vacation-home`:
 
@@ -304,8 +449,8 @@ docker compose ps                                             # lists what runs:
 curl -fsS http://127.0.0.1:3000/api/ready                     # check: prints {"status":"ready"}
 ```
 
-Open the app (`https://vacation.example.com`, or `http://localhost:3000`
-through the tunnel) and sign in with an allowed Google account.
+Open the app (`https://vacation.example.com`, `http://localhost:3000`
+through the SSH tunnel, or `https://robbenplate.com` with option C) and sign in with an allowed Google account.
 
 Receipts on transactions are kept in the `receipts` volume, which the
 `receipts-backup` service mirrors next to the database backups.
@@ -315,7 +460,7 @@ Then set up the backups' storage and alerting: see
 With `COMPOSE_FILE` set in `.env`, its `docker compose` commands apply to
 this setup.
 
-## 10. Automatic deploys from GitLab
+## 11. Automatic deploys from GitLab
 
 Once set up, every merge to `main` that passes all checks is deployed by
 GitLab: its `deploy` job logs in to the server as `deploy` and runs
@@ -356,7 +501,7 @@ Set it up:
 From the next merge to `main` on, the pipeline ends with a `deploy` job. Its
 log shows the deploy script's output.
 
-## 11. Rolling back
+## 12. Rolling back
 
 The last five builds stay on the server. To go back to the version before
 the last deploy, run the command the deploy printed at the end, or:
@@ -375,7 +520,7 @@ backup taken before the deploy instead: [backup-and-restore.md](backup-and-resto
 To stop automatic deploys while you investigate, delete or rename the
 `DEPLOY_HOST` variable in GitLab.
 
-## 12. Day to day
+## 13. Day to day
 
 ```bash
 docker compose ps                                             # what runs, and whether it is healthy
@@ -397,10 +542,9 @@ The restore script prints the exact command for this setup.
 Inbound calendar changes arrive by polling, every
 `GOOGLE_CALENDAR_POLL_SECONDS` (five minutes by default). Instant push
 notifications would need Google to reach `<APP_URL>/api/google/webhook` from
-the internet over https. This setup keeps the app off the internet, so leave
-`GOOGLE_WEBHOOK_URL` empty. If you ever want it, expose only that one path
-(for example through a Cloudflare Tunnel) and set `GOOGLE_WEBHOOK_URL` to
-its public address.
+the internet over https. Options A and B keep the app off the internet, so
+leave `GOOGLE_WEBHOOK_URL` empty there. With option C the app is on the
+internet: set `GOOGLE_WEBHOOK_URL` to `https://robbenplate.com/api/google/webhook`.
 
 ### Sharing availability with booking platforms
 

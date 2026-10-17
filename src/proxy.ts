@@ -5,6 +5,7 @@ import { apiError } from "@/lib/api";
 import { decideAccess, isPublicSitePath } from "@/lib/access";
 import { isAllowedEmail } from "@/lib/allowed-emails";
 import { db } from "@/lib/db";
+import { clientAddress } from "@/lib/client-address";
 import { isCrossSiteMutation } from "@/lib/csrf";
 import { RateLimiter, rateLimitKey } from "@/lib/rate-limit";
 import { REQUEST_ID_HEADER, requestIdFrom } from "@/lib/request-id";
@@ -56,12 +57,6 @@ function headerOptions(): HeaderOptions {
     reportOrigin = null;
   }
   return { https: new URL(env.APP_URL).protocol === "https:", dev, reportOrigin };
-}
-
-/** The client's address, when a trusted reverse proxy reports it. */
-function clientAddress(request: NextRequest): string | null {
-  if (!env.TRUST_PROXY_HEADERS) return null;
-  return request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || null;
 }
 
 function isApiPath(pathname: string): boolean {
@@ -116,7 +111,7 @@ function publicSite(request: NextRequest): Response {
   const policy = nonce ? publicPagePolicy(nonce, options) : API_POLICY;
   const limited = rateLimitKey(request.method, pathname, {
     user: null,
-    client: clientAddress(request),
+    client: clientAddress(request.headers, env.TRUST_PROXY_HEADERS),
   });
 
   let response = refusal(request, limited);
@@ -158,7 +153,7 @@ const withSession = auth(async (request) => {
   const decision = decideAccess(request.nextUrl, signedIn);
   const limited = rateLimitKey(request.method, pathname, {
     user: signedIn ? (request.auth?.user?.id ?? request.auth?.user?.email ?? null) : null,
-    client: clientAddress(request),
+    client: clientAddress(request.headers, env.TRUST_PROXY_HEADERS),
   });
 
   let response = refusal(request, limited);
