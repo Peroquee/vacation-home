@@ -129,6 +129,18 @@ test("the site goes live once the imprint and privacy policy are filled in", asy
   await visitor.close();
 });
 
+test("the settings' words travel with the settings pages only", async ({ page }) => {
+  // Some 17 kB that every other page would carry for nothing (GitLab #112).
+  const settingsOnly = "The imprint and privacy policy of the public booking site";
+  await page.goto("/dashboard");
+  expect(await page.content()).not.toContain(settingsOnly);
+  await page.goto("/settings");
+  await expect(page.getByText(settingsOnly)).toBeVisible();
+  // Client components there still translate.
+  await page.getByRole("button", { name: "Edit imprint" }).click();
+  await expect(page.getByRole("dialog").getByLabel("VAT ID (optional)")).toBeVisible();
+});
+
 test("owner-written Markdown is shown without HTML or unsafe links", async ({
   request,
   browser,

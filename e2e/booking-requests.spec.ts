@@ -214,14 +214,3 @@ test.describe("the request API refuses", () => {
     await stranger.close();
   });
 });
-
-test("the legal pages are there, saying they are not yet available", async ({ browser }) => {
-  const stranger = await browser.newContext({ storageState: { cookies: [], origins: [] } });
-  const page = await stranger.newPage();
-  await page.goto("/stay/legal/privacy");
-  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Privacy policy");
-  await expect(page.getByText("This page is not available yet.")).toBeVisible();
-  await page.getByRole("link", { name: "Imprint" }).click();
-  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Imprint");
-  await stranger.close();
-});

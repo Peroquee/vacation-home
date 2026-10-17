@@ -194,7 +194,7 @@ function ImprintDialog({ legal }: { legal: Legal }) {
           </Button>
         }
       />
-      <DialogContent className="sm:max-w-lg">
+      <DialogContent className="max-h-[calc(100dvh-2rem)] overflow-y-auto sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>{t("imprint.title")}</DialogTitle>
           <DialogDescription>{t("imprint.description")}</DialogDescription>
@@ -259,7 +259,7 @@ function PrivacyDialog({ legal, templates }: { legal: Legal; templates: PolicyTe
           </Button>
         }
       />
-      <DialogContent className="sm:max-w-3xl">
+      <DialogContent className="max-h-[calc(100dvh-2rem)] overflow-y-auto sm:max-w-3xl">
         <DialogHeader>
           <DialogTitle>{t("privacy.title")}</DialogTitle>
           <DialogDescription>{t("privacy.description")}</DialogDescription>
@@ -287,7 +287,7 @@ function PrivacyDialog({ legal, templates }: { legal: Legal; templates: PolicyTe
                   </div>
                   <Textarea
                     id={`legal-${key}`}
-                    className="max-h-[40vh] font-mono text-sm"
+                    className="max-h-[30dvh] font-mono text-sm"
                     rows={12}
                     maxLength={LEGAL_LIMITS.policy}
                     value={values[key]}
