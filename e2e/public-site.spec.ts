@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 
-import { appRoutes, PUBLIC_ROUTES } from "./app-routes";
+import { appRoutes, PUBLIC_ROUTES, START_PAGE_ROOT } from "./app-routes";
 import { withE2eDb } from "./database";
 
 // The public booking site's boundary (GitLab #105): without a session, only
@@ -19,7 +19,10 @@ test.describe("signed out", () => {
   test("every route outside the allow-list refuses a visitor", async ({ request, baseURL }) => {
     const origin = new URL(baseURL!).origin;
     let checked = 0;
-    for (const route of ROUTES.filter((r) => !PUBLIC_ROUTES.includes(r.route))) {
+    const closed = ROUTES.filter(
+      (r) => !PUBLIC_ROUTES.includes(r.route) && r.route !== START_PAGE_ROOT,
+    );
+    for (const route of closed) {
       for (const method of route.methods) {
         const response = await request.fetch(route.path, {
           method,
@@ -40,11 +43,22 @@ test.describe("signed out", () => {
     expect(checked).toBeGreaterThan(80);
   });
 
+  test("the root is the public start page, without any session cookie", async ({ request }) => {
+    await withE2eDb((db) => db.query("UPDATE properties SET publicly_listed = false"));
+    const response = await request.get(START_PAGE_ROOT, { maxRedirects: 0 });
+    // No property is listed here: the start page's neutral note, not sign-in.
+    expect(response.status()).toBe(200);
+    expect(response.headers()["set-cookie"]).toBeUndefined();
+    expect(response.headers()["content-security-policy"]).toContain("nonce-");
+    expect(await response.text()).toContain("Coming soon");
+  });
+
   test("robots.txt lets search engines see the public pages only", async ({ request }) => {
     const response = await request.get("/robots.txt");
     expect(response.status()).toBe(200);
     const text = await response.text();
-    expect(text).toContain("Allow: /stay/");
+    expect(text).toContain("Allow: /$");
+    expect(text).toContain("Allow: /stay");
     expect(text).toContain("Disallow: /");
   });
 });

@@ -1638,7 +1638,8 @@
       "vatId": "VAT ID"
     },
     "notYet": "This page is not available yet. Please check back later.",
-    "footer": "Legal"
+    "footer": "Legal",
+    "ownerSignIn": "Owner sign-in"
   },
   "email": {
     "hello": "Hello {name},",
@@ -1743,5 +1744,11 @@
     "nonRefundable": "The deposit of {deposit} is non-refundable if you cancel. Anything paid beyond the deposit is refunded in full.",
     "refundable": "If you cancel, everything you have paid is refunded in full.",
     "percentOfTotal": "{percent}% of the total"
+  },
+  "start": {
+    "title": "Our holiday homes",
+    "description": "Holiday homes to book directly with the owner.",
+    "soonTitle": "Coming soon",
+    "soon": "Bookings will open here soon. Please check back later."
   }
 }

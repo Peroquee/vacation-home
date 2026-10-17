@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { decideAccess, isPublicPath, safeCallbackUrl } from "@/lib/access";
+import { decideAccess, isPublicPath, isPublicSitePath, safeCallbackUrl } from "@/lib/access";
 import { isAllowedEmail } from "@/lib/allowed-emails";
 
 const at = (path: string) => {
@@ -39,7 +39,17 @@ describe("decideAccess", () => {
       kind: "sign-in",
       callbackUrl: "/bookings?status=confirmed",
     });
-    expect(decideAccess(at("/"), false)).toEqual({ kind: "sign-in", callbackUrl: "/" });
+  });
+
+  it("shows the public start page at the root when signed out, the app when signed in", () => {
+    expect(decideAccess(at("/"), false)).toEqual({ kind: "start-page" });
+    expect(decideAccess(at("/?utm_source=x"), false)).toEqual({ kind: "start-page" });
+    expect(decideAccess(at("/"), true)).toEqual({ kind: "allow" });
+    // Only the root itself; the start page's own path is part of the public site.
+    expect(isPublicSitePath("/")).toBe(false);
+    expect(isPublicSitePath("/stay")).toBe(true);
+    expect(isPublicSitePath("/stayover")).toBe(false);
+    expect(decideAccess(at("/calendar"), false)).toMatchObject({ kind: "sign-in" });
   });
 
   it("answers API calls with a 401 rather than a redirect", () => {

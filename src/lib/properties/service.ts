@@ -78,6 +78,15 @@ export async function getListedProperty(
   return property?.slug ? { ...property, slug: property.slug } : null;
 }
 
+/** Every listed, active property, for the public start page (GitLab #117). */
+export async function listListedProperties(): Promise<(Property & { slug: string })[]> {
+  const properties = await db.property.findMany({
+    where: { publiclyListed: true, archivedAt: null, slug: { not: null } },
+    orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+  });
+  return properties.map((property) => ({ ...property, slug: property.slug! }));
+}
+
 /**
  * Null when there is no such property; "currency_locked" when the currency
  * would change while transactions are recorded in the old one (the

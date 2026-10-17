@@ -43,7 +43,13 @@ a colour for the calendar.
   `lake-house`) and tick **Show on the public booking site**. Guests can then
   open `/stay/lake-house` without signing in. It is off for every property
   until you turn it on, and an archived property is never shown. The page
-  never shows the address you entered here. The tick box stays off until the
+  never shows the address you entered here.
+- **Start page**: guests who open the site's own address (for example
+  `https://robbenplate.com`) see the listed homes: with one, its page
+  straight away; with several, a card for each with its cover photo, title,
+  a short description and the "from" price; with none, a neutral "coming
+  soon". The same page is at `/stay`. Signed in, the address opens your
+  calendar as before; the footer's **Owner sign-in** link leads to sign-in. The tick box stays off until the
   [legal pages](#legal-pages-and-going-live) are filled in.
 - **Listing**: **Settings → Properties → Listing** is what guests see on
   the public page: a title, description and house rules in English and

@@ -32,6 +32,8 @@ export const PUBLIC_ROUTES = [
   "/api/public/properties/[slug]/requests",
   "/api/public/properties/[slug]/stay-check",
   "/robots.txt",
+  // The start page (GitLab #117): which properties are listed, nothing more.
+  "/stay",
   "/stay/[slug]",
   // The guest's own booking page (GitLab #115): a 128-bit token, stored hashed.
   "/stay/booking/[token]",
@@ -45,6 +47,13 @@ export const PUBLIC_ROUTES = [
   "/api/ready",
   "/signin",
 ].sort();
+
+/**
+ * The domain's root: the owner's app when signed in, the public start page
+ * (/stay) when signed out (GitLab #117) - not open as a route of its own,
+ * only answered by the public page in its place.
+ */
+export const START_PAGE_ROOT = "/";
 
 // From the working directory: both Vitest and Playwright run from the
 // repository root, and Playwright loads this file as CommonJS, where

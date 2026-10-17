@@ -1638,7 +1638,8 @@
       "vatId": "USt-IdNr."
     },
     "notYet": "Diese Seite ist noch nicht verfügbar. Bitte schauen Sie später wieder vorbei.",
-    "footer": "Rechtliches"
+    "footer": "Rechtliches",
+    "ownerSignIn": "Anmeldung für Gastgeber"
   },
   "email": {
     "hello": "Hallo {name},",
@@ -1743,5 +1744,11 @@
     "nonRefundable": "Die Anzahlung von {deposit} wird bei einer Stornierung nicht erstattet. Was Sie darüber hinaus gezahlt haben, erhalten Sie vollständig zurück.",
     "refundable": "Wenn Sie stornieren, erhalten Sie alles, was Sie gezahlt haben, vollständig zurück.",
     "percentOfTotal": "{percent} % des Gesamtpreises"
+  },
+  "start": {
+    "title": "Unsere Ferienunterkünfte",
+    "description": "Ferienunterkünfte, direkt bei den Gastgebern zu buchen.",
+    "soonTitle": "Demnächst",
+    "soon": "Hier können Sie bald buchen. Bitte schauen Sie später wieder vorbei."
   }
 }

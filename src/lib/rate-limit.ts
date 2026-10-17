@@ -30,7 +30,9 @@ export const RULES: Rule[] = [
     // the internet, and each one reads the database. Generous for a person
     // browsing (page loads plus their prefetches), slow for a scraper.
     name: "public-page",
-    matches: (_method, path) => path.startsWith("/stay/") || path === "/robots.txt",
+    // The start page (GitLab #117) is counted as /stay, also at the root.
+    matches: (_method, path) =>
+      path === "/stay" || path.startsWith("/stay/") || path === "/robots.txt",
     limit: 120,
     windowMs: MINUTE,
     by: "client",

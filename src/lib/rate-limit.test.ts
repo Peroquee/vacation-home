@@ -28,6 +28,7 @@ describe("rateLimitKey", () => {
     const client = { user: null, client: "203.0.113.7" };
     expect(rateLimitKey("GET", "/stay/lake-house", client)?.key).toBe("public-page:203.0.113.7");
     expect(rateLimitKey("GET", "/robots.txt", client)?.key).toBe("public-page:203.0.113.7");
+    expect(rateLimitKey("GET", "/stay", client)?.key).toBe("public-page:203.0.113.7");
     expect(rateLimitKey("GET", "/api/public/properties/lake-house", client)?.key).toBe(
       "public-api:203.0.113.7",
     );

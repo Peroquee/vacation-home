@@ -5,7 +5,8 @@ import { getTranslations } from "next-intl/server";
  * The public booking site (GitLab #105): pages for guests, without a
  * session. No app shell, no account menu, nothing that reads a session -
  * the proxy does not pass the session cookie on to these pages anyway.
- * The footer links the legal pages (GitLab #112).
+ * The footer links the legal pages (GitLab #112) and, discreetly, the
+ * owner's sign-in (GitLab #117).
  */
 export default async function PublicLayout({ children }: LayoutProps<"/">) {
   const t = await getTranslations("legal");
@@ -19,6 +20,10 @@ export default async function PublicLayout({ children }: LayoutProps<"/">) {
           </Link>
           <Link href="/stay/legal/privacy" className="underline">
             {t("privacy.title")}
+          </Link>
+          {/* A plain link to another page: nothing of the session is read here. */}
+          <Link href="/signin" prefetch={false} className="ms-auto">
+            {t("ownerSignIn")}
           </Link>
         </nav>
       </footer>

@@ -1,9 +1,10 @@
 {
   "default": 300,
   "routes": {
-    "/bookings/new": 320,
     "/bookings/[id]/edit": 320,
+    "/bookings/new": 320,
     "/dev/ui": 420,
+    "/stay": 180,
     "/stay/[slug]": 180
   }
 }

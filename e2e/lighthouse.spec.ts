@@ -20,7 +20,14 @@ import { STORAGE_STATE, withE2eDb } from "./database";
 
 // The public page ignores the session cookie sent along (src/proxy.ts), so
 // it is measured as a stranger sees it.
-const PAGES = { calendar: "/calendar", dashboard: "/dashboard", stay: "/stay/lake-house" };
+// The start page (GitLab #117) at its own path: the root would send this
+// signed-in run to the calendar. Both homes are listed, so it shows cards.
+const PAGES = {
+  calendar: "/calendar",
+  dashboard: "/dashboard",
+  stay: "/stay/lake-house",
+  start: "/stay",
+};
 const PORT = 9223;
 // Configures this measurement, not the app.
 const RUNS = Math.max(1, Number(process.env.LIGHTHOUSE_RUNS ?? 3) || 3);
@@ -42,7 +49,7 @@ test.afterAll(async () => {
   });
 });
 
-test("calendar, dashboard and the public page score at least 90 under throttling", async ({
+test("calendar, dashboard and the public pages score at least 90 under throttling", async ({
   request,
   baseURL,
 }) => {
@@ -64,7 +71,8 @@ test("calendar, dashboard and the public page score at least 90 under throttling
           timezone: "Europe/Berlin",
           currency: "EUR",
           defaultNightlyRateMinor: 12_000,
-          ...(name === "Lake House" && { slug: "lake-house", publiclyListed: true }),
+          slug: name === "Lake House" ? "lake-house" : "sea-view",
+          publiclyListed: true,
         },
       })
     ).json();
