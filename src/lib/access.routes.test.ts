@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { appRoutes, PUBLIC_ROUTES } from "../../e2e/app-routes";
+import { appRoutes, PUBLIC_ROUTES, START_PAGE_ROOT } from "../../e2e/app-routes";
 import { decideAccess, isPublicPath, isPublicSitePath } from "./access";
 
 const routes = appRoutes();
@@ -23,7 +23,12 @@ describe("the routes reachable without a session", () => {
       const decision = decideAccess({ pathname: route.path, search: "" }, false);
       expect({ route: route.route, kind: decision.kind }).toEqual({
         route: route.route,
-        kind: route.kind === "api" ? "unauthorized" : "sign-in",
+        kind:
+          route.route === START_PAGE_ROOT
+            ? "start-page"
+            : route.kind === "api"
+              ? "unauthorized"
+              : "sign-in",
       });
     }
   });

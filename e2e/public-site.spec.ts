@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 
-import { appRoutes, PUBLIC_ROUTES } from "./app-routes";
+import { appRoutes, PUBLIC_ROUTES, START_PAGE_ROOT } from "./app-routes";
 import { withE2eDb } from "./database";
 
 // The public booking site's boundary (GitLab #105): without a session, only
@@ -19,7 +19,10 @@ test.describe("signed out", () => {
   test("every route outside the allow-list refuses a visitor", async ({ request, baseURL }) => {
     const origin = new URL(baseURL!).origin;
     let checked = 0;
-    for (const route of ROUTES.filter((r) => !PUBLIC_ROUTES.includes(r.route))) {
+    const closed = ROUTES.filter(
+      (r) => !PUBLIC_ROUTES.includes(r.route) && r.route !== START_PAGE_ROOT,
+    );
+    for (const route of closed) {
       for (const method of route.methods) {
         const response = await request.fetch(route.path, {
           method,
@@ -40,11 +43,48 @@ test.describe("signed out", () => {
     expect(checked).toBeGreaterThan(80);
   });
 
+  test("the root is the public start page, without any session cookie", async ({ request }) => {
+    await withE2eDb((db) => db.query("UPDATE properties SET publicly_listed = false"));
+    // The API context sends no Accept-Language; the page would be German.
+    const response = await request.get(START_PAGE_ROOT, {
+      maxRedirects: 0,
+      headers: { "accept-language": "en-GB" },
+    });
+    // No property is listed here: the start page's neutral note, not sign-in.
+    expect(response.status()).toBe(200);
+    expect(response.headers()["set-cookie"]).toBeUndefined();
+    expect(response.headers()["content-security-policy"]).toContain("nonce-");
+    expect(await response.text()).toContain("Coming soon");
+  });
+
+  test("a dead session at the root gets the start page and only that session cleared", async ({
+    playwright,
+    baseURL,
+  }) => {
+    await withE2eDb((db) => db.query("UPDATE properties SET publicly_listed = false"));
+    const request = await playwright.request.newContext({
+      baseURL,
+      extraHTTPHeaders: {
+        cookie: "authjs.session-token=no-such-session",
+        "accept-language": "en-GB",
+      },
+    });
+    const response = await request.get(START_PAGE_ROOT, { maxRedirects: 0 });
+    expect(response.status()).toBe(200);
+    expect(await response.text()).toContain("Coming soon");
+    // No Auth.js helper cookie (CSRF token, callback URL); at most the dead
+    // session's own cookie, emptied.
+    const cookies = response.headersArray().filter((h) => h.name.toLowerCase() === "set-cookie");
+    for (const { value } of cookies) expect(value).toMatch(/^(__Secure-)?authjs\.session-token=;/);
+    await request.dispose();
+  });
+
   test("robots.txt lets search engines see the public pages only", async ({ request }) => {
     const response = await request.get("/robots.txt");
     expect(response.status()).toBe(200);
     const text = await response.text();
-    expect(text).toContain("Allow: /stay/");
+    expect(text).toContain("Allow: /$");
+    expect(text).toContain("Allow: /stay");
     expect(text).toContain("Disallow: /");
   });
 });
@@ -85,6 +125,11 @@ test.describe("a listed property", () => {
     await expect(page.getByRole("button", { name: /account/i })).toHaveCount(0);
     const legal = page.getByRole("navigation", { name: "Legal" });
     await expect(legal.getByRole("link")).toHaveText(["Imprint", "Privacy policy"]);
+    // The owner's way in, beside the legal links rather than among them.
+    await expect(page.getByRole("link", { name: "Owner sign-in" })).toHaveAttribute(
+      "href",
+      "/signin",
+    );
     await expect(page.getByText("Secretville")).toHaveCount(0);
     const headers = response!.headers();
     expect(headers["set-cookie"]).toBeUndefined();

@@ -2,7 +2,7 @@ import { type NextFetchEvent, type NextRequest, NextResponse } from "next/server
 
 import { auth, SESSION_COOKIES, SIGN_IN_PATH } from "@/auth";
 import { apiError } from "@/lib/api";
-import { decideAccess, isPublicSitePath } from "@/lib/access";
+import { decideAccess, isPublicSitePath, START_PAGE_PATH } from "@/lib/access";
 import { isAllowedEmail } from "@/lib/allowed-emails";
 import { db } from "@/lib/db";
 import { clientAddress } from "@/lib/client-address";
@@ -102,10 +102,14 @@ function withHeaders(
 /** Auth.js's cookies: the session and its sign-in helpers, under any prefix. */
 const AUTH_COOKIE = /^(__Secure-|__Host-)?authjs\./;
 
-/** The public booking site: never signed in, whoever asks. */
-function publicSite(request: NextRequest): Response {
+/**
+ * The public booking site: never signed in, whoever asks. With `servedAs`,
+ * the request is answered by that public page instead - the start page at
+ * the domain's root (GitLab #117) - and limited and secured as that page.
+ */
+function publicSite(request: NextRequest, servedAs?: string): Response {
   const requestId = requestIdFrom(request.headers.get(REQUEST_ID_HEADER));
-  const { pathname } = request.nextUrl;
+  const pathname = servedAs ?? request.nextUrl.pathname;
   const options = headerOptions();
   const nonce = isApiPath(pathname) ? null : newNonce();
   const policy = nonce ? publicPagePolicy(nonce, options) : API_POLICY;
@@ -130,10 +134,24 @@ function publicSite(request: NextRequest): Response {
       headers.set("x-nonce", nonce);
       headers.set("Content-Security-Policy", policy);
     }
-    response = NextResponse.next({ request: { headers } });
+    response = servedAs
+      ? NextResponse.rewrite(new URL(`${servedAs}${request.nextUrl.search}`, request.nextUrl), {
+          request: { headers },
+        })
+      : NextResponse.next({ request: { headers } });
   }
   return withHeaders(response, requestId, policy, options);
 }
+/** Expires the session cookie, under both names it can have. */
+function expireSessionCookies(response: Response) {
+  for (const name of SESSION_COOKIES) {
+    response.headers.append(
+      "set-cookie",
+      `${name}=; Path=/; Max-Age=0; HttpOnly; SameSite=Lax${name.startsWith("__Secure-") ? "; Secure" : ""}`,
+    );
+  }
+}
+
 // With a lazily built configuration (see src/auth.ts), auth(handler) resolves
 // to the middleware rather than returning it.
 const withSession = auth(async (request) => {
@@ -147,10 +165,16 @@ const withSession = auth(async (request) => {
     await db.session.deleteMany({ where: { sessionToken: { in: tokens } } });
   }
 
+  const decision = decideAccess(request.nextUrl, signedIn);
+  if (decision.kind === "start-page") {
+    const response = publicSite(request, START_PAGE_PATH);
+    if (revoke) expireSessionCookies(response);
+    return response;
+  }
+
   const { pathname } = request.nextUrl;
   const options = headerOptions();
   const nonce = isApiPath(pathname) ? null : newNonce();
-  const decision = decideAccess(request.nextUrl, signedIn);
   const limited = rateLimitKey(request.method, pathname, {
     user: signedIn ? (request.auth?.user?.id ?? request.auth?.user?.email ?? null) : null,
     client: clientAddress(request.headers, env.TRUST_PROXY_HEADERS),
@@ -176,22 +200,42 @@ const withSession = auth(async (request) => {
     }
   }
 
-  if (revoke) {
-    // Expire the cookie too, under both names it can have.
-    for (const name of SESSION_COOKIES) {
-      response.headers.append(
-        "set-cookie",
-        `${name}=; Path=/; Max-Age=0; HttpOnly; SameSite=Lax${name.startsWith("__Secure-") ? "; Secure" : ""}`,
-      );
-    }
-  }
+  if (revoke) expireSessionCookies(response);
   return withHeaders(response, requestId, nonce ? pagePolicy(nonce, options) : API_POLICY, options);
 }) as unknown as Promise<(request: NextRequest, event: NextFetchEvent) => Promise<Response>>;
 
+/**
+ * The start page at the root sets no cookie, like every public page
+ * (GitLab #105; nothing that would need consent). Without a session cookie
+ * the visitor is signed out, so Auth.js is not even asked - it would set its
+ * helper cookies (CSRF token, callback URL). With one that turns out dead,
+ * Auth.js has run, and of what it set only the clearing of that dead
+ * session cookie stays.
+ */
+function hasSessionCookie(request: NextRequest): boolean {
+  return SESSION_COOKIES.some((name) => request.cookies.has(name));
+}
+
+function onlySessionExpiry(response: Response): Response {
+  const expiries = response.headers
+    .getSetCookie()
+    // Clearing the dead session cookie (empty value) stores nothing.
+    .filter((cookie) => SESSION_COOKIES.some((name) => cookie.startsWith(`${name}=;`)));
+  response.headers.delete("set-cookie");
+  for (const cookie of expiries) response.headers.append("set-cookie", cookie);
+  return response;
+}
+
 // Next requires a function exported under this name.
 export async function proxy(request: NextRequest, event: NextFetchEvent) {
-  if (isPublicSitePath(request.nextUrl.pathname)) return publicSite(request);
-  return (await withSession)(request, event);
+  const { pathname } = request.nextUrl;
+  if (isPublicSitePath(pathname)) return publicSite(request);
+  if (pathname === "/" && !hasSessionCookie(request)) return publicSite(request, START_PAGE_PATH);
+  const response = await (await withSession)(request, event);
+  // The root answered by the start page: a rewrite, never the app.
+  return pathname === "/" && response.headers.has("x-middleware-rewrite")
+    ? onlySessionExpiry(response)
+    : response;
 }
 
 export const config = {

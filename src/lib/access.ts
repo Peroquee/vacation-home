@@ -4,6 +4,13 @@
  */
 
 /**
+ * The public start page (GitLab #117): served at the domain's root to
+ * whoever is signed out (decideAccess: "start-page"), and at this path to
+ * anyone, as part of the public site.
+ */
+export const START_PAGE_PATH = "/stay";
+
+/**
  * The public booking site (GitLab #105): its pages under /stay/, its API
  * under /api/public/, and robots.txt. Served to anyone, and treated by the
  * proxy as if no one were signed in: no session is looked up, refreshed or
@@ -13,6 +20,7 @@
  */
 export function isPublicSitePath(pathname: string): boolean {
   return (
+    pathname === START_PAGE_PATH ||
     pathname.startsWith("/stay/") ||
     pathname.startsWith("/api/public/") ||
     pathname === "/robots.txt"
@@ -41,6 +49,12 @@ export function isPublicPath(pathname: string): boolean {
 
 export type AccessDecision =
   | { kind: "allow" }
+  /**
+   * The domain's root, signed out: the public start page, served as the
+   * public site serves its pages (GitLab #117). Signed in, the root is the
+   * owner's app as before.
+   */
+  | { kind: "start-page" }
   /** API callers get a 401 to handle; they cannot follow a sign-in page. */
   | { kind: "unauthorized" }
   /** Pages go to sign-in, and come back to where they were afterwards. */
@@ -51,6 +65,7 @@ export function decideAccess(
   signedIn: boolean,
 ): AccessDecision {
   if (signedIn || isPublicPath(pathname)) return { kind: "allow" };
+  if (pathname === "/") return { kind: "start-page" };
   if (pathname === "/api" || pathname.startsWith("/api/")) return { kind: "unauthorized" };
   return { kind: "sign-in", callbackUrl: `${pathname}${search}` };
 }

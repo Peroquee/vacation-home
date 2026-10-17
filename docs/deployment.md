@@ -433,6 +433,11 @@ In **Zero Trust → Access → Applications**:
    `_next` (the scripts and styles the public pages load). Access applies
    the most specific path, so these stay public.
 
+The start page at the root (`https://robbenplate.com`) is then behind
+Access too: Access cannot open the root alone without opening everything.
+The same page is at `https://robbenplate.com/stay`, which the bypass
+covers, so link guests there while Access is on.
+
 Check it in a private browser window: `https://robbenplate.com/stay/<slug>`
 opens without a code, `https://robbenplate.com/calendar` asks for one.
 Booking platforms fetching the iCal feeds and Google's push notifications

@@ -5,7 +5,7 @@ import { db } from "@/lib/db";
 import { fillLegal } from "@/lib/legal/testing/complete-legal";
 import { readStoredFile } from "@/lib/files/store";
 
-import { getPublicProperty } from "./public";
+import { getPublicProperty, listPublicProperties } from "./public";
 import { listingSchema } from "./schema";
 import {
   addPhoto,
@@ -163,5 +163,25 @@ describe("the public face", () => {
 
   it("falls back to the property's name when there is no title yet", async () => {
     expect((await getPublicProperty("lake-house"))?.title).toEqual({ en: "Lake House", de: "" });
+  });
+
+  it("lists every listed, active property for the start page, oldest first", async () => {
+    const extra = (name: string, slug: string, data: object) =>
+      db.property.create({
+        data: { name, timezone: "UTC", currency: "EUR", color: "#0f766e", slug, ...data },
+      });
+    const hidden = await extra("Hidden", "hidden-hut", { publiclyListed: false });
+    const archived = await extra("Archived", "old-barn", {
+      publiclyListed: true,
+      archivedAt: new Date(),
+    });
+    try {
+      const listed = await listPublicProperties();
+      expect(listed.map((p) => p.slug)).toEqual(["lake-house", "sea-view"]);
+      expect(JSON.stringify(listed)).not.toMatch(/Secret Street|Hiddenville/);
+    } finally {
+      await db.property.update({ where: { id: archived.id }, data: { publiclyListed: false } });
+      await db.property.deleteMany({ where: { id: { in: [hidden.id, archived.id] } } });
+    }
   });
 });

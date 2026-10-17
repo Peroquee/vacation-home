@@ -90,3 +90,12 @@ export function toPublicDto(
 export function pickText(text: PublicText, locale: string): string {
   return locale.startsWith("de") ? text.de || text.en : text.en || text.de;
 }
+
+/** The first `max` characters of `text`, cut at a word, with an ellipsis. */
+export function shortened(text: string, max = 160): string {
+  const flat = text.replace(/\s+/g, " ").trim();
+  if (flat.length <= max) return flat;
+  const cut = flat.slice(0, max + 1);
+  const space = cut.lastIndexOf(" ");
+  return `${(space > max / 2 ? cut.slice(0, space) : flat.slice(0, max)).replace(/[\s,.;:]+$/, "")}…`;
+}
