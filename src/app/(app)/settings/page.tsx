@@ -9,6 +9,7 @@ import { PageHeader } from "@/components/page-header";
 import { EmptyState } from "@/components/states";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { env } from "@/env";
 import { db } from "@/lib/db";
 import { type Formatters } from "@/i18n/format";
 import { getFormat } from "@/i18n/get-format";
@@ -24,7 +25,7 @@ import { openDoubleBookings } from "@/lib/google/sync-issues";
 import { exportUrl, toFeedDto } from "@/lib/ical/feeds";
 import { legalComplete } from "@/lib/legal/legal";
 import { getLegal } from "@/lib/legal/service";
-import { privacyTemplate } from "@/lib/legal/template";
+import { emailProviderOf, privacyTemplate } from "@/lib/legal/template";
 import { listProperties, type PropertyDto, toDto } from "@/lib/properties/service";
 import { getCurrentUser } from "@/lib/session";
 
@@ -165,6 +166,8 @@ export default async function SettingsPage({ searchParams }: PageProps<"/setting
       ...(requestSettings.size === 0 ? [DEFAULT_REQUEST_SETTINGS.retentionMonths] : []),
     ),
     googleCalendar: calendars > 0,
+    cloudflare: env.TRUST_PROXY_HEADERS === "cloudflare",
+    emailProvider: emailProviderOf(env.SMTP_HOST),
   };
   const email = await outboxStatus();
   const t = await getTranslations("settings.page");

@@ -80,8 +80,9 @@ public page and in every email.
   of consent and the language), payments by bank transfer (no card data), the
   automatic emails, the photos and listing, the self-hosted spam protection
   (ALTCHA, no third parties) and the rate limits by IP address, server logs,
-  hosting on your own server, the Google Calendar sync if you use it (without
-  guests' personal data), how long data is kept (declined and expired requests
+  hosting on your own server, Cloudflare when the site runs through its
+  tunnel, the email provider once email is set up (Brevo by name), the
+  Google Calendar sync if you use it (without guests' personal data), how long data is kept (declined and expired requests
   anonymised after your retention setting, bookings and payments kept 8 years
   under § 147 AO, backups rolling out after their retention) and the guest's
   rights (Art. 15–21 GDPR, complaint to a supervisory authority).

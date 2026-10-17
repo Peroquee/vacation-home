@@ -22,6 +22,7 @@ import { PHASE_PRODUCTION_BUILD } from "next/constants";
 import { z } from "zod";
 
 import { EnvValidationError } from "./env-error";
+import type { ProxyTrust } from "./lib/client-address";
 
 /**
  * For optional settings: a blank value (`LOG_LEVEL=`) counts as unset, so the
@@ -171,14 +172,26 @@ const envSchema = z.object({
   ),
 
   /**
-   * Set to "true" when the app runs behind a reverse proxy that sets
-   * X-Forwarded-For: rate limits on sign-in and the webhook then count per
-   * client address. Off by default, as the header is trivially forged when
-   * clients reach the app directly; those limits then count per route.
+   * Which proxy in front of the app may report the client's address, so
+   * rate limits count per client (src/lib/client-address.ts): "true" for a
+   * reverse proxy that sets X-Forwarded-For (Caddy), "cloudflare" behind a
+   * Cloudflare Tunnel (CF-Connecting-IP). Off by default, as the headers
+   * are trivially forged when clients reach the app directly; the limits
+   * then count per route.
    */
-  TRUST_PROXY_HEADERS: optional(z.enum(["true", "false", "1", "0", "yes", "no"]))
+  TRUST_PROXY_HEADERS: optional(
+    z.enum(["true", "false", "1", "0", "yes", "no", "cloudflare"], {
+      error: 'must be "true", "false" or "cloudflare"',
+    }),
+  )
     .default("false")
-    .transform((value) => ["true", "1", "yes"].includes(value)),
+    .transform((value): ProxyTrust =>
+      value === "cloudflare"
+        ? "cloudflare"
+        : ["true", "1", "yes"].includes(value)
+          ? "forwarded"
+          : "none",
+    ),
 
   /**
    * Earlier TOKEN_ENCRYPTION_KEY values, comma-separated, kept readable
