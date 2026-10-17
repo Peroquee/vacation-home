@@ -2,6 +2,7 @@ import sharp from "sharp";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 
 import { db } from "@/lib/db";
+import { fillLegal } from "@/lib/legal/testing/complete-legal";
 import { readStoredFile } from "@/lib/files/store";
 
 import { getPublicProperty } from "./public";
@@ -35,6 +36,7 @@ async function upload(shade: number) {
 }
 
 beforeAll(async () => {
+  await fillLegal();
   const create = (name: string, slug: string) =>
     db.property.create({
       data: {

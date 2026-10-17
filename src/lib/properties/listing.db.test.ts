@@ -1,6 +1,7 @@
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
 
 import { db } from "@/lib/db";
+import { fillLegal } from "@/lib/legal/testing/complete-legal";
 import {
   createProperty,
   getListedProperty,
@@ -20,6 +21,7 @@ const create = (data: Partial<Parameters<typeof createProperty>[0]> = {}) =>
 
 beforeEach(async () => {
   await db.property.deleteMany();
+  await fillLegal();
 });
 
 afterAll(async () => {

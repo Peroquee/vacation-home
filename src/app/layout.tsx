@@ -22,8 +22,11 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
   // client components, which get its messages from the provider.
   const locale = await getLocale();
   // Less the emails' words (GitLab #111): only the server writes emails.
+  // And less the settings' (GitLab #112), the largest part, which only the
+  // settings pages use: src/app/(app)/settings/layout.tsx adds it there, so
+  // every other page carries some 17 kB less.
   // eslint-disable-next-line @typescript-eslint/no-unused-vars -- left out on purpose
-  const { email, ...messages } = await getMessages();
+  const { email, settings, ...messages } = await getMessages();
   return (
     <html lang={locale}>
       <body>

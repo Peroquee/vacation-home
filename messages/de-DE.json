@@ -192,7 +192,8 @@
       "publicListingHint": "Gäste sehen eine freigegebene Unterkunft und ihre freien Termine ohne Anmeldung. Archivierte Unterkünfte werden nie gezeigt.",
       "slug": "Webadresse",
       "slugHint": "Ihre Seite: {path}. Kleinbuchstaben, Ziffern und Bindestriche.",
-      "publiclyListed": "Auf der öffentlichen Buchungsseite zeigen"
+      "publiclyListed": "Auf der öffentlichen Buchungsseite zeigen",
+      "needsLegal": "Füllen Sie zuerst Impressum und Datenschutzerklärung unter „Rechtliche Seiten“ aus."
     },
     "doubleBookings": {
       "title": "{count, plural, one {# Doppelbuchung} other {# Doppelbuchungen}}",
@@ -380,6 +381,57 @@
         "sent": "gesendet"
       },
       "attempts": "{count, plural, one {# Versuch} other {# Versuche}}"
+    },
+    "legal": {
+      "title": "Rechtliche Seiten",
+      "description": "Impressum und Datenschutzerklärung der öffentlichen Buchungsseite, gemeinsam für alle Unterkünfte. Solange beide fehlen, kann keine Unterkunft veröffentlicht werden.",
+      "notFilledIn": "Noch nicht ausgefüllt",
+      "saved": "Rechtliche Seiten gespeichert",
+      "saveFailed": "Die rechtlichen Seiten konnten nicht gespeichert werden",
+      "imprint": {
+        "title": "Impressum",
+        "edit": "Impressum bearbeiten",
+        "description": "Wer die Seite betreibt (§ 5 DDG). Name, Anschrift und E-Mail sind Pflicht.",
+        "fields": {
+          "imprintName": "Name",
+          "imprintAddress": "Anschrift",
+          "imprintEmail": "E-Mail",
+          "imprintPhone": "Telefon (optional)",
+          "imprintVatId": "USt-IdNr. (optional)",
+          "imprintExtra": "Ergänzung (optional)"
+        },
+        "hints": {
+          "imprintAddress": "Eine Postanschrift, unter der Sie erreichbar sind, kein Postfach.",
+          "imprintExtra": "Steht unter den Angaben, z. B. eine Aufsichtsbehörde oder Steuernummer. Markdown."
+        }
+      },
+      "privacy": {
+        "title": "Datenschutzerklärung",
+        "edit": "Datenschutzerklärung bearbeiten",
+        "description": "Was die Seite mit den Daten der Gäste tut, in beiden Sprachen der Seite.",
+        "bothLanguages": "Deutsch und Englisch",
+        "templateNote": "Der Text beginnt mit einer Vorlage, die beschreibt, was diese App tut: ein Ausgangspunkt, keine Rechtsberatung. Lassen Sie ihn prüfen, ergänzen Sie die Stellen in [eckigen Klammern] und entfernen Sie den Hinweis am Anfang.",
+        "german": "Deutsch",
+        "english": "Englisch",
+        "useTemplate": "Neu mit der Vorlage beginnen",
+        "useTemplateFor": "Den Text auf {language} neu mit der Vorlage beginnen",
+        "markdownHint": "Markdown: ## für Überschriften, - für Listen, **fett**, [Text](https://…) für Links. HTML und Bilder werden nicht angezeigt."
+      }
+    },
+    "goLive": {
+      "title": "Live gehen",
+      "ready": "Die öffentliche Buchungsseite hat, was sie braucht. Veröffentlichen Sie eine Unterkunft unter „Unterkünfte“.",
+      "notReady": "Solange die rechtlichen Seiten fehlen, kann keine Unterkunft veröffentlicht werden.",
+      "imprint": "Impressum: Name, Anschrift und E-Mail",
+      "privacyDe": "Datenschutzerklärung auf Deutsch",
+      "privacyEn": "Datenschutzerklärung auf Englisch",
+      "templateNote": "Die Datenschutzerklärung enthält noch den Hinweis der Vorlage: Lassen Sie sie prüfen und entfernen Sie dann den Hinweis.",
+      "bankDetails": "{name}: keine Bankverbindung, Gäste erfahren also nicht, wohin sie überweisen sollen.",
+      "state": {
+        "done": "Erledigt",
+        "missing": "Fehlt",
+        "warning": "Hinweis"
+      }
     }
   },
   "forms": {
@@ -1391,7 +1443,9 @@
     "inTheFuture": "darf nicht in der Zukunft liegen",
     "validIban": "muss eine gültige IBAN sein, z. B. DE89 3704 0044 0532 0130 00",
     "validBic": "muss eine BIC mit 8 oder 11 Zeichen sein",
-    "fromPayment": "stammt aus einer Zahlung: Ändern Sie die Zahlung bei ihrer Buchung"
+    "fromPayment": "stammt aus einer Zahlung: Ändern Sie die Zahlung bei ihrer Buchung",
+    "legalRequired": "braucht zuerst Impressum und Datenschutzerklärung",
+    "legalInUse": "ist Pflicht, solange eine Unterkunft veröffentlicht ist"
   },
   "stay": {
     "photoOf": "Foto {n} von {title}",
@@ -1573,10 +1627,15 @@
   },
   "legal": {
     "privacy": {
-      "title": "Datenschutz"
+      "title": "Datenschutzerklärung"
     },
     "imprint": {
-      "title": "Impressum"
+      "title": "Impressum",
+      "provider": "Anbieter",
+      "contact": "Kontakt",
+      "email": "E-Mail",
+      "phone": "Telefon",
+      "vatId": "USt-IdNr."
     },
     "notYet": "Diese Seite ist noch nicht verfügbar. Bitte schauen Sie später wieder vorbei.",
     "footer": "Rechtliches"

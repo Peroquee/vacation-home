@@ -69,3 +69,21 @@ export function sessionCookie(token: string, baseURL: string) {
     expires: Math.floor(Date.now() / 1000) + 24 * 60 * 60,
   };
 }
+
+/**
+ * Fills in the legal pages (GitLab #112), without which no property can be
+ * listed: the setup project does it once, so specs can list properties;
+ * e2e/legal.spec.ts empties and restores them.
+ */
+export async function fillLegal(db: Client): Promise<void> {
+  await db.query(
+    `INSERT INTO site_legal (id, imprint_name, imprint_address, imprint_email,
+       privacy_policy_de, privacy_policy_en, updated_at)
+     VALUES (1, 'E2E Owner', 'Seestraße 1\n12345 Seedorf', 'owner@e2e.example.test',
+       '## Datenschutz\n\nE2E.', '## Privacy\n\nE2E.', now())
+     ON CONFLICT (id) DO UPDATE SET imprint_name = EXCLUDED.imprint_name,
+       imprint_address = EXCLUDED.imprint_address, imprint_email = EXCLUDED.imprint_email,
+       privacy_policy_de = EXCLUDED.privacy_policy_de,
+       privacy_policy_en = EXCLUDED.privacy_policy_en, updated_at = now()`,
+  );
+}

@@ -4,6 +4,7 @@ import type { Property } from "@/generated/prisma/client";
 import { saveBookingRules } from "@/lib/booking-rules/service";
 import { toUtcDate } from "@/lib/calendar-date";
 import { db } from "@/lib/db";
+import { fillLegal } from "@/lib/legal/testing/complete-legal";
 import { purgeGuest } from "@/lib/guests/purge";
 import { EMPTY_LISTING, saveListing } from "@/lib/listing/service";
 
@@ -31,6 +32,7 @@ function input(overrides: Partial<BookingRequestInput> = {}): BookingRequestInpu
 }
 
 beforeAll(async () => {
+  await fillLegal();
   property = await db.property.create({
     data: {
       name: "Lake House",

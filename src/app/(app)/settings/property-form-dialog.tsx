@@ -90,9 +90,12 @@ function initialValues(property?: PropertyDto): Values {
 export function PropertyFormDialog({
   property,
   trigger,
+  canList = true,
 }: {
   property?: PropertyDto;
   trigger: React.ReactElement;
+  /** False until the legal pages are filled in (GitLab #112): listing stays off. */
+  canList?: boolean;
 }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
@@ -334,12 +337,19 @@ export function PropertyFormDialog({
                   id={`property-${id}-publiclyListed`}
                   checked={values.publiclyListed}
                   onCheckedChange={(checked) => set("publiclyListed", checked)}
+                  disabled={!canList && !values.publiclyListed}
+                  {...(!canList && { "aria-describedby": `property-${id}-needsLegal` })}
                   {...(errors.publiclyListed && { "aria-invalid": true })}
                 />
                 <FieldContent>
                   <FieldLabel htmlFor={`property-${id}-publiclyListed`} className="font-normal">
                     {t("publiclyListed")}
                   </FieldLabel>
+                  {!canList ? (
+                    <FieldDescription id={`property-${id}-needsLegal`}>
+                      {t("needsLegal")}
+                    </FieldDescription>
+                  ) : null}
                   <FieldError
                     errors={errors.publiclyListed?.map((message) => ({
                       message: tForms("fieldError", { label: t("publiclyListed"), message }),

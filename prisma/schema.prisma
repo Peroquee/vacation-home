@@ -1079,3 +1079,25 @@ model TransactionAttachment {
   @@index([sha256])
   @@map("transaction_attachments")
 }
+
+/// The public site's legal pages (GitLab #112), one set for the whole site:
+/// the Impressum and the privacy policy per language (Markdown). A single
+/// row, id 1; blank is stored as null. The database refuses listing a
+/// property while the required parts are missing, and emptying them while
+/// one is listed.
+model SiteLegal {
+  id              Int      @id @default(1) @db.SmallInt
+  imprintName     String?  @map("imprint_name")
+  imprintAddress  String?  @map("imprint_address")
+  imprintEmail    String?  @map("imprint_email")
+  imprintPhone    String?  @map("imprint_phone")
+  imprintVatId    String?  @map("imprint_vat_id")
+  /// Free text after the details (Markdown), e.g. the supervisory authority.
+  imprintExtra    String?  @map("imprint_extra")
+  privacyPolicyDe String?  @map("privacy_policy_de")
+  privacyPolicyEn String?  @map("privacy_policy_en")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  @@map("site_legal")
+}

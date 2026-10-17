@@ -14,7 +14,7 @@ import { type Formatters } from "@/i18n/format";
 import { getFormat } from "@/i18n/get-format";
 import { getBookingRulesFor } from "@/lib/booking-rules/service";
 import { getPaymentTermsFor } from "@/lib/payment-terms/service";
-import { getRequestSettingsFor } from "@/lib/booking-requests/settings";
+import { DEFAULT_REQUEST_SETTINGS, getRequestSettingsFor } from "@/lib/booking-requests/settings";
 import { getBankDetailsFor } from "@/lib/payments/bank";
 import { outboxStatus } from "@/lib/email/outbox";
 import { fromUtcDate } from "@/lib/calendar-date";
@@ -22,6 +22,9 @@ import { toDto as calendarDto } from "@/lib/google/calendar-settings";
 import { calendarConnectAvailable, getConnectionStatus } from "@/lib/google/connection";
 import { openDoubleBookings } from "@/lib/google/sync-issues";
 import { exportUrl, toFeedDto } from "@/lib/ical/feeds";
+import { legalComplete } from "@/lib/legal/legal";
+import { getLegal } from "@/lib/legal/service";
+import { privacyTemplate } from "@/lib/legal/template";
 import { listProperties, type PropertyDto, toDto } from "@/lib/properties/service";
 import { getCurrentUser } from "@/lib/session";
 
@@ -35,6 +38,8 @@ import { PaymentTermsSection } from "./payment-terms-section";
 import { RequestSettingsSection } from "./request-settings-section";
 import { BankDetailsSection } from "./bank-details-section";
 import { EmailSection } from "./email-section";
+import { GoLiveChecklist } from "./go-live-checklist";
+import { LegalSection } from "./legal-section";
 import { DoubleBookings } from "./double-bookings";
 import { IcalSection } from "./ical-section";
 import { PropertyArchiveButton } from "./property-archive-button";
@@ -47,7 +52,12 @@ export async function generateMetadata(): Promise<Metadata> {
 
 type Translate = Awaited<ReturnType<typeof getTranslations<"settings.page">>>;
 
-function columnsFor(t: Translate, format: Formatters, editLabel: string): Column<PropertyDto>[] {
+function columnsFor(
+  t: Translate,
+  format: Formatters,
+  editLabel: string,
+  canList: boolean,
+): Column<PropertyDto>[] {
   return [
     {
       id: "name",
@@ -83,6 +93,7 @@ function columnsFor(t: Translate, format: Formatters, editLabel: string): Column
         <div className="flex justify-end gap-2">
           <PropertyFormDialog
             property={p}
+            canList={canList}
             trigger={
               <Button variant="outline" size="sm" aria-label={t("editProperty", { name: p.name })}>
                 {editLabel}
@@ -103,9 +114,10 @@ function columnsFor(t: Translate, format: Formatters, editLabel: string): Column
   ];
 }
 
-function AddPropertyButton({ label }: { label: string }) {
+function AddPropertyButton({ label, canList }: { label: string; canList: boolean }) {
   return (
     <PropertyFormDialog
+      canList={canList}
       trigger={
         <Button>
           <Plus data-icon="inline-start" aria-hidden />
@@ -125,25 +137,50 @@ export default async function SettingsPage({ searchParams }: PageProps<"/setting
   const active = properties.filter((p) => !p.archived);
   const archived = properties.filter((p) => p.archived);
   const google = await googleSettings(active.map((p) => ({ id: p.id, name: p.name })));
-  const [ical, doubleBookings, bookingRules, paymentTerms, requestSettings, bankDetails] =
-    await Promise.all([
-      icalSettings(active.map((p) => p.id)),
-      openDoubleBookings(),
-      getBookingRulesFor(active.map((p) => p.id)),
-      getPaymentTermsFor(active.map((p) => p.id)),
-      getRequestSettingsFor(active.map((p) => p.id)),
-      getBankDetailsFor(active.map((p) => p.id)),
-    ]);
+  const [
+    ical,
+    doubleBookings,
+    bookingRules,
+    paymentTerms,
+    requestSettings,
+    bankDetails,
+    legal,
+    calendars,
+  ] = await Promise.all([
+    icalSettings(active.map((p) => p.id)),
+    openDoubleBookings(),
+    getBookingRulesFor(active.map((p) => p.id)),
+    getPaymentTermsFor(active.map((p) => p.id)),
+    getRequestSettingsFor(active.map((p) => p.id)),
+    getBankDetailsFor(active.map((p) => p.id)),
+    getLegal(),
+    db.propertyCalendar.count({ where: { outbound: true } }),
+  ]);
+  const canList = legalComplete(legal);
+  // The template states the longest retention of any property.
+  const templateFacts = {
+    imprint: legal,
+    retentionMonths: Math.max(
+      ...[...requestSettings.values()].map((s) => s.retentionMonths),
+      ...(requestSettings.size === 0 ? [DEFAULT_REQUEST_SETTINGS.retentionMonths] : []),
+    ),
+    googleCalendar: calendars > 0,
+  };
   const email = await outboxStatus();
   const t = await getTranslations("settings.page");
   const tCommon = await getTranslations("common");
-  const columns = columnsFor(t, await getFormat(), tCommon("edit"));
-  const addProperty = <AddPropertyButton label={t("addProperty")} />;
+  const columns = columnsFor(t, await getFormat(), tCommon("edit"), canList);
+  const addProperty = <AddPropertyButton label={t("addProperty")} canList={canList} />;
 
   return (
     <>
       <PageHeader title={t("title")} description={t("description")} actions={addProperty} />
       <div className="space-y-6">
+        <GoLiveChecklist
+          legal={legal}
+          withoutBankDetails={active.filter((p) => !bankDetails.get(p.id)).map((p) => p.name)}
+        />
+
         <Card>
           <CardHeader>
             <CardTitle>{t("properties")}</CardTitle>
@@ -215,6 +252,14 @@ export default async function SettingsPage({ searchParams }: PageProps<"/setting
             }))}
           />
         ) : null}
+
+        <LegalSection
+          legal={legal}
+          templates={{
+            de: privacyTemplate("de-DE", templateFacts),
+            en: privacyTemplate("en-GB", templateFacts),
+          }}
+        />
 
         <EmailSection status={email} />
 

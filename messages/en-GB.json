@@ -192,7 +192,8 @@
       "publicListingHint": "Guests can see a listed property and its availability without signing in. Archived properties are never shown.",
       "slug": "Web address",
       "slugHint": "Its page: {path}. Lowercase letters, digits and hyphens.",
-      "publiclyListed": "Show on the public booking site"
+      "publiclyListed": "Show on the public booking site",
+      "needsLegal": "Fill in the imprint and privacy policy under Legal pages first."
     },
     "doubleBookings": {
       "title": "{count, plural, one {# double booking} other {# double bookings}}",
@@ -380,6 +381,57 @@
         "sent": "sent"
       },
       "attempts": "{count, plural, one {# attempt} other {# attempts}}"
+    },
+    "legal": {
+      "title": "Legal pages",
+      "description": "The imprint and privacy policy of the public booking site, one set for all properties. No property can be listed until both are filled in.",
+      "notFilledIn": "Not filled in yet",
+      "saved": "Legal pages saved",
+      "saveFailed": "Could not save the legal pages",
+      "imprint": {
+        "title": "Imprint",
+        "edit": "Edit imprint",
+        "description": "Who runs the site (Impressum, § 5 DDG). Name, address and email are required.",
+        "fields": {
+          "imprintName": "Name",
+          "imprintAddress": "Address",
+          "imprintEmail": "Email",
+          "imprintPhone": "Phone (optional)",
+          "imprintVatId": "VAT ID (optional)",
+          "imprintExtra": "Addition (optional)"
+        },
+        "hints": {
+          "imprintAddress": "A postal address where you can be reached, not a P.O. box.",
+          "imprintExtra": "Shown below the details, e.g. a supervisory authority or tourism tax number. Markdown."
+        }
+      },
+      "privacy": {
+        "title": "Privacy policy",
+        "edit": "Edit privacy policy",
+        "description": "What the site does with guests' data, in both languages of the site.",
+        "bothLanguages": "German and English",
+        "templateNote": "The text starts from a template made from what this app does: a starting point, not legal advice. Have it checked, fill in the parts in [square brackets] and remove the note at the top.",
+        "german": "German",
+        "english": "English",
+        "useTemplate": "Start again from the template",
+        "useTemplateFor": "Start the {language} text again from the template",
+        "markdownHint": "Markdown: ## for headings, - for lists, **bold**, [text](https://…) for links. HTML and images are not shown."
+      }
+    },
+    "goLive": {
+      "title": "Going live",
+      "ready": "The public booking site has what it needs. List a property under Properties.",
+      "notReady": "Until the legal pages are filled in, no property can be listed.",
+      "imprint": "Imprint: name, address and email",
+      "privacyDe": "Privacy policy in German",
+      "privacyEn": "Privacy policy in English",
+      "templateNote": "The privacy policy still has the template's note: have it checked, then remove the note.",
+      "bankDetails": "{name}: no bank details, so guests are not told where to transfer.",
+      "state": {
+        "done": "Done",
+        "missing": "Missing",
+        "warning": "Warning"
+      }
     }
   },
   "forms": {
@@ -1391,7 +1443,9 @@
     "inTheFuture": "must not be in the future",
     "validIban": "must be a valid IBAN, e.g. DE89 3704 0044 0532 0130 00",
     "validBic": "must be a BIC of 8 or 11 characters",
-    "fromPayment": "is recorded from a payment: change the payment on its booking instead"
+    "fromPayment": "is recorded from a payment: change the payment on its booking instead",
+    "legalRequired": "needs the imprint and privacy policy first",
+    "legalInUse": "is required while a property is listed"
   },
   "stay": {
     "photoOf": "Photo {n} of {title}",
@@ -1576,7 +1630,12 @@
       "title": "Privacy policy"
     },
     "imprint": {
-      "title": "Imprint"
+      "title": "Imprint",
+      "provider": "Provider",
+      "contact": "Contact",
+      "email": "Email",
+      "phone": "Phone",
+      "vatId": "VAT ID"
     },
     "notYet": "This page is not available yet. Please check back later.",
     "footer": "Legal"
