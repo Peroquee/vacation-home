@@ -2,9 +2,9 @@
  * The public site's legal pages (GitLab #112): the Impressum (§ 5 DDG) and
  * the privacy policy (Art. 13 GDPR), one set for the whole site. The owner
  * writes them in settings; the public site cannot go live without them.
- * Client-safe.
+ * Client-safe, and light: no validation library, which would weigh down
+ * the settings bundle (the schema is in ./schema.ts).
  */
-import { z } from "zod";
 
 export const LEGAL_LIMITS = { line: 200, address: 500, extra: 5_000, policy: 50_000 } as const;
 
@@ -66,27 +66,3 @@ export const policyFor = (legal: Legal, locale: string) =>
   locale.startsWith("de")
     ? (legal.privacyPolicyDe ?? legal.privacyPolicyEn)
     : (legal.privacyPolicyEn ?? legal.privacyPolicyDe);
-
-// Blank means not given, and is stored as null.
-const text = (max: number) =>
-  z
-    .string()
-    .max(max, `must be at most ${max} characters`)
-    .nullable()
-    .default(null)
-    .transform((value) => value?.trim() || null);
-
-/** PUT /api/legal: the whole set; missing fields are blank. */
-export const legalSchema = z.strictObject({
-  imprintName: text(LEGAL_LIMITS.line),
-  imprintAddress: text(LEGAL_LIMITS.address),
-  imprintEmail: text(LEGAL_LIMITS.line).pipe(
-    z.union([z.null(), z.email("must be a valid email address")]),
-  ),
-  imprintPhone: text(LEGAL_LIMITS.line),
-  imprintVatId: text(LEGAL_LIMITS.line),
-  imprintExtra: text(LEGAL_LIMITS.extra),
-  privacyPolicyDe: text(LEGAL_LIMITS.policy),
-  privacyPolicyEn: text(LEGAL_LIMITS.policy),
-});
-export type LegalInput = z.infer<typeof legalSchema>;

@@ -13,7 +13,8 @@ import { db } from "@/lib/db";
 import { raisedByDatabase } from "@/lib/db-errors";
 import { createProperty, setArchived, updateProperty } from "@/lib/properties/service";
 
-import { EMPTY_LEGAL, type LegalInput } from "./legal";
+import { EMPTY_LEGAL } from "./legal";
+import type { LegalInput } from "./schema";
 import { getLegal, isLegalComplete, saveLegal } from "./service";
 import { COMPLETE_LEGAL } from "./testing/complete-legal";
 

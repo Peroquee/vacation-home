@@ -4,11 +4,11 @@ import {
   EMPTY_LEGAL,
   imprintComplete,
   legalComplete,
-  legalSchema,
   policyFor,
   policyUnchecked,
   TEMPLATE_MARKER,
 } from "./legal";
+import { legalSchema } from "./schema";
 import { COMPLETE_LEGAL } from "./testing/complete-legal";
 
 describe("the legal pages' input", () => {

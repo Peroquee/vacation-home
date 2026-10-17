@@ -1,5 +1,6 @@
 import { apiError, parseBody } from "@/lib/api";
-import { LEGAL_IN_USE, legalSchema } from "@/lib/legal/legal";
+import { LEGAL_IN_USE } from "@/lib/legal/legal";
+import { legalSchema } from "@/lib/legal/schema";
 import { getLegal, saveLegal } from "@/lib/legal/service";
 
 /** The public site's Impressum and privacy policy (GitLab #112). */

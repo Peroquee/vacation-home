@@ -11,7 +11,8 @@ import type { SiteLegal } from "@/generated/prisma/client";
 import { db } from "@/lib/db";
 import { raisedByDatabase } from "@/lib/db-errors";
 
-import { EMPTY_LEGAL, type Legal, type LegalInput, legalComplete, REQUIRED } from "./legal";
+import { EMPTY_LEGAL, type Legal, legalComplete, REQUIRED } from "./legal";
+import type { LegalInput } from "./schema";
 
 const toLegal = (row: SiteLegal | null): Legal =>
   row
