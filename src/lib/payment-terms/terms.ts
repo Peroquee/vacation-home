@@ -64,13 +64,19 @@ export function depositFor(
   return Math.min(amount, totalMinor);
 }
 
-/** The hold on a booking of `totalMinor` arriving `checkIn`, accepted `today`. */
+/**
+ * The hold on a booking of `totalMinor` arriving `checkIn`, accepted
+ * `today`. The deposit is worked out without the Kurtaxe in the total
+ * (`touristTaxMinor`, GitLab #120): that is paid with the balance, or in
+ * the full amount at short notice.
+ */
 export function holdFor(
   {
     totalMinor,
+    touristTaxMinor = 0,
     checkIn,
     today,
-  }: { totalMinor: number; checkIn: CalendarDate; today: CalendarDate },
+  }: { totalMinor: number; touristTaxMinor?: number; checkIn: CalendarDate; today: CalendarDate },
   terms: PaymentTerms,
 ): Hold {
   // The last day to pay: the day before arrival, unless that has passed.
@@ -78,7 +84,7 @@ export function holdFor(
   const due = (days: number) => earlier(addDays(today, days), lastDay);
 
   const shortNotice = daysBetween(today, checkIn) <= terms.balanceDueDaysBefore;
-  const deposit = depositFor(totalMinor, terms);
+  const deposit = depositFor(totalMinor - touristTaxMinor, terms);
   if (shortNotice || deposit >= totalMinor) {
     return {
       depositAmountMinor: totalMinor,

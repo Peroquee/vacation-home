@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useId, useState } from "react";
 
+import { GuestFields, guestSplitOf, guestValues } from "@/components/guest-fields";
 import { PriceLines } from "@/components/price-lines";
 import { toastError, toastSuccess } from "@/components/toast";
 import { useConflictText } from "@/components/use-conflict-text";
@@ -16,7 +17,8 @@ import { NativeSelect, NativeSelectOption } from "@/components/ui/native-select"
 import { Textarea } from "@/components/ui/textarea";
 import {
   type Conflict,
-  previewPrice,
+  groupsFor,
+  tryBookingPrice,
   type PropertyChoice,
   stayNights,
   turnoverFix,
@@ -26,6 +28,8 @@ import { BOOKING_SOURCES, type BookingStatus, holdsDates } from "@/lib/bookings/
 import type { RuleViolation } from "@/lib/booking-rules/rules";
 import type { BookingDto } from "@/lib/bookings/service";
 import { addDays, isCalendarDate } from "@/lib/calendar-date";
+import { guestsOf, manualTaxOf } from "@/lib/pricing/booking-price";
+import { allAdults, guestTotal } from "@/lib/pricing/tourist-tax";
 import { inputToMinor, minorToInput } from "@/lib/properties/form";
 import { useAmountHint } from "@/i18n/use-amount-hint";
 import { useApiText } from "@/i18n/use-api-text";
@@ -46,6 +50,9 @@ const FIELD_ORDER = [
   "checkIn",
   "checkOut",
   "guestCount",
+  "guestSplit",
+  "touristTaxMinor",
+  "touristTaxNote",
   "status",
   "source",
   "nightlyRateMinor",
@@ -65,7 +72,19 @@ function initialValues(
       guest: booking.guest as GuestOption | null,
       checkIn: booking.checkIn,
       checkOut: booking.checkOut,
-      guestCount: String(booking.guestCount),
+      guests: guestValues(
+        guestsOf(booking),
+        groupsFor(
+          properties.find((p) => p.id === booking.propertyId),
+          booking,
+        ),
+      ),
+      overrideTax: booking.touristTaxManualMinor != null,
+      taxAmount:
+        booking.touristTaxManualMinor == null
+          ? ""
+          : minorToInput(booking.touristTaxManualMinor, booking.currency),
+      taxNote: booking.touristTaxNote ?? "",
       status: booking.status as string,
       source: booking.source as string,
       // Empty: the nights follow the property's seasons (GitLab #118).
@@ -87,7 +106,10 @@ function initialValues(
     guest: null as GuestOption | null,
     checkIn: preset.checkIn ?? "",
     checkOut: preset.checkOut ?? "",
-    guestCount: "1",
+    guests: guestValues(allAdults(1), groupsFor(property)),
+    overrideTax: false,
+    taxAmount: "",
+    taxNote: "",
     status: "inquiry",
     source: "direct",
     nightlyRate: "",
@@ -143,22 +165,47 @@ export function BookingForm({
   const cleaningFeeMinor = currency ? inputToMinor(values.cleaningFee, currency) : null;
   // Editing what the price is not made of keeps the price as agreed, as the
   // API does; anything else is priced anew, by the same engine and rules.
-  const priceKept =
-    booking &&
-    !booking.totalIsManual &&
-    values.checkIn === booking.checkIn &&
-    values.checkOut === booking.checkOut &&
-    nightlyRateMinor === booking.nightlyRateMinor &&
-    cleaningFeeMinor === booking.cleaningFeeMinor;
-  const breakdown = priceKept
-    ? booking.priceBreakdown
-    : property && !rateInvalid
-      ? previewPrice(property.pricing, {
-          checkIn: values.checkIn,
-          checkOut: values.checkOut,
-          nightlyRateMinor,
-          cleaningFeeMinor,
-        })
+  // Who stays, and the owner's own Kurtaxe (GitLab #120).
+  const groups = groupsFor(property, booking);
+  const guests = guestSplitOf(values.guests, groups);
+  const taxAmountMinor =
+    currency && values.overrideTax ? inputToMinor(values.taxAmount, currency) : null;
+  const manualTax =
+    values.overrideTax && taxAmountMinor !== null
+      ? { amountMinor: taxAmountMinor, note: values.taxNote.trim() || null }
+      : null;
+  // The price the API will save: the same decision, engine and rules
+  // (src/lib/pricing/booking-price.ts) - kept as agreed, the Kurtaxe alone
+  // worked out anew, or all of it.
+  const breakdown =
+    property &&
+    !rateInvalid &&
+    cleaningFeeMinor !== null &&
+    guests &&
+    guestTotal(guests) > 0 &&
+    stayNights(values.checkIn, values.checkOut) !== null &&
+    !(values.overrideTax && taxAmountMinor === null)
+      ? tryBookingPrice(
+          property.pricing,
+          {
+            checkIn: values.checkIn,
+            checkOut: values.checkOut,
+            nightlyRateMinor,
+            cleaningFeeMinor,
+            guests,
+            manualTax,
+          },
+          booking && {
+            checkIn: booking.checkIn,
+            checkOut: booking.checkOut,
+            nightlyRateMinor: booking.nightlyRateMinor,
+            cleaningFeeMinor: booking.cleaningFeeMinor,
+            guests: guestsOf(booking),
+            manualTax: manualTaxOf(booking),
+            breakdown: booking.priceBreakdown,
+            handBack: booking.totalIsManual && !values.overrideTotal,
+          },
+        )
       : null;
   const calculated = breakdown?.totalMinor ?? null;
 
@@ -201,7 +248,12 @@ export function BookingForm({
     setErrors(next);
     const first = FIELD_ORDER.find((key) => next[key]);
     // After the render that marks it invalid, so screen readers hear both.
-    if (first) requestAnimationFrame(() => document.getElementById(fieldId(first))?.focus());
+    // The guests' errors belong to the first guest field.
+    const target =
+      first === "guestCount" || first === "guestSplit"
+        ? `${fieldId("guests")}-adults`
+        : first && fieldId(first);
+    if (target) requestAnimationFrame(() => document.getElementById(target)?.focus());
   }
 
   async function submit(event: React.FormEvent<HTMLFormElement>) {
@@ -220,8 +272,8 @@ export function BookingForm({
     const totalMinor =
       currency && values.overrideTotal ? inputToMinor(values.total, currency) : null;
     if (values.overrideTotal && totalMinor === null) local.totalAmountMinor = [amountError];
-    const guestCount = Number(values.guestCount);
-    if (!Number.isInteger(guestCount)) local.guestCount = [tForms("wholeNumber")];
+    if (!guests) local.guestCount = [tForms("wholeNumber")];
+    if (values.overrideTax && taxAmountMinor === null) local.touristTaxMinor = [amountError];
     if (Object.keys(local).length > 0) return showErrors(local);
 
     const body = {
@@ -231,7 +283,12 @@ export function BookingForm({
       checkOut: values.checkOut,
       status: values.status,
       source: values.source,
-      guestCount,
+      guestCount: guests ? guestTotal(guests) : 0,
+      ...(groups.length > 0 && guests && { guestSplit: guests }),
+      // The owner's own Kurtaxe; on edit, null hands it back to the rules.
+      ...(values.overrideTax
+        ? { touristTaxMinor: taxAmountMinor, touristTaxNote: values.taxNote }
+        : booking && { touristTaxMinor: null }),
       nightlyRateMinor,
       cleaningFeeMinor,
       // On edit, null hands the total back to the calculation.
@@ -392,18 +449,20 @@ export function BookingForm({
           labels={{ checkIn: t("form.checkIn"), checkOut: t("form.checkOut") }}
         />
 
-        <div className="grid gap-5 sm:grid-cols-3">
-          {field("guestCount", t("form.guests"), (props) => (
-            <Input
-              {...props}
-              type="number"
-              inputMode="numeric"
-              min={1}
-              max={50}
-              value={values.guestCount}
-              onChange={(event) => set("guestCount", event.target.value)}
-            />
-          ))}
+        <GuestFields
+          idPrefix={fieldId("guests")}
+          groups={groups}
+          values={values.guests}
+          onChange={(next) => set("guests", next)}
+          errors={["guestCount", "guestSplit"].flatMap(
+            (key) =>
+              errors[key]?.map((message) => ({
+                message: tForms("fieldError", { label: t("form.guests"), message }),
+              })) ?? [],
+          )}
+        />
+
+        <div className="grid gap-5 sm:grid-cols-2">
           {field("status", t("form.statusLabel"), (props) => (
             <NativeSelect
               {...props}
@@ -522,6 +581,49 @@ export function BookingForm({
               )
             : null}
         </div>
+
+        {property?.pricing.touristTax || booking?.touristTaxManualMinor != null ? (
+          <div className="space-y-3">
+            <Field orientation="horizontal">
+              <Checkbox
+                id={fieldId("overrideTax")}
+                checked={values.overrideTax}
+                onCheckedChange={(checked) => set("overrideTax", checked)}
+              />
+              <FieldLabel htmlFor={fieldId("overrideTax")}>{t("form.overrideTax")}</FieldLabel>
+            </Field>
+            {values.overrideTax ? (
+              <div className="grid gap-5 sm:grid-cols-2">
+                {field(
+                  "touristTaxMinor",
+                  t("form.taxAmount"),
+                  (props) => (
+                    <Input
+                      {...props}
+                      inputMode="decimal"
+                      value={values.taxAmount}
+                      onChange={(event) => set("taxAmount", event.target.value)}
+                    />
+                  ),
+                  currency ? tForms("inCurrency", { currency }) : undefined,
+                )}
+                {field(
+                  "touristTaxNote",
+                  t("form.taxNote"),
+                  (props) => (
+                    <Input
+                      {...props}
+                      maxLength={500}
+                      value={values.taxNote}
+                      onChange={(event) => set("taxNote", event.target.value)}
+                    />
+                  ),
+                  t("form.taxNoteHint"),
+                )}
+              </div>
+            ) : null}
+          </div>
+        ) : null}
 
         {field("notes", t("form.notes"), (props) => (
           <Textarea

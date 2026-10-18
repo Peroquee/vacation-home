@@ -78,6 +78,7 @@ export async function createBookingRequest(
           status: "inquiry",
           source: "website",
           guestCount: input.guestCount,
+          ...(input.guestSplit && { guestSplit: input.guestSplit }),
         },
         {
           reference: newReference(),

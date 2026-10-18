@@ -178,6 +178,7 @@ export function FinancialReport({ content }: { content: ReportContent }) {
           columns={months.columns}
           rows={months.rows.map((r) => [r.month, r.income, r.expenses, r.net])}
         />
+        {content.passThrough ? <Text style={styles.note}>{plain(content.passThrough)}</Text> : null}
 
         <Text style={styles.heading} break={months.rows.length > 14}>
           {plain(categories.heading)}

@@ -107,34 +107,66 @@ export function nextDue(
 }
 
 /**
- * The ledger entry of a payment, in `tx`: income in "Booking income", a
+ * The part of `net` received that is Kurtaxe (GitLab #120): whatever came
+ * in beyond the rest of the total. So the owner's part is paid first and
+ * the Kurtaxe last, and a refund gives the Kurtaxe back first.
+ */
+export function touristTaxIn(
+  net: number,
+  booking: { totalAmountMinor: number; touristTaxMinor: number },
+): number {
+  const tax = Math.min(booking.touristTaxMinor, booking.totalAmountMinor);
+  return Math.min(Math.max(net - (booking.totalAmountMinor - tax), 0), tax);
+}
+
+/**
+ * The ledger entries of a payment, in `tx`: income in "Booking income", a
  * refund as negative income there - money given back reduces revenue, it is
- * not a cost.
+ * not a cost. Any Kurtaxe in it goes to the pass-through "Kurtaxe
+ * (durchlaufend)" instead, which is not revenue (GitLab #120).
  */
 async function enterInLedger(
   tx: DbClient,
-  booking: { id: string; propertyId: string; currency: string },
+  booking: {
+    id: string;
+    propertyId: string;
+    currency: string;
+    totalAmountMinor: number;
+    touristTaxMinor: number;
+  },
   payment: BookingPayment,
+  netBefore: number,
 ): Promise<void> {
   const refund = payment.kind === "refund";
-  const category = await tx.category.findUniqueOrThrow({
-    where: { systemKey: "booking_income" },
-    select: { id: true },
-  });
-  await tx.transaction.create({
-    data: {
-      propertyId: booking.propertyId,
-      bookingId: booking.id,
-      paymentId: payment.id,
-      type: "income",
-      categoryId: category.id,
-      amountMinor: refund ? -payment.amountMinor : payment.amountMinor,
-      currency: booking.currency,
-      date: payment.receivedOn,
-      // The booking's id only, never guest personal data.
-      description: `${refund ? "Refund" : "Payment"} (${payment.kind}) for booking ${booking.id}`,
-    },
-  });
+  const netAfter = netBefore + (refund ? -payment.amountMinor : payment.amountMinor);
+  const tax = Math.abs(touristTaxIn(netAfter, booking) - touristTaxIn(netBefore, booking));
+  const parts = [
+    { systemKey: "booking_income", amountMinor: payment.amountMinor - tax },
+    { systemKey: "tourist_tax", amountMinor: tax },
+  ];
+  for (const part of parts) {
+    if (part.amountMinor === 0) continue;
+    const category = await tx.category.findUniqueOrThrow({
+      where: { systemKey: part.systemKey },
+      select: { id: true },
+    });
+    await tx.transaction.create({
+      data: {
+        propertyId: booking.propertyId,
+        bookingId: booking.id,
+        paymentId: payment.id,
+        type: "income",
+        categoryId: category.id,
+        amountMinor: refund ? -part.amountMinor : part.amountMinor,
+        currency: booking.currency,
+        date: payment.receivedOn,
+        // The booking's id only, never guest personal data.
+        description: `${refund ? "Refund" : "Payment"} (${payment.kind}) for booking ${booking.id}${
+          part.systemKey === "tourist_tax" ? ": Kurtaxe" : ""
+        }`,
+      },
+    });
+  }
 }
 
 export type RecordResult =
@@ -186,7 +218,7 @@ export async function recordPayment(
       },
     });
     created = toPaymentDto(payment);
-    await enterInLedger(tx, booking, payment);
+    await enterInLedger(tx, booking, payment, before);
 
     // Where the money now takes the booking.
     const net = before + (input.kind === "refund" ? -input.amountMinor : input.amountMinor);

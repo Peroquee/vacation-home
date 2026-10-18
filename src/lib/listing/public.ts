@@ -34,5 +34,6 @@ async function publicFace(
   return toPublicDto(property, listing, photos, terms, {
     nightlyRateFromMinor: lowestRate(pricing, todayIn(property.timezone)),
     discounts: pricing.discounts,
+    touristTax: pricing.touristTax ? (pricing.touristTax.included ? "included" : "plus") : null,
   });
 }

@@ -104,6 +104,7 @@ async function buildReport(
         checkOut: true,
         totalAmountMinor: true,
         cleaningFeeMinor: true,
+        touristTaxMinor: true,
       },
     }),
     db.block.findMany({
@@ -118,6 +119,8 @@ async function buildReport(
       by: ["date", "type"],
       where: {
         propertyId: { in: propertyIds },
+        // Money collected for someone else (the Kurtaxe) is not revenue.
+        category: { passThrough: false },
         date: { gte: toUtcDate(span.start), lt: toUtcDate(span.end) },
       },
       orderBy: [{ date: "asc" }, { type: "asc" }],
@@ -166,6 +169,17 @@ async function buildReport(
   const totals = summarise(months);
   const priorTotals = summarise(seriesFor(prior));
 
+  // Collected for someone else (the Kurtaxe, GitLab #120): reported on its
+  // own, never in the income above.
+  const passThrough = await db.transaction.aggregate({
+    where: {
+      propertyId: { in: propertyIds },
+      category: { passThrough: true },
+      date: { gte: toUtcDate(range.start), lt: toUtcDate(range.end) },
+    },
+    _sum: { amountMinor: true },
+  });
+
   const categories = await db.category.findMany({
     where: { id: { in: expenseRows.map((row) => row.categoryId) } },
     select: { id: true, name: true, color: true },
@@ -197,5 +211,6 @@ async function buildReport(
     prior: { compare: query.compare, from: prior.start, to: prior.end, totals: priorTotals },
     change: compare(totals, priorTotals),
     expensesByCategory,
+    passThroughMinor: passThrough._sum.amountMinor ?? 0,
   };
 }

@@ -184,6 +184,7 @@ function PreviewStrip({ property, seasons, today }: PropertySeasons & { today: s
       defaultCleaningFeeMinor: property.defaultCleaningFeeMinor,
       seasons: seasons.map(seasonRule),
       discounts: [],
+      touristTax: null,
     };
     const result: {
       label: string;

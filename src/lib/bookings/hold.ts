@@ -95,7 +95,12 @@ export async function reserveBooking(id: string, now = new Date()): Promise<Writ
       const today = todayIn(current.property.timezone, now);
       const terms = await getPaymentTerms(current.propertyId, tx);
       const hold = holdFor(
-        { totalMinor: current.totalAmountMinor, checkIn: stay.checkIn, today },
+        {
+          totalMinor: current.totalAmountMinor,
+          touristTaxMinor: current.touristTaxMinor,
+          checkIn: stay.checkIn,
+          today,
+        },
         terms,
       );
       const booking = await tx.booking.update({
@@ -117,7 +122,11 @@ export async function reserveBooking(id: string, now = new Date()): Promise<Writ
             depositNonRefundable:
               parseSnapshot(current.cancellationPolicy)?.depositNonRefundable ??
               terms.depositNonRefundable,
-            depositAmountMinor: depositFor(current.totalAmountMinor, terms),
+            // Never the Kurtaxe: it goes back in full (GitLab #120).
+            depositAmountMinor: depositFor(
+              current.totalAmountMinor - current.touristTaxMinor,
+              terms,
+            ),
           },
         },
         include: withRelations,
