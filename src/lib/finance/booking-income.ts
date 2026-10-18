@@ -3,9 +3,11 @@
  *
  * With income automation on for a property, a confirmed booking has two
  * ledger entries, linked to it and marked `generated`:
- * - `booking_accommodation`: the total less the cleaning fee, in "Booking
- *   income";
- * - `booking_cleaning`: the cleaning fee, in "Cleaning fees".
+ * - `booking_accommodation`: the total less the cleaning fee and the
+ *   Kurtaxe, in "Booking income";
+ * - `booking_cleaning`: the cleaning fee, in "Cleaning fees";
+ * - `booking_tourist_tax`: the Kurtaxe, in the pass-through "Kurtaxe
+ *   (durchlaufend)", which is not revenue (GitLab #120).
  * They are created when the booking is confirmed (bookings confirmed before
  * the automation was on are not backfilled), are dated on the check-in day,
  * and follow the booking's amounts and dates. A part worth nothing (no
@@ -34,17 +36,25 @@ import type { DbClient } from "@/lib/db";
 const CATEGORY: Record<GeneratedEntry, string> = {
   booking_accommodation: "booking_income",
   booking_cleaning: "cleaning_fees",
+  // Collected for the municipality, never revenue (GitLab #120).
+  booking_tourist_tax: "tourist_tax",
 };
 
-/** What each part of a booking is worth. */
+/**
+ * What each part of a booking is worth: the Kurtaxe first (it is owed in
+ * full), then the cleaning fee, and the rest is the accommodation.
+ */
 export function bookingIncomeParts(booking: {
   totalAmountMinor: number;
   cleaningFeeMinor: number;
+  touristTaxMinor: number;
 }): Record<GeneratedEntry, number> {
-  const cleaning = Math.min(booking.cleaningFeeMinor, booking.totalAmountMinor);
+  const tax = Math.min(booking.touristTaxMinor, booking.totalAmountMinor);
+  const cleaning = Math.min(booking.cleaningFeeMinor, booking.totalAmountMinor - tax);
   return {
-    booking_accommodation: booking.totalAmountMinor - cleaning,
+    booking_accommodation: booking.totalAmountMinor - tax - cleaning,
     booking_cleaning: cleaning,
+    booking_tourist_tax: tax,
   };
 }
 

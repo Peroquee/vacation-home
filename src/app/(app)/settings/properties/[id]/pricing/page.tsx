@@ -9,11 +9,12 @@ import { buttonVariants } from "@/components/ui/button";
 import { getFormat } from "@/i18n/get-format";
 import { isUuid } from "@/lib/api";
 import { todayIn } from "@/lib/finance/recurring";
-import { listDiscounts, listSeasons } from "@/lib/pricing/service";
+import { getTouristTax, listDiscounts, listSeasons } from "@/lib/pricing/service";
 import { getProperty } from "@/lib/properties/service";
 
 import { DiscountsCard } from "./discounts-card";
 import { SeasonsCard } from "./seasons-card";
+import { TouristTaxCard } from "./tourist-tax-card";
 
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getTranslations("settings.pricing");
@@ -21,8 +22,8 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 /**
- * Everything about a property's prices, in one place (GitLab #118, #119):
- * the seasons, the length-of-stay discounts and, later, the Kurtaxe (#120).
+ * Everything about a property's prices, in one place (GitLab #118, #119,
+ * #120): the seasons, the length-of-stay discounts and the Kurtaxe.
  * Each section says in a sentence what it does; the standard rate and the
  * cleaning fee stay with the property itself.
  */
@@ -33,9 +34,10 @@ export default async function PricingPage({
   const { id } = await params;
   const property = isUuid(id) ? await getProperty(id) : null;
   if (!property) notFound();
-  const [seasons, tiers, t, format] = await Promise.all([
+  const [seasons, tiers, touristTax, t, format] = await Promise.all([
     listSeasons(id),
     listDiscounts(id),
+    getTouristTax(id),
     getTranslations("settings.pricing"),
     getFormat(),
   ]);
@@ -67,6 +69,7 @@ export default async function PricingPage({
           today={todayIn(property.timezone)}
         />
         <DiscountsCard propertyId={property.id} tiers={tiers} />
+        <TouristTaxCard propertyId={property.id} currency={property.currency} rules={touristTax} />
       </div>
     </>
   );

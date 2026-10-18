@@ -93,7 +93,10 @@ describe("default categories", () => {
       "income:booking_income",
       "income:cleaning_fees",
       "income:other_income",
+      // Collected for the municipality, never revenue (GitLab #120).
+      "income:tourist_tax",
     ]);
+    expect(system.filter((c) => c.passThrough).map((c) => c.systemKey)).toEqual(["tourist_tax"]);
   });
 });
 

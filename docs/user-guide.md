@@ -93,6 +93,34 @@ a colour for the calendar.
     Guests see the tiers next to the price on the public page. 2 to 365
     nights, 1 to 90%, one tier per number of nights; none means no discount.
     Like the seasons, changing them later does not change existing bookings.
+  - **Kurtaxe** (on the Prices page): the municipality's tax per person
+    and night, which you collect and pass on - it is not your income. Enter
+    the rates from your municipality's statute: a rate per adult and night,
+    up to four children's age groups (0–17) with their own rate (0 for
+    free; anyone outside them pays the adult rate), optional yearly periods
+    with other rates (a resort's high season), and optionally a maximum of
+    nights charged. Choose how prices show it: **plus Kurtaxe** (added to the
+    price, the default: "zzgl. Kurtaxe") or **included** (your nightly rates
+    already contain it).
+    - Guests then give the number of adults and of children per age group
+      (never birth dates); with no children's groups the form asks only for
+      the number of guests. The Kurtaxe is its own line in the estimate,
+      the booking and the guest's page, and emails name it with the total.
+      Prices shown before the guests are known say "plus Kurtaxe" or "incl.
+      Kurtaxe".
+    - It is paid with the balance, never in the deposit, and is refunded in
+      full when a stay is cancelled.
+    - Changing a booking's guests works out its Kurtaxe anew by the rules
+      the booking was priced under; nothing else of its price changes.
+      **Set the Kurtaxe by hand** in the booking form for a guest who is
+      exempt or pays less under the statute, with a reason; it shows as
+      "Kurtaxe (manuell)".
+    - In the books it goes to its own category, **Kurtaxe (durchlaufend)**,
+      which the dashboard, the PDF report and the nightly figures leave out
+      of revenue. **Finance → Kurtaxe** shows per month what the stays owe
+      and what has come in. It counts the Kurtaxe owed **by the month a stay
+      starts in**: check how your municipality wants it reported (by
+      arrival, by night or by payment) before you file.
   - In the booking form, **Own nightly rate** gives one booking a flat
     rate for every night instead of the seasons; leave it empty to use them.
     **Set the total by hand** still overrides everything.

@@ -487,6 +487,51 @@
       "add": "Stufe hinzufügen",
       "saved": "Rabatte gespeichert",
       "saveFailed": "Die Rabatte konnten nicht gespeichert werden"
+    },
+    "touristTax": {
+      "title": "Kurtaxe",
+      "description": "Die Abgabe der Gemeinde pro Person und Nacht, die Sie einziehen und weitergeben: nicht Ihr Einkommen, und die Buchhaltung hält sie getrennt. Tragen Sie die Sätze aus der Satzung Ihrer Gemeinde ein; die Preise für Gäste zeigen sie als eigene Zeile.",
+      "none": "Keine Kurtaxe.",
+      "edit": "Kurtaxe bearbeiten",
+      "dialogDescription": "Buchungen behalten ihre Kurtaxe. Ändern sich die Gäste einer Buchung, wird ihre Kurtaxe nach den Regeln neu berechnet, unter denen sie gebucht wurde.",
+      "enabled": "Kurtaxe erheben",
+      "adultRate": "Pro Erwachsenem und Nacht ({currency})",
+      "childGroups": "Kinder nach Alter",
+      "childGroupsHint": "Bis zu 4 Altersgruppen (0–17), jede mit ihrem Satz pro Nacht; 0 für frei. Wer außerhalb liegt, zahlt den Satz für Erwachsene. Gäste geben dann die Zahl der Kinder je Gruppe an, nie Geburtsdaten.",
+      "ages": "Alter",
+      "fromAgeOf": "Gruppe {n}: ab Alter",
+      "toAgeOf": "Gruppe {n}: bis Alter",
+      "rateLabel": "Satz",
+      "childRateOf": "Gruppe {n}: Satz pro Nacht ({currency})",
+      "removeGroup": "Gruppe {n} entfernen",
+      "addGroup": "Altersgruppe hinzufügen",
+      "childLabel": "{from}–{to}",
+      "periods": "Zeiträume mit anderen Sätzen",
+      "periodsHint": "Optional, jedes Jahr, z. B. die Hochsaison. Ein leerer Satz ist der normale.",
+      "periodName": "Zeitraum {n}: Name",
+      "periodPlaceholder": "z. B. Hochsaison",
+      "periodStartDay": "Zeitraum {n}: erster Tag",
+      "periodStartMonth": "Zeitraum {n}: erster Monat",
+      "periodEndDay": "Zeitraum {n}: letzter Tag",
+      "periodEndMonth": "Zeitraum {n}: letzter Monat",
+      "removePeriod": "Zeitraum {n} entfernen",
+      "adults": "Erwachsene",
+      "periodAdultRate": "Zeitraum {n}: pro Erwachsenem ({currency})",
+      "periodChildRate": "Zeitraum {n}: Alter {group}",
+      "addPeriod": "Zeitraum hinzufügen",
+      "maxNights": "Höchstens berechnen (Nächte)",
+      "maxNightsHint": "Optional: Nur die ersten Nächte eines Aufenthalts werden berechnet.",
+      "display": "Wie die Preise sie zeigen",
+      "display_plus": "Zzgl. Kurtaxe: kommt zum Preis hinzu",
+      "display_included": "Inklusive: Die Preise pro Nacht enthalten sie schon (\"inkl. Kurtaxe\")",
+      "summaryAdult": "{rate} pro Erwachsenem und Nacht",
+      "summaryChild": "Alter {from}–{to}: {rate}",
+      "summaryPeriod": "{name}: {rate} pro Erwachsenem",
+      "summaryMax": "Höchstens {nights} Nächte",
+      "summaryPlus": "Angezeigt als „zzgl. Kurtaxe“",
+      "summaryIncluded": "In den Preisen enthalten",
+      "saved": "Kurtaxe gespeichert",
+      "saveFailed": "Die Kurtaxe konnte nicht gespeichert werden"
     }
   },
   "forms": {
@@ -575,7 +620,11 @@
       "checkFailed": "Die Verfügbarkeit konnte nicht geprüft werden. Sie wird beim Speichern erneut geprüft.",
       "available": "Diese Tage sind frei.",
       "outsideRules": "Außerhalb der Buchungsregeln dieser Unterkunft (Gäste könnten diesen Aufenthalt nicht anfragen):",
-      "nightlyRateHint": "Leer: Die Saisons und der Normalpreis der Unterkunft bestimmen den Preis jeder Nacht. Ein Preis hier gilt für jede Nacht gleich. In {currency}."
+      "nightlyRateHint": "Leer: Die Saisons und der Normalpreis der Unterkunft bestimmen den Preis jeder Nacht. Ein Preis hier gilt für jede Nacht gleich. In {currency}.",
+      "overrideTax": "Kurtaxe von Hand festlegen",
+      "taxAmount": "Kurtaxe für diese Buchung",
+      "taxNote": "Grund (optional)",
+      "taxNoteHint": "Zum Beispiel eine Befreiung nach der Satzung; steht beim Betrag."
     },
     "actions": {
       "confirmed": "Buchung bestätigt",
@@ -1013,7 +1062,8 @@
       "next": "Nächster Monat",
       "badFilters": "Diese Filter passen nicht zusammen",
       "categoryIncome": "{name} (Einnahme)",
-      "categoryExpense": "{name} (Ausgabe)"
+      "categoryExpense": "{name} (Ausgabe)",
+      "touristTax": "Kurtaxe"
     },
     "categories": {
       "title": "Kategorien",
@@ -1216,6 +1266,21 @@
       "badgeLabel": "Wiederkehrend: Regel anzeigen",
       "makeRecurring": "Wiederkehrend machen",
       "link": "Wiederkehrende Kosten"
+    },
+    "touristTax": {
+      "title": "Kurtaxe",
+      "heading": "Kurtaxe {year}",
+      "description": "Für die Gemeinde eingenommen, nicht Ihr Einkommen: was die Aufenthalte schulden, nach dem Monat ihrer Anreise, und was dafür eingegangen ist. Prüfen Sie, wie Ihre Gemeinde zählt (Anreise, Nächte oder Zahlung).",
+      "previous": "{year}",
+      "next": "{year}",
+      "back": "Zurück zu den Finanzen",
+      "none": "Keine Kurtaxe in {year}.",
+      "caption": "Kurtaxe {year}, {currency}",
+      "month": "Monat",
+      "stays": "Aufenthalte",
+      "owed": "Geschuldet",
+      "collected": "Eingenommen",
+      "total": "Summe"
     }
   },
   "dashboard": {
@@ -1295,7 +1360,8 @@
       "footer": "Zahlen wie in der Übersicht mit denselben Filtern. Einnahmen und Ausgaben stammen aus dem Kassenbuch, nach Buchungsdatum.",
       "download": "Bericht (PDF)",
       "transactions": "Posten (CSV)",
-      "exportMenu": "Exportieren"
+      "exportMenu": "Exportieren",
+      "passThrough": "In diesem Zeitraum für die Gemeinde eingenommene Kurtaxe: {amount}. Sie ist kein Einkommen und oben nicht enthalten."
     }
   },
   "charts": {
@@ -1504,7 +1570,12 @@
     "notADayOfMonth": "ist kein Tag dieses Monats",
     "notADayOfYear": "ist kein Tag dieses Jahres",
     "discountNightsTaken": "hat für diese Zahl an Nächten schon einen Rabatt",
-    "atMostTiers": "darf höchstens {max} Stufen haben"
+    "atMostTiers": "darf höchstens {max} Stufen haben",
+    "agesOverlap": "überschneidet sich mit einer anderen Altersgruppe",
+    "periodsOverlap": "überschneidet sich mit einem anderen Zeitraum",
+    "unknownGroup": "nennt eine Altersgruppe, die es nicht gibt",
+    "guestsNotTheSum": "muss die Summe der Gäste nach Altersgruppe sein",
+    "guestRange": "müssen 1 bis 50 Gäste sein"
   },
   "stay": {
     "photoOf": "Foto {n} von {title}",
@@ -1711,7 +1782,8 @@
       "nights": "{count, plural, one {# Nacht} other {# Nächte}}",
       "guests": "Gäste",
       "total": "Gesamtpreis",
-      "reference": "Referenz"
+      "reference": "Referenz",
+      "totalWithTax": "{total} (inkl. {tax} Kurtaxe)"
     },
     "pay": {
       "deposit": "Bitte zahlen Sie die Anzahlung von {amount} bis zum {date}.",
@@ -1815,6 +1887,21 @@
     "totalSet": "Gesamt (von Hand festgelegt)",
     "legacy": "Vor den Saisonpreisen berechnet; Gesamtpreis wie vereinbart.",
     "discount": "Rabatt ab {nights} Nächten −{percent} %",
-    "discountHint": "Ab {nights} Nächten {percent} % günstiger"
+    "discountHint": "Ab {nights} Nächten {percent} % günstiger",
+    "tax": "Kurtaxe",
+    "taxIncluded": "inkl. Kurtaxe",
+    "taxManual": "Kurtaxe (manuell)",
+    "taxManualIncluded": "inkl. Kurtaxe (manuell)",
+    "taxAdults": "{persons, plural, one {# Erw.} other {# Erw.}} × {nights, plural, one {# Nacht} other {# Nächte}} × {rate}",
+    "taxChildren": "{persons, plural, one {# Kind} other {# Kinder}} {from}–{to} J. × {nights, plural, one {# Nacht} other {# Nächte}} × {rate}",
+    "plusTax": "zzgl. Kurtaxe",
+    "includedTax": "inkl. Kurtaxe"
+  },
+  "guestFields": {
+    "guests": "Gäste",
+    "adults": "Erwachsene",
+    "children": "Kinder {from}–{to} Jahre",
+    "summaryAdults": "{count, plural, one {# Erwachsener} other {# Erwachsene}}",
+    "summaryChildren": "{count, plural, one {# Kind} other {# Kinder}} {from}–{to} Jahre"
   }
 }

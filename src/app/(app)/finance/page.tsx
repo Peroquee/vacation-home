@@ -66,6 +66,9 @@ export default async function FinancePage({ searchParams }: PageProps<"/finance"
               categoryId: params.categoryId,
             }}
           />
+          <Link href="/finance/tourist-tax" className={buttonVariants({ variant: "outline" })}>
+            {t("touristTax")}
+          </Link>
           <Link href="/finance/recurring" className={buttonVariants({ variant: "outline" })}>
             {tRecurring("link")}
           </Link>

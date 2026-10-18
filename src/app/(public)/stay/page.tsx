@@ -26,9 +26,10 @@ export default async function StartPage() {
   await connection();
   const properties = await listPublicProperties();
   if (properties.length === 1) redirect(`/stay/${properties[0]!.slug}`);
-  const [t, tStay, locale, format] = await Promise.all([
+  const [t, tStay, tPricing, locale, format] = await Promise.all([
     getTranslations("start"),
     getTranslations("stay"),
+    getTranslations("pricing"),
     getLocale(),
     getFormat(),
   ]);
@@ -83,6 +84,9 @@ export default async function StartPage() {
                     {tStay("fromRate", {
                       rate: format.money(property.nightlyRateFromMinor, property.currency),
                     })}
+                    {property.touristTax
+                      ? ` · ${tPricing(property.touristTax === "plus" ? "plusTax" : "includedTax")}`
+                      : null}
                   </p>
                 ) : null}
               </article>

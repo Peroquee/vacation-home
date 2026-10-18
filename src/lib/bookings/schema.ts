@@ -32,6 +32,45 @@ const notes = z
   .nullable()
   .transform((value) => value || null);
 
+export const GUESTS_NOT_THE_SUM = "must be the sum of the guests by age group";
+
+/** Who stays, by age group (GitLab #120): only as detailed as the Kurtaxe needs. */
+export const guestSplitSchema = z
+  .strictObject({
+    adults: z.int("must be a whole number").min(0, "cannot be negative").max(50, "is too many"),
+    children: z
+      .array(
+        z.strictObject({
+          fromAge: z.int().min(0).max(17),
+          toAge: z.int().min(0).max(17),
+          count: z
+            .int("must be a whole number")
+            .min(0, "cannot be negative")
+            .max(50, "is too many"),
+        }),
+      )
+      .max(4, "must be at most 4 age groups")
+      .default([]),
+  })
+  .refine(
+    (split) => {
+      const total = split.adults + split.children.reduce((sum, c) => sum + c.count, 0);
+      return total >= 1 && total <= 50;
+    },
+    { message: "must be from 1 to 50 guests" },
+  );
+
+export const guestsAddUp = (
+  input: { guestCount?: number; guestSplit?: z.infer<typeof guestSplitSchema> | null },
+  context: z.RefinementCtx,
+) => {
+  if (!input.guestSplit || input.guestCount === undefined) return;
+  const sum = input.guestSplit.adults + input.guestSplit.children.reduce((s, c) => s + c.count, 0);
+  if (sum !== input.guestCount) {
+    context.addIssue({ code: "custom", path: ["guestCount"], message: GUESTS_NOT_THE_SUM });
+  }
+};
+
 const fields = {
   propertyId: z.uuid("must be a property id"),
   guestId: z.uuid("must be a guest id"),
@@ -42,7 +81,16 @@ const fields = {
   guestCount: z.int("must be a whole number").min(1, "must be at least 1").max(50, "is too many"),
   nightlyRateMinor: amountMinor,
   cleaningFeeMinor: amountMinor,
+  guestSplit: guestSplitSchema,
   notes,
+  /** The owner's own Kurtaxe for the booking (an exemption); null: by the rules. */
+  touristTaxMinor: amountMinor.nullable(),
+  touristTaxNote: z
+    .string()
+    .trim()
+    .max(500, "must be at most 500 characters")
+    .nullable()
+    .transform((value) => value || null),
 };
 
 /**
@@ -80,13 +128,19 @@ export const createBookingSchema = z
       .refine((status) => !(FLOW_STATUSES as readonly string[]).includes(status), FLOW_ONLY)
       .default("inquiry"),
     source: fields.source.refine((source) => source !== "website", WEBSITE_ONLY).default("direct"),
-    guestCount: fields.guestCount.default(1),
+    // Default 1, or the sum of guestSplit (src/lib/bookings/service.ts).
+    guestCount: fields.guestCount.optional(),
     nightlyRateMinor: fields.nightlyRateMinor.nullable().optional(),
     cleaningFeeMinor: fields.cleaningFeeMinor.optional(),
     totalAmountMinor: amountMinor.optional(),
+    // With it, guestCount may be left out: it is the sum.
+    guestSplit: fields.guestSplit.optional(),
+    touristTaxMinor: fields.touristTaxMinor.optional(),
+    touristTaxNote: fields.touristTaxNote.optional(),
     notes: notes.optional(),
   })
-  .superRefine(checkStay);
+  .superRefine(checkStay)
+  .superRefine(guestsAddUp);
 
 /**
  * PATCH /api/bookings/:id: any subset of fields. `totalAmountMinor` sets the
@@ -107,11 +161,15 @@ export const updateBookingSchema = z
     nightlyRateMinor: fields.nightlyRateMinor.nullable(),
     cleaningFeeMinor: fields.cleaningFeeMinor,
     totalAmountMinor: amountMinor.nullable(),
+    guestSplit: fields.guestSplit,
+    touristTaxMinor: fields.touristTaxMinor,
+    touristTaxNote: fields.touristTaxNote,
     notes,
   })
   .partial()
   .refine((update) => Object.keys(update).length > 0, "at least one field is required")
-  .superRefine(checkStay);
+  .superRefine(checkStay)
+  .superRefine(guestsAddUp);
 
 /** GET /api/bookings query string. */
 export const listBookingsSchema = z

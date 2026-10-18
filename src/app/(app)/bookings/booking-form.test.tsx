@@ -54,6 +54,7 @@ const property: PropertyChoice = {
       },
     ],
     discounts: [],
+    touristTax: null,
   },
 };
 

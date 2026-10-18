@@ -166,3 +166,13 @@ describe("the emails", () => {
     }
   });
 });
+
+describe("the Kurtaxe in an email (GitLab #120)", () => {
+  it("is named with the total it is part of", async () => {
+    const email = await renderEmail({
+      ...base,
+      booking: { ...base.booking, touristTaxMinor: 3_750 },
+    });
+    expect(email.text).toMatch(/1,100\.00 \(including €37\.50 Kurtaxe\)/);
+  });
+});

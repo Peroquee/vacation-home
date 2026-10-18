@@ -10,7 +10,14 @@ import type { CalendarBlock, CalendarBooking } from "@/lib/availability/calendar
 import { type Conflict, findConflicts } from "@/lib/availability/rules";
 import { addDays, daysBetween, isCalendarDate } from "@/lib/calendar-date";
 
-import { type PriceBreakdown, type PricingRules, tryPriceStay } from "@/lib/pricing/engine";
+import { bookingPrice } from "@/lib/pricing/booking-price";
+import {
+  type PriceBreakdown,
+  type PricingRules,
+  type StoredBreakdown,
+  tryPriceStay,
+} from "@/lib/pricing/engine";
+import { type GuestSplit, groupKey } from "@/lib/pricing/tourist-tax";
 
 import { stayProblem } from "./values";
 
@@ -49,6 +56,7 @@ export function toPropertyChoice(
       defaultCleaningFeeMinor,
       seasons: [],
       discounts: [],
+      touristTax: null,
     },
   };
 }
@@ -77,6 +85,35 @@ export function previewPrice(
   const { checkIn, checkOut, nightlyRateMinor, cleaningFeeMinor } = stay;
   if (stayNights(checkIn, checkOut) === null || cleaningFeeMinor === null) return null;
   return tryPriceStay(pricing, { checkIn, checkOut, nightlyRateMinor, cleaningFeeMinor });
+}
+
+/** bookingPrice, or null where it would throw (for the form's preview). */
+export function tryBookingPrice(...args: Parameters<typeof bookingPrice>): StoredBreakdown | null {
+  try {
+    return bookingPrice(...args);
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * The age groups the form asks for (GitLab #120): the property's Kurtaxe
+ * groups, and any a booking was made with that the rules no longer have.
+ */
+export function groupsFor(
+  property: { pricing: PricingRules } | undefined,
+  booking?: { guestSplit: unknown },
+): { fromAge: number; toAge: number }[] {
+  const groups = [...(property?.pricing.touristTax?.childGroups ?? [])].map(
+    ({ fromAge, toAge }) => ({ fromAge, toAge }),
+  );
+  const stored = (booking?.guestSplit as GuestSplit | null)?.children ?? [];
+  for (const child of stored) {
+    if (child.count > 0 && !groups.some((g) => groupKey(g) === groupKey(child))) {
+      groups.push({ fromAge: child.fromAge, toAge: child.toAge });
+    }
+  }
+  return groups.sort((a, b) => a.fromAge - b.fromAge);
 }
 
 /**

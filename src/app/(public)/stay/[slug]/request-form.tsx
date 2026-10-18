@@ -8,17 +8,26 @@ import { Button } from "@/components/ui/button";
 import { Field, FieldDescription, FieldError, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import {
+  GuestFields,
+  guestSplitOf,
+  type GuestValues,
+  guestValues,
+} from "@/components/guest-fields";
+import { PriceLines } from "@/components/price-lines";
 import { useApiText } from "@/i18n/use-api-text";
 import type { SentRequest } from "@/lib/booking-requests/service";
 import { type SolvedChallenge, solvedChallenge } from "@/lib/booking-requests/solve";
 import { HONEYPOT_FIELD, MESSAGE_MAX } from "@/lib/booking-requests/values";
 import type { CalendarDate } from "@/lib/calendar-date";
+import { type PricingRules, tryPriceStay } from "@/lib/pricing/engine";
+import { allAdults, guestTotal } from "@/lib/pricing/tourist-tax";
 
 type Values = {
   name: string;
   email: string;
   phone: string;
-  guestCount: string;
+  guests: GuestValues;
   message: string;
   consent: boolean;
 };
@@ -26,7 +35,15 @@ type Values = {
 type FieldErrors = Record<string, string[] | undefined>;
 
 /** The form's own fields; the server's messages on any other go above the button. */
-const FORM_FIELDS = ["name", "email", "phone", "guestCount", "message", "consent"] as const;
+const FORM_FIELDS = [
+  "name",
+  "email",
+  "phone",
+  "guestCount",
+  "guestSplit",
+  "message",
+  "consent",
+] as const;
 
 /**
  * The server refuses a request sent sooner than this after its challenge
@@ -55,6 +72,7 @@ export function RequestForm({
   checkIn,
   checkOut,
   maxGuests,
+  pricing,
   cancellation,
   onSent,
   onDatesRefused,
@@ -63,6 +81,11 @@ export function RequestForm({
   checkIn: CalendarDate;
   checkOut: CalendarDate;
   maxGuests: number | null;
+  /**
+   * The property's pricing rules: the price with the guests' Kurtaxe is
+   * shown before sending (GitLab #120), by the same engine as the booking's.
+   */
+  pricing: PricingRules;
   /** The cancellation policy (GitLab #116), shown above the consent. */
   cancellation?: React.ReactNode;
   onSent: (request: SentRequest) => void;
@@ -77,12 +100,16 @@ export function RequestForm({
     name: "",
     email: "",
     phone: "",
-    guestCount: "1",
+    guests: guestValues(allAdults(1), pricing.touristTax?.childGroups ?? []),
     message: "",
     consent: false,
   });
   const [errors, setErrors] = useState<FieldErrors>({});
   const [pending, setPending] = useState(false);
+  const groups = pricing.touristTax?.childGroups ?? [];
+  const guests = guestSplitOf(values.guests, groups);
+  const price =
+    guests && guestTotal(guests) > 0 ? tryPriceStay(pricing, { checkIn, checkOut, guests }) : null;
   const honeypot = useRef<HTMLInputElement>(null);
   const solving = useRef<Solving | null>(null);
 
@@ -95,7 +122,8 @@ export function RequestForm({
   }
 
   async function send(altcha: SolvedChallenge): Promise<Response> {
-    const count = values.guestCount.trim();
+    const split = guestSplitOf(values.guests, groups);
+    const count = values.guests.adults.trim();
     return fetch(`/api/public/properties/${slug}/requests`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -103,7 +131,9 @@ export function RequestForm({
         checkIn,
         checkOut,
         // Not a whole number: sent as typed, for the server to refuse.
-        guestCount: /^\d+$/.test(count) ? Number(count) : count,
+        guestCount: split ? guestTotal(split) : /^\d+$/.test(count) ? Number(count) : count,
+        // By age group, only where the Kurtaxe asks for it.
+        ...(groups.length > 0 && split && { guestSplit: split }),
         name: values.name,
         email: values.email,
         phone: values.phone,
@@ -218,26 +248,18 @@ export function RequestForm({
           maxLength: 320,
         })}
         {textField("phone", { type: "tel", autoComplete: "tel", maxLength: 50 }, t("optional"))}
-        <Field data-invalid={errors.guestCount ? true : undefined}>
-          <FieldLabel htmlFor="request-guestCount">{t("fields.guestCount")}</FieldLabel>
-          <Input
-            id="request-guestCount"
-            name="guestCount"
-            type="number"
-            inputMode="numeric"
-            min={1}
-            max={maxGuests ?? 50}
-            required
-            className="w-24"
-            value={values.guestCount}
-            onChange={(event) => set("guestCount", event.target.value)}
-            {...(errors.guestCount && { "aria-invalid": true })}
-          />
-          {maxGuests !== null ? (
-            <FieldDescription>{t("maxGuests", { count: maxGuests })}</FieldDescription>
-          ) : null}
-          <FieldError errors={messages("guestCount", t("fields.guestCount"))} />
-        </Field>
+        <GuestFields
+          idPrefix="request-guests"
+          groups={groups}
+          values={values.guests}
+          onChange={(next) => set("guests", next)}
+          errors={[
+            ...(messages("guestCount", t("fields.guestCount")) ?? []),
+            ...(messages("guestSplit", t("fields.guestCount")) ?? []),
+          ]}
+          max={maxGuests ?? 50}
+          hint={maxGuests !== null ? t("maxGuests", { count: maxGuests }) : undefined}
+        />
         <Field data-invalid={errors.message ? true : undefined}>
           <FieldLabel htmlFor="request-message">{t("fields.message")}</FieldLabel>
           <Textarea
@@ -252,6 +274,12 @@ export function RequestForm({
           <FieldDescription>{t("optional")}</FieldDescription>
           <FieldError errors={messages("message", t("fields.message"))} />
         </Field>
+        {/* The price for these guests, Kurtaxe included (GitLab #120). */}
+        {price && price.touristTax ? (
+          <div className="rounded-lg border p-3" data-testid="request-price">
+            <PriceLines breakdown={price} />
+          </div>
+        ) : null}
         {cancellation}
         <Field orientation="horizontal" data-invalid={errors.consent ? true : undefined}>
           <input

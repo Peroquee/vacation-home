@@ -37,11 +37,20 @@ export async function policySnapshot(
 
 /** The policy a booking is under: its snapshot, else the property's now. */
 export async function bookingPolicy(
-  booking: { propertyId: string; totalAmountMinor: number; cancellationPolicy: unknown },
+  booking: {
+    propertyId: string;
+    totalAmountMinor: number;
+    touristTaxMinor?: number;
+    cancellationPolicy: unknown;
+  },
   client: DbClient = db,
 ): Promise<CancellationTerms> {
   return (
     parseSnapshot(booking.cancellationPolicy) ??
-    (await currentTerms(booking.propertyId, booking.totalAmountMinor, client))
+    (await currentTerms(
+      booking.propertyId,
+      booking.totalAmountMinor - (booking.touristTaxMinor ?? 0),
+      client,
+    ))
   );
 }

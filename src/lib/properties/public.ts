@@ -37,6 +37,11 @@ export type PublicPropertyDto = {
   nightlyRateFromMinor: number | null;
   /** Length-of-stay discounts, fewest nights first (GitLab #119). */
   discounts: StayDiscount[];
+  /**
+   * Whether prices come plus Kurtaxe or include it (GitLab #120); null
+   * without one. Shown with every price the guests' number is not known for.
+   */
+  touristTax: "plus" | "included" | null;
   /** Town or region only. */
   location: string;
   description: PublicText;
@@ -57,7 +62,11 @@ export function toPublicDto(
   listing: ListingDto,
   photos: PhotoDto[],
   terms: PaymentTerms,
-  prices: { nightlyRateFromMinor: number | null; discounts: StayDiscount[] },
+  prices: {
+    nightlyRateFromMinor: number | null;
+    discounts: StayDiscount[];
+    touristTax: "plus" | "included" | null;
+  },
 ): PublicPropertyDto {
   const base = `/api/public/properties/${property.slug}/photos`;
   // Untitled in both languages: the property's own name rather than nothing.
@@ -68,6 +77,7 @@ export function toPublicDto(
     currency: property.currency,
     nightlyRateFromMinor: prices.nightlyRateFromMinor,
     discounts: prices.discounts,
+    touristTax: prices.touristTax,
     location: listing.location,
     description: { en: listing.descriptionEn, de: listing.descriptionDe },
     houseRules: { en: listing.houseRulesEn, de: listing.houseRulesDe },
