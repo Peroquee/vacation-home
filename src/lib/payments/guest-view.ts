@@ -15,6 +15,9 @@ import { getBankDetails } from "./bank";
 import { bookingForToken } from "./guest-link";
 import { epcPayload, girocodeSvg, remittanceFor } from "./girocode";
 import { formatIban } from "./iban";
+import { breakdownOf } from "@/lib/bookings/service";
+import type { StoredBreakdown } from "@/lib/pricing/engine";
+
 import { netReceived, type NextDue, nextDue } from "./service";
 
 export type GuestView = {
@@ -25,6 +28,11 @@ export type GuestView = {
   guestCount: number;
   status: BookingStatus;
   totalAmountMinor: number;
+  /**
+   * How the total is made up (GitLab #118). A total the owner set by hand
+   * shows on its own: the lines would not add up to it.
+   */
+  price: StoredBreakdown;
   receivedMinor: number;
   currency: string;
   next: NextDue | null;
@@ -98,10 +106,25 @@ export async function guestView(token: string): Promise<GuestView | null> {
     guestCount: booking.guestCount,
     status: booking.status,
     totalAmountMinor: booking.totalAmountMinor,
+    price: guestPrice(booking),
     receivedMinor: received,
     currency: booking.currency,
     next,
     policy: await bookingPolicy(booking),
     transfer,
   };
+}
+
+function guestPrice(
+  booking: Parameters<typeof breakdownOf>[0] & { totalIsManual: boolean },
+): StoredBreakdown {
+  const breakdown = breakdownOf(booking);
+  return breakdown.totalMinor === booking.totalAmountMinor
+    ? breakdown
+    : {
+        version: 1,
+        kind: "legacy",
+        currency: booking.currency,
+        totalMinor: booking.totalAmountMinor,
+      };
 }

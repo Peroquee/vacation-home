@@ -432,6 +432,38 @@
         "missing": "Fehlt",
         "warning": "Hinweis"
       }
+    },
+    "seasons": {
+      "title": "Saisonpreise",
+      "description": "Zeiträume mit eigenem Preis pro Nacht, je Unterkunft: jedes Jahr (Sommer, Weihnachten) oder einmalig (eine Ferienwoche). Außerhalb jeder Saison gilt der Normalpreis; eine einmalige Saison geht einer jährlichen vor, in der sie liegt. Buchungen behalten ihren Preis.",
+      "standardRate": "Normalpreis: {rate} pro Nacht",
+      "none": "Noch keine Saisons: Jede Nacht kostet den Normalpreis.",
+      "everyYear": "{range}, jedes Jahr",
+      "inYear": "{range} {year}",
+      "preview": "Die nächsten 12 Monate",
+      "run": "{from}.–{to}. {name} {rate}",
+      "standard": "Normalpreis",
+      "add": "Saison hinzufügen",
+      "addFor": "Saison für {name} hinzufügen",
+      "addTitle": "Neue Saison",
+      "edit": "{name} bearbeiten",
+      "editTitle": "{name} bearbeiten",
+      "delete": "{name} löschen",
+      "deleteTitle": "{name} löschen?",
+      "deleteDescription": "Neue und neu berechnete Buchungen erhalten an diesen Tagen den Normalpreis. Bestehende Buchungen behalten ihren Preis.",
+      "deleted": "Saison gelöscht",
+      "saved": "Saison gespeichert",
+      "saveFailed": "Die Saison konnte nicht gespeichert werden",
+      "dialogDescription": "Beide Tage zählen dazu. Eine Saison darf über Neujahr laufen: Lassen Sie sie im Januar enden.",
+      "name": "Name",
+      "nameHint": "Gäste sehen ihn in der Preisaufstellung, z. B. „Hauptsaison“.",
+      "start": "Erster Tag",
+      "end": "Letzter Tag",
+      "dayOf": "{which}: Tag",
+      "monthOf": "{which}: Monat",
+      "repeats": "Jedes Jahr",
+      "year": "Jahr",
+      "rate": "Preis pro Nacht ({currency})"
     }
   },
   "forms": {
@@ -501,7 +533,7 @@
       "guests": "Gäste",
       "statusLabel": "Status",
       "sourceLabel": "Quelle",
-      "nightlyRate": "Preis pro Nacht",
+      "nightlyRate": "Eigener Preis pro Nacht (optional)",
       "cleaningFee": "Reinigungsgebühr",
       "total": "Gesamt",
       "nights": "{count, plural, one {# Nacht} other {# Nächte}}",
@@ -519,7 +551,8 @@
       "checking": "Verfügbarkeit wird geprüft…",
       "checkFailed": "Die Verfügbarkeit konnte nicht geprüft werden. Sie wird beim Speichern erneut geprüft.",
       "available": "Diese Tage sind frei.",
-      "outsideRules": "Außerhalb der Buchungsregeln dieser Unterkunft (Gäste könnten diesen Aufenthalt nicht anfragen):"
+      "outsideRules": "Außerhalb der Buchungsregeln dieser Unterkunft (Gäste könnten diesen Aufenthalt nicht anfragen):",
+      "nightlyRateHint": "Leer: Die Saisons und der Normalpreis der Unterkunft bestimmen den Preis jeder Nacht. Ein Preis hier gilt für jede Nacht gleich. In {currency}."
     },
     "actions": {
       "confirmed": "Buchung bestätigt",
@@ -612,8 +645,6 @@
       "phone": "Telefon",
       "aboutGuest": "Alles zu diesem Gast",
       "price": "Preis",
-      "nightsTimesRate": "{nights} × {rate}",
-      "cleaningFee": "Reinigungsgebühr",
       "total": "Gesamt",
       "manualTotal": "Der Gesamtbetrag wurde von Hand festgelegt.",
       "manualTotalDiffers": "Der Gesamtbetrag wurde von Hand festgelegt; die Preise ergäben {amount}.",
@@ -1445,7 +1476,10 @@
     "validBic": "muss eine BIC mit 8 oder 11 Zeichen sein",
     "fromPayment": "stammt aus einer Zahlung: Ändern Sie die Zahlung bei ihrer Buchung",
     "legalRequired": "braucht zuerst Impressum und Datenschutzerklärung",
-    "legalInUse": "ist Pflicht, solange eine Unterkunft veröffentlicht ist"
+    "legalInUse": "ist Pflicht, solange eine Unterkunft veröffentlicht ist",
+    "seasonOverlaps": "überschneidet sich mit einer anderen Saison: {name}",
+    "notADayOfMonth": "ist kein Tag dieses Monats",
+    "notADayOfYear": "ist kein Tag dieses Jahres"
   },
   "stay": {
     "photoOf": "Foto {n} von {title}",
@@ -1475,9 +1509,6 @@
       "dayArrival": "mögliche Anreise",
       "dayFree": "frei, kein Anreisetag",
       "dayTaken": "nicht verfügbar",
-      "breakdown": "{nights, plural, one {# Nacht} other {# Nächte}} × {rate}",
-      "breakdownWithCleaning": "{nights, plural, one {# Nacht} other {# Nächte}} × {rate} + {cleaning} Reinigung",
-      "total": "Voraussichtlich gesamt: {total}",
       "estimateNote": "Eine Schätzung: den Preis bestätigt die Vermieterin oder der Vermieter mit Ihrer Anfrage.",
       "clear": "Andere Termine wählen",
       "request": "Diese Daten anfragen"
@@ -1750,5 +1781,13 @@
     "description": "Ferienunterkünfte, direkt bei den Gastgebern zu buchen.",
     "soonTitle": "Demnächst",
     "soon": "Hier können Sie bald buchen. Bitte schauen Sie später wieder vorbei."
+  },
+  "pricing": {
+    "nightsAt": "{count, plural, one {# Nacht} other {# Nächte}} × {rate}",
+    "defaultRate": "Normalpreis",
+    "cleaning": "Reinigungsgebühr",
+    "total": "Gesamt",
+    "totalSet": "Gesamt (von Hand festgelegt)",
+    "legacy": "Vor den Saisonpreisen berechnet; Gesamtpreis wie vereinbart."
   }
 }

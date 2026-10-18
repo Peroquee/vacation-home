@@ -6,6 +6,7 @@ import { PageHeader } from "@/components/page-header";
 import { EmptyState } from "@/components/states";
 import { buttonVariants } from "@/components/ui/button";
 import { toPropertyChoice } from "@/lib/bookings/form";
+import { listSeasonsFor } from "@/lib/pricing/service";
 import { isCalendarDate } from "@/lib/calendar-date";
 import { listProperties } from "@/lib/properties/service";
 
@@ -25,7 +26,9 @@ const first = (value: string | string[] | undefined) => (Array.isArray(value) ? 
 export default async function NewBookingPage({ searchParams }: PageProps<"/bookings/new">) {
   const params = await searchParams;
   const t = await getTranslations("bookings.new");
-  const properties = (await listProperties()).map(toPropertyChoice);
+  const all = await listProperties();
+  const seasons = await listSeasonsFor(all.map((p) => p.id));
+  const properties = all.map((p) => toPropertyChoice(p, seasons.get(p.id)));
   const date = (value: string | undefined) => (value && isCalendarDate(value) ? value : undefined);
 
   return (

@@ -36,7 +36,8 @@ const query = z
  * Per night only `available` (a stay may include it) and `checkIn` (a stay
  * may start that day), with the booking rules applied - never why a night is
  * unavailable, and no guest data. Also the stay lengths allowed and the
- * rates for the price estimate. Cached briefly, by the server's calendar
+ * pricing rules (standard rate, seasons, cleaning fee) the estimate is
+ * worked out by, with the same engine as a booking's total (GitLab #118). Cached briefly, by the server's calendar
  * cache and by the browser.
  */
 export async function GET(request: Request, { params }: Context) {

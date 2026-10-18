@@ -432,6 +432,38 @@
         "missing": "Missing",
         "warning": "Warning"
       }
+    },
+    "seasons": {
+      "title": "Seasonal prices",
+      "description": "Periods with their own nightly rate, per property: every year (summer, Christmas) or once (a holiday week). Outside every season the standard rate applies; a one-off season wins over a yearly one it lies in. Bookings keep the price they were given.",
+      "standardRate": "Standard rate: {rate} per night",
+      "none": "No seasons yet: every night costs the standard rate.",
+      "everyYear": "{range}, every year",
+      "inYear": "{range} {year}",
+      "preview": "The next 12 months",
+      "run": "{from}–{to} {name} {rate}",
+      "standard": "standard",
+      "add": "Add season",
+      "addFor": "Add a season to {name}",
+      "addTitle": "New season",
+      "edit": "Edit {name}",
+      "editTitle": "Edit {name}",
+      "delete": "Delete {name}",
+      "deleteTitle": "Delete {name}?",
+      "deleteDescription": "New bookings and re-priced ones get the standard rate on its days. Existing bookings keep their price.",
+      "deleted": "Season deleted",
+      "saved": "Season saved",
+      "saveFailed": "Could not save the season",
+      "dialogDescription": "Both days are included. A season may run across New Year: end it in January.",
+      "name": "Name",
+      "nameHint": "Guests see it in the price breakdown, e.g. \"High season\".",
+      "start": "First day",
+      "end": "Last day",
+      "dayOf": "{which}: day",
+      "monthOf": "{which}: month",
+      "repeats": "Every year",
+      "year": "Year",
+      "rate": "Nightly rate ({currency})"
     }
   },
   "forms": {
@@ -501,7 +533,7 @@
       "guests": "Guests",
       "statusLabel": "Status",
       "sourceLabel": "Source",
-      "nightlyRate": "Nightly rate",
+      "nightlyRate": "Own nightly rate (optional)",
       "cleaningFee": "Cleaning fee",
       "total": "Total",
       "nights": "{count, plural, one {# night} other {# nights}}",
@@ -519,7 +551,8 @@
       "checking": "Checking availability…",
       "checkFailed": "Availability could not be checked. It is checked again when you save.",
       "available": "These dates are available.",
-      "outsideRules": "Outside this property's booking rules (guests could not request this stay):"
+      "outsideRules": "Outside this property's booking rules (guests could not request this stay):",
+      "nightlyRateHint": "Empty: the property's seasons and standard rate price the nights. A rate here prices every night the same. In {currency}."
     },
     "actions": {
       "confirmed": "Booking confirmed",
@@ -612,8 +645,6 @@
       "phone": "Phone",
       "aboutGuest": "All about this guest",
       "price": "Price",
-      "nightsTimesRate": "{nights} × {rate}",
-      "cleaningFee": "Cleaning fee",
       "total": "Total",
       "manualTotal": "The total was set by hand.",
       "manualTotalDiffers": "The total was set by hand; the rates would give {amount}.",
@@ -1445,7 +1476,10 @@
     "validBic": "must be a BIC of 8 or 11 characters",
     "fromPayment": "is recorded from a payment: change the payment on its booking instead",
     "legalRequired": "needs the imprint and privacy policy first",
-    "legalInUse": "is required while a property is listed"
+    "legalInUse": "is required while a property is listed",
+    "seasonOverlaps": "overlaps another season: {name}",
+    "notADayOfMonth": "is not a day of that month",
+    "notADayOfYear": "is not a day of that year"
   },
   "stay": {
     "photoOf": "Photo {n} of {title}",
@@ -1475,9 +1509,6 @@
       "dayArrival": "possible arrival",
       "dayFree": "free, not an arrival day",
       "dayTaken": "not available",
-      "breakdown": "{nights, plural, one {# night} other {# nights}} × {rate}",
-      "breakdownWithCleaning": "{nights, plural, one {# night} other {# nights}} × {rate} + {cleaning} cleaning",
-      "total": "Estimated total: {total}",
       "estimateNote": "An estimate: the owner confirms the price with your request.",
       "clear": "Choose other dates",
       "request": "Request these dates"
@@ -1750,5 +1781,13 @@
     "description": "Holiday homes to book directly with the owner.",
     "soonTitle": "Coming soon",
     "soon": "Bookings will open here soon. Please check back later."
+  },
+  "pricing": {
+    "nightsAt": "{count, plural, one {# night} other {# nights}} × {rate}",
+    "defaultRate": "standard rate",
+    "cleaning": "Cleaning fee",
+    "total": "Total",
+    "totalSet": "Total (set by hand)",
+    "legacy": "Priced before seasonal rates; total as agreed."
   }
 }

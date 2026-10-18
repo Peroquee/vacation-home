@@ -36,8 +36,24 @@ const property: PropertyChoice = {
   id: "6f1c2a52-6f0c-4c4e-9d43-3a0e4f1b9a11",
   name: "Casa Azul",
   currency: "EUR",
-  defaultNightlyRateMinor: 18000,
   defaultCleaningFeeMinor: 6000,
+  pricing: {
+    currency: "EUR",
+    defaultNightlyRateMinor: 18000,
+    defaultCleaningFeeMinor: 6000,
+    // From 16 July: the summer rate.
+    seasons: [
+      {
+        name: "Hauptsaison",
+        startMonth: 7,
+        startDay: 16,
+        endMonth: 8,
+        endDay: 31,
+        year: null,
+        rateMinor: 20000,
+      },
+    ],
+  },
 };
 
 const CREATED_ID = "9d2f8a51-3c4b-4e6f-8a7b-1c2d3e4f5a6b";
@@ -86,16 +102,20 @@ async function fillStay(
 }
 
 describe("BookingForm", () => {
-  it("prefills the property's rates and live-calculates the total", async () => {
+  it("prices the stay by the property's seasons, line by line, as the API will", async () => {
     serve(free);
     const user = userEvent.setup();
     render(<BookingForm properties={[property]} />);
 
-    expect(screen.getByLabelText("Nightly rate")).toHaveValue("180.00");
+    // No rate of its own: the seasons price the nights.
+    expect(screen.getByLabelText("Own nightly rate (optional)")).toHaveValue("");
+    expect(screen.getByLabelText("Cleaning fee")).toHaveValue("60.00");
     await fillStay(user, "2026-07-14", "2026-07-18");
 
-    expect(screen.getByText(/4 nights × €180\.00 \+ €60\.00 cleaning/)).toBeInTheDocument();
-    expect(screen.getByText("€780.00")).toBeInTheDocument();
+    expect(screen.getByText(/^2 nights × €180\.00/)).toHaveTextContent("standard rate");
+    expect(screen.getByText(/^2 nights × €200\.00/)).toHaveTextContent("Hauptsaison");
+    // 360 + 400 + 60 cleaning.
+    expect(screen.getByText("€820.00")).toBeInTheDocument();
     expect(await screen.findByText("These dates are available.")).toBeInTheDocument();
   });
 
@@ -178,8 +198,7 @@ describe("BookingForm", () => {
     render(<BookingForm properties={[property]} />);
     await user.click(screen.getByRole("button", { name: "Guest" }));
     await fillStay(user, "2026-07-14", "2026-07-18");
-    await user.clear(screen.getByLabelText("Nightly rate"));
-    await user.type(screen.getByLabelText("Nightly rate"), "199.5");
+    await user.type(screen.getByLabelText("Own nightly rate (optional)"), "199.5");
     await user.click(screen.getByRole("button", { name: "Add booking" }));
 
     // Straight to the new booking's detail page.

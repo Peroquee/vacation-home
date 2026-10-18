@@ -52,6 +52,7 @@ model Property {
   bankDetails             BankDetails?
   listing                 PropertyListing?
   photos                  PropertyPhoto[]
+  seasons                 PropertySeason[]
   recurringExpenses       RecurringExpense[]
   icalFeeds               IcalFeed[]
   /// The secret in the URL of the property's outbound iCal feed
@@ -161,12 +162,17 @@ model Booking {
   status             BookingStatus @default(inquiry)
   source             BookingSource @default(direct)
   guestCount         Int           @default(1) @map("guest_count")
-  nightlyRateMinor   Int           @map("nightly_rate_minor")
+  /// The booking's own flat nightly rate; null prices its nights by the
+  /// property's seasons (GitLab #118).
+  nightlyRateMinor   Int?          @map("nightly_rate_minor")
   cleaningFeeMinor   Int           @map("cleaning_fee_minor")
   /// Normally nights x nightly rate + cleaning fee, kept up to date by the
   /// API; `totalIsManual` marks a total set by hand, which is then left alone.
   totalAmountMinor   Int           @map("total_amount_minor")
   totalIsManual      Boolean       @default(false) @map("total_is_manual")
+  /// How the price was worked out (src/lib/pricing/engine.ts), kept so later
+  /// season changes never move it; "legacy" for bookings made before.
+  priceBreakdown     Json?         @map("price_breakdown")
   currency           String        @db.Char(3)
   notes              String?
   /// A request from the public site (GitLab #109): the code the guest quotes,
@@ -1100,4 +1106,26 @@ model SiteLegal {
   updatedAt       DateTime @updatedAt @map("updated_at")
 
   @@map("site_legal")
+}
+
+/// A season with its own nightly rate (GitLab #118); see
+/// src/lib/pricing/seasons.ts.
+model PropertySeason {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  propertyId String   @map("property_id") @db.Uuid
+  name       String
+  startMonth Int      @map("start_month") @db.SmallInt
+  startDay   Int      @map("start_day") @db.SmallInt
+  endMonth   Int      @map("end_month") @db.SmallInt
+  endDay     Int      @map("end_day") @db.SmallInt
+  /// Null: every year.
+  year       Int?     @db.SmallInt
+  rateMinor  Int      @map("rate_minor")
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  property Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+
+  @@index([propertyId])
+  @@map("property_seasons")
 }

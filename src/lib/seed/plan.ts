@@ -11,7 +11,7 @@
 import { addDays, type CalendarDate, daysBetween } from "@/lib/calendar-date";
 import type { BlockSpan, BookingStatus } from "@/lib/availability/rules";
 import type { ApiBookingSource } from "@/lib/bookings/schema";
-import { calculateTotalMinor } from "@/lib/bookings/pricing";
+import { type PriceBreakdown, priceStay } from "@/lib/pricing/engine";
 
 import { createRandom } from "./random";
 
@@ -46,6 +46,7 @@ export type PlannedBooking = {
   nightlyRateMinor: number;
   cleaningFeeMinor: number;
   totalAmountMinor: number;
+  priceBreakdown: PriceBreakdown;
   totalIsManual: boolean;
   currency: string;
   notes: string | null;
@@ -176,11 +177,17 @@ export function buildSeedPlan(seed = SEED): SeedPlan {
       const nightlyRateMinor = property.defaultNightlyRateMinor + random.int(-3, 6) * 500;
       const stay = { checkIn: cursor, checkOut };
       const manual = random.next() < 0.05;
-      const calculated = calculateTotalMinor({
-        ...stay,
-        nightlyRateMinor,
-        cleaningFeeMinor: property.defaultCleaningFeeMinor,
-      });
+      // The engine's price (GitLab #118), at the booking's own rate.
+      const priceBreakdown = priceStay(
+        {
+          currency: property.currency,
+          defaultNightlyRateMinor: property.defaultNightlyRateMinor,
+          defaultCleaningFeeMinor: property.defaultCleaningFeeMinor,
+          seasons: [],
+        },
+        { ...stay, nightlyRateMinor, cleaningFeeMinor: property.defaultCleaningFeeMinor },
+      );
+      const calculated = priceBreakdown.totalMinor;
 
       bookings.push({
         property: property.key,
@@ -193,6 +200,7 @@ export function buildSeedPlan(seed = SEED): SeedPlan {
         cleaningFeeMinor: property.defaultCleaningFeeMinor,
         // Now and then a negotiated total, set by hand.
         totalAmountMinor: manual ? Math.round(calculated * 0.9) : calculated,
+        priceBreakdown,
         totalIsManual: manual,
         currency: property.currency,
         notes: random.pick(NOTES),

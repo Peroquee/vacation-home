@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useId, useState } from "react";
 
+import { PriceLines } from "@/components/price-lines";
 import { toastError, toastSuccess } from "@/components/toast";
 import { useConflictText } from "@/components/use-conflict-text";
 import { Button } from "@/components/ui/button";
@@ -15,7 +16,7 @@ import { NativeSelect, NativeSelectOption } from "@/components/ui/native-select"
 import { Textarea } from "@/components/ui/textarea";
 import {
   type Conflict,
-  previewTotalMinor,
+  previewPrice,
   type PropertyChoice,
   stayNights,
   turnoverFix,
@@ -28,7 +29,6 @@ import { addDays, isCalendarDate } from "@/lib/calendar-date";
 import { inputToMinor, minorToInput } from "@/lib/properties/form";
 import { useAmountHint } from "@/i18n/use-amount-hint";
 import { useApiText } from "@/i18n/use-api-text";
-import { useFormat } from "@/i18n/use-format";
 
 import { type GuestOption, GuestPicker } from "./guest-picker";
 import { useRuleWarnings } from "./use-rule-warnings";
@@ -68,7 +68,11 @@ function initialValues(
       guestCount: String(booking.guestCount),
       status: booking.status as string,
       source: booking.source as string,
-      nightlyRate: minorToInput(booking.nightlyRateMinor, booking.currency),
+      // Empty: the nights follow the property's seasons (GitLab #118).
+      nightlyRate:
+        booking.nightlyRateMinor === null
+          ? ""
+          : minorToInput(booking.nightlyRateMinor, booking.currency),
       cleaningFee: minorToInput(booking.cleaningFeeMinor, booking.currency),
       overrideTotal: booking.totalIsManual,
       total: minorToInput(booking.totalAmountMinor, booking.currency),
@@ -86,7 +90,7 @@ function initialValues(
     guestCount: "1",
     status: "inquiry",
     source: "direct",
-    nightlyRate: property ? minorToInput(property.defaultNightlyRateMinor, property.currency) : "",
+    nightlyRate: "",
     cleaningFee: property ? minorToInput(property.defaultCleaningFeeMinor, property.currency) : "",
     overrideTotal: false,
     total: "",
@@ -118,7 +122,6 @@ export function BookingForm({
   const tForms = useTranslations("forms");
   const tCommon = useTranslations("common");
   const api = useApiText();
-  const format = useFormat();
   const prefix = useId();
   const [values, setValues] = useState(() => initialValues(properties, booking, preset));
   const [errors, setErrors] = useState<FieldErrors>({});
@@ -133,14 +136,31 @@ export function BookingForm({
   const fieldId = (key: string) => `${prefix}-${key}`;
 
   const nights = stayNights(values.checkIn, values.checkOut);
-  const nightlyRateMinor = currency ? inputToMinor(values.nightlyRate, currency) : null;
+  // Empty: no rate of its own, the seasons price the nights.
+  const ownRate = values.nightlyRate.trim() !== "";
+  const nightlyRateMinor = currency && ownRate ? inputToMinor(values.nightlyRate, currency) : null;
+  const rateInvalid = ownRate && nightlyRateMinor === null;
   const cleaningFeeMinor = currency ? inputToMinor(values.cleaningFee, currency) : null;
-  const calculated = previewTotalMinor({
-    checkIn: values.checkIn,
-    checkOut: values.checkOut,
-    nightlyRateMinor,
-    cleaningFeeMinor,
-  });
+  // Editing what the price is not made of keeps the price as agreed, as the
+  // API does; anything else is priced anew, by the same engine and rules.
+  const priceKept =
+    booking &&
+    !booking.totalIsManual &&
+    values.checkIn === booking.checkIn &&
+    values.checkOut === booking.checkOut &&
+    nightlyRateMinor === booking.nightlyRateMinor &&
+    cleaningFeeMinor === booking.cleaningFeeMinor;
+  const breakdown = priceKept
+    ? booking.priceBreakdown
+    : property && !rateInvalid
+      ? previewPrice(property.pricing, {
+          checkIn: values.checkIn,
+          checkOut: values.checkOut,
+          nightlyRateMinor,
+          cleaningFeeMinor,
+        })
+      : null;
+  const calculated = breakdown?.totalMinor ?? null;
 
   const availability = useStayAvailability(
     values.propertyId,
@@ -171,7 +191,6 @@ export function BookingForm({
       propertyId: id,
       ...(next &&
         !ratesEdited && {
-          nightlyRate: minorToInput(next.defaultNightlyRateMinor, next.currency),
           cleaningFee: minorToInput(next.defaultCleaningFeeMinor, next.currency),
         }),
     }));
@@ -196,7 +215,7 @@ export function BookingForm({
     if (!values.checkIn) local.checkIn = [tForms("required")];
     if (!values.checkOut) local.checkOut = [tForms("required")];
     const amountError = currency ? amountHint(currency) : "";
-    if (currency && nightlyRateMinor === null) local.nightlyRateMinor = [amountError];
+    if (currency && rateInvalid) local.nightlyRateMinor = [amountError];
     if (currency && cleaningFeeMinor === null) local.cleaningFeeMinor = [amountError];
     const totalMinor =
       currency && values.overrideTotal ? inputToMinor(values.total, currency) : null;
@@ -433,7 +452,7 @@ export function BookingForm({
                 }}
               />
             ),
-            currency ? tForms("inCurrency", { currency }) : tForms("choosePropertyFirst"),
+            currency ? t("form.nightlyRateHint", { currency }) : tForms("choosePropertyFirst"),
           )}
           {field(
             "cleaningFeeMinor",
@@ -454,26 +473,25 @@ export function BookingForm({
         </div>
 
         <div className="bg-muted/50 space-y-3 rounded-lg p-3">
-          <p className="flex items-baseline justify-between gap-4" aria-live="polite">
-            <span className="text-muted-foreground text-sm">
-              {nights === null
-                ? t("form.total")
-                : t("form.nights", { count: nights }) +
-                  (currency && nightlyRateMinor !== null
-                    ? t("form.times", { rate: format.money(nightlyRateMinor, currency) })
-                    : "") +
-                  (currency && cleaningFeeMinor
-                    ? t("form.plusCleaning", { fee: format.money(cleaningFeeMinor, currency) })
-                    : "")}
-            </span>
-            <span className="text-lg font-medium tabular-nums">
-              {currency && values.overrideTotal && inputToMinor(values.total, currency) !== null
-                ? format.money(inputToMinor(values.total, currency)!, currency)
-                : currency && calculated !== null
-                  ? format.money(calculated, currency)
-                  : "–"}
-            </span>
-          </p>
+          <div aria-live="polite">
+            {breakdown ? (
+              <PriceLines
+                breakdown={breakdown}
+                totalMinor={
+                  currency && values.overrideTotal
+                    ? (inputToMinor(values.total, currency) ?? undefined)
+                    : undefined
+                }
+              />
+            ) : (
+              <p className="flex items-baseline justify-between gap-4">
+                <span className="text-muted-foreground text-sm">
+                  {nights === null ? t("form.total") : t("form.nights", { count: nights })}
+                </span>
+                <span className="text-lg font-medium tabular-nums">–</span>
+              </p>
+            )}
+          </div>
           <Field orientation="horizontal">
             <Checkbox
               id={fieldId("overrideTotal")}

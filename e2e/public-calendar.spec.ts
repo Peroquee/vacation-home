@@ -187,7 +187,8 @@ test("a guest picks a stay and sees the estimate the booking would total", async
   await dayButton(8).click();
 
   const estimate = page.getByTestId("stay-estimate");
-  await expect(estimate).toContainText("4 nights × €123.45 + €40.00 cleaning");
+  await expect(estimate).toContainText("4 nights × €123.45 · standard rate€493.80");
+  await expect(estimate).toContainText("Cleaning fee€40.00");
 
   // The booking API's own total for the same dates.
   const booking = await (
@@ -196,6 +197,6 @@ test("a guest picks a stay and sees the estimate the booking would total", async
     })
   ).json();
   expect(booking.totalAmountMinor).toBe(4 * 12_345 + 4_000);
-  await expect(estimate).toContainText("Estimated total: €533.80");
+  await expect(estimate).toContainText("Total€533.80");
   await stranger.close();
 });

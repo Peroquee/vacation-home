@@ -22,7 +22,8 @@ import {
   type Span,
   type Weekday,
 } from "@/lib/calendar/month";
-import { type Conflict, previewTotalMinor, stayConflicts, turnoverFix } from "@/lib/bookings/form";
+import { type Conflict, previewPrice, stayConflicts, turnoverFix } from "@/lib/bookings/form";
+import type { PricingRules } from "@/lib/pricing/engine";
 import { holdsDates } from "@/lib/bookings/values";
 import {
   hover,
@@ -46,10 +47,8 @@ export type CalendarProperty = {
     id: string;
     name: string;
     color: string;
-    /** For the selection's price hint; without them it shows nights only. */
-    currency?: string;
-    defaultNightlyRateMinor?: number;
-    defaultCleaningFeeMinor?: number;
+    /** For the selection's price hint; without it, it shows nights only. */
+    pricing?: PricingRules;
   };
   bookings: CalendarBooking[];
   blocks: CalendarBlock[];
@@ -402,13 +401,14 @@ export function MonthCalendar({
     ? { from: refused.checkIn, to: refused.checkOut }
     : selectedDays(selection);
   const property = selected?.property;
+  const pricing = property?.pricing;
   const total =
-    stay && property?.currency
-      ? previewTotalMinor({
+    stay && pricing
+      ? (previewPrice(pricing, {
           ...stay,
-          nightlyRateMinor: property.defaultNightlyRateMinor ?? null,
-          cleaningFeeMinor: property.defaultCleaningFeeMinor ?? null,
-        })
+          nightlyRateMinor: null,
+          cleaningFeeMinor: pricing.defaultCleaningFeeMinor,
+        })?.totalMinor ?? null)
       : null;
 
   function apply(outcome: Outcome) {
@@ -746,9 +746,7 @@ export function MonthCalendar({
                 {format.dateRange(stay.checkIn, stay.checkOut)}
                 {" · "}
                 {t("nights", { count: nightsOf(stay) })}
-                {total !== null && property?.currency
-                  ? ` · ${format.money(total, property.currency)}`
-                  : null}
+                {total !== null && pricing ? ` · ${format.money(total, pricing.currency)}` : null}
                 {taken
                   ? t("notAvailable", {
                       conflicts: conflicts

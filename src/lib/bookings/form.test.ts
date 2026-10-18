@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import type { CalendarBlock, CalendarBooking } from "@/lib/availability/calendar";
 
-import { previewTotalMinor, stayConflicts, stayNights, turnoverFix } from "./form";
+import { previewPrice, stayConflicts, stayNights, toPropertyChoice, turnoverFix } from "./form";
 
 function booking(over: Partial<CalendarBooking>): CalendarBooking {
   return {
@@ -40,22 +40,33 @@ describe("stayNights", () => {
   });
 });
 
-describe("previewTotalMinor", () => {
-  it("is nights x rate + cleaning fee", () => {
-    expect(
-      previewTotalMinor({
-        checkIn: "2026-07-14",
-        checkOut: "2026-07-18",
-        nightlyRateMinor: 18000,
-        cleaningFeeMinor: 6000,
-      }),
-    ).toBe(78000);
+describe("previewPrice", () => {
+  const { pricing } = toPropertyChoice({
+    id: "p",
+    name: "Lake",
+    currency: "EUR",
+    defaultNightlyRateMinor: 18000,
+    defaultCleaningFeeMinor: 6000,
   });
 
-  it("is null while something is missing", () => {
-    const stay = { checkIn: "2026-07-14", checkOut: "2026-07-18", cleaningFeeMinor: 0 };
-    expect(previewTotalMinor({ ...stay, nightlyRateMinor: null })).toBeNull();
-    expect(previewTotalMinor({ ...stay, checkOut: "", nightlyRateMinor: 1 })).toBeNull();
+  it("is the engine's price: nights x rate + cleaning fee without seasons", () => {
+    const stay = { checkIn: "2026-07-14", checkOut: "2026-07-18" };
+    expect(
+      previewPrice(pricing, { ...stay, nightlyRateMinor: null, cleaningFeeMinor: 6000 })
+        ?.totalMinor,
+    ).toBe(78000);
+    expect(
+      previewPrice(pricing, { ...stay, nightlyRateMinor: 10000, cleaningFeeMinor: 0 })?.totalMinor,
+    ).toBe(40000);
+  });
+
+  it("is null while something is missing or the stay is none", () => {
+    const stay = { checkIn: "2026-07-14", checkOut: "2026-07-18", nightlyRateMinor: null };
+    expect(previewPrice(pricing, { ...stay, cleaningFeeMinor: null })).toBeNull();
+    expect(previewPrice(pricing, { ...stay, checkOut: "", cleaningFeeMinor: 0 })).toBeNull();
+    expect(
+      previewPrice(pricing, { ...stay, checkOut: "2026-07-14", cleaningFeeMinor: 0 }),
+    ).toBeNull();
   });
 });
 

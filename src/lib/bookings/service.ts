@@ -17,7 +17,7 @@
  * referenced by id only, so purging a guest (GitLab #100) clears those and
  * never needs to touch booking amounts or dates.
  */
-import type { BookingSource, Prisma } from "@/generated/prisma/client";
+import type { Booking, BookingSource, Prisma } from "@/generated/prisma/client";
 import { invalidateWindows } from "@/lib/availability/cache";
 import {
   type Conflict,
@@ -36,7 +36,16 @@ import { scheduleBookingSync } from "@/lib/google/outbound";
 import { kickOutboundSync } from "@/lib/google/sync-worker";
 import { escapeLike } from "@/lib/like";
 
-import { calculateTotalMinor, nights } from "./pricing";
+import { nights } from "./pricing";
+import {
+  parseBreakdown,
+  type PriceBreakdown,
+  priceStay,
+  type PricingRules,
+  type StayToPrice,
+  type StoredBreakdown,
+} from "@/lib/pricing/engine";
+import { pricingRulesFor } from "@/lib/pricing/service";
 import {
   type ApiBookingSource,
   type BookingSort,
@@ -64,6 +73,23 @@ export const withRelations = {
 type BookingWithRelations = Prisma.BookingGetPayload<{ include: typeof withRelations }>;
 
 /** The API's view of a booking: dates as YYYY-MM-DD, with its night count. */
+/**
+ * How a booking's price was worked out (GitLab #118): its stored breakdown,
+ * or, for one without (written outside the app), its total as legacy.
+ */
+export function breakdownOf(
+  booking: Pick<Booking, "priceBreakdown" | "currency" | "totalAmountMinor">,
+): StoredBreakdown {
+  return (
+    parseBreakdown(booking.priceBreakdown) ?? {
+      version: 1,
+      kind: "legacy",
+      currency: booking.currency,
+      totalMinor: booking.totalAmountMinor,
+    }
+  );
+}
+
 export function toDto(booking: BookingWithRelations) {
   const {
     checkIn,
@@ -84,6 +110,7 @@ export function toDto(booking: BookingWithRelations) {
   return {
     ...rest,
     ...stay,
+    priceBreakdown: breakdownOf(booking),
     nights: nights(stay.checkIn, stay.checkOut),
     source: toApiSource(source),
     reservedAt: reservedAt?.toISOString() ?? null,
@@ -141,13 +168,19 @@ export async function locked(
   }
 }
 
-/** The calculated total, or a field error when it could not be stored. */
-function calculatedTotal(
-  stay: { checkIn: CalendarDate; checkOut: CalendarDate },
-  rates: { nightlyRateMinor: number; cleaningFeeMinor: number },
-): { totalAmountMinor: number } | { error: "invalid"; field: string; message: string } {
+/**
+ * The price from the one engine (GitLab #118): the total and its breakdown,
+ * or a field error when it could not be stored.
+ */
+function calculatedPrice(
+  rules: PricingRules,
+  stay: StayToPrice,
+):
+  | { totalAmountMinor: number; priceBreakdown: PriceBreakdown }
+  | { error: "invalid"; field: string; message: string } {
   try {
-    return { totalAmountMinor: calculateTotalMinor({ ...stay, ...rates }) };
+    const priceBreakdown = priceStay(rules, stay);
+    return { totalAmountMinor: priceBreakdown.totalMinor, priceBreakdown };
   } catch {
     return {
       error: "invalid",
@@ -201,16 +234,22 @@ export async function createBooking(
   if (!guest) return { error: "invalid", field: "guestId", message: "does not exist" };
   if (guest.purgedAt) return { error: "invalid", field: "guestId", message: "has been erased" };
 
-  // Copied from the property now; later changes there never touch this booking.
+  // The booking's own rate, if any (else its nights follow the seasons),
+  // and the cleaning fee copied from the property now: later changes there
+  // never touch this booking, nor does a season's (the breakdown is kept).
   const rates = {
-    nightlyRateMinor: input.nightlyRateMinor ?? property.defaultNightlyRateMinor,
+    nightlyRateMinor: input.nightlyRateMinor ?? null,
     cleaningFeeMinor: input.cleaningFeeMinor ?? property.defaultCleaningFeeMinor,
   };
   const manual = input.totalAmountMinor !== undefined;
-  const amount = manual
-    ? { totalAmountMinor: input.totalAmountMinor! }
-    : calculatedTotal(input, rates);
-  if ("error" in amount) return amount;
+  const price = calculatedPrice(await pricingRulesFor(property), { ...input, ...rates });
+  // A total set by hand stands even where the calculated one could not.
+  if ("error" in price && !manual) return price;
+  const calculated = "error" in price ? null : price;
+  const amount = {
+    totalAmountMinor: manual ? input.totalAmountMinor! : calculated!.totalAmountMinor,
+    priceBreakdown: calculated?.priceBreakdown,
+  };
 
   const data: Prisma.BookingUncheckedCreateInput = {
     propertyId: property.id,
@@ -223,6 +262,7 @@ export async function createBooking(
     ...rates,
     totalAmountMinor: amount.totalAmountMinor,
     totalIsManual: manual,
+    priceBreakdown: amount.priceBreakdown,
     currency: property.currency,
     notes: input.notes ?? null,
     ...website,
@@ -327,17 +367,44 @@ export async function updateBooking(id: string, input: UpdateBookingInput): Prom
       }
 
       const rates = {
-        nightlyRateMinor: input.nightlyRateMinor ?? current.nightlyRateMinor,
+        nightlyRateMinor:
+          input.nightlyRateMinor === undefined ? current.nightlyRateMinor : input.nightlyRateMinor,
         cleaningFeeMinor: input.cleaningFeeMinor ?? current.cleaningFeeMinor,
       };
       const manual =
         input.totalAmountMinor === undefined
           ? current.totalIsManual
           : input.totalAmountMinor !== null;
-      const amount = manual
-        ? { totalAmountMinor: input.totalAmountMinor ?? current.totalAmountMinor }
-        : calculatedTotal(stay, rates);
-      if ("error" in amount) return amount;
+      // Priced anew only when what the price is made of changes, or a
+      // hand-set total is handed back: the agreed price stays otherwise,
+      // whatever the seasons say now (GitLab #118).
+      const repriced =
+        stay.checkIn !== fromUtcDate(current.checkIn) ||
+        stay.checkOut !== fromUtcDate(current.checkOut) ||
+        rates.nightlyRateMinor !== current.nightlyRateMinor ||
+        rates.cleaningFeeMinor !== current.cleaningFeeMinor ||
+        (input.totalAmountMinor === null && current.totalIsManual);
+      let price: { totalAmountMinor: number; priceBreakdown?: PriceBreakdown } = {
+        totalAmountMinor: current.totalAmountMinor,
+      };
+      if (repriced) {
+        const property = await tx.property.findUniqueOrThrow({ where: { id: current.propertyId } });
+        const calculated = calculatedPrice(await pricingRulesFor(property, tx), {
+          ...stay,
+          ...rates,
+        });
+        if ("error" in calculated) {
+          if (!manual) return calculated;
+        } else {
+          price = calculated;
+        }
+      }
+      const amount = {
+        totalAmountMinor: manual
+          ? (input.totalAmountMinor ?? current.totalAmountMinor)
+          : price.totalAmountMinor,
+        priceBreakdown: price.priceBreakdown,
+      };
 
       const status = input.status ?? current.status;
       const datesChanged =
@@ -360,6 +427,7 @@ export async function updateBooking(id: string, input: UpdateBookingInput): Prom
           ...rates,
           totalAmountMinor: amount.totalAmountMinor,
           totalIsManual: manual,
+          priceBreakdown: amount.priceBreakdown,
           notes: input.notes,
         },
         include: withRelations,

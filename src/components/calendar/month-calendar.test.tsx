@@ -137,9 +137,12 @@ describe("MonthCalendar range selection", () => {
     ...lake,
     property: {
       ...lake.property,
-      currency: "EUR",
-      defaultNightlyRateMinor: 10000,
-      defaultCleaningFeeMinor: 5000,
+      pricing: {
+        currency: "EUR",
+        defaultNightlyRateMinor: 10000,
+        defaultCleaningFeeMinor: 5000,
+        seasons: [],
+      },
     },
   };
 
