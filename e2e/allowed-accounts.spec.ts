@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, type Page, test } from "@playwright/test";
 
 import { createSession, sessionCookie, withE2eDb } from "./database";
 
@@ -68,12 +68,15 @@ test("an account added in settings can use the app, and loses it when removed", 
   await friend.close();
 });
 
+/** The sign-in page's own message: Next's route announcer is an alert too, outside main. */
+const refusal = (page: Page) => page.getByRole("main").getByRole("alert");
+
 test.describe("a refused sign-in", () => {
   test.use({ storageState: { cookies: [], origins: [] } });
 
   test("names the account by its mask, and shows guests the way to book", async ({ page }) => {
     await page.goto(`/signin?error=AccessDenied&account=${encodeURIComponent("f…@gmail.com")}`);
-    await expect(page.getByRole("alert")).toHaveText(
+    await expect(refusal(page)).toHaveText(
       "This Google account (f…@gmail.com) has no access. Ask the owner to add it.",
     );
     await expect(page.getByRole("link", { name: "see the holiday homes" })).toHaveAttribute(
@@ -87,7 +90,7 @@ test.describe("a refused sign-in", () => {
 
   test("shows nothing of a URL's own text in place of the account", async ({ page }) => {
     await page.goto(`/signin?error=AccessDenied&account=${encodeURIComponent("Call 0800 now")}`);
-    await expect(page.getByRole("alert")).not.toContainText("0800");
-    await expect(page.getByRole("alert")).toContainText("isn't allowed to use this app");
+    await expect(refusal(page)).not.toContainText("0800");
+    await expect(refusal(page)).toContainText("isn't allowed to use this app");
   });
 });
