@@ -29,6 +29,7 @@ const RULES: PricingRules = {
   defaultNightlyRateMinor: 7_000,
   defaultCleaningFeeMinor: 5_000,
   seasons: [SUMMER, WINTER, EASTER_2027],
+  discounts: [],
 };
 
 describe("which rate applies on a night", () => {
@@ -108,6 +109,7 @@ describe("the price of a stay", () => {
         { season: "Hauptsaison", nights: 2, rateMinor: 9_500, amountMinor: 19_000 },
       ],
       nightsMinor: 40_000,
+      discount: null,
       cleaningFeeMinor: 5_000,
       totalMinor: 45_000,
     });
@@ -180,5 +182,63 @@ describe("a stored breakdown", () => {
       parseBreakdown({ version: 2, kind: "legacy", currency: "EUR", totalMinor: 1 }),
     ).toBeNull();
     expect(parseBreakdown(null)).toBeNull();
+  });
+});
+
+describe("length-of-stay discounts", () => {
+  const TIERED: PricingRules = {
+    ...RULES,
+    discounts: [
+      { minNights: 7, percent: 10 },
+      { minNights: 14, percent: 15 },
+    ],
+  };
+  // September: no season, 70.00 a night, 50.00 cleaning.
+  const stay = (nights: number) => ({
+    checkIn: "2027-09-01",
+    checkOut: `2027-09-${String(1 + nights).padStart(2, "0")}`,
+  });
+
+  it("gives none below the first tier", () => {
+    const price = priceStay(TIERED, stay(6));
+    expect(price.discount).toBeNull();
+    expect(price.totalMinor).toBe(6 * 7_000 + 5_000);
+  });
+
+  it("starts exactly at a tier's night count, off the nights only", () => {
+    const price = priceStay(TIERED, stay(7));
+    expect(price.discount).toEqual({ minNights: 7, percent: 10, amountMinor: 4_900 });
+    // 490.00 nights - 49.00 + 50.00 cleaning, which is not discounted.
+    expect(price.totalMinor).toBe(49_000 - 4_900 + 5_000);
+  });
+
+  it("applies the highest tier the stay reaches, whatever the order", () => {
+    const shuffled = { ...TIERED, discounts: [...TIERED.discounts].reverse() };
+    expect(priceStay(shuffled, stay(14)).discount).toMatchObject({ minNights: 14, percent: 15 });
+    expect(priceStay(shuffled, stay(13)).discount).toMatchObject({ minNights: 7 });
+  });
+
+  it("takes the whole stay's nights across a season boundary", () => {
+    // 25-30 Jun at 70.00, 1-2 Jul at 95.00: 8 nights, 10% off.
+    const price = priceStay(TIERED, { checkIn: "2027-06-25", checkOut: "2027-07-03" });
+    expect(price.nightsMinor).toBe(6 * 7_000 + 2 * 9_500);
+    expect(price.discount?.amountMinor).toBe(6_100);
+    expect(price.totalMinor).toBe(61_000 - 6_100 + 5_000);
+  });
+
+  it("rounds to the nearest minor unit, also at a booking's own rate", () => {
+    const price = priceStay(
+      { ...RULES, discounts: [{ minNights: 2, percent: 15 }] },
+      { checkIn: "2027-09-01", checkOut: "2027-09-04", nightlyRateMinor: 3_333 },
+    );
+    // 99.99 x 15% = 14.9985, rounded to 15.00.
+    expect(price.discount?.amountMinor).toBe(1_500);
+    expect(price.totalMinor).toBe(9_999 - 1_500 + 5_000);
+  });
+
+  it("is absent from breakdowns kept before discounts existed, and still reads", () => {
+    const old = priceStay(RULES, stay(3));
+    delete (old as { discount?: unknown }).discount;
+    expect(parseBreakdown(JSON.parse(JSON.stringify(old)))).toEqual(old);
   });
 });

@@ -54,18 +54,18 @@ type FieldErrors = Record<string, string[] | undefined>;
 const COLOURS = ["bg-amber-400", "bg-sky-500", "bg-emerald-500", "bg-rose-400", "bg-violet-500"];
 
 /**
- * Seasonal prices per property (GitLab #118): named periods with their own
- * nightly rate, every year or once, and a 12-month strip of which rate
- * applies when. Outside every season, the property's standard rate applies;
- * a one-off season wins over a yearly one it lies in. Bookings keep the
- * price they were given.
+ * A property's seasonal prices (GitLab #118), on its pricing page: named
+ * periods with their own nightly rate, every year or once, and a 12-month
+ * strip of which rate applies when. Outside every season the standard rate
+ * applies; a one-off season wins over a yearly one it lies in. Bookings keep
+ * the price they were given.
  */
-export function SeasonsSection({
-  properties,
+export function SeasonsCard({
+  property,
+  seasons,
   today,
-}: {
-  properties: PropertySeasons[];
-  /** The first day of the preview: today, where the server is. */
+}: PropertySeasons & {
+  /** The first day of the preview: today, in the property's timezone. */
   today: CalendarDate;
 }) {
   const t = useTranslations("settings.seasons");
@@ -75,10 +75,8 @@ export function SeasonsSection({
         <CardTitle>{t("title")}</CardTitle>
         <CardDescription>{t("description")}</CardDescription>
       </CardHeader>
-      <CardContent className="space-y-6">
-        {properties.map((entry) => (
-          <PropertySeasonList key={entry.property.id} {...entry} today={today} />
-        ))}
+      <CardContent>
+        <PropertySeasonList property={property} seasons={seasons} today={today} />
       </CardContent>
     </Card>
   );
@@ -119,14 +117,11 @@ function PropertySeasonList({ property, seasons, today }: PropertySeasons & { to
   return (
     <section aria-labelledby={`seasons-${property.id}`} className="space-y-3">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <h3 id={`seasons-${property.id}`} className="font-medium">
-          {property.name}
-        </h3>
+        <p id={`seasons-${property.id}`} className="text-muted-foreground text-sm">
+          {t("standardRate", { rate: money(property.defaultNightlyRateMinor) })}
+        </p>
         <SeasonDialog property={property} />
       </div>
-      <p className="text-muted-foreground text-sm">
-        {t("standardRate", { rate: money(property.defaultNightlyRateMinor) })}
-      </p>
       {seasons.length > 0 ? (
         <ul className="divide-y rounded-lg border text-sm">
           {seasons.map((season, i) => (
@@ -188,6 +183,7 @@ function PreviewStrip({ property, seasons, today }: PropertySeasons & { today: s
       defaultNightlyRateMinor: property.defaultNightlyRateMinor,
       defaultCleaningFeeMinor: property.defaultCleaningFeeMinor,
       seasons: seasons.map(seasonRule),
+      discounts: [],
     };
     const result: {
       label: string;
@@ -405,7 +401,7 @@ function SeasonDialog({
               {tCommon("edit")}
             </Button>
           ) : (
-            <Button variant="outline" size="sm" aria-label={t("addFor", { name: property.name })}>
+            <Button variant="outline" size="sm">
               {t("add")}
             </Button>
           )

@@ -31,6 +31,8 @@ async function publicFace(
     getPaymentTerms(property.id),
     pricingRulesFor(property),
   ]);
-  const from = lowestRate(pricing, todayIn(property.timezone));
-  return toPublicDto(property, listing, photos, terms, from);
+  return toPublicDto(property, listing, photos, terms, {
+    nightlyRateFromMinor: lowestRate(pricing, todayIn(property.timezone)),
+    discounts: pricing.discounts,
+  });
 }

@@ -170,7 +170,9 @@
         "actions": "Actions"
       },
       "listing": "Listing",
-      "editListing": "Edit the public listing of {name}"
+      "editListing": "Edit the public listing of {name}",
+      "prices": "Prices",
+      "editPrices": "Prices of {name}"
     },
     "propertyForm": {
       "saved": "Property saved",
@@ -444,7 +446,6 @@
       "run": "{from}–{to} {name} {rate}",
       "standard": "standard",
       "add": "Add season",
-      "addFor": "Add a season to {name}",
       "addTitle": "New season",
       "edit": "Edit {name}",
       "editTitle": "Edit {name}",
@@ -464,6 +465,28 @@
       "repeats": "Every year",
       "year": "Year",
       "rate": "Nightly rate ({currency})"
+    },
+    "pricing": {
+      "title": "Prices",
+      "heading": "Prices: {name}",
+      "description": "Standard rate {rate} per night, cleaning fee {cleaning} (both under Edit on the property). Here: what changes them. A stay is priced night by night by its season, then the discount comes off the nights, then the cleaning fee is added.",
+      "back": "Back to settings"
+    },
+    "discounts": {
+      "title": "Length-of-stay discounts",
+      "description": "The longer the stay, the cheaper the nights: from a number of nights, a percentage off the nights (not the cleaning fee). The highest tier a stay reaches applies. Guests see the tiers next to the price.",
+      "none": "No discounts: every stay pays full price.",
+      "edit": "Edit discounts",
+      "dialogDescription": "For example from 7 nights 10% off, from 14 nights 15% off. 2 to 365 nights, 1 to 90%. Bookings keep the price they were given.",
+      "from": "From",
+      "nights": "nights",
+      "percentOff": "% off",
+      "nightsOf": "Tier {n}: nights",
+      "percentOf": "Tier {n}: percent off",
+      "remove": "Remove tier {n}",
+      "add": "Add tier",
+      "saved": "Discounts saved",
+      "saveFailed": "Could not save the discounts"
     }
   },
   "forms": {
@@ -1479,7 +1502,9 @@
     "legalInUse": "is required while a property is listed",
     "seasonOverlaps": "overlaps another season: {name}",
     "notADayOfMonth": "is not a day of that month",
-    "notADayOfYear": "is not a day of that year"
+    "notADayOfYear": "is not a day of that year",
+    "discountNightsTaken": "already has a discount for this many nights",
+    "atMostTiers": "must be at most {max} tiers"
   },
   "stay": {
     "photoOf": "Photo {n} of {title}",
@@ -1788,6 +1813,8 @@
     "cleaning": "Cleaning fee",
     "total": "Total",
     "totalSet": "Total (set by hand)",
-    "legacy": "Priced before seasonal rates; total as agreed."
+    "legacy": "Priced before seasonal rates; total as agreed.",
+    "discount": "Discount from {nights} nights −{percent}%",
+    "discountHint": "From {nights} nights {percent}% off"
   }
 }

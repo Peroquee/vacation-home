@@ -34,9 +34,10 @@ export async function generateMetadata({ params }: PageProps<"/stay/[slug]">): P
 export default async function StayPage({ params }: PageProps<"/stay/[slug]">) {
   const property = await listed((await params).slug);
   if (!property) notFound();
-  const [t, tAmenities, locale, format] = await Promise.all([
+  const [t, tAmenities, tPricing, locale, format] = await Promise.all([
     getTranslations("stay"),
     getTranslations("listing.amenities"),
+    getTranslations("pricing"),
     getLocale(),
     getFormat(),
   ]);
@@ -73,6 +74,15 @@ export default async function StayPage({ params }: PageProps<"/stay/[slug]">) {
             {t("fromRate", {
               rate: format.money(property.nightlyRateFromMinor, property.currency),
             })}
+          </p>
+        ) : null}
+        {property.discounts.length > 0 ? (
+          <p className="text-sm font-medium text-emerald-700 dark:text-emerald-400">
+            {property.discounts
+              .map((tier) =>
+                tPricing("discountHint", { nights: tier.minNights, percent: tier.percent }),
+              )
+              .join(" · ")}
           </p>
         ) : null}
         <CancellationNote

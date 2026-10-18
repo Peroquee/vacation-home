@@ -11,7 +11,6 @@ import { type Conflict, findConflicts } from "@/lib/availability/rules";
 import { addDays, daysBetween, isCalendarDate } from "@/lib/calendar-date";
 
 import { type PriceBreakdown, type PricingRules, tryPriceStay } from "@/lib/pricing/engine";
-import { type Season, seasonRule } from "@/lib/pricing/seasons";
 
 import { stayProblem } from "./values";
 
@@ -35,7 +34,8 @@ export function toPropertyChoice(
     defaultNightlyRateMinor: number;
     defaultCleaningFeeMinor: number;
   },
-  seasons: Season[] = [],
+  /** Its pricing rules (src/lib/pricing/service.ts); without, its defaults alone. */
+  pricing?: PricingRules,
 ): PropertyChoice {
   const { id, name, currency, defaultNightlyRateMinor, defaultCleaningFeeMinor } = property;
   return {
@@ -43,11 +43,12 @@ export function toPropertyChoice(
     name,
     currency,
     defaultCleaningFeeMinor,
-    pricing: {
+    pricing: pricing ?? {
       currency,
       defaultNightlyRateMinor,
       defaultCleaningFeeMinor,
-      seasons: seasons.map(seasonRule),
+      seasons: [],
+      discounts: [],
     },
   };
 }

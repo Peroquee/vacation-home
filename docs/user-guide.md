@@ -63,7 +63,12 @@ a colour for the calendar.
   can be picked, and they see an estimate (nights × nightly rate + cleaning
   fee, from the property's defaults). They never see why a night is taken,
   and requests you have not accepted do not block anything.
-- **Seasonal prices** (Settings → Seasonal prices): periods with their own
+- **Prices** (Settings → Properties → **Prices**): everything that changes
+  a property's price, on one page per property. A stay is priced night by
+  night by its season; then the length-of-stay discount comes off the
+  nights; then the cleaning fee is added. The standard rate and the
+  cleaning fee themselves stay under **Edit** on the property.
+- **Seasonal prices** (on the Prices page): periods with their own
   nightly rate, such as "Hauptsaison" from 1 July to 31 August. A season
   repeats **every year** (it may run across New Year, e.g. 20 December to
   6 January) or happens **once**, in a given year. Outside every season the
@@ -82,6 +87,12 @@ a colour for the calendar.
     change its dates, its own rate or its cleaning fee (or hand back a total
     you had set by hand). Bookings made before seasonal prices keep their
     total as it was.
+  - **Length-of-stay discounts** (on the Prices page): "from 7 nights 10%
+    off", "from 14 nights 15% off". The highest tier a stay reaches comes off
+    its nights (not the cleaning fee), and shows as its own line in the price.
+    Guests see the tiers next to the price on the public page. 2 to 365
+    nights, 1 to 90%, one tier per number of nights; none means no discount.
+    Like the seasons, changing them later does not change existing bookings.
   - In the booking form, **Own nightly rate** gives one booking a flat
     rate for every night instead of the seasons; leave it empty to use them.
     **Set the total by hand** still overrides everything.

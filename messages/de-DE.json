@@ -170,7 +170,9 @@
         "actions": "Aktionen"
       },
       "listing": "Inserat",
-      "editListing": "Öffentliches Inserat von {name} bearbeiten"
+      "editListing": "Öffentliches Inserat von {name} bearbeiten",
+      "prices": "Preise",
+      "editPrices": "Preise von {name}"
     },
     "propertyForm": {
       "saved": "Unterkunft gespeichert",
@@ -444,7 +446,6 @@
       "run": "{from}.–{to}. {name} {rate}",
       "standard": "Normalpreis",
       "add": "Saison hinzufügen",
-      "addFor": "Saison für {name} hinzufügen",
       "addTitle": "Neue Saison",
       "edit": "{name} bearbeiten",
       "editTitle": "{name} bearbeiten",
@@ -464,6 +465,28 @@
       "repeats": "Jedes Jahr",
       "year": "Jahr",
       "rate": "Preis pro Nacht ({currency})"
+    },
+    "pricing": {
+      "title": "Preise",
+      "heading": "Preise: {name}",
+      "description": "Normalpreis {rate} pro Nacht, Reinigungsgebühr {cleaning} (beides unter „Bearbeiten“ bei der Unterkunft). Hier: was sie verändert. Ein Aufenthalt wird Nacht für Nacht nach seiner Saison berechnet, dann geht der Rabatt von den Nächten ab, dann kommt die Reinigungsgebühr dazu.",
+      "back": "Zurück zu den Einstellungen"
+    },
+    "discounts": {
+      "title": "Rabatte für längere Aufenthalte",
+      "description": "Je länger der Aufenthalt, desto günstiger die Nächte: ab einer Zahl an Nächten ein Prozentsatz weniger auf die Nächte (nicht auf die Reinigung). Es gilt die höchste Stufe, die der Aufenthalt erreicht. Gäste sehen die Stufen beim Preis.",
+      "none": "Keine Rabatte: Jeder Aufenthalt zahlt den vollen Preis.",
+      "edit": "Rabatte bearbeiten",
+      "dialogDescription": "Zum Beispiel ab 7 Nächten 10 % günstiger, ab 14 Nächten 15 %. 2 bis 365 Nächte, 1 bis 90 %. Buchungen behalten ihren Preis.",
+      "from": "Ab",
+      "nights": "Nächten",
+      "percentOff": "% günstiger",
+      "nightsOf": "Stufe {n}: Nächte",
+      "percentOf": "Stufe {n}: Prozent",
+      "remove": "Stufe {n} entfernen",
+      "add": "Stufe hinzufügen",
+      "saved": "Rabatte gespeichert",
+      "saveFailed": "Die Rabatte konnten nicht gespeichert werden"
     }
   },
   "forms": {
@@ -1479,7 +1502,9 @@
     "legalInUse": "ist Pflicht, solange eine Unterkunft veröffentlicht ist",
     "seasonOverlaps": "überschneidet sich mit einer anderen Saison: {name}",
     "notADayOfMonth": "ist kein Tag dieses Monats",
-    "notADayOfYear": "ist kein Tag dieses Jahres"
+    "notADayOfYear": "ist kein Tag dieses Jahres",
+    "discountNightsTaken": "hat für diese Zahl an Nächten schon einen Rabatt",
+    "atMostTiers": "darf höchstens {max} Stufen haben"
   },
   "stay": {
     "photoOf": "Foto {n} von {title}",
@@ -1788,6 +1813,8 @@
     "cleaning": "Reinigungsgebühr",
     "total": "Gesamt",
     "totalSet": "Gesamt (von Hand festgelegt)",
-    "legacy": "Vor den Saisonpreisen berechnet; Gesamtpreis wie vereinbart."
+    "legacy": "Vor den Saisonpreisen berechnet; Gesamtpreis wie vereinbart.",
+    "discount": "Rabatt ab {nights} Nächten −{percent} %",
+    "discountHint": "Ab {nights} Nächten {percent} % günstiger"
   }
 }
