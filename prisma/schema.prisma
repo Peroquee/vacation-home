@@ -53,6 +53,7 @@ model Property {
   listing                 PropertyListing?
   photos                  PropertyPhoto[]
   seasons                 PropertySeason[]
+  stayDiscounts           PropertyStayDiscount[]
   recurringExpenses       RecurringExpense[]
   icalFeeds               IcalFeed[]
   /// The secret in the URL of the property's outbound iCal feed
@@ -1128,4 +1129,18 @@ model PropertySeason {
 
   @@index([propertyId])
   @@map("property_seasons")
+}
+
+/// A length-of-stay discount tier (GitLab #119): from `minNights` nights,
+/// the nights cost `percent` less.
+model PropertyStayDiscount {
+  propertyId String   @map("property_id") @db.Uuid
+  minNights  Int      @map("min_nights") @db.SmallInt
+  percent    Int      @db.SmallInt
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  property Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+
+  @@id([propertyId, minNights])
+  @@map("property_stay_discounts")
 }

@@ -5,7 +5,8 @@ import type { StoredBreakdown } from "@/lib/pricing/engine";
 
 /**
  * A price as the engine worked it out (GitLab #118): a line per season or
- * rate ("3 nights × €95.00 · Hauptsaison"), the cleaning fee, and the total.
+ * rate ("3 nights × €95.00 · Hauptsaison"), the length-of-stay discount
+ * (GitLab #119), the cleaning fee, and the total.
  * A booking from before the engine shows its total alone. `totalMinor`
  * overrides the total shown, for one set by hand.
  *
@@ -41,6 +42,17 @@ export function PriceLines({
               <dd className="text-end tabular-nums">{money(line.amountMinor)}</dd>
             </div>
           ))}
+          {breakdown.discount ? (
+            <div className="contents text-emerald-700 dark:text-emerald-400">
+              <dt>
+                {t("discount", {
+                  nights: breakdown.discount.minNights,
+                  percent: breakdown.discount.percent,
+                })}
+              </dt>
+              <dd className="text-end tabular-nums">−{money(breakdown.discount.amountMinor)}</dd>
+            </div>
+          ) : null}
           {breakdown.cleaningFeeMinor > 0 ? (
             <div className="contents">
               <dt>{t("cleaning")}</dt>

@@ -5,6 +5,7 @@
  * purpose. The address, the iCal token, the internal notes and everything
  * operational stay out.
  */
+import type { StayDiscount } from "@/lib/pricing/engine";
 import type { Property } from "@/generated/prisma/client";
 import type { ListingDto, PhotoDto } from "@/lib/listing/service";
 import type { PaymentTerms } from "@/lib/payment-terms/terms";
@@ -34,6 +35,8 @@ export type PublicPropertyDto = {
    * #118), shown as "from"; null when no night is charged.
    */
   nightlyRateFromMinor: number | null;
+  /** Length-of-stay discounts, fewest nights first (GitLab #119). */
+  discounts: StayDiscount[];
   /** Town or region only. */
   location: string;
   description: PublicText;
@@ -54,7 +57,7 @@ export function toPublicDto(
   listing: ListingDto,
   photos: PhotoDto[],
   terms: PaymentTerms,
-  nightlyRateFromMinor: number | null,
+  prices: { nightlyRateFromMinor: number | null; discounts: StayDiscount[] },
 ): PublicPropertyDto {
   const base = `/api/public/properties/${property.slug}/photos`;
   // Untitled in both languages: the property's own name rather than nothing.
@@ -63,7 +66,8 @@ export function toPublicDto(
     slug: property.slug,
     title: titled ? { en: listing.titleEn, de: listing.titleDe } : { en: property.name, de: "" },
     currency: property.currency,
-    nightlyRateFromMinor,
+    nightlyRateFromMinor: prices.nightlyRateFromMinor,
+    discounts: prices.discounts,
     location: listing.location,
     description: { en: listing.descriptionEn, de: listing.descriptionDe },
     houseRules: { en: listing.houseRulesEn, de: listing.houseRulesDe },

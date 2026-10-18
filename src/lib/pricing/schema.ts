@@ -55,3 +55,26 @@ export const seasonSchema = z
     }
   });
 export type SeasonInput = z.infer<typeof seasonSchema>;
+
+export const DISCOUNT_NIGHTS_TAKEN = "already has a discount for this many nights";
+
+/** PUT /api/properties/:id/stay-discounts: every tier (GitLab #119); empty for none. */
+export const stayDiscountsSchema = z.strictObject({
+  tiers: z
+    .array(z.strictObject({ minNights: whole(2, 365), percent: whole(1, 90) }))
+    .max(10, "must be at most 10 tiers")
+    .superRefine((tiers, context) => {
+      const seen = new Set<number>();
+      tiers.forEach((tier, i) => {
+        if (seen.has(tier.minNights)) {
+          context.addIssue({
+            code: "custom",
+            path: [i, "minNights"],
+            message: DISCOUNT_NIGHTS_TAKEN,
+          });
+        }
+        seen.add(tier.minNights);
+      });
+    })
+    .transform((tiers) => [...tiers].sort((a, b) => a.minNights - b.minNights)),
+});

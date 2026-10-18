@@ -6,8 +6,8 @@
  *
  * It returns a breakdown, not just a total: a line per season (a night
  * priced by the season covering it, the default rate outside every season),
- * the cleaning fee, and the total. The length-of-stay discount (#119) and
- * the Kurtaxe (#120) join it here. Integer minor units of the property's
+ * the length-of-stay discount (GitLab #119) off the nights, the cleaning
+ * fee, and the total. The Kurtaxe (#120) joins it here. Integer minor units of the property's
  * currency throughout; the dates are calendar dates in the property's
  * timezone, as bookings store them.
  *
@@ -18,12 +18,20 @@ import { MAX_AMOUNT_MINOR, nights as countNights } from "@/lib/bookings/pricing"
 
 import { type Season, seasonOn } from "./seasons";
 
+/**
+ * A length-of-stay discount (GitLab #119): from `minNights` nights, the
+ * nights cost `percent` less.
+ */
+export type StayDiscount = { minNights: number; percent: number };
+
 /** What a property's prices are made of. */
 export type PricingRules = {
   currency: string;
   defaultNightlyRateMinor: number;
   defaultCleaningFeeMinor: number;
   seasons: Omit<Season, "id">[];
+  /** Empty: no discount. */
+  discounts: StayDiscount[];
 };
 
 export type NightLine = {
@@ -41,6 +49,11 @@ export type PriceBreakdown = {
   currency: string;
   nights: NightLine[];
   nightsMinor: number;
+  /**
+   * The highest length-of-stay discount the stay reaches, off the nights'
+   * sum only (GitLab #119); absent in breakdowns from before.
+   */
+  discount?: (StayDiscount & { amountMinor: number }) | null;
   cleaningFeeMinor: number;
   totalMinor: number;
 };
@@ -103,11 +116,17 @@ export function priceStay(rules: PricingRules, stay: StayToPrice): PriceBreakdow
   }
   for (const line of lines) line.amountMinor = line.nights * line.rateMinor;
   const nightsMinor = lines.reduce((sum, line) => sum + line.amountMinor, 0);
+  const tier = discountFor(rules.discounts, count);
+  // Rounded to the nearest minor unit, half up: integer arithmetic first.
+  const discount = tier && {
+    ...tier,
+    amountMinor: Math.round((nightsMinor * tier.percent) / 100),
+  };
   const cleaningFeeMinor = amount(
     "cleaningFeeMinor",
     stay.cleaningFeeMinor ?? rules.defaultCleaningFeeMinor,
   );
-  const totalMinor = nightsMinor + cleaningFeeMinor;
+  const totalMinor = nightsMinor - (discount?.amountMinor ?? 0) + cleaningFeeMinor;
   if (totalMinor > MAX_AMOUNT_MINOR) {
     throw new RangeError(`total ${totalMinor} exceeds the largest storable amount`);
   }
@@ -117,9 +136,19 @@ export function priceStay(rules: PricingRules, stay: StayToPrice): PriceBreakdow
     currency: rules.currency,
     nights: lines,
     nightsMinor,
+    discount,
     cleaningFeeMinor,
     totalMinor,
   };
+}
+
+/** The highest tier a stay of `nights` reaches, or null. */
+export function discountFor(discounts: StayDiscount[], nights: number): StayDiscount | null {
+  let best: StayDiscount | null = null;
+  for (const tier of discounts) {
+    if (nights >= tier.minNights && (!best || tier.minNights > best.minNights)) best = tier;
+  }
+  return best;
 }
 
 /** The price of a stay, or null where priceStay would throw (for previews). */

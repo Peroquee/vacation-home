@@ -53,6 +53,7 @@ const property: PropertyChoice = {
         rateMinor: 20000,
       },
     ],
+    discounts: [],
   },
 };
 

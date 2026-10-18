@@ -21,7 +21,15 @@ import { DEFAULT_TERMS, depositFor } from "@/lib/payment-terms/terms";
 
 import { priceStay } from "./engine";
 import type { SeasonInput } from "./schema";
-import { deleteSeason, listSeasons, pricingRulesFor, saveSeason } from "./service";
+import { stayDiscountsSchema } from "./schema";
+import {
+  deleteSeason,
+  listDiscounts,
+  listSeasons,
+  pricingRulesFor,
+  saveDiscounts,
+  saveSeason,
+} from "./service";
 
 let property: Property;
 let guestId: string;
@@ -65,6 +73,7 @@ beforeEach(async () => {
   await db.bookingEvent.deleteMany();
   await db.booking.deleteMany({ where: { propertyId: property.id } });
   await db.propertySeason.deleteMany();
+  await db.propertyStayDiscount.deleteMany();
   await db.paymentTerms.deleteMany();
 });
 
@@ -101,6 +110,46 @@ describe("seasons", () => {
     });
     expect(await deleteSeason(property.id, summer.id)).toBe(true);
     expect(await deleteSeason(property.id, summer.id)).toBe(false);
+  });
+});
+
+describe("length-of-stay discounts", () => {
+  it("are replaced as a whole, fewest nights first, and validated", async () => {
+    const parsed = stayDiscountsSchema.parse({
+      tiers: [
+        { minNights: 14, percent: 15 },
+        { minNights: 7, percent: 10 },
+      ],
+    });
+    expect(await saveDiscounts(property.id, parsed.tiers)).toEqual([
+      { minNights: 7, percent: 10 },
+      { minNights: 14, percent: 15 },
+    ]);
+    expect(await saveDiscounts(property.id, [])).toEqual([]);
+    expect(await listDiscounts(property.id)).toEqual([]);
+    expect(
+      stayDiscountsSchema.safeParse({
+        tiers: [
+          { minNights: 7, percent: 10 },
+          { minNights: 7, percent: 20 },
+        ],
+      }).success,
+    ).toBe(false);
+    for (const tier of [
+      { minNights: 1, percent: 10 },
+      { minNights: 7, percent: 0 },
+      { minNights: 7, percent: 91 },
+    ]) {
+      expect(stayDiscountsSchema.safeParse({ tiers: [tier] }).success, JSON.stringify(tier)).toBe(
+        false,
+      );
+    }
+    // The database refuses the same.
+    await expect(
+      db.propertyStayDiscount.create({
+        data: { propertyId: property.id, minNights: 3, percent: 95 },
+      }),
+    ).rejects.toThrow();
   });
 });
 
@@ -182,6 +231,33 @@ describe("one price everywhere", () => {
     expect(reserved.booking.depositAmountMinor).toBe(
       depositFor(estimate.totalMinor, { ...DEFAULT_TERMS, depositPercent: 30 }),
     );
+  });
+
+  it("agree with a discount too, and the booking keeps it when the tiers change", async () => {
+    await season(SUMMER);
+    await saveDiscounts(property.id, [{ minNights: 4, percent: 10 }]);
+    const { pricing } = await getPublicAvailability(
+      property,
+      { from: "2026-08-01", to: "2026-08-31" },
+      NOW,
+    );
+    const estimate = priceStay(pricing, { checkIn: "2026-08-10", checkOut: "2026-08-14" });
+    // 480.00 nights, 10% off: -48.00; 50.00 cleaning.
+    expect(estimate.discount).toEqual({ minNights: 4, percent: 10, amountMinor: 4_800 });
+    expect(estimate.totalMinor).toBe(48_000 - 4_800 + 5_000);
+
+    const sent = await createBookingRequest(property, request(), NOW);
+    if (!("request" in sent)) throw new Error(JSON.stringify(sent));
+    expect(sent.request.totalAmountMinor).toBe(estimate.totalMinor);
+
+    await saveDiscounts(property.id, []);
+    const booking = await db.booking.findUniqueOrThrow({
+      where: { reference: sent.request.reference },
+    });
+    const edited = await updateBooking(booking.id, { guestCount: 3 });
+    if (!("booking" in edited)) throw new Error(JSON.stringify(edited));
+    expect(edited.booking.totalAmountMinor).toBe(estimate.totalMinor);
+    expect(breakdownOf(edited.booking)).toMatchObject({ discount: { percent: 10 } });
   });
 
   it("the owner's booking is priced by the same rules", async () => {

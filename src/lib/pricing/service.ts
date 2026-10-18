@@ -7,7 +7,7 @@ import type { Prisma, Property, PropertySeason } from "@/generated/prisma/client
 import { withPropertyLock } from "@/lib/availability/service";
 import { db, type DbClient } from "@/lib/db";
 
-import type { PricingRules } from "./engine";
+import type { PricingRules, StayDiscount } from "./engine";
 import type { SeasonInput } from "./schema";
 import { overlapping, type Season, seasonRule } from "./seasons";
 
@@ -53,20 +53,90 @@ export async function listSeasonsFor(propertyIds: string[]): Promise<Map<string,
   return by;
 }
 
+type Priced = Pick<
+  Property,
+  "id" | "currency" | "defaultNightlyRateMinor" | "defaultCleaningFeeMinor"
+>;
+
 /** What the engine prices a property's stays by. */
 export async function pricingRulesFor(
-  property: Pick<
-    Property,
-    "id" | "currency" | "defaultNightlyRateMinor" | "defaultCleaningFeeMinor"
-  >,
+  property: Priced,
   client: DbClient = db,
 ): Promise<PricingRules> {
-  return {
-    currency: property.currency,
-    defaultNightlyRateMinor: property.defaultNightlyRateMinor,
-    defaultCleaningFeeMinor: property.defaultCleaningFeeMinor,
-    seasons: (await listSeasons(property.id, client)).map(seasonRule),
-  };
+  const [seasons, discounts] = await Promise.all([
+    listSeasons(property.id, client),
+    listDiscounts(property.id, client),
+  ]);
+  return rulesOf(property, seasons, discounts);
+}
+
+/** The pricing rules of several properties at once, by property id. */
+export async function pricingRulesForMany(
+  properties: Priced[],
+): Promise<Map<string, PricingRules>> {
+  const ids = properties.map((p) => p.id);
+  const [seasons, discounts] = await Promise.all([
+    listSeasonsFor(ids),
+    db.propertyStayDiscount.findMany({
+      where: { propertyId: { in: ids } },
+      orderBy: { minNights: "asc" },
+    }),
+  ]);
+  return new Map(
+    properties.map((p) => [
+      p.id,
+      rulesOf(
+        p,
+        seasons.get(p.id) ?? [],
+        discounts.filter((d) => d.propertyId === p.id).map(toDiscount),
+      ),
+    ]),
+  );
+}
+
+const rulesOf = (property: Priced, seasons: Season[], discounts: StayDiscount[]): PricingRules => ({
+  currency: property.currency,
+  defaultNightlyRateMinor: property.defaultNightlyRateMinor,
+  defaultCleaningFeeMinor: property.defaultCleaningFeeMinor,
+  seasons: seasons.map(seasonRule),
+  discounts,
+});
+
+const toDiscount = (row: { minNights: number; percent: number }): StayDiscount => ({
+  minNights: row.minNights,
+  percent: row.percent,
+});
+
+/** The property's length-of-stay discounts (GitLab #119), fewest nights first. */
+export async function listDiscounts(
+  propertyId: string,
+  client: DbClient = db,
+): Promise<StayDiscount[]> {
+  const rows = await client.propertyStayDiscount.findMany({
+    where: { propertyId },
+    orderBy: { minNights: "asc" },
+  });
+  return rows.map(toDiscount);
+}
+
+/**
+ * Replaces the property's discount tiers (validated by stayDiscountsSchema:
+ * one per night count). Null when there is no such property. Bookings keep
+ * the price they were given.
+ */
+export async function saveDiscounts(
+  propertyId: string,
+  tiers: StayDiscount[],
+): Promise<StayDiscount[] | null> {
+  return withPropertyLock(propertyId, async (tx) => {
+    await tx.propertyStayDiscount.deleteMany({ where: { propertyId } });
+    if (tiers.length > 0) {
+      await tx.propertyStayDiscount.createMany({
+        data: tiers.map((tier) => ({ propertyId, ...tier })),
+      });
+    }
+    return listDiscounts(propertyId, tx);
+  });
 }
 
 export type SeasonWrite =

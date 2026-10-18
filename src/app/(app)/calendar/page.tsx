@@ -12,8 +12,7 @@ import { db } from "@/lib/db";
 import { todayUtc } from "@/lib/bookings/list-params";
 import { gridRange, isMonthKey, monthOf, monthWeeks, weekStartFor } from "@/lib/calendar/month";
 import { CALENDAR_PROPERTY_COOKIE, resolveChoice } from "@/lib/calendar/property-choice";
-import { toPropertyChoice } from "@/lib/bookings/form";
-import { listSeasonsFor } from "@/lib/pricing/service";
+import { pricingRulesForMany } from "@/lib/pricing/service";
 import { listProperties } from "@/lib/properties/service";
 import { getCurrentUser } from "@/lib/session";
 
@@ -85,7 +84,7 @@ export default async function CalendarPage({ searchParams }: PageProps<"/calenda
   ]);
 
   const byId = new Map(properties.map((p) => [p.id, p]));
-  const seasons = await listSeasonsFor(properties.map((p) => p.id));
+  const pricing = await pricingRulesForMany(properties);
 
   return (
     <>
@@ -123,7 +122,7 @@ export default async function CalendarPage({ searchParams }: PageProps<"/calenda
               id: property.id,
               name: property.name,
               color: property.color,
-              pricing: rates && toPropertyChoice(rates, seasons.get(rates.id)).pricing,
+              pricing: rates && pricing.get(rates.id),
             },
             bookings,
             blocks,

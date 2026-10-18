@@ -32,6 +32,7 @@ function serve() {
         defaultNightlyRateMinor: 10_000,
         defaultCleaningFeeMinor: 2_500,
         seasons: [],
+        discounts: [],
       },
       nights: publicNights({ from, to }, taken, rules, "2026-07-01"),
     });

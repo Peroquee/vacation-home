@@ -25,7 +25,6 @@ import { openDoubleBookings } from "@/lib/google/sync-issues";
 import { exportUrl, toFeedDto } from "@/lib/ical/feeds";
 import { legalComplete } from "@/lib/legal/legal";
 import { getLegal } from "@/lib/legal/service";
-import { listSeasonsFor } from "@/lib/pricing/service";
 import { emailProviderOf, privacyTemplate } from "@/lib/legal/template";
 import { listProperties, type PropertyDto, toDto } from "@/lib/properties/service";
 import { getCurrentUser } from "@/lib/session";
@@ -37,7 +36,6 @@ import {
 } from "./google-calendar-section";
 import { BookingRulesSection } from "./booking-rules-section";
 import { PaymentTermsSection } from "./payment-terms-section";
-import { SeasonsSection } from "./seasons-section";
 import { RequestSettingsSection } from "./request-settings-section";
 import { BankDetailsSection } from "./bank-details-section";
 import { EmailSection } from "./email-section";
@@ -104,6 +102,13 @@ function columnsFor(
             }
           />
           <Link
+            href={`/settings/properties/${p.id}/pricing`}
+            className={buttonVariants({ variant: "outline", size: "sm" })}
+            aria-label={t("editPrices", { name: p.name })}
+          >
+            {t("prices")}
+          </Link>
+          <Link
             href={`/settings/properties/${p.id}/listing`}
             className={buttonVariants({ variant: "outline", size: "sm" })}
             aria-label={t("editListing", { name: p.name })}
@@ -149,7 +154,6 @@ export default async function SettingsPage({ searchParams }: PageProps<"/setting
     bankDetails,
     legal,
     calendars,
-    seasons,
   ] = await Promise.all([
     icalSettings(active.map((p) => p.id)),
     openDoubleBookings(),
@@ -159,7 +163,6 @@ export default async function SettingsPage({ searchParams }: PageProps<"/setting
     getBankDetailsFor(active.map((p) => p.id)),
     getLegal(),
     db.propertyCalendar.count({ where: { outbound: true } }),
-    listSeasonsFor(active.map((p) => p.id)),
   ]);
   const canList = legalComplete(legal);
   // The template states the longest retention of any property.
@@ -250,23 +253,6 @@ export default async function SettingsPage({ searchParams }: PageProps<"/setting
             }))}
           />
         ) : null}
-
-        {active.length > 0 ? (
-          <SeasonsSection
-            today={new Date().toISOString().slice(0, 10)}
-            properties={active.map((p) => ({
-              property: {
-                id: p.id,
-                name: p.name,
-                currency: p.currency,
-                defaultNightlyRateMinor: p.defaultNightlyRateMinor,
-                defaultCleaningFeeMinor: p.defaultCleaningFeeMinor,
-              },
-              seasons: seasons.get(p.id) ?? [],
-            }))}
-          />
-        ) : null}
-
         {active.length > 0 ? (
           <PaymentTermsSection
             properties={active.map((p) => ({
