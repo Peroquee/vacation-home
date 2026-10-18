@@ -3,7 +3,7 @@
  * Season writes run under the property's lock, so two edits cannot both
  * pass the overlap check.
  */
-import type { Property, PropertySeason } from "@/generated/prisma/client";
+import type { Prisma, Property, PropertySeason } from "@/generated/prisma/client";
 import { withPropertyLock } from "@/lib/availability/service";
 import { db, type DbClient } from "@/lib/db";
 
@@ -24,10 +24,17 @@ export const toSeason = (row: PropertySeason): Season => ({
   rateMinor: row.rateMinor,
 });
 
-const ORDER = [
-  { year: "asc" as const },
-  { startMonth: "asc" as const },
-  { startDay: "asc" as const },
+/**
+ * Chronological, and total: by first day (month, day), a yearly season
+ * before a one-off one starting the same day (the one-off then wins on its
+ * days, as in the 12-month strip), then by name, then by id.
+ */
+const ORDER: Prisma.PropertySeasonOrderByWithRelationInput[] = [
+  { startMonth: "asc" },
+  { startDay: "asc" },
+  { year: { sort: "asc", nulls: "first" } },
+  { name: "asc" },
+  { id: "asc" },
 ];
 
 export async function listSeasons(propertyId: string, client: DbClient = db): Promise<Season[]> {

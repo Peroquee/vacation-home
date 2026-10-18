@@ -5,7 +5,10 @@ import { getProperty } from "@/lib/properties/service";
 
 type Context = RouteContext<"/api/properties/[id]/seasons">;
 
-/** The property's seasons (GitLab #118), in calendar order, one-off ones last. */
+/**
+ * The property's seasons (GitLab #118), by first day of the year; on the same
+ * day a yearly one before a one-off one.
+ */
 export async function GET(_request: Request, { params }: Context) {
   const { id } = await params;
   if (!isUuid(id) || !(await getProperty(id))) return notFound("Property");

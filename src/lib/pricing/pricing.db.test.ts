@@ -153,6 +153,37 @@ describe("length-of-stay discounts", () => {
   });
 });
 
+describe("the season list", () => {
+  it("reads by first day of the year, a yearly season before a one-off one on the same day", async () => {
+    // Saved out of order on purpose.
+    await season({
+      ...SUMMER,
+      name: "Winter",
+      startMonth: 12,
+      startDay: 20,
+      endMonth: 1,
+      endDay: 6,
+    });
+    await season({ ...SUMMER, name: "Festtag", startDay: 12, endDay: 12, year: 2026 });
+    await season({
+      ...SUMMER,
+      name: "Ostern",
+      startMonth: 4,
+      startDay: 1,
+      endMonth: 4,
+      endDay: 10,
+      year: 2027,
+    });
+    await season(SUMMER);
+    expect((await listSeasons(property.id)).map((s) => s.name)).toEqual([
+      "Ostern",
+      "Hauptsaison",
+      "Festtag",
+      "Winter",
+    ]);
+  });
+});
+
 describe("one price everywhere", () => {
   const request = (overrides: Partial<BookingRequestInput> = {}): BookingRequestInput => ({
     checkIn: "2026-08-10",
