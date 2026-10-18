@@ -28,6 +28,17 @@ and the first day of the week follow the language too.
 
 Press **T** anywhere (outside a text field) to record a transaction.
 
+**Who may sign in** (Settings → **Access**): the Google accounts that may
+use the app. Add one by its address - a partner, a second account of your
+own - and remove it again; removing signs it out at once. The accounts set
+on the server (`AUTH_ALLOWED_EMAILS`) are marked "fixed" and stay, so you
+can never lock yourself out, and nobody can remove their own account.
+Guests never need an account: they book on the public site. Someone turned
+away at sign-in sees which account they used (masked, e.g. "f…@gmail.com")
+and that you need to add it. While the app's Google sign-in is still in
+**testing**, Google lets in only its test users: add the account there too
+(see [google-cloud-setup.md](google-cloud-setup.md)).
+
 ## Properties
 
 **Settings → Properties** lists the places you rent out. Each has a name, an

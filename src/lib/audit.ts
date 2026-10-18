@@ -5,12 +5,17 @@
 import type { Prisma } from "@/generated/prisma/client";
 import { db, type DbClient } from "@/lib/db";
 
-export type AuditAction = "guest.purged" | "guest.deleted";
+export type AuditAction =
+  | "guest.purged"
+  | "guest.deleted"
+  // Who may sign in changed (GitLab #122).
+  | "access.added"
+  | "access.removed";
 
 export async function recordAudit(
   event: {
     action: AuditAction;
-    subjectType: "guest";
+    subjectType: "guest" | "allowed_account";
     subjectId: string;
     actorUserId: string | null;
     /**

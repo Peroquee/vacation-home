@@ -1,11 +1,13 @@
 import { Home } from "lucide-react";
 import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
+import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { safeCallbackUrl } from "@/lib/access";
+import { MASKED_EMAIL } from "@/lib/allowed-emails";
 import { signInWithGoogle } from "@/lib/auth-actions";
 import { getCurrentUser } from "@/lib/session";
 
@@ -18,7 +20,7 @@ export async function generateMetadata(): Promise<Metadata> {
 const KNOWN_ERRORS = ["AccessDenied", "Verification"] as const;
 
 export default async function SignInPage({ searchParams }: PageProps<"/signin">) {
-  const { error, callbackUrl } = await searchParams;
+  const { error, callbackUrl, account: rawAccount } = await searchParams;
   const destination = safeCallbackUrl(callbackUrl);
 
   if (await getCurrentUser()) redirect(destination);
@@ -26,7 +28,16 @@ export default async function SignInPage({ searchParams }: PageProps<"/signin">)
   const t = await getTranslations("signin");
   const code = Array.isArray(error) ? error[0] : error;
   const known = KNOWN_ERRORS.find((k) => k === code);
-  const message = code ? t(`errors.${known ?? "fallback"}`) : null;
+  // The refused account, by its mask (GitLab #122) - and only in that shape,
+  // as it comes from the URL.
+  const masked = Array.isArray(rawAccount) ? rawAccount[0] : rawAccount;
+  const account = masked && MASKED_EMAIL.test(masked) ? masked : null;
+  const refused = known === "AccessDenied";
+  const message = code
+    ? refused && account
+      ? t("errors.AccessDeniedAccount", { account })
+      : t(`errors.${known ?? "fallback"}`)
+    : null;
 
   return (
     <main className="flex min-h-dvh items-center justify-center p-4">
@@ -47,10 +58,24 @@ export default async function SignInPage({ searchParams }: PageProps<"/signin">)
               {message}
             </p>
           ) : null}
+          {refused ? (
+            <div className="text-muted-foreground space-y-2 text-sm">
+              <p>{t("refusedTesting")}</p>
+              <p>
+                {t.rich("refusedGuests", {
+                  link: (chunks) => (
+                    <Link href="/" className="text-foreground underline">
+                      {chunks}
+                    </Link>
+                  ),
+                })}
+              </p>
+            </div>
+          ) : null}
           <form action={signInWithGoogle}>
             <input type="hidden" name="callbackUrl" value={destination} />
             <Button type="submit" className="w-full">
-              {t("button")}
+              {refused ? t("buttonOther") : t("button")}
             </Button>
           </form>
         </CardContent>

@@ -24,7 +24,7 @@ export const getCurrentUser = cache(async function getCurrentUser(): Promise<Cur
   // Same rule as the proxy: a valid session for an address since removed
   // from the allow-list does not count. (Disagreeing with the proxy here sent
   // such a session round in a redirect loop via the sign-in page.)
-  if (!user?.id || !user.email || !isAllowedEmail(user.email)) return null;
+  if (!user?.id || !user.email || !(await isAllowedEmail(user.email))) return null;
   return {
     id: user.id,
     name: user.name || user.email,
