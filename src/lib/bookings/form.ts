@@ -10,7 +10,9 @@ import type { CalendarBlock, CalendarBooking } from "@/lib/availability/calendar
 import { type Conflict, findConflicts } from "@/lib/availability/rules";
 import { addDays, daysBetween, isCalendarDate } from "@/lib/calendar-date";
 
-import { calculateTotalMinor } from "./pricing";
+import { type PriceBreakdown, type PricingRules, tryPriceStay } from "@/lib/pricing/engine";
+import { type Season, seasonRule } from "@/lib/pricing/seasons";
+
 import { stayProblem } from "./values";
 
 export type { Conflict };
@@ -19,14 +21,35 @@ export type PropertyChoice = {
   id: string;
   name: string;
   currency: string;
-  defaultNightlyRateMinor: number;
   defaultCleaningFeeMinor: number;
+  /** What the preview prices a stay by: the same rules as the API (GitLab #118). */
+  pricing: PricingRules;
 };
 
 /** Just what the form needs of a property, so nothing else reaches the client. */
-export function toPropertyChoice(property: PropertyChoice): PropertyChoice {
+export function toPropertyChoice(
+  property: {
+    id: string;
+    name: string;
+    currency: string;
+    defaultNightlyRateMinor: number;
+    defaultCleaningFeeMinor: number;
+  },
+  seasons: Season[] = [],
+): PropertyChoice {
   const { id, name, currency, defaultNightlyRateMinor, defaultCleaningFeeMinor } = property;
-  return { id, name, currency, defaultNightlyRateMinor, defaultCleaningFeeMinor };
+  return {
+    id,
+    name,
+    currency,
+    defaultCleaningFeeMinor,
+    pricing: {
+      currency,
+      defaultNightlyRateMinor,
+      defaultCleaningFeeMinor,
+      seasons: seasons.map(seasonRule),
+    },
+  };
 }
 
 /** Nights, or null while the dates do not make a valid stay yet. */
@@ -37,23 +60,22 @@ export function stayNights(checkIn: string, checkOut: string): number | null {
 }
 
 /**
- * The total the API would calculate, or null while the dates or rates are
- * incomplete or the result could not be stored.
+ * The price the API would calculate (GitLab #118): the same engine on the
+ * same rules. Null while the dates or amounts are incomplete or the total
+ * could not be stored. `nightlyRateMinor` null prices by the seasons.
  */
-export function previewTotalMinor(stay: {
-  checkIn: string;
-  checkOut: string;
-  nightlyRateMinor: number | null;
-  cleaningFeeMinor: number | null;
-}): number | null {
+export function previewPrice(
+  pricing: PricingRules,
+  stay: {
+    checkIn: string;
+    checkOut: string;
+    nightlyRateMinor: number | null;
+    cleaningFeeMinor: number | null;
+  },
+): PriceBreakdown | null {
   const { checkIn, checkOut, nightlyRateMinor, cleaningFeeMinor } = stay;
-  if (stayNights(checkIn, checkOut) === null) return null;
-  if (nightlyRateMinor === null || cleaningFeeMinor === null) return null;
-  try {
-    return calculateTotalMinor({ checkIn, checkOut, nightlyRateMinor, cleaningFeeMinor });
-  } catch {
-    return null;
-  }
+  if (stayNights(checkIn, checkOut) === null || cleaningFeeMinor === null) return null;
+  return tryPriceStay(pricing, { checkIn, checkOut, nightlyRateMinor, cleaningFeeMinor });
 }
 
 /**

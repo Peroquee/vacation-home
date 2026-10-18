@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { getTranslations } from "next-intl/server";
 
 import { PageHeader } from "@/components/page-header";
+import { PriceLines } from "@/components/price-lines";
 import { SyncBadge } from "@/components/sync-badge";
 import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -11,7 +12,7 @@ import { isUuid } from "@/lib/api";
 import { getApiText } from "@/i18n/get-api-text";
 import { getFormat } from "@/i18n/get-format";
 import { SOURCE_KEYS } from "@/lib/bookings/labels";
-import { getBooking, toDto } from "@/lib/bookings/service";
+import { breakdownOf, getBooking, toDto } from "@/lib/bookings/service";
 import { bookingSyncStatus } from "@/lib/google/sync-status";
 import { guestDisplayName } from "@/lib/guests/display";
 import { getGuest } from "@/lib/guests/service";
@@ -68,7 +69,8 @@ export default async function BookingPage({ params }: PageProps<"/bookings/[id]"
     (await getTranslations("guests"))("purgedName"),
   );
   const money = (minor: number) => format.money(minor, booking.currency);
-  const calculated = booking.nights * booking.nightlyRateMinor + booking.cleaningFeeMinor;
+  // As the engine worked it out when the price was set (GitLab #118).
+  const breakdown = breakdownOf(booking);
 
   return (
     <>
@@ -221,24 +223,11 @@ export default async function BookingPage({ params }: PageProps<"/bookings/[id]"
             <CardTitle>{t("detail.price")}</CardTitle>
           </CardHeader>
           <CardContent>
-            <dl className="divide-y text-sm">
-              <Fact
-                label={t("detail.nightsTimesRate", {
-                  nights: booking.nights,
-                  rate: money(booking.nightlyRateMinor),
-                })}
-              >
-                {money(booking.nights * booking.nightlyRateMinor)}
-              </Fact>
-              <Fact label={t("detail.cleaningFee")}>{money(booking.cleaningFeeMinor)}</Fact>
-              <Fact label={t("detail.total")}>
-                <span className="font-medium tabular-nums">{money(booking.totalAmountMinor)}</span>
-              </Fact>
-            </dl>
+            <PriceLines breakdown={breakdown} totalMinor={booking.totalAmountMinor} />
             {booking.totalIsManual ? (
               <p className="text-muted-foreground mt-2 text-sm">
-                {calculated !== booking.totalAmountMinor
-                  ? t("detail.manualTotalDiffers", { amount: money(calculated) })
+                {breakdown.kind === "computed" && breakdown.totalMinor !== booking.totalAmountMinor
+                  ? t("detail.manualTotalDiffers", { amount: money(breakdown.totalMinor) })
                   : t("detail.manualTotal")}
               </p>
             ) : null}

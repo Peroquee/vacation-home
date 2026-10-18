@@ -4,7 +4,10 @@
  * property alike.
  */
 import { type PublicPropertyDto, toPublicDto } from "@/lib/properties/public";
+import { todayIn } from "@/lib/finance/recurring";
 import { getPaymentTerms } from "@/lib/payment-terms/service";
+import { lowestRate } from "@/lib/pricing/engine";
+import { pricingRulesFor } from "@/lib/pricing/service";
 import { getListedProperty, listListedProperties } from "@/lib/properties/service";
 
 import { getListing, listPhotos } from "./service";
@@ -22,10 +25,12 @@ export async function listPublicProperties(): Promise<PublicPropertyDto[]> {
 async function publicFace(
   property: Awaited<ReturnType<typeof listListedProperties>>[number],
 ): Promise<PublicPropertyDto> {
-  const [listing, photos, terms] = await Promise.all([
+  const [listing, photos, terms, pricing] = await Promise.all([
     getListing(property.id),
     listPhotos(property.id),
     getPaymentTerms(property.id),
+    pricingRulesFor(property),
   ]);
-  return toPublicDto(property, listing, photos, terms);
+  const from = lowestRate(pricing, todayIn(property.timezone));
+  return toPublicDto(property, listing, photos, terms, from);
 }

@@ -1,7 +1,7 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 import type { Prisma } from "@/generated/prisma/client";
-import { calculateTotalMinor, MAX_AMOUNT_MINOR } from "@/lib/bookings/pricing";
+import { MAX_AMOUNT_MINOR } from "@/lib/bookings/pricing";
 import { fromUtcDate, toUtcDate } from "@/lib/calendar-date";
 import { db } from "@/lib/db";
 
@@ -58,12 +58,7 @@ describe("booking money", () => {
   });
 
   it("stores a calculated total exactly as calculated", async () => {
-    const stay = { checkIn: "2026-07-14", checkOut: "2026-07-18" };
-    const total = calculateTotalMinor({
-      ...stay,
-      nightlyRateMinor: 18_999,
-      cleaningFeeMinor: 6_001,
-    });
+    const total = 4 * 18_999 + 6_001;
     const created = await booking({
       nightlyRateMinor: 18_999,
       cleaningFeeMinor: 6_001,

@@ -27,9 +27,12 @@ function serve() {
       to,
       minNights: 2,
       maxNights: null,
-      currency: "EUR",
-      nightlyRateMinor: 10_000,
-      cleaningFeeMinor: 2_500,
+      pricing: {
+        currency: "EUR",
+        defaultNightlyRateMinor: 10_000,
+        defaultCleaningFeeMinor: 2_500,
+        seasons: [],
+      },
       nights: publicNights({ from, to }, taken, rules, "2026-07-01"),
     });
   });
@@ -77,8 +80,9 @@ describe("StayPicker", () => {
     await user.click(day("2026-07-08"));
 
     const estimate = screen.getByTestId("stay-estimate");
-    expect(estimate).toHaveTextContent("3 nights × €100.00 + €25.00 cleaning");
-    expect(estimate).toHaveTextContent("Estimated total: €325.00");
+    expect(estimate).toHaveTextContent("3 nights × €100.00 · standard rate€300.00");
+    expect(estimate).toHaveTextContent("Cleaning fee€25.00");
+    expect(estimate).toHaveTextContent("Total€325.00");
     await user.click(screen.getByRole("button", { name: "Choose other dates" }));
     expect(screen.queryByTestId("stay-estimate")).not.toBeInTheDocument();
   });

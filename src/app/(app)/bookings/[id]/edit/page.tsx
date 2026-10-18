@@ -5,6 +5,7 @@ import { getTranslations } from "next-intl/server";
 import { PageHeader } from "@/components/page-header";
 import { isUuid } from "@/lib/api";
 import { toPropertyChoice } from "@/lib/bookings/form";
+import { listSeasonsFor } from "@/lib/pricing/service";
 import { getBooking, toDto } from "@/lib/bookings/service";
 import { getFormat } from "@/i18n/get-format";
 import { guestDisplayName } from "@/lib/guests/display";
@@ -30,9 +31,9 @@ export default async function EditBookingPage({ params }: PageProps<"/bookings/[
   ]);
   // Its own property stays listed even if archived since; the selector is
   // read-only when editing anyway.
-  const properties = all
-    .filter((p) => p.archivedAt === null || p.id === booking.propertyId)
-    .map(toPropertyChoice);
+  const shown = all.filter((p) => p.archivedAt === null || p.id === booking.propertyId);
+  const seasons = await listSeasonsFor(shown.map((p) => p.id));
+  const properties = shown.map((p) => toPropertyChoice(p, seasons.get(p.id)));
   const dto = toDto(booking);
   const t = await getTranslations("bookings.edit");
   const tGuests = await getTranslations("guests");

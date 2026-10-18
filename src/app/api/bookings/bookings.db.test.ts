@@ -106,10 +106,16 @@ describe("POST /api/bookings", () => {
       status: "inquiry",
       source: "direct",
       guestCount: 1,
-      nightlyRateMinor: 12_000,
+      // No rate of its own: the property's seasons and standard rate (GitLab #118).
+      nightlyRateMinor: null,
       cleaningFeeMinor: 4_500,
       totalAmountMinor: 4 * 12_000 + 4_500,
       totalIsManual: false,
+      priceBreakdown: {
+        kind: "computed",
+        nights: [{ season: null, nights: 4, rateMinor: 12_000, amountMinor: 48_000 }],
+        totalMinor: 4 * 12_000 + 4_500,
+      },
       currency: "EUR",
       property: { id: lake.id, name: "Lake House" },
       guest: { id: ada.id, name: "Ada Lovelace" },

@@ -8,6 +8,8 @@ import type { Property } from "@/generated/prisma/client";
 import { getCalendars } from "@/lib/availability/calendar";
 import { addDays, type CalendarDate } from "@/lib/calendar-date";
 import { todayIn } from "@/lib/finance/recurring";
+import type { PricingRules } from "@/lib/pricing/engine";
+import { pricingRulesFor } from "@/lib/pricing/service";
 
 import { type PublicNight, publicNights } from "./public-nights";
 import { getBookingRules } from "./service";
@@ -18,10 +20,12 @@ export type PublicAvailability = {
   /** For the picker: the stay lengths allowed. */
   minNights: number;
   maxNights: number | null;
-  /** For the estimate: the same inputs as a booking's default total. */
-  currency: string;
-  nightlyRateMinor: number;
-  cleaningFeeMinor: number;
+  /**
+   * For the estimate: the rules a booking's total is worked out by, for the
+   * same engine in the browser (GitLab #118). Season names and rates are
+   * meant for guests; nothing else of the owner's is in them.
+   */
+  pricing: PricingRules;
   nights: PublicNight[];
 };
 
@@ -33,7 +37,10 @@ export async function getPublicAvailability(
   { from, to }: { from: CalendarDate; to: CalendarDate },
   now = new Date(),
 ): Promise<PublicAvailability> {
-  const rules = await getBookingRules(property.id);
+  const [rules, pricing] = await Promise.all([
+    getBookingRules(property.id),
+    pricingRulesFor(property),
+  ]);
   // Whatever can affect a night in the window: the buffer on either side,
   // and the shortest stay starting on its last day.
   const range = {
@@ -51,9 +58,7 @@ export async function getPublicAvailability(
     to,
     minNights: rules.minNights,
     maxNights: rules.maxNights,
-    currency: property.currency,
-    nightlyRateMinor: property.defaultNightlyRateMinor,
-    cleaningFeeMinor: property.defaultCleaningFeeMinor,
+    pricing,
     nights: publicNights({ from, to }, taken, rules, todayIn(property.timezone, now)),
   };
 }

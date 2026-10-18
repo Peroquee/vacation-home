@@ -5,12 +5,13 @@ import dynamic from "next/dynamic";
 import { useTranslations } from "next-intl";
 import { useEffect, useMemo, useRef, useState } from "react";
 
+import { PriceLines } from "@/components/price-lines";
 import { useFormat } from "@/i18n/use-format";
 import type { SentRequest } from "@/lib/booking-requests/service";
 import { formatReference } from "@/lib/booking-requests/values";
 import type { PublicAvailability } from "@/lib/booking-rules/public-availability";
 import { checkOutOptions, type PublicNight } from "@/lib/booking-rules/public-nights";
-import { calculateTotalMinor } from "@/lib/bookings/pricing";
+import { tryPriceStay } from "@/lib/pricing/engine";
 import { addDays, type CalendarDate, daysBetween, toUtcDate } from "@/lib/calendar-date";
 import {
   addMonths,
@@ -121,15 +122,13 @@ export function StayPicker({
   }
 
   const length = stay.checkIn && stay.checkOut ? daysBetween(stay.checkIn, stay.checkOut) : null;
-  const total =
+  // The same engine and rules as the booking's total (GitLab #118).
+  const price =
     stay.checkIn && stay.checkOut && availability
-      ? calculateTotalMinor({
-          checkIn: stay.checkIn,
-          checkOut: stay.checkOut,
-          nightlyRateMinor: availability.nightlyRateMinor,
-          cleaningFeeMinor: availability.cleaningFeeMinor,
-        })
+      ? tryPriceStay(availability.pricing, { checkIn: stay.checkIn, checkOut: stay.checkOut })
       : null;
+  const total = price?.totalMinor ?? null;
+  const currency = availability?.pricing.currency ?? "";
 
   if (sent) return <RequestSent request={sent} />;
 
@@ -206,27 +205,13 @@ export function StayPicker({
       {stay.checkIn && stay.checkOut && length !== null && total !== null && availability ? (
         <div className="space-y-1 rounded-xl border p-4" data-testid="stay-estimate">
           <p className="font-medium">{format.dateRange(stay.checkIn, stay.checkOut)}</p>
-          <p className="text-sm">
-            {availability.cleaningFeeMinor > 0
-              ? t("breakdownWithCleaning", {
-                  nights: length,
-                  rate: format.money(availability.nightlyRateMinor, availability.currency),
-                  cleaning: format.money(availability.cleaningFeeMinor, availability.currency),
-                })
-              : t("breakdown", {
-                  nights: length,
-                  rate: format.money(availability.nightlyRateMinor, availability.currency),
-                })}
-          </p>
-          <p className="text-lg font-semibold">
-            {t("total", { total: format.money(total, availability.currency) })}
-          </p>
+          <PriceLines breakdown={price!} className="pt-1" />
           <p className="text-muted-foreground text-xs">{t("estimateNote")}</p>
           {/* The policy, by this total; in the form, above the consent. */}
           {!requesting ? (
             <CancellationNote
               policy={cancellation}
-              currency={availability.currency}
+              currency={currency}
               totalMinor={total}
               className="text-muted-foreground text-xs"
             />
@@ -262,7 +247,7 @@ export function StayPicker({
                 cancellation={
                   <CancellationNote
                     policy={cancellation}
-                    currency={availability.currency}
+                    currency={currency}
                     totalMinor={total}
                     className="text-sm"
                   />

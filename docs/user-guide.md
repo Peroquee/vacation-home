@@ -63,6 +63,28 @@ a colour for the calendar.
   can be picked, and they see an estimate (nights × nightly rate + cleaning
   fee, from the property's defaults). They never see why a night is taken,
   and requests you have not accepted do not block anything.
+- **Seasonal prices** (Settings → Seasonal prices): periods with their own
+  nightly rate, such as "Hauptsaison" from 1 July to 31 August. A season
+  repeats **every year** (it may run across New Year, e.g. 20 December to
+  6 January) or happens **once**, in a given year. Outside every season the
+  property's standard rate applies. Two seasons of the same kind may not
+  overlap; a one-off season (a holiday week) may lie inside a yearly one and
+  then wins on its days. The strip under each property shows the next 12
+  months: which rate applies on which days.
+  - Every price is worked out the same way, night by night: the guest's
+    estimate on the public page, the total of a new booking, and from it the
+    deposit, the balance, the emails and the guest's page. The estimate and
+    the booking show the lines ("2 nights × €140.00 · Hauptsaison"). Guests
+    see the season names, so name them for guests.
+  - The public page's "from" price is the lowest rate of the next 12 months.
+  - **A booking keeps its price.** Changing or deleting a season later does
+    not change existing bookings. A booking is priced anew only when you
+    change its dates, its own rate or its cleaning fee (or hand back a total
+    you had set by hand). Bookings made before seasonal prices keep their
+    total as it was.
+  - In the booking form, **Own nightly rate** gives one booking a flat
+    rate for every night instead of the seasons; leave it empty to use them.
+    **Set the total by hand** still overrides everything.
 - **Booking rules** (Settings → Booking rules) limit what guests can request
   on the public site: minimum and maximum nights, how many days ahead a stay
   must be requested (lead time) and may be (horizon), which weekdays guests

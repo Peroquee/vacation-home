@@ -29,7 +29,10 @@ export type PublicPropertyDto = {
   title: PublicText;
   /** ISO 4217: every price on the public page is in it. */
   currency: string;
-  /** The default nightly rate, shown as "from"; null when none is set. */
+  /**
+   * The lowest nightly rate of the next 12 months, seasons included (GitLab
+   * #118), shown as "from"; null when no night is charged.
+   */
   nightlyRateFromMinor: number | null;
   /** Town or region only. */
   location: string;
@@ -51,6 +54,7 @@ export function toPublicDto(
   listing: ListingDto,
   photos: PhotoDto[],
   terms: PaymentTerms,
+  nightlyRateFromMinor: number | null,
 ): PublicPropertyDto {
   const base = `/api/public/properties/${property.slug}/photos`;
   // Untitled in both languages: the property's own name rather than nothing.
@@ -59,8 +63,7 @@ export function toPublicDto(
     slug: property.slug,
     title: titled ? { en: listing.titleEn, de: listing.titleDe } : { en: property.name, de: "" },
     currency: property.currency,
-    nightlyRateFromMinor:
-      property.defaultNightlyRateMinor > 0 ? property.defaultNightlyRateMinor : null,
+    nightlyRateFromMinor,
     location: listing.location,
     description: { en: listing.descriptionEn, de: listing.descriptionDe },
     houseRules: { en: listing.houseRulesEn, de: listing.houseRulesDe },

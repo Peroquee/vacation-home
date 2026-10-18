@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
 
 import { findConflicts } from "@/lib/availability/rules";
-import { calculateTotalMinor } from "@/lib/bookings/pricing";
 import { daysBetween } from "@/lib/calendar-date";
 import { buildSeedPlan, WINDOW } from "@/lib/seed/plan";
 
@@ -70,7 +69,8 @@ describe("the seed plan", () => {
     }
     for (const b of plan.bookings) {
       expect(b.checkIn >= WINDOW.start && b.checkOut <= WINDOW.end).toBe(true);
-      const calculated = calculateTotalMinor(b);
+      const calculated = b.priceBreakdown.totalMinor;
+      expect(calculated).toBe(b.priceBreakdown.nightsMinor + b.priceBreakdown.cleaningFeeMinor);
       expect(
         b.totalIsManual ? b.totalAmountMinor <= calculated : b.totalAmountMinor === calculated,
       ).toBe(true);

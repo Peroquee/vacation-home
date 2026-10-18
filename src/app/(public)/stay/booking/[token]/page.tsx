@@ -1,4 +1,6 @@
 import type { Metadata } from "next";
+
+import { PriceLines } from "@/components/price-lines";
 import { getLocale, getTranslations } from "next-intl/server";
 import { notFound } from "next/navigation";
 
@@ -56,6 +58,7 @@ export default async function GuestBookingPage({ params }: PageProps<"/stay/book
           </dd>
           <dt className="text-muted-foreground">{t("guests")}</dt>
           <dd>{view.guestCount}</dd>
+          {/* The lines it is made of follow, when there are any (GitLab #118). */}
           <dt className="text-muted-foreground">{t("total")}</dt>
           <dd>{money(view.totalAmountMinor)}</dd>
           {view.receivedMinor > 0 ? (
@@ -65,6 +68,9 @@ export default async function GuestBookingPage({ params }: PageProps<"/stay/book
             </>
           ) : null}
         </dl>
+        {view.price.kind === "computed" ? (
+          <PriceLines breakdown={view.price} className="border-t pt-3" />
+        ) : null}
       </section>
 
       {view.next && view.next.amountMinor > 0 ? (

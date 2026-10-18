@@ -62,9 +62,11 @@ function checkStay(
 }
 
 /**
- * POST /api/bookings. Rates default to the property's; the total is
- * calculated (nights x rate + cleaning fee) unless `totalAmountMinor` is
- * given, which sets it by hand.
+ * POST /api/bookings. The nights are priced by the property's seasons and
+ * default rate (src/lib/pricing/engine.ts) unless `nightlyRateMinor` gives
+ * the booking its own flat rate; the cleaning fee defaults to the
+ * property's. The total is calculated unless `totalAmountMinor` is given,
+ * which sets it by hand.
  */
 export const createBookingSchema = z
   .strictObject({
@@ -79,7 +81,7 @@ export const createBookingSchema = z
       .default("inquiry"),
     source: fields.source.refine((source) => source !== "website", WEBSITE_ONLY).default("direct"),
     guestCount: fields.guestCount.default(1),
-    nightlyRateMinor: fields.nightlyRateMinor.optional(),
+    nightlyRateMinor: fields.nightlyRateMinor.nullable().optional(),
     cleaningFeeMinor: fields.cleaningFeeMinor.optional(),
     totalAmountMinor: amountMinor.optional(),
     notes: notes.optional(),
@@ -88,7 +90,10 @@ export const createBookingSchema = z
 
 /**
  * PATCH /api/bookings/:id: any subset of fields. `totalAmountMinor` sets the
- * total by hand; `null` hands it back to the calculation. The property
+ * total by hand; `null` hands it back to the calculation. `nightlyRateMinor`
+ * null prices the nights by the seasons again. The total is worked out anew
+ * only when the dates, the rate or the cleaning fee change (or a hand-set
+ * total is handed back): editing anything else keeps the agreed price. The property
  * cannot change - the booking's amounts are in its currency.
  */
 export const updateBookingSchema = z
@@ -99,7 +104,7 @@ export const updateBookingSchema = z
     status: fields.status,
     source: fields.source,
     guestCount: fields.guestCount,
-    nightlyRateMinor: fields.nightlyRateMinor,
+    nightlyRateMinor: fields.nightlyRateMinor.nullable(),
     cleaningFeeMinor: fields.cleaningFeeMinor,
     totalAmountMinor: amountMinor.nullable(),
     notes,

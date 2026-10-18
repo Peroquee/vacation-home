@@ -12,6 +12,8 @@ import { db } from "@/lib/db";
 import { todayUtc } from "@/lib/bookings/list-params";
 import { gridRange, isMonthKey, monthOf, monthWeeks, weekStartFor } from "@/lib/calendar/month";
 import { CALENDAR_PROPERTY_COOKIE, resolveChoice } from "@/lib/calendar/property-choice";
+import { toPropertyChoice } from "@/lib/bookings/form";
+import { listSeasonsFor } from "@/lib/pricing/service";
 import { listProperties } from "@/lib/properties/service";
 import { getCurrentUser } from "@/lib/session";
 
@@ -83,6 +85,7 @@ export default async function CalendarPage({ searchParams }: PageProps<"/calenda
   ]);
 
   const byId = new Map(properties.map((p) => [p.id, p]));
+  const seasons = await listSeasonsFor(properties.map((p) => p.id));
 
   return (
     <>
@@ -112,16 +115,15 @@ export default async function CalendarPage({ searchParams }: PageProps<"/calenda
         weekStart={weekStart}
         today={today}
         calendars={calendars.map(({ property, bookings, blocks }) => {
-          // The selection's price hint uses the defaults a new booking gets.
+          // The selection's price hint: what a new booking would cost, by
+          // the same engine and rules as the booking API (GitLab #118).
           const rates = byId.get(property.id);
           return {
             property: {
               id: property.id,
               name: property.name,
               color: property.color,
-              currency: rates?.currency,
-              defaultNightlyRateMinor: rates?.defaultNightlyRateMinor,
-              defaultCleaningFeeMinor: rates?.defaultCleaningFeeMinor,
+              pricing: rates && toPropertyChoice(rates, seasons.get(rates.id)).pricing,
             },
             bookings,
             blocks,
