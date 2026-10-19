@@ -3,7 +3,7 @@ import { z } from "zod";
 
 import { MAX_AMOUNT_MINOR } from "@/lib/bookings/pricing";
 
-import { isMonthDay } from "./seasons";
+import { isMonthDay, overlapping } from "./seasons";
 
 export const SEASON_OVERLAPS = "overlaps another season";
 
@@ -77,4 +77,88 @@ export const stayDiscountsSchema = z.strictObject({
       });
     })
     .transform((tiers) => [...tiers].sort((a, b) => a.minNights - b.minNights)),
+});
+
+const MAX_TAX_MINOR = 100_000;
+export const AGES_OVERLAP = "overlaps another age group";
+export const PERIODS_OVERLAP = "overlaps another period";
+export const UNKNOWN_GROUP = "names an age group that does not exist";
+
+const ageGroup = z
+  .strictObject({ fromAge: whole(0, 17), toAge: whole(0, 17), rateMinor: whole(0, MAX_TAX_MINOR) })
+  .refine((g) => g.fromAge <= g.toAge, { path: ["toAge"], message: "must not be below fromAge" });
+
+const taxPeriod = z
+  .strictObject({
+    name: z.string().trim().min(1, "is required").max(60, "must be at most 60 characters"),
+    startMonth: whole(1, 12),
+    startDay: whole(1, 31),
+    endMonth: whole(1, 12),
+    endDay: whole(1, 31),
+    adultRateMinor: whole(0, MAX_TAX_MINOR),
+    childRatesMinor: z.record(z.string(), whole(0, MAX_TAX_MINOR)).default({}),
+  })
+  .superRefine((p, context) => {
+    if (!isMonthDay(p.startMonth, p.startDay)) {
+      context.addIssue({
+        code: "custom",
+        path: ["startDay"],
+        message: "is not a day of that month",
+      });
+    }
+    if (!isMonthDay(p.endMonth, p.endDay)) {
+      context.addIssue({ code: "custom", path: ["endDay"], message: "is not a day of that month" });
+    }
+  });
+
+/**
+ * PUT /api/properties/:id/tourist-tax: the Kurtaxe rules (GitLab #120), or
+ * null for none. Child groups are ages 0-17 and may not overlap; anyone else
+ * pays the adult rate. Periods repeat every year and may not overlap; their
+ * child rates name groups by "fromAge-toAge".
+ */
+export const touristTaxSchema = z.strictObject({
+  rules: z
+    .strictObject({
+      adultRateMinor: whole(0, MAX_TAX_MINOR),
+      childGroups: z.array(ageGroup).max(4, "must be at most 4 age groups").default([]),
+      periods: z.array(taxPeriod).max(4, "must be at most 4 periods").default([]),
+      maxNights: whole(1, 365).nullable().default(null),
+      included: z.boolean({ error: "must be true or false" }).default(false),
+    })
+    .superRefine((rules, context) => {
+      const sorted = [...rules.childGroups].sort((a, b) => a.fromAge - b.fromAge);
+      sorted.forEach((group, i) => {
+        if (i > 0 && group.fromAge <= sorted[i - 1]!.toAge) {
+          context.addIssue({ code: "custom", path: ["childGroups"], message: AGES_OVERLAP });
+        }
+      });
+      const keys = new Set(rules.childGroups.map((g) => `${g.fromAge}-${g.toAge}`));
+      rules.periods.forEach((period, i) => {
+        if (Object.keys(period.childRatesMinor).some((key) => !keys.has(key))) {
+          context.addIssue({
+            code: "custom",
+            path: ["periods", i, "childRatesMinor"],
+            message: UNKNOWN_GROUP,
+          });
+        }
+        if (
+          overlapping(
+            { ...period, year: null },
+            rules.periods.slice(0, i).map((p) => ({ ...p, year: null })),
+          )
+        ) {
+          context.addIssue({
+            code: "custom",
+            path: ["periods", i, "startDay"],
+            message: PERIODS_OVERLAP,
+          });
+        }
+      });
+    })
+    .transform((rules) => ({
+      ...rules,
+      childGroups: [...rules.childGroups].sort((a, b) => a.fromAge - b.fromAge),
+    }))
+    .nullable(),
 });

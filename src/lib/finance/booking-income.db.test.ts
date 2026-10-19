@@ -250,9 +250,26 @@ describe("the database", () => {
 
 describe("bookingIncomeParts", () => {
   it("never makes the accommodation negative", () => {
-    expect(bookingIncomeParts({ totalAmountMinor: 30_00, cleaningFeeMinor: 50_00 })).toEqual({
+    expect(
+      bookingIncomeParts({ totalAmountMinor: 30_00, cleaningFeeMinor: 50_00, touristTaxMinor: 0 }),
+    ).toEqual({
       booking_accommodation: 0,
       booking_cleaning: 30_00,
+      booking_tourist_tax: 0,
+    });
+  });
+
+  it("takes the Kurtaxe out first: it is not the owner's", () => {
+    expect(
+      bookingIncomeParts({
+        totalAmountMinor: 500_00,
+        cleaningFeeMinor: 50_00,
+        touristTaxMinor: 30_00,
+      }),
+    ).toEqual({
+      booking_accommodation: 420_00,
+      booking_cleaning: 50_00,
+      booking_tourist_tax: 30_00,
     });
   });
 });

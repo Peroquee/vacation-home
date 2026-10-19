@@ -7,7 +7,8 @@
  * It returns a breakdown, not just a total: a line per season (a night
  * priced by the season covering it, the default rate outside every season),
  * the length-of-stay discount (GitLab #119) off the nights, the cleaning
- * fee, and the total. The Kurtaxe (#120) joins it here. Integer minor units of the property's
+ * fee, the Kurtaxe (GitLab #120) for the guests by age group, and the
+ * total. Integer minor units of the property's
  * currency throughout; the dates are calendar dates in the property's
  * timezone, as bookings store them.
  *
@@ -17,6 +18,12 @@ import { addDays, type CalendarDate } from "@/lib/calendar-date";
 import { MAX_AMOUNT_MINOR, nights as countNights } from "@/lib/bookings/pricing";
 
 import { type Season, seasonOn } from "./seasons";
+import {
+  type GuestSplit,
+  type TouristTax,
+  touristTaxFor,
+  type TouristTaxRules,
+} from "./tourist-tax";
 
 /**
  * A length-of-stay discount (GitLab #119): from `minNights` nights, the
@@ -32,6 +39,8 @@ export type PricingRules = {
   seasons: Omit<Season, "id">[];
   /** Empty: no discount. */
   discounts: StayDiscount[];
+  /** Null: no Kurtaxe (GitLab #120). */
+  touristTax: TouristTaxRules | null;
 };
 
 export type NightLine = {
@@ -55,6 +64,17 @@ export type PriceBreakdown = {
    */
   discount?: (StayDiscount & { amountMinor: number }) | null;
   cleaningFeeMinor: number;
+  /**
+   * The Kurtaxe (GitLab #120), when the rules charge one and the guests are
+   * known; absent in breakdowns from before. Added to the total unless
+   * `included` (then the rates already contain it).
+   */
+  touristTax?: TouristTax | null;
+  /**
+   * The Kurtaxe rules the price was worked out under: a change of guests
+   * later re-prices the Kurtaxe by these, not by today's (GitLab #120).
+   */
+  touristTaxRules?: TouristTaxRules | null;
   totalMinor: number;
 };
 
@@ -73,6 +93,11 @@ export type StayToPrice = {
   nightlyRateMinor?: number | null;
   /** A booking's own cleaning fee, instead of the property's. */
   cleaningFeeMinor?: number | null;
+  /**
+   * Who stays, for the Kurtaxe. Without it (an estimate before the guests
+   * are known) no Kurtaxe is worked out.
+   */
+  guests?: GuestSplit;
 };
 
 function amount(name: string, value: number): number {
@@ -126,7 +151,15 @@ export function priceStay(rules: PricingRules, stay: StayToPrice): PriceBreakdow
     "cleaningFeeMinor",
     stay.cleaningFeeMinor ?? rules.defaultCleaningFeeMinor,
   );
-  const totalMinor = nightsMinor - (discount?.amountMinor ?? 0) + cleaningFeeMinor;
+  const touristTax =
+    rules.touristTax && stay.guests
+      ? touristTaxFor(rules.touristTax, stay.checkIn, count, stay.guests)
+      : null;
+  const totalMinor =
+    nightsMinor -
+    (discount?.amountMinor ?? 0) +
+    cleaningFeeMinor +
+    (touristTax && !touristTax.included ? touristTax.amountMinor : 0);
   if (totalMinor > MAX_AMOUNT_MINOR) {
     throw new RangeError(`total ${totalMinor} exceeds the largest storable amount`);
   }
@@ -138,9 +171,50 @@ export function priceStay(rules: PricingRules, stay: StayToPrice): PriceBreakdow
     nightsMinor,
     discount,
     cleaningFeeMinor,
+    touristTax,
+    touristTaxRules: rules.touristTax,
     totalMinor,
   };
 }
+
+/** What the Kurtaxe adds to the total: nothing when the rates include it. */
+const added = (tax: TouristTax | null | undefined) => (tax && !tax.included ? tax.amountMinor : 0);
+
+/**
+ * The breakdown with only its Kurtaxe worked out anew (GitLab #120): for
+ * `guests` under the rules it was priced by, or the owner's `manual`
+ * amount. The nights, discount and cleaning fee stay as agreed.
+ */
+export function repriceTouristTax(
+  breakdown: PriceBreakdown,
+  stay: { checkIn: CalendarDate; checkOut: CalendarDate; guests: GuestSplit },
+  manual?: { amountMinor: number; note: string | null } | null,
+): PriceBreakdown {
+  const rules = breakdown.touristTaxRules ?? null;
+  const included = rules?.included ?? breakdown.touristTax?.included ?? false;
+  const touristTax: TouristTax | null = manual
+    ? {
+        included,
+        lines: [],
+        amountMinor: amount("touristTaxMinor", manual.amountMinor),
+        manual: { note: manual.note },
+      }
+    : rules
+      ? touristTaxFor(rules, stay.checkIn, countNights(stay.checkIn, stay.checkOut), stay.guests)
+      : null;
+  const totalMinor = breakdown.totalMinor - added(breakdown.touristTax) + added(touristTax);
+  if (totalMinor > MAX_AMOUNT_MINOR) {
+    throw new RangeError(`total ${totalMinor} exceeds the largest storable amount`);
+  }
+  return { ...breakdown, touristTax, totalMinor };
+}
+
+/**
+ * The part of a total that is Kurtaxe, collected for the municipality and
+ * not the owner's (GitLab #120); 0 for a breakdown without.
+ */
+export const touristTaxOf = (breakdown: StoredBreakdown | null): number =>
+  breakdown?.kind === "computed" ? (breakdown.touristTax?.amountMinor ?? 0) : 0;
 
 /** The highest tier a stay of `nights` reaches, or null. */
 export function discountFor(discounts: StayDiscount[], nights: number): StayDiscount | null {

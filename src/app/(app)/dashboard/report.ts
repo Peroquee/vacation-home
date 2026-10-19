@@ -44,6 +44,8 @@ export type ReportContent = {
     columns: [string, string, string, string];
     rows: { month: string; nights: string; rate: string; prior: string }[];
   };
+  /** The Kurtaxe collected in the period (GitLab #120), apart from the income; null without. */
+  passThrough: string | null;
   footer: string;
 };
 
@@ -155,6 +157,9 @@ export async function buildReportContent(
           prior: m.priorRate === null ? "–" : rate.format(m.priorRate),
         })),
       },
+      passThrough: report.passThroughMinor
+        ? t("passThrough", { amount: money(report.passThroughMinor) })
+        : null,
       footer: t("footer"),
     },
   };

@@ -141,6 +141,7 @@ async function deliver(row: EmailOutbox, setup: MailSetup, now: Date): Promise<O
       checkOut: fromUtcDate(booking.checkOut),
       guestCount: booking.guestCount,
       totalAmountMinor: booking.totalAmountMinor,
+      touristTaxMinor: booking.touristTaxMinor,
       currency: booking.currency,
       received,
       next: nextDue(

@@ -38,13 +38,19 @@ import { escapeLike } from "@/lib/like";
 
 import { nights } from "./pricing";
 import {
+  bookingPrice,
+  guestsOf,
+  type ManualTax,
+  manualTaxOf,
+  type PricedFacts,
+} from "@/lib/pricing/booking-price";
+import {
   parseBreakdown,
-  type PriceBreakdown,
-  priceStay,
   type PricingRules,
-  type StayToPrice,
   type StoredBreakdown,
+  touristTaxOf,
 } from "@/lib/pricing/engine";
+import { allAdults, guestTotal } from "@/lib/pricing/tourist-tax";
 import { pricingRulesFor } from "@/lib/pricing/service";
 import {
   type ApiBookingSource,
@@ -169,17 +175,20 @@ export async function locked(
 }
 
 /**
- * The price from the one engine (GitLab #118): the total and its breakdown,
- * or a field error when it could not be stored.
+ * The price from the one engine (GitLab #118-#120), decided as
+ * src/lib/pricing/booking-price.ts says (the booking form previews by the
+ * same): the total and its breakdown, or a field error when it could not be
+ * stored.
  */
 function calculatedPrice(
   rules: PricingRules,
-  stay: StayToPrice,
+  next: PricedFacts,
+  current?: Parameters<typeof bookingPrice>[2],
 ):
-  | { totalAmountMinor: number; priceBreakdown: PriceBreakdown }
+  | { totalAmountMinor: number; priceBreakdown: StoredBreakdown }
   | { error: "invalid"; field: string; message: string } {
   try {
-    const priceBreakdown = priceStay(rules, stay);
+    const priceBreakdown = bookingPrice(rules, next, current);
     return { totalAmountMinor: priceBreakdown.totalMinor, priceBreakdown };
   } catch {
     return {
@@ -242,7 +251,19 @@ export async function createBooking(
     cleaningFeeMinor: input.cleaningFeeMinor ?? property.defaultCleaningFeeMinor,
   };
   const manual = input.totalAmountMinor !== undefined;
-  const price = calculatedPrice(await pricingRulesFor(property), { ...input, ...rates });
+  // Who stays (GitLab #120): the split, or the count as adults.
+  const guests = input.guestSplit ?? allAdults(input.guestCount ?? 1);
+  const manualTax =
+    input.touristTaxMinor === undefined || input.touristTaxMinor === null
+      ? null
+      : { amountMinor: input.touristTaxMinor, note: input.touristTaxNote ?? null };
+  const price = calculatedPrice(await pricingRulesFor(property), {
+    checkIn: input.checkIn,
+    checkOut: input.checkOut,
+    ...rates,
+    guests,
+    manualTax,
+  });
   // A total set by hand stands even where the calculated one could not.
   if ("error" in price && !manual) return price;
   const calculated = "error" in price ? null : price;
@@ -258,11 +279,17 @@ export async function createBooking(
     checkOut: toUtcDate(input.checkOut),
     status: input.status,
     source: toDbSource(input.source),
-    guestCount: input.guestCount,
+    guestCount: guestTotal(guests),
+    guestSplit: guests,
     ...rates,
     totalAmountMinor: amount.totalAmountMinor,
     totalIsManual: manual,
     priceBreakdown: amount.priceBreakdown,
+    touristTaxMinor: amount.priceBreakdown
+      ? touristTaxOf(amount.priceBreakdown)
+      : (manualTax?.amountMinor ?? 0),
+    touristTaxManualMinor: manualTax?.amountMinor ?? null,
+    touristTaxNote: manualTax?.note ?? null,
     currency: property.currency,
     notes: input.notes ?? null,
     ...website,
@@ -283,7 +310,12 @@ export async function createBooking(
       // The cancellation policy the guest agrees to (GitLab #116): shown with
       // the request's consent, or in force when the owner makes the booking.
       if (website || holdsDates(input.status)) {
-        data.cancellationPolicy = await policySnapshot(property.id, amount.totalAmountMinor, tx);
+        data.cancellationPolicy = await policySnapshot(
+          property.id,
+          // The deposit it may keep is never Kurtaxe (GitLab #120).
+          amount.totalAmountMinor - (data.touristTaxMinor ?? 0),
+          tx,
+        );
       }
       const booking = await tx.booking.create({ data, include: withRelations });
       await syncBookingIncome(booking.id, tx, { justConfirmed: isBooked(booking.status) });
@@ -375,30 +407,52 @@ export async function updateBooking(id: string, input: UpdateBookingInput): Prom
         input.totalAmountMinor === undefined
           ? current.totalIsManual
           : input.totalAmountMinor !== null;
-      // Priced anew only when what the price is made of changes, or a
-      // hand-set total is handed back: the agreed price stays otherwise,
-      // whatever the seasons say now (GitLab #118).
-      const repriced =
-        stay.checkIn !== fromUtcDate(current.checkIn) ||
-        stay.checkOut !== fromUtcDate(current.checkOut) ||
-        rates.nightlyRateMinor !== current.nightlyRateMinor ||
-        rates.cleaningFeeMinor !== current.cleaningFeeMinor ||
-        (input.totalAmountMinor === null && current.totalIsManual);
-      let price: { totalAmountMinor: number; priceBreakdown?: PriceBreakdown } = {
-        totalAmountMinor: current.totalAmountMinor,
-      };
-      if (repriced) {
-        const property = await tx.property.findUniqueOrThrow({ where: { id: current.propertyId } });
-        const calculated = calculatedPrice(await pricingRulesFor(property, tx), {
-          ...stay,
-          ...rates,
-        });
-        if ("error" in calculated) {
-          if (!manual) return calculated;
-        } else {
-          price = calculated;
-        }
-      }
+      // Who stays (GitLab #120). A new count alone keeps the children.
+      const guestsBefore = guestsOf(current);
+      const childSum = guestsBefore.children.reduce((sum, c) => sum + c.count, 0);
+      const guests =
+        input.guestSplit ??
+        (input.guestCount === undefined
+          ? guestsBefore
+          : input.guestCount >= childSum && childSum > 0
+            ? { ...guestsBefore, adults: input.guestCount - childSum }
+            : allAdults(input.guestCount));
+      // The owner's own Kurtaxe: given, cleared (null), or as it was.
+      const manualTax: ManualTax | null =
+        input.touristTaxMinor === null
+          ? null
+          : input.touristTaxMinor !== undefined
+            ? { amountMinor: input.touristTaxMinor, note: input.touristTaxNote ?? null }
+            : manualTaxOf({
+                touristTaxManualMinor: current.touristTaxManualMinor,
+                touristTaxNote:
+                  input.touristTaxNote === undefined
+                    ? current.touristTaxNote
+                    : input.touristTaxNote,
+              });
+      // Priced anew, only the Kurtaxe anew, or kept as agreed: see
+      // src/lib/pricing/booking-price.ts.
+      const property = await tx.property.findUniqueOrThrow({ where: { id: current.propertyId } });
+      const calculated = calculatedPrice(
+        await pricingRulesFor(property, tx),
+        { ...stay, ...rates, guests, manualTax },
+        {
+          checkIn: fromUtcDate(current.checkIn),
+          checkOut: fromUtcDate(current.checkOut),
+          nightlyRateMinor: current.nightlyRateMinor,
+          cleaningFeeMinor: current.cleaningFeeMinor,
+          guests: guestsBefore,
+          manualTax: manualTaxOf(current),
+          breakdown: breakdownOf(current),
+          handBack: input.totalAmountMinor === null && current.totalIsManual,
+        },
+      );
+      // A total set by hand stands even where the calculated one could not.
+      if ("error" in calculated && !manual) return calculated;
+      const price =
+        "error" in calculated
+          ? { totalAmountMinor: current.totalAmountMinor, priceBreakdown: undefined }
+          : calculated;
       const amount = {
         totalAmountMinor: manual
           ? (input.totalAmountMinor ?? current.totalAmountMinor)
@@ -423,11 +477,15 @@ export async function updateBooking(id: string, input: UpdateBookingInput): Prom
           checkOut: toUtcDate(stay.checkOut),
           status,
           source: input.source && toDbSource(input.source),
-          guestCount: input.guestCount,
+          guestCount: guestTotal(guests),
+          guestSplit: guests,
           ...rates,
           totalAmountMinor: amount.totalAmountMinor,
           totalIsManual: manual,
           priceBreakdown: amount.priceBreakdown,
+          ...(amount.priceBreakdown && { touristTaxMinor: touristTaxOf(amount.priceBreakdown) }),
+          touristTaxManualMinor: manualTax?.amountMinor ?? null,
+          touristTaxNote: manualTax?.note ?? null,
           notes: input.notes,
         },
         include: withRelations,

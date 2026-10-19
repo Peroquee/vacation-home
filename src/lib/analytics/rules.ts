@@ -49,6 +49,8 @@ export type BookingInput = {
   checkOut: CalendarDate;
   totalAmountMinor: number;
   cleaningFeeMinor: number;
+  /** Collected for the municipality, not revenue (GitLab #120). */
+  touristTaxMinor?: number;
 };
 export type BlockInput = { propertyId: string; startDate: CalendarDate; endDate: CalendarDate };
 export type LedgerInput = { date: CalendarDate; type: "income" | "expense"; amountMinor: number };
@@ -73,7 +75,10 @@ const emptyNights = (): NightStats => ({
 /** Each night's share of a booking's accommodation revenue, by night index. */
 function nightRevenue(booking: BookingInput): (index: number) => number {
   const nights = daysBetween(booking.checkIn, booking.checkOut);
-  const accommodation = Math.max(booking.totalAmountMinor - booking.cleaningFeeMinor, 0);
+  const accommodation = Math.max(
+    booking.totalAmountMinor - booking.cleaningFeeMinor - (booking.touristTaxMinor ?? 0),
+    0,
+  );
   const base = Math.floor(accommodation / nights);
   const remainder = accommodation % nights;
   return (index) => base + (index < remainder ? 1 : 0);

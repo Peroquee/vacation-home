@@ -38,7 +38,16 @@ const SENT = {
   currency: "EUR",
 };
 
-function renderForm() {
+const PRICING = {
+  currency: "EUR",
+  defaultNightlyRateMinor: 10_000,
+  defaultCleaningFeeMinor: 5_000,
+  seasons: [],
+  discounts: [],
+  touristTax: null,
+};
+
+function renderForm(pricing: React.ComponentProps<typeof RequestForm>["pricing"] = PRICING) {
   const onSent = vi.fn();
   const onDatesRefused = vi.fn();
   render(
@@ -48,6 +57,7 @@ function renderForm() {
         checkIn="2026-08-10"
         checkOut="2026-08-14"
         maxGuests={4}
+        pricing={pricing}
         onSent={onSent}
         onDatesRefused={onDatesRefused}
       />
@@ -101,6 +111,45 @@ describe("the booking request form", () => {
         challenge: { parameters: { n: 1 }, signature: "sig-1" },
         solution: { counter: 1, derivedKey: "ab" },
       },
+    });
+  });
+
+  it("asks for children by the Kurtaxe's age groups and shows the price with it", async () => {
+    fetchMock.mockResolvedValue(Response.json(SENT, { status: 201 }));
+    const { user, onSent } = renderForm({
+      ...PRICING,
+      touristTax: {
+        adultRateMinor: 300,
+        childGroups: [
+          { fromAge: 0, toAge: 5, rateMinor: 0 },
+          { fromAge: 6, toAge: 15, rateMinor: 150 },
+        ],
+        periods: [],
+        maxNights: null,
+        included: false,
+      },
+    });
+    await user.type(screen.getByLabelText("Name"), "Ada Lovelace");
+    await user.type(screen.getByLabelText("Email"), "ada@example.test");
+    await user.clear(screen.getByLabelText("Adults"));
+    await user.type(screen.getByLabelText("Adults"), "2");
+    await user.clear(screen.getByLabelText("Children aged 6–15"));
+    await user.type(screen.getByLabelText("Children aged 6–15"), "1");
+    expect(screen.getByLabelText("Children aged 0–5")).toHaveValue(0);
+
+    // 4 nights: 2 x 4 x 3.00 + 1 x 4 x 1.50 = 30.00, on top of 450.00.
+    const price = screen.getByTestId("request-price");
+    expect(price).toHaveTextContent("Kurtaxe: 2 adults × 4 nights × €3.00€24.00");
+    expect(price).toHaveTextContent("Kurtaxe: 1 child aged 6–15 × 4 nights × €1.50€6.00");
+    expect(price).toHaveTextContent("Total€480.00");
+
+    await user.click(screen.getByRole("checkbox", { name: /I agree/ }));
+    vi.setSystemTime(Date.now() + 5_000);
+    await user.click(screen.getByRole("button", { name: "Send request" }));
+    await waitFor(() => expect(onSent).toHaveBeenCalled());
+    expect(sentBodies()[0]).toMatchObject({
+      guestCount: 3,
+      guestSplit: { adults: 2, children: [{ fromAge: 6, toAge: 15, count: 1 }] },
     });
   });
 

@@ -143,6 +143,7 @@ describe("MonthCalendar range selection", () => {
         defaultCleaningFeeMinor: 5000,
         seasons: [],
         discounts: [],
+        touristTax: null,
       },
     },
   };

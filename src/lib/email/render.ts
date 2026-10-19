@@ -36,6 +36,8 @@ export type EmailContext = {
     checkOut: CalendarDate;
     guestCount: number;
     totalAmountMinor: number;
+    /** The Kurtaxe in the total (GitLab #120): named with it. */
+    touristTaxMinor?: number;
     currency: string;
     received: number;
     next: NextDue | null;
@@ -137,7 +139,15 @@ export async function renderEmail(context: EmailContext): Promise<RenderedEmail>
         `${when} · ${t("facts.nights", { count: daysBetween(booking.checkIn, booking.checkOut) })}`,
       ],
       [t("facts.guests"), String(booking.guestCount)],
-      [t("facts.total"), money(booking.totalAmountMinor)],
+      [
+        t("facts.total"),
+        booking.touristTaxMinor
+          ? t("facts.totalWithTax", {
+              total: money(booking.totalAmountMinor),
+              tax: money(booking.touristTaxMinor),
+            })
+          : money(booking.totalAmountMinor),
+      ],
       ...(booking.reference
         ? ([[t("facts.reference"), formatReference(booking.reference)]] as [string, string][])
         : []),

@@ -185,6 +185,7 @@ export function buildSeedPlan(seed = SEED): SeedPlan {
           defaultCleaningFeeMinor: property.defaultCleaningFeeMinor,
           seasons: [],
           discounts: [],
+          touristTax: null,
         },
         { ...stay, nightlyRateMinor, cleaningFeeMinor: property.defaultCleaningFeeMinor },
       );

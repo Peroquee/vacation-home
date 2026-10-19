@@ -1,12 +1,12 @@
 import { useLocale, useTranslations } from "next-intl";
 
 import { formattersFor } from "@/i18n/format";
-import type { StoredBreakdown } from "@/lib/pricing/engine";
+import type { PriceBreakdown, StoredBreakdown } from "@/lib/pricing/engine";
 
 /**
  * A price as the engine worked it out (GitLab #118): a line per season or
  * rate ("3 nights × €95.00 · Hauptsaison"), the length-of-stay discount
- * (GitLab #119), the cleaning fee, and the total.
+ * (GitLab #119), the cleaning fee, the Kurtaxe (GitLab #120), and the total.
  * A booking from before the engine shows its total alone. `totalMinor`
  * overrides the total shown, for one set by hand.
  *
@@ -59,6 +59,9 @@ export function PriceLines({
               <dd className="text-end tabular-nums">{money(breakdown.cleaningFeeMinor)}</dd>
             </div>
           ) : null}
+          {breakdown.touristTax ? (
+            <TouristTaxLines tax={breakdown.touristTax} money={money} />
+          ) : null}
         </>
       ) : (
         <div className="contents">
@@ -74,5 +77,60 @@ export function PriceLines({
         <dd className="text-end tabular-nums">{money(total)}</dd>
       </div>
     </dl>
+  );
+}
+
+/**
+ * The Kurtaxe (GitLab #120): a line per age group and rate, or the owner's
+ * own amount. Included in the rates, it is shown but not added.
+ */
+function TouristTaxLines({
+  tax,
+  money,
+}: {
+  tax: NonNullable<PriceBreakdown["touristTax"]>;
+  money: (minor: number) => string;
+}) {
+  const t = useTranslations("pricing");
+  const amount = (minor: number) => (tax.included ? `(${money(minor)})` : money(minor));
+  if (tax.manual) {
+    return (
+      <div className="contents">
+        <dt>
+          {t(tax.included ? "taxManualIncluded" : "taxManual")}
+          {tax.manual.note ? (
+            <span className="text-muted-foreground"> · {tax.manual.note}</span>
+          ) : null}
+        </dt>
+        <dd className="text-end tabular-nums">{amount(tax.amountMinor)}</dd>
+      </div>
+    );
+  }
+  return (
+    <>
+      {tax.lines.map((line, i) => (
+        <div key={i} className="contents">
+          <dt>
+            {t(tax.included ? "taxIncluded" : "tax")}
+            {": "}
+            {line.group
+              ? t("taxChildren", {
+                  persons: line.persons,
+                  from: line.group.fromAge,
+                  to: line.group.toAge,
+                  nights: line.nights,
+                  rate: money(line.rateMinor),
+                })
+              : t("taxAdults", {
+                  persons: line.persons,
+                  nights: line.nights,
+                  rate: money(line.rateMinor),
+                })}
+            {line.period ? <span className="text-muted-foreground"> · {line.period}</span> : null}
+          </dt>
+          <dd className="text-end tabular-nums">{amount(line.amountMinor)}</dd>
+        </div>
+      ))}
+    </>
   );
 }

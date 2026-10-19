@@ -13,6 +13,7 @@ import { getApiText } from "@/i18n/get-api-text";
 import { getFormat } from "@/i18n/get-format";
 import { SOURCE_KEYS } from "@/lib/bookings/labels";
 import { breakdownOf, getBooking, toDto } from "@/lib/bookings/service";
+import { guestsOf } from "@/lib/pricing/booking-price";
 import { bookingSyncStatus } from "@/lib/google/sync-status";
 import { guestDisplayName } from "@/lib/guests/display";
 import { getGuest } from "@/lib/guests/service";
@@ -71,6 +72,8 @@ export default async function BookingPage({ params }: PageProps<"/bookings/[id]"
   const money = (minor: number) => format.money(minor, booking.currency);
   // As the engine worked it out when the price was set (GitLab #118).
   const breakdown = breakdownOf(booking);
+  const guests = guestsOf(booking);
+  const tGuests = await getTranslations("guestFields");
 
   return (
     <>
@@ -140,7 +143,21 @@ export default async function BookingPage({ params }: PageProps<"/bookings/[id]"
                 {format.date(booking.checkOut, { style: "full" })}
               </Fact>
               <Fact label={t("detail.nights")}>{booking.nights}</Fact>
-              <Fact label={t("detail.guests")}>{booking.guestCount}</Fact>
+              <Fact label={t("detail.guests")}>
+                {/* By age group, where the Kurtaxe asked (GitLab #120). */}
+                {guests.children.length > 0
+                  ? [
+                      tGuests("summaryAdults", { count: guests.adults }),
+                      ...guests.children.map((c) =>
+                        tGuests("summaryChildren", {
+                          count: c.count,
+                          from: c.fromAge,
+                          to: c.toAge,
+                        }),
+                      ),
+                    ].join(", ")
+                  : booking.guestCount}
+              </Fact>
               <Fact label={t("detail.source")}>{t(`source.${SOURCE_KEYS[booking.source]}`)}</Fact>
             </dl>
           </CardContent>

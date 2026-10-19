@@ -3,6 +3,7 @@ import { z } from "zod";
 
 import { LOCALES } from "@/i18n/locales";
 import { stayQuerySchema } from "@/lib/booking-rules/schema";
+import { guestSplitSchema, guestsAddUp } from "@/lib/bookings/schema";
 import { guestFields } from "@/lib/guests/schema";
 
 import { challengePayloadSchema } from "./challenge";
@@ -18,6 +19,8 @@ export const bookingRequestSchema = z
     checkIn: stayQuerySchema.shape.checkIn,
     checkOut: stayQuerySchema.shape.checkOut,
     guestCount: z.int("must be a whole number").min(1, "must be at least 1").max(50, "is too many"),
+    // By age group, where the Kurtaxe asks (GitLab #120); guestCount is the sum.
+    guestSplit: guestSplitSchema.optional(),
     name: guestFields.name,
     email: z
       .string()
@@ -37,6 +40,7 @@ export const bookingRequestSchema = z
     homepage: z.string().optional(),
     altcha: challengePayloadSchema,
   })
+  .superRefine(guestsAddUp)
   .superRefine((stay, context) => {
     // The same check-in/check-out rule as everywhere else.
     const result = stayQuerySchema.safeParse({ checkIn: stay.checkIn, checkOut: stay.checkOut });

@@ -30,6 +30,7 @@ const RULES: PricingRules = {
   defaultCleaningFeeMinor: 5_000,
   seasons: [SUMMER, WINTER, EASTER_2027],
   discounts: [],
+  touristTax: null,
 };
 
 describe("which rate applies on a night", () => {
@@ -111,6 +112,8 @@ describe("the price of a stay", () => {
       nightsMinor: 40_000,
       discount: null,
       cleaningFeeMinor: 5_000,
+      touristTax: null,
+      touristTaxRules: null,
       totalMinor: 45_000,
     });
   });

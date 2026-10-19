@@ -74,6 +74,9 @@ export default async function StayPage({ params }: PageProps<"/stay/[slug]">) {
             {t("fromRate", {
               rate: format.money(property.nightlyRateFromMinor, property.currency),
             })}
+            {property.touristTax
+              ? ` · ${tPricing(property.touristTax === "plus" ? "plusTax" : "includedTax")}`
+              : null}
           </p>
         ) : null}
         {property.discounts.length > 0 ? (

@@ -55,6 +55,7 @@ export function StayPicker({
   cancellation: PublicCancellation;
 }) {
   const t = useTranslations("stay.picker");
+  const tPricing = useTranslations("pricing");
   const format = useFormat();
   const [month, setMonth] = useState(firstMonth);
   const [data, setData] = useState<{ key: string; value: PublicAvailability } | null>(null);
@@ -206,6 +207,12 @@ export function StayPicker({
         <div className="space-y-1 rounded-xl border p-4" data-testid="stay-estimate">
           <p className="font-medium">{format.dateRange(stay.checkIn, stay.checkOut)}</p>
           <PriceLines breakdown={price!} className="pt-1" />
+          {/* The Kurtaxe needs the guests: it follows in the request form (GitLab #120). */}
+          {availability.pricing.touristTax ? (
+            <p className="text-muted-foreground text-xs">
+              {tPricing(availability.pricing.touristTax.included ? "includedTax" : "plusTax")}
+            </p>
+          ) : null}
           <p className="text-muted-foreground text-xs">{t("estimateNote")}</p>
           {/* The policy, by this total; in the form, above the consent. */}
           {!requesting ? (
@@ -244,6 +251,7 @@ export function StayPicker({
                 checkIn={stay.checkIn}
                 checkOut={stay.checkOut}
                 maxGuests={maxGuests}
+                pricing={availability.pricing}
                 cancellation={
                   <CancellationNote
                     policy={cancellation}

@@ -8,7 +8,8 @@ import { withPropertyLock } from "@/lib/availability/service";
 import { db, type DbClient } from "@/lib/db";
 
 import type { PricingRules, StayDiscount } from "./engine";
-import type { SeasonInput } from "./schema";
+import type { TouristTaxRules } from "./tourist-tax";
+import { type SeasonInput, touristTaxSchema } from "./schema";
 import { overlapping, type Season, seasonRule } from "./seasons";
 
 export type SeasonDto = Season;
@@ -63,11 +64,12 @@ export async function pricingRulesFor(
   property: Priced,
   client: DbClient = db,
 ): Promise<PricingRules> {
-  const [seasons, discounts] = await Promise.all([
+  const [seasons, discounts, touristTax] = await Promise.all([
     listSeasons(property.id, client),
     listDiscounts(property.id, client),
+    getTouristTax(property.id, client),
   ]);
-  return rulesOf(property, seasons, discounts);
+  return rulesOf(property, seasons, discounts, touristTax);
 }
 
 /** The pricing rules of several properties at once, by property id. */
@@ -75,12 +77,13 @@ export async function pricingRulesForMany(
   properties: Priced[],
 ): Promise<Map<string, PricingRules>> {
   const ids = properties.map((p) => p.id);
-  const [seasons, discounts] = await Promise.all([
+  const [seasons, discounts, taxes] = await Promise.all([
     listSeasonsFor(ids),
     db.propertyStayDiscount.findMany({
       where: { propertyId: { in: ids } },
       orderBy: { minNights: "asc" },
     }),
+    db.propertyTouristTax.findMany({ where: { propertyId: { in: ids } } }),
   ]);
   return new Map(
     properties.map((p) => [
@@ -89,18 +92,63 @@ export async function pricingRulesForMany(
         p,
         seasons.get(p.id) ?? [],
         discounts.filter((d) => d.propertyId === p.id).map(toDiscount),
+        parseTouristTax(taxes.find((t) => t.propertyId === p.id)?.rules),
       ),
     ]),
   );
 }
 
-const rulesOf = (property: Priced, seasons: Season[], discounts: StayDiscount[]): PricingRules => ({
+const rulesOf = (
+  property: Priced,
+  seasons: Season[],
+  discounts: StayDiscount[],
+  touristTax: TouristTaxRules | null,
+): PricingRules => ({
   currency: property.currency,
   defaultNightlyRateMinor: property.defaultNightlyRateMinor,
   defaultCleaningFeeMinor: property.defaultCleaningFeeMinor,
   seasons: seasons.map(seasonRule),
   discounts,
+  touristTax,
 });
+
+/** Stored rules, read back through the API's own validation; null for none. */
+function parseTouristTax(value: unknown): TouristTaxRules | null {
+  if (value === undefined || value === null) return null;
+  const parsed = touristTaxSchema.safeParse({ rules: value });
+  return parsed.success ? parsed.data.rules : null;
+}
+
+/** The property's Kurtaxe rules (GitLab #120), or null: no Kurtaxe. */
+export async function getTouristTax(
+  propertyId: string,
+  client: DbClient = db,
+): Promise<TouristTaxRules | null> {
+  const row = await client.propertyTouristTax.findUnique({ where: { propertyId } });
+  return parseTouristTax(row?.rules);
+}
+
+/**
+ * Replaces the property's Kurtaxe rules, or removes them with null. Null
+ * when there is no such property. Bookings keep the Kurtaxe they were given.
+ */
+export async function saveTouristTax(
+  propertyId: string,
+  rules: TouristTaxRules | null,
+): Promise<{ rules: TouristTaxRules | null } | null> {
+  return withPropertyLock(propertyId, async (tx) => {
+    if (rules === null) {
+      await tx.propertyTouristTax.deleteMany({ where: { propertyId } });
+    } else {
+      await tx.propertyTouristTax.upsert({
+        where: { propertyId },
+        create: { propertyId, rules },
+        update: { rules },
+      });
+    }
+    return { rules: await getTouristTax(propertyId, tx) };
+  });
+}
 
 const toDiscount = (row: { minNights: number; percent: number }): StayDiscount => ({
   minNights: row.minNights,

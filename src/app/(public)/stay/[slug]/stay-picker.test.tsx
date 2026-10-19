@@ -33,6 +33,7 @@ function serve() {
         defaultCleaningFeeMinor: 2_500,
         seasons: [],
         discounts: [],
+        touristTax: null,
       },
       nights: publicNights({ from, to }, taken, rules, "2026-07-01"),
     });
