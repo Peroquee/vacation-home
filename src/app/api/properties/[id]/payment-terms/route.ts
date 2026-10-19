@@ -1,6 +1,7 @@
 import { isUuid, notFound, parseBody } from "@/lib/api";
 import { paymentTermsSchema } from "@/lib/payment-terms/schema";
 import { getPaymentTerms, savePaymentTerms } from "@/lib/payment-terms/service";
+import { toTermsDto } from "@/lib/payment-terms/terms";
 import { getProperty } from "@/lib/properties/service";
 
 type Context = RouteContext<"/api/properties/[id]/payment-terms">;
@@ -14,7 +15,7 @@ type Context = RouteContext<"/api/properties/[id]/payment-terms">;
 export async function GET(_request: Request, { params }: Context) {
   const { id } = await params;
   if (!isUuid(id) || !(await getProperty(id))) return notFound("Property");
-  return Response.json(await getPaymentTerms(id));
+  return Response.json(toTermsDto(await getPaymentTerms(id)));
 }
 
 /** Replaces the terms; every field is required. Reserved bookings keep theirs. */
@@ -24,5 +25,5 @@ export async function PUT(request: Request, { params }: Context) {
   const body = await parseBody(request, paymentTermsSchema);
   if ("response" in body) return body.response;
   if (!(await getProperty(id))) return notFound("Property");
-  return Response.json(await savePaymentTerms(id, body.data));
+  return Response.json(toTermsDto(await savePaymentTerms(id, body.data)));
 }

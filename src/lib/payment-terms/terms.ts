@@ -45,6 +45,23 @@ export const DEFAULT_TERMS: PaymentTerms = {
   refundSchedule: null,
 };
 
+/**
+ * The terms as the payment-terms API and form see them: without the refund
+ * schedule, which has its own endpoint and editor (GitLab #123).
+ */
+export type PaymentTermsDto = Omit<PaymentTerms, "refundSchedule">;
+
+export function toTermsDto(terms: PaymentTerms): PaymentTermsDto {
+  return {
+    depositPercent: terms.depositPercent,
+    depositFixedMinor: terms.depositFixedMinor,
+    depositDueDays: terms.depositDueDays,
+    balanceDueDaysBefore: terms.balanceDueDaysBefore,
+    fullPaymentDueDays: terms.fullPaymentDueDays,
+    depositNonRefundable: terms.depositNonRefundable,
+  };
+}
+
 export type Hold = {
   /** What is due first: the deposit, or the full amount. */
   depositAmountMinor: number;
