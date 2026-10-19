@@ -6,7 +6,7 @@ import { newReference } from "@/lib/booking-requests/reference";
 import { reserveBooking } from "@/lib/bookings/hold";
 import { cancelBooking, createBooking, updateBooking } from "@/lib/bookings/service";
 import { db } from "@/lib/db";
-import { savePaymentTerms } from "@/lib/payment-terms/service";
+import { getPaymentTerms, savePaymentTerms, saveRefundSchedule } from "@/lib/payment-terms/service";
 import { DEFAULT_TERMS } from "@/lib/payment-terms/terms";
 import { recordPayment } from "@/lib/payments/service";
 
@@ -283,5 +283,85 @@ describe("cancelling", () => {
       { type: "income", amountMinor: 88_000 },
       { type: "income", amountMinor: -88_000 },
     ]);
+  });
+});
+
+describe("the refund schedule (GitLab #123)", () => {
+  // Free until 6 months before arrival, then 20% -> 100% over 5 months.
+  const SCHEDULE = { freeMonthsBefore: 6, rampMonths: 5, startPercent: 20, endPercent: 100 };
+  // STAY arrives 2027-03-01: free until 2026-09-01, ramp 2026-09-02 .. 2027-02-01.
+
+  it("is saved, changed and removed without touching the other terms, and they without it", async () => {
+    // Terms without a schedule: the column stays SQL NULL.
+    await savePaymentTerms(property.id, { ...DEFAULT_TERMS, depositPercent: 30 });
+    expect(await getPaymentTerms(property.id)).toMatchObject({
+      depositPercent: 30,
+      refundSchedule: null,
+    });
+    await saveRefundSchedule(property.id, SCHEDULE);
+    // Saving the terms again leaves the schedule alone.
+    await savePaymentTerms(property.id, { ...DEFAULT_TERMS, depositPercent: 25 });
+    expect(await getPaymentTerms(property.id)).toMatchObject({
+      depositPercent: 25,
+      refundSchedule: SCHEDULE,
+    });
+    await saveRefundSchedule(property.id, null);
+    expect((await getPaymentTerms(property.id)).refundSchedule).toBeNull();
+    const [{ stored }] = await db.$queryRaw<{ stored: string | null }[]>`
+      SELECT refund_schedule::text AS stored FROM payment_terms WHERE property_id = ${property.id}::uuid`;
+    expect(stored).toBeNull();
+  });
+
+  it("is left out of a snapshot without one, as before", async () => {
+    const booking = await request();
+    expect((await row(booking.id)).cancellationPolicy).toEqual({
+      depositNonRefundable: true,
+      depositAmountMinor: 22_000,
+    });
+  });
+
+  it("is part of the policy the guest agreed to, and kept through a change before reserve", async () => {
+    await saveRefundSchedule(property.id, SCHEDULE);
+    const booking = await request();
+    expect((await row(booking.id)).cancellationPolicy).toMatchObject({ schedule: SCHEDULE });
+
+    await saveRefundSchedule(property.id, null);
+    await reserveBooking(booking.id);
+    expect((await row(booking.id)).cancellationPolicy).toMatchObject({ schedule: SCHEDULE });
+  });
+
+  it("uses today where the home is: a minute after midnight in Berlin is the ramp's first day", async () => {
+    await saveRefundSchedule(property.id, SCHEDULE);
+    const booking = await reserved();
+    await pay(booking.id, "deposit", 22_000);
+    // 1 Sep 2026, 22:30 UTC: still the free window's last day in UTC, but
+    // already 2 Sep in Berlin (UTC+2): 20% of the 220.00 deposit is kept.
+    const now = new Date("2026-09-01T22:30:00Z");
+    const preview = await cancellationPreview(booking.id, now);
+    expect(preview).toMatchObject({ checkIn: "2027-03-01", today: "2026-09-02" });
+    expect(preview!.guest).toEqual({
+      receivedMinor: 22_000,
+      retainedMinor: 4_400,
+      refundMinor: 17_600,
+    });
+
+    await cancelBooking(booking.id, { by: "guest" }, now);
+    expect((await row(booking.id)).refundDueMinor).toBe(17_600);
+  });
+
+  it("refunds the whole deposit inside the free window", async () => {
+    await saveRefundSchedule(property.id, SCHEDULE);
+    const booking = await reserved();
+    await pay(booking.id, "deposit", 22_000);
+    await cancelBooking(booking.id, { by: "guest" }, new Date("2026-08-15T10:00:00Z"));
+    expect((await row(booking.id)).refundDueMinor).toBe(22_000);
+  });
+
+  it("leaves a booking from before the schedule under the whole-deposit rule", async () => {
+    const booking = await reserved();
+    await pay(booking.id, "deposit", 22_000);
+    await saveRefundSchedule(property.id, SCHEDULE);
+    await cancelBooking(booking.id, { by: "guest" }, new Date("2026-08-15T10:00:00Z"));
+    expect((await row(booking.id)).refundDueMinor).toBe(0);
   });
 });

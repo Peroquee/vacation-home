@@ -33,7 +33,7 @@ Choose **Guest link**. It shows the guest what to pay, your bank details and the
 **Cancel a booking**
 
 1. Choose **Cancel booking**.
-2. Say **who is cancelling**: the guest or you. The app suggests the refund under your terms; you can change it.
+2. Say **who is cancelling**: the guest or you. The app suggests the refund under your terms and today's date (with a schedule, it says how much of the deposit is kept today); you can change it.
 3. Send the refund, then record it under **Record payment** as a refund.
 
 ## What the price lines mean

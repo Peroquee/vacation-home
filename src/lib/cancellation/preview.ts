@@ -3,7 +3,9 @@
  * of a cancelled booking's refund is still to send (GitLab #116).
  * Server-side only.
  */
+import { type CalendarDate, fromUtcDate } from "@/lib/calendar-date";
 import { db } from "@/lib/db";
+import { todayIn } from "@/lib/finance/recurring";
 import { netReceived } from "@/lib/payments/service";
 
 import { type CancellationTerms, guestRefund, type GuestRefund } from "./policy";
@@ -12,21 +14,34 @@ import { bookingPolicy } from "./service";
 export type CancellationPreview = {
   /** The policy the booking is under. */
   policy: CancellationTerms;
+  /** Arrival, and today where the home is: where the schedule stands (GitLab #123). */
+  checkIn: CalendarDate;
+  today: CalendarDate;
   /** The guest cancelling: all but a non-refundable deposit back. */
   guest: GuestRefund;
   /** The owner cancelling: everything back. */
   ownerRefundMinor: number;
 };
 
-export async function cancellationPreview(id: string): Promise<CancellationPreview | null> {
+export async function cancellationPreview(
+  id: string,
+  now = new Date(),
+): Promise<CancellationPreview | null> {
   const booking = await db.booking.findUnique({
     where: { id },
-    include: { payments: { select: { kind: true, amountMinor: true } } },
+    include: {
+      payments: { select: { kind: true, amountMinor: true } },
+      property: { select: { timezone: true } },
+    },
   });
   if (!booking) return null;
   const policy = await bookingPolicy(booking);
-  const guest = guestRefund(policy, netReceived(booking.payments));
-  return { policy, guest, ownerRefundMinor: guest.receivedMinor };
+  const when = {
+    checkIn: fromUtcDate(booking.checkIn),
+    today: todayIn(booking.property.timezone, now),
+  };
+  const guest = guestRefund(policy, netReceived(booking.payments), when);
+  return { policy, ...when, guest, ownerRefundMinor: guest.receivedMinor };
 }
 
 /**

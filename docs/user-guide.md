@@ -114,6 +114,21 @@ a colour for the calendar.
     Guests see the tiers next to the price on the public page. 2 to 365
     nights, 1 to 90%, one tier per number of nights; none means no discount.
     Like the seasons, changing them later does not change existing bookings.
+  - **Cancellation: when the deposit is kept** (on the Prices page): by
+    default a guest who cancels loses the whole deposit (if it is set to
+    non-refundable under Payment terms). A schedule makes it depend on how
+    early they cancel: free until some months before arrival, then a share
+    that rises day by day from a first to a last percentage over some
+    months, and that last share until arrival. For example free until 6
+    months before, then 20% rising to 100% over 5 months. Months count back
+    from the arrival day (from 31 August, six months back is 28 February).
+    Guests see it in real dates for their stay - next to the estimate, above
+    the request's consent, on their booking page and in the reservation and
+    deposit emails - and the cancel dialog shows where today stands and
+    what that means for the refund. Anything paid beyond the deposit, and
+    the Kurtaxe, is always refunded. A booking keeps the schedule it was
+    requested under. The live example in the settings shows the dates for
+    an arrival of your choice.
   - **Kurtaxe** (on the Prices page): the municipality's tax per person
     and night, which you collect and pass on - it is not your income. Enter
     the rates from your municipality's statute: a rate per adult and night,

@@ -12,6 +12,7 @@ import { formattersFor } from "@/i18n/format";
 import { DEFAULT_LOCALE, isLocale, type Locale } from "@/i18n/locales";
 import { formatReference } from "@/lib/booking-requests/values";
 import { type CalendarDate, daysBetween } from "@/lib/calendar-date";
+import { describePolicy } from "@/lib/cancellation/describe";
 import type { CancellationTerms } from "@/lib/cancellation/policy";
 import type { BankDetails } from "@/lib/payments/bank";
 import { epcPayload, remittanceFor } from "@/lib/payments/girocode";
@@ -208,9 +209,14 @@ export async function renderEmail(context: EmailContext): Promise<RenderedEmail>
   // The policy the guest agreed to, with what asks them to pay (GitLab #116).
   const policy: Block[] = [
     {
-      p: booking.policy.depositNonRefundable
-        ? tc("nonRefundable", { deposit: money(booking.policy.depositAmountMinor) })
-        : tc("refundable"),
+      // With this stay's dates, as the guest's page and the cancel computation (GitLab #123).
+      p: describePolicy(
+        (key, values) => tc(key as Parameters<typeof tc>[0], values),
+        (date) => format.date(date, { style: "long" }),
+        booking.policy,
+        money(booking.policy.depositAmountMinor),
+        booking.checkIn,
+      ),
     },
   ];
 

@@ -704,6 +704,8 @@ model PaymentTerms {
   /// The cancellation policy (GitLab #116): the deposit is kept when a guest
   /// cancels; anything paid beyond it is refunded in full.
   depositNonRefundable Boolean  @default(true) @map("deposit_non_refundable")
+  /// When the deposit is kept, and how much (GitLab #123); null: all of it.
+  refundSchedule       Json?    @map("refund_schedule")
   createdAt            DateTime @default(now()) @map("created_at")
   updatedAt            DateTime @updatedAt @map("updated_at")
 

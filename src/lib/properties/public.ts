@@ -23,7 +23,10 @@ export type PublicPhotoDto = {
 export type PublicCancellation = Pick<
   PaymentTerms,
   "depositNonRefundable" | "depositPercent" | "depositFixedMinor"
->;
+> & {
+  /** When the deposit is kept, and how much (GitLab #123); null: all of it. */
+  schedule: PaymentTerms["refundSchedule"];
+};
 
 export type PublicPropertyDto = {
   slug: string;
@@ -99,6 +102,7 @@ export function toPublicDto(
       depositNonRefundable: terms.depositNonRefundable,
       depositPercent: terms.depositPercent,
       depositFixedMinor: terms.depositFixedMinor,
+      schedule: terms.refundSchedule,
     },
   };
 }

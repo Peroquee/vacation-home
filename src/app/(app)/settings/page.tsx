@@ -15,6 +15,7 @@ import { type Formatters } from "@/i18n/format";
 import { getFormat } from "@/i18n/get-format";
 import { getBookingRulesFor } from "@/lib/booking-rules/service";
 import { getPaymentTermsFor } from "@/lib/payment-terms/service";
+import { toTermsDto } from "@/lib/payment-terms/terms";
 import { DEFAULT_REQUEST_SETTINGS, getRequestSettingsFor } from "@/lib/booking-requests/settings";
 import { getBankDetailsFor } from "@/lib/payments/bank";
 import { outboxStatus } from "@/lib/email/outbox";
@@ -260,7 +261,7 @@ export default async function SettingsPage({ searchParams }: PageProps<"/setting
           <PaymentTermsSection
             properties={active.map((p) => ({
               property: { id: p.id, name: p.name, currency: p.currency },
-              terms: paymentTerms.get(p.id)!,
+              terms: toTermsDto(paymentTerms.get(p.id)!),
             }))}
           />
         ) : null}

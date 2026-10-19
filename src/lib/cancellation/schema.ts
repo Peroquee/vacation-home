@@ -5,6 +5,7 @@
 import { z } from "zod";
 
 import { MAX_AMOUNT_MINOR } from "@/lib/bookings/pricing";
+import { parseSchedule } from "@/lib/payment-terms/schema";
 
 import type { CancellationTerms } from "./policy";
 
@@ -26,10 +27,14 @@ export type CancelInput = z.infer<typeof cancelSchema>;
 const snapshotSchema = z.object({
   depositNonRefundable: z.boolean(),
   depositAmountMinor: z.int().min(0),
+  // GitLab #123; absent in snapshots from before, and then all is kept.
+  schedule: z.unknown().optional(),
 });
 
 /** A stored snapshot, read back defensively: null when it is not one. */
 export function parseSnapshot(value: unknown): CancellationTerms | null {
   const result = snapshotSchema.safeParse(value);
-  return result.success ? result.data : null;
+  if (!result.success) return null;
+  const { depositNonRefundable, depositAmountMinor, schedule } = result.data;
+  return { depositNonRefundable, depositAmountMinor, schedule: parseSchedule(schedule) };
 }

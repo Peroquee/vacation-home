@@ -218,6 +218,7 @@ export function StayPicker({
           {!requesting ? (
             <CancellationNote
               policy={cancellation}
+              checkIn={stay.checkIn ?? undefined}
               currency={currency}
               totalMinor={total}
               className="text-muted-foreground text-xs"
@@ -255,6 +256,7 @@ export function StayPicker({
                 cancellation={
                   <CancellationNote
                     policy={cancellation}
+                    checkIn={stay.checkIn ?? undefined}
                     currency={currency}
                     totalMinor={total}
                     className="text-sm"

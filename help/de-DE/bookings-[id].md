@@ -33,7 +33,7 @@ Wählen Sie **Link für den Gast**. Dort sieht der Gast, was zu zahlen ist, Ihre
 **Eine Buchung stornieren**
 
 1. Wählen Sie **Buchung stornieren**.
-2. Geben Sie an, **wer storniert**: der Gast oder Sie. Die App schlägt die Erstattung nach Ihren Bedingungen vor; Sie können sie ändern.
+2. Geben Sie an, **wer storniert**: der Gast oder Sie. Die App schlägt die Erstattung nach Ihren Bedingungen und dem heutigen Tag vor (mit einer Staffel steht dabei, wie viel der Anzahlung heute einbehalten wird); Sie können sie ändern.
 3. Überweisen Sie die Erstattung und tragen Sie sie danach unter **Zahlung erfassen** als Erstattung ein.
 
 ## Was die Zeilen im Preis bedeuten

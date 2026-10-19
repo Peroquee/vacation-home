@@ -25,6 +25,12 @@ Everything that sets a home's price. A stay is priced like this: night by night 
 2. Enter the rates from your municipality's statute: per adult and night, and age groups for children.
 3. Choose whether your prices **include** it or it is **added**.
 
+**Decide when the deposit is kept on cancellation**
+
+1. Under **Cancellation: when the deposit is kept**, tick the schedule.
+2. For example: free until 6 months before arrival, then rising over 5 months from 20% to 100%.
+3. Check the example below for an arrival day: that is how your guests read it. Save.
+
 ## Good to know
 
 - **Existing bookings keep their price** when you change anything here.

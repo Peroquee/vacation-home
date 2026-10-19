@@ -31,12 +31,12 @@ import { Input } from "@/components/ui/input";
 import { useAmountHint } from "@/i18n/use-amount-hint";
 import { useApiText } from "@/i18n/use-api-text";
 import { useFormat } from "@/i18n/use-format";
-import type { PaymentTerms } from "@/lib/payment-terms/terms";
+import type { PaymentTermsDto } from "@/lib/payment-terms/terms";
 import { inputToMinor, minorToInput } from "@/lib/properties/form";
 
 export type PropertyTerms = {
   property: { id: string; name: string; currency: string };
-  terms: PaymentTerms;
+  terms: PaymentTermsDto;
 };
 
 type FieldErrors = Record<string, string[] | undefined>;
@@ -103,7 +103,7 @@ type Values = {
   depositNonRefundable: boolean;
 };
 
-function toValues(terms: PaymentTerms, currency: string): Values {
+function toValues(terms: PaymentTermsDto, currency: string): Values {
   return {
     kind: terms.depositPercent !== null ? "percent" : "fixed",
     depositPercent: String(terms.depositPercent ?? 20),

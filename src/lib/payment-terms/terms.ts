@@ -11,6 +11,7 @@
  * when its day has ended there. No deadline falls after the day before
  * arrival, nor before today.
  */
+import type { RefundSchedule } from "@/lib/cancellation/policy";
 import { addDays, type CalendarDate, daysBetween } from "@/lib/calendar-date";
 
 export type PaymentTerms = {
@@ -25,6 +26,8 @@ export type PaymentTerms = {
   fullPaymentDueDays: number;
   /** The cancellation policy (GitLab #116): a guest who cancels forfeits the deposit. */
   depositNonRefundable: boolean;
+  /** How much of it, by when they cancel (GitLab #123); null: all of it. */
+  refundSchedule: RefundSchedule | null;
 };
 
 /**
@@ -39,7 +42,25 @@ export const DEFAULT_TERMS: PaymentTerms = {
   balanceDueDaysBefore: 30,
   fullPaymentDueDays: 3,
   depositNonRefundable: true,
+  refundSchedule: null,
 };
+
+/**
+ * The terms as the payment-terms API and form see them: without the refund
+ * schedule, which has its own endpoint and editor (GitLab #123).
+ */
+export type PaymentTermsDto = Omit<PaymentTerms, "refundSchedule">;
+
+export function toTermsDto(terms: PaymentTerms): PaymentTermsDto {
+  return {
+    depositPercent: terms.depositPercent,
+    depositFixedMinor: terms.depositFixedMinor,
+    depositDueDays: terms.depositDueDays,
+    balanceDueDaysBefore: terms.balanceDueDaysBefore,
+    fullPaymentDueDays: terms.fullPaymentDueDays,
+    depositNonRefundable: terms.depositNonRefundable,
+  };
+}
 
 export type Hold = {
   /** What is due first: the deposit, or the full amount. */

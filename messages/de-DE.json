@@ -580,6 +580,32 @@
       "summaryIncluded": "In den Preisen enthalten",
       "saved": "Kurtaxe gespeichert",
       "saveFailed": "Die Kurtaxe konnte nicht gespeichert werden"
+    },
+    "refundSchedule": {
+      "title": "Stornierung: wann die Anzahlung einbehalten wird",
+      "description": "Wie viel der Anzahlung ein Gast verliert, der storniert, je nachdem, wie früh: kostenlos bis einige Monate vor der Anreise, danach ein Anteil, der Tag für Tag steigt. Was über die Anzahlung hinaus bezahlt wurde, und die Kurtaxe, werden immer erstattet. Buchungen behalten die Staffel, unter der sie angefragt wurden.",
+      "refundable": "Die Anzahlung ist unter Einstellungen → Zahlungsbedingungen als erstattbar eingestellt; es wird also nichts einbehalten, egal was hier steht.",
+      "enabled": "Eine Staffel verwenden (sonst wird die ganze Anzahlung einbehalten)",
+      "none": "Bei einer Stornierung durch den Gast wird die ganze Anzahlung einbehalten.",
+      "free": "Kostenlos bis (Monate vor der Anreise)",
+      "freeHint": "Leer: kein kostenloser Zeitraum.",
+      "ramp": "Danach steigend über (Monate)",
+      "rampHint": "0: sofort der Endanteil.",
+      "start": "Einbehalt zu Beginn (%)",
+      "end": "Einbehalt am Ende (%)",
+      "exampleArrival": "Beispiel-Anreise",
+      "exampleDeposit": "Anzahlung",
+      "exampleRow": "Storniert am {date}: {percent} % der Anzahlung einbehalten",
+      "exampleNone": "Geben Sie ganze Zahlen ein, um ein Beispiel zu sehen.",
+      "saved": "Staffel gespeichert",
+      "saveFailed": "Die Staffel konnte nicht gespeichert werden",
+      "fieldNames": {
+        "freeMonthsBefore": "Kostenlos bis:",
+        "rampMonths": "Steigend über:",
+        "startPercent": "Einbehalt zu Beginn:",
+        "endPercent": "Einbehalt am Ende:",
+        "schedule": "Staffel:"
+      }
     }
   },
   "forms": {
@@ -899,7 +925,8 @@
       "refundHint": "Zurückzuzahlen. Tragen Sie die Erstattung bei den Zahlungen ein, sobald Sie sie überwiesen haben.",
       "loading": "Erstattung wird berechnet…",
       "loadFailed": "Die Erstattung konnte nicht berechnet werden",
-      "failed": "Stornierung fehlgeschlagen"
+      "failed": "Stornierung fehlgeschlagen",
+      "guestRuleToday": "Bei einer Stornierung heute ({date}) werden nach den Bedingungen der Buchung {percent} % der Anzahlung einbehalten: {kept}. Der Rest wird erstattet."
     }
   },
   "guests": {
@@ -1626,7 +1653,10 @@
     "periodsOverlap": "überschneidet sich mit einem anderen Zeitraum",
     "unknownGroup": "nennt eine Altersgruppe, die es nicht gibt",
     "guestsNotTheSum": "muss die Summe der Gäste nach Altersgruppe sein",
-    "guestRange": "müssen 1 bis 50 Gäste sein"
+    "guestRange": "müssen 1 bis 50 Gäste sein",
+    "rampAfterFree": "darf nicht länger sein als der kostenlose Zeitraum",
+    "startAboveEnd": "darf nicht über dem Endanteil liegen",
+    "rampNeedsFree": "braucht einen kostenlosen Zeitraum davor"
   },
   "stay": {
     "photoOf": "Foto {n} von {title}",
@@ -1929,7 +1959,13 @@
     "title": "Stornobedingungen",
     "nonRefundable": "Die Anzahlung von {deposit} wird bei einer Stornierung nicht erstattet. Was Sie darüber hinaus gezahlt haben, erhalten Sie vollständig zurück.",
     "refundable": "Wenn Sie stornieren, erhalten Sie alles, was Sie gezahlt haben, vollständig zurück.",
-    "percentOfTotal": "{percent} % des Gesamtpreises"
+    "percentOfTotal": "{percent} % des Gesamtpreises",
+    "rest": "Was über die Anzahlung hinaus bezahlt wurde, wird voll erstattet.",
+    "fixed": "Bei einer Stornierung werden {end} % der Anzahlung ({deposit}) einbehalten.",
+    "freeMonths": "Kostenlos stornierbar bis {free, plural, one {# Monat} other {# Monate}} vor der Anreise; danach werden bei einer Stornierung {end} % der Anzahlung ({deposit}) einbehalten.",
+    "freeRampMonths": "Kostenlos stornierbar bis {free, plural, one {# Monat} other {# Monate}} vor der Anreise. Danach steigt der Einbehalt bei einer Stornierung Tag für Tag von {start} % auf {end} % der Anzahlung ({deposit}), über {ramp, plural, one {# Monat} other {# Monate}}, und bleibt bis zur Anreise bei {end} %.",
+    "freeDated": "Kostenlos stornierbar bis {freeUntil}; ab dem Tag danach werden bei einer Stornierung {end} % der Anzahlung ({deposit}) einbehalten.",
+    "freeRampDated": "Kostenlos stornierbar bis {freeUntil}. Danach steigt der Einbehalt bei einer Stornierung Tag für Tag von {start} % auf {end} % der Anzahlung ({deposit}) bis {rampUntil}; ab dann werden {end} % einbehalten."
   },
   "start": {
     "title": "Unsere Ferienunterkünfte",

@@ -47,7 +47,12 @@ function renderPicker() {
         slug="lake-house"
         firstMonth="2026-07"
         maxGuests={4}
-        cancellation={{ depositNonRefundable: true, depositPercent: 20, depositFixedMinor: null }}
+        cancellation={{
+          depositNonRefundable: true,
+          depositPercent: 20,
+          depositFixedMinor: null,
+          schedule: null,
+        }}
       />
     </NextIntlClientProvider>,
   );
