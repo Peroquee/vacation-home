@@ -1,10 +1,11 @@
 /**
  * Payment terms per property (GitLab #114): storage. Server-side only.
  */
-import type { PaymentTerms as PaymentTermsRow } from "@/generated/prisma/client";
+import { Prisma, type PaymentTerms as PaymentTermsRow } from "@/generated/prisma/client";
+import type { RefundSchedule } from "@/lib/cancellation/policy";
 import { db, type DbClient } from "@/lib/db";
 
-import type { PaymentTermsInput } from "./schema";
+import { parseSchedule, type PaymentTermsInput } from "./schema";
 import { DEFAULT_TERMS, type PaymentTerms } from "./terms";
 
 function toTerms(row: PaymentTermsRow | null): PaymentTerms {
@@ -16,6 +17,7 @@ function toTerms(row: PaymentTermsRow | null): PaymentTerms {
     balanceDueDaysBefore: row.balanceDueDaysBefore,
     fullPaymentDueDays: row.fullPaymentDueDays,
     depositNonRefundable: row.depositNonRefundable,
+    refundSchedule: parseSchedule(row.refundSchedule),
   };
 }
 
@@ -48,6 +50,33 @@ export async function savePaymentTerms(
     where: { propertyId },
     create: { propertyId, ...input },
     update: input,
+  });
+  return toTerms(row);
+}
+
+/**
+ * Replaces a property's refund schedule (GitLab #123), or removes it with
+ * null; terms of its own are created from the defaults where it had none.
+ * Bookings keep the schedule they were requested under.
+ */
+export async function saveRefundSchedule(
+  propertyId: string,
+  schedule: RefundSchedule | null,
+): Promise<PaymentTerms> {
+  const value = schedule ?? Prisma.DbNull;
+  const row = await db.paymentTerms.upsert({
+    where: { propertyId },
+    create: {
+      propertyId,
+      depositPercent: DEFAULT_TERMS.depositPercent,
+      depositFixedMinor: DEFAULT_TERMS.depositFixedMinor,
+      depositDueDays: DEFAULT_TERMS.depositDueDays,
+      balanceDueDaysBefore: DEFAULT_TERMS.balanceDueDaysBefore,
+      fullPaymentDueDays: DEFAULT_TERMS.fullPaymentDueDays,
+      depositNonRefundable: DEFAULT_TERMS.depositNonRefundable,
+      refundSchedule: value,
+    },
+    update: { refundSchedule: value },
   });
   return toTerms(row);
 }

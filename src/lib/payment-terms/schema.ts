@@ -6,6 +6,7 @@
 import { z } from "zod";
 
 import { MAX_AMOUNT_MINOR } from "@/lib/bookings/pricing";
+import type { RefundSchedule } from "@/lib/cancellation/policy";
 import { isCalendarDate } from "@/lib/calendar-date";
 
 const whole = (min: number, max: number) =>
@@ -46,3 +47,38 @@ export const deadlinesSchema = z
   .refine((input) => input.depositDueOn || input.balanceDueOn, "at least one field is required");
 
 export type DeadlinesInput = z.infer<typeof deadlinesSchema>;
+
+export const RAMP_AFTER_FREE = "must not be longer than the free window";
+export const START_ABOVE_END = "must not be above the share at the end";
+export const RAMP_NEEDS_FREE = "needs a free window to follow";
+
+/** PUT /api/properties/:id/refund-schedule (GitLab #123); null for none. */
+export const refundScheduleSchema = z
+  .strictObject({
+    freeMonthsBefore: whole(0, 24).nullable(),
+    rampMonths: whole(0, 24).default(0),
+    startPercent: whole(0, 100),
+    endPercent: whole(0, 100),
+  })
+  .superRefine((s, context) => {
+    if (s.startPercent > s.endPercent) {
+      context.addIssue({ code: "custom", path: ["startPercent"], message: START_ABOVE_END });
+    }
+    if (s.rampMonths > 0 && s.freeMonthsBefore === null) {
+      context.addIssue({ code: "custom", path: ["rampMonths"], message: RAMP_NEEDS_FREE });
+    }
+    if (s.freeMonthsBefore !== null && s.rampMonths > s.freeMonthsBefore) {
+      context.addIssue({ code: "custom", path: ["rampMonths"], message: RAMP_AFTER_FREE });
+    }
+  });
+
+export const refundScheduleBodySchema = z.strictObject({
+  schedule: refundScheduleSchema.nullable(),
+});
+
+/** A stored schedule, read back through the API's own rules; null when none or not one. */
+export function parseSchedule(value: unknown): RefundSchedule | null {
+  if (value === null || value === undefined) return null;
+  const parsed = refundScheduleSchema.safeParse(value);
+  return parsed.success ? parsed.data : null;
+}

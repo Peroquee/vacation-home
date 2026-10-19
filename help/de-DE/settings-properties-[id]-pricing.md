@@ -25,6 +25,12 @@ Alles, was den Preis einer Unterkunft bestimmt. Ein Aufenthalt wird so berechnet
 2. Tragen Sie die Sätze aus der Satzung Ihrer Gemeinde ein: pro Erwachsenem und Nacht, und Altersgruppen für Kinder.
 3. Wählen Sie, ob Ihre Preise sie **enthalten** oder ob sie **dazukommt**.
 
+**Festlegen, wann die Anzahlung bei Stornierung einbehalten wird**
+
+1. Haken Sie bei **Stornierung: wann die Anzahlung einbehalten wird** die Staffel an.
+2. Zum Beispiel: kostenlos bis 6 Monate vor der Anreise, danach steigend über 5 Monate von 20 % auf 100 %.
+3. Prüfen Sie das Beispiel darunter mit einem Anreisetag: So lesen es Ihre Gäste. Speichern Sie.
+
 ## Gut zu wissen
 
 - **Bestehende Buchungen behalten ihren Preis**, wenn Sie hier etwas ändern.

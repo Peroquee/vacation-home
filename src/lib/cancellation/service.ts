@@ -23,6 +23,7 @@ export async function currentTerms(
   return {
     depositNonRefundable: terms.depositNonRefundable,
     depositAmountMinor: depositFor(totalMinor, terms),
+    schedule: terms.refundSchedule,
   };
 }
 

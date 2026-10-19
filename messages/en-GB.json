@@ -580,6 +580,32 @@
       "summaryIncluded": "Included in the rates",
       "saved": "Kurtaxe saved",
       "saveFailed": "Could not save the Kurtaxe"
+    },
+    "refundSchedule": {
+      "title": "Cancellation: when the deposit is kept",
+      "description": "How much of the deposit a guest who cancels loses, by how early they cancel: free until some months before arrival, then a share that rises day by day. Anything paid beyond the deposit, and the Kurtaxe, is always refunded. Bookings keep the schedule they were requested under.",
+      "refundable": "The deposit is set to refundable under Settings → Payment terms, so nothing is kept whatever this says.",
+      "enabled": "Use a refund schedule (otherwise all of the deposit is kept)",
+      "none": "All of the deposit is kept when a guest cancels.",
+      "free": "Free until (months before arrival)",
+      "freeHint": "Empty: no free window.",
+      "ramp": "Then rising over (months)",
+      "rampHint": "0: the end share straight away.",
+      "start": "Share kept at first (%)",
+      "end": "Share kept at the end (%)",
+      "exampleArrival": "Example arrival",
+      "exampleDeposit": "deposit",
+      "exampleRow": "Cancelled on {date}: {percent}% of the deposit kept",
+      "exampleNone": "Enter whole numbers to see an example.",
+      "saved": "Refund schedule saved",
+      "saveFailed": "Could not save the refund schedule",
+      "fieldNames": {
+        "freeMonthsBefore": "Free until:",
+        "rampMonths": "Rising over:",
+        "startPercent": "Share at first:",
+        "endPercent": "Share at the end:",
+        "schedule": "Schedule:"
+      }
     }
   },
   "forms": {
@@ -899,7 +925,8 @@
       "refundHint": "To be paid back. Record it under Payments once you have sent it.",
       "loading": "Working out the refund…",
       "loadFailed": "Could not work out the refund",
-      "failed": "Could not cancel"
+      "failed": "Could not cancel",
+      "guestRuleToday": "Cancelled today ({date}), {percent}% of the deposit is kept under the booking’s policy: {kept}. The rest is refunded."
     }
   },
   "guests": {
@@ -1626,7 +1653,10 @@
     "periodsOverlap": "overlaps another period",
     "unknownGroup": "names an age group that does not exist",
     "guestsNotTheSum": "must be the sum of the guests by age group",
-    "guestRange": "must be from 1 to 50 guests"
+    "guestRange": "must be from 1 to 50 guests",
+    "rampAfterFree": "must not be longer than the free window",
+    "startAboveEnd": "must not be above the share at the end",
+    "rampNeedsFree": "needs a free window to follow"
   },
   "stay": {
     "photoOf": "Photo {n} of {title}",
@@ -1929,7 +1959,13 @@
     "title": "Cancellation policy",
     "nonRefundable": "The deposit of {deposit} is non-refundable if you cancel. Anything paid beyond the deposit is refunded in full.",
     "refundable": "If you cancel, everything you have paid is refunded in full.",
-    "percentOfTotal": "{percent}% of the total"
+    "percentOfTotal": "{percent}% of the total",
+    "rest": "Anything paid beyond the deposit is refunded in full.",
+    "fixed": "If you cancel, {end}% of the deposit ({deposit}) is kept.",
+    "freeMonths": "Free cancellation up to {free, plural, one {# month} other {# months}} before arrival; after that, {end}% of the deposit ({deposit}) is kept if you cancel.",
+    "freeRampMonths": "Free cancellation up to {free, plural, one {# month} other {# months}} before arrival. After that, the share of the deposit ({deposit}) kept if you cancel rises day by day from {start}% to {end}% over {ramp, plural, one {# month} other {# months}}, and stays at {end}% until arrival.",
+    "freeDated": "Free cancellation until {freeUntil}; from the next day, {end}% of the deposit ({deposit}) is kept if you cancel.",
+    "freeRampDated": "Free cancellation until {freeUntil}. After that, the share of the deposit ({deposit}) kept if you cancel rises day by day from {start}% to {end}% until {rampUntil}; from then on, {end}% of it is kept."
   },
   "start": {
     "title": "Our holiday homes",

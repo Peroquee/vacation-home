@@ -103,6 +103,7 @@ export async function reserveBooking(id: string, now = new Date()): Promise<Writ
         },
         terms,
       );
+      const agreed = parseSnapshot(current.cancellationPolicy);
       const booking = await tx.booking.update({
         where: { id },
         data: {
@@ -119,9 +120,9 @@ export async function reserveBooking(id: string, now = new Date()): Promise<Writ
           // a booking without one takes the property's now; the deposit it
           // keeps is the one the guest is now asked for, by today's total.
           cancellationPolicy: {
-            depositNonRefundable:
-              parseSnapshot(current.cancellationPolicy)?.depositNonRefundable ??
-              terms.depositNonRefundable,
+            depositNonRefundable: agreed?.depositNonRefundable ?? terms.depositNonRefundable,
+            // When it is kept (GitLab #123): the schedule the guest agreed to.
+            schedule: agreed ? (agreed.schedule ?? null) : terms.refundSchedule,
             // Never the Kurtaxe: it goes back in full (GitLab #120).
             depositAmountMinor: depositFor(
               current.totalAmountMinor - current.touristTaxMinor,

@@ -117,3 +117,41 @@ test("a guest's cancellation keeps the deposit, frees the dates and refunds the 
   );
   expect(ledger).toEqual([-88_000, 22_000, 88_000]);
 });
+
+test("a refund schedule set on the Prices page is shown to guests", async ({
+  page,
+  request,
+  browser,
+}) => {
+  const property = (await (
+    await request.post("/api/properties", {
+      data: {
+        name: "Schedule Lake",
+        timezone: "UTC",
+        currency: "EUR",
+        defaultNightlyRateMinor: 25_000,
+        slug: "schedule-lake",
+        publiclyListed: true,
+      },
+    })
+  ).json()) as { id: string };
+
+  await page.goto(`/settings/properties/${property.id}/pricing`);
+  const card = page.locator("#refund-schedule");
+  await card.getByRole("checkbox", { name: /Use a refund schedule/ }).click();
+  // The defaults are the usual example: free until 6 months, 20% -> 100% over 5.
+  await card.getByLabel("Example arrival").fill("2027-08-12");
+  await expect(card).toContainText("Free cancellation until 12 February 2027.");
+  await expect(card).toContainText("until 12 July 2027");
+  await expect(card).toContainText("Cancelled on 13 February 2027: 20% of the deposit kept");
+  await card.getByRole("button", { name: "Save" }).click();
+  await expect(page.getByText("Refund schedule saved")).toBeVisible();
+
+  const visitor = await browser.newContext({ storageState: { cookies: [], origins: [] } });
+  const publicPage = await visitor.newPage();
+  await publicPage.goto("/stay/schedule-lake");
+  await expect(
+    publicPage.getByText(/^Free cancellation up to 6 months before arrival\./),
+  ).toBeVisible();
+  await visitor.close();
+});

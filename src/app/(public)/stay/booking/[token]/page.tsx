@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 
 import { PriceLines } from "@/components/price-lines";
+import { describePolicy } from "@/lib/cancellation/describe";
 import { getLocale, getTranslations } from "next-intl/server";
 import { notFound } from "next/navigation";
 
@@ -132,11 +133,14 @@ export default async function GuestBookingPage({ params }: PageProps<"/stay/book
             {tCancellation("title")}
           </h2>
           <p className="text-sm">
-            {view.policy.depositNonRefundable
-              ? tCancellation("nonRefundable", {
-                  deposit: money(view.policy.depositAmountMinor),
-                })
-              : tCancellation("refundable")}
+            {/* With this stay's dates (GitLab #123). */}
+            {describePolicy(
+              (key, values) => tCancellation(key as Parameters<typeof tCancellation>[0], values),
+              (date) => format.date(date, { style: "long" }),
+              view.policy,
+              money(view.policy.depositAmountMinor),
+              view.checkIn,
+            )}
           </p>
         </section>
       ) : null}

@@ -29,6 +29,7 @@ import { type CalendarDate, fromUtcDate, toUtcDate } from "@/lib/calendar-date";
 import { guestRefund } from "@/lib/cancellation/policy";
 import type { CancelInput } from "@/lib/cancellation/schema";
 import { bookingPolicy, policySnapshot } from "@/lib/cancellation/service";
+import { todayIn } from "@/lib/finance/recurring";
 import { db, type DbClient } from "@/lib/db";
 import { isPrismaError, raisedByDatabase } from "@/lib/db-errors";
 import { syncBookingIncome } from "@/lib/finance/booking-income";
@@ -527,16 +528,24 @@ export async function cancelBooking(
   const result = await locked(head.propertyId, { error: "not_found" }, async (tx) => {
     const current = await tx.booking.findUnique({
       where: { id },
-      include: { payments: { select: { kind: true, amountMinor: true } } },
+      include: {
+        payments: { select: { kind: true, amountMinor: true } },
+        property: { select: { timezone: true } },
+      },
     });
     if (!current) return { error: "not_found" };
     if (current.status !== "cancelled") {
       const received = Math.max(0, receivedOf(current.payments));
+      // By the day it is cancelled, where the home is (GitLab #123).
+      const when = {
+        checkIn: fromUtcDate(current.checkIn),
+        today: todayIn(current.property.timezone, now),
+      };
       const refund =
         input.refundMinor ??
         (input.by === "owner"
           ? received
-          : guestRefund(await bookingPolicy(current, tx), received).refundMinor);
+          : guestRefund(await bookingPolicy(current, tx), received, when).refundMinor);
       if (refund > received) {
         return { error: "invalid", field: "refundMinor", message: REFUND_ABOVE_RECEIVED };
       }

@@ -28,10 +28,17 @@ import { Input } from "@/components/ui/input";
 import { useAmountHint } from "@/i18n/use-amount-hint";
 import { useApiText } from "@/i18n/use-api-text";
 import { useFormat } from "@/i18n/use-format";
-import type { CancellationTerms, GuestRefund } from "@/lib/cancellation/policy";
+import type { CalendarDate } from "@/lib/calendar-date";
+import { type CancellationTerms, type GuestRefund, keptPercentOn } from "@/lib/cancellation/policy";
 import { inputToMinor, minorToInput } from "@/lib/properties/form";
 
-type Preview = { policy: CancellationTerms; guest: GuestRefund; ownerRefundMinor: number };
+type Preview = {
+  policy: CancellationTerms;
+  checkIn: CalendarDate;
+  today: CalendarDate;
+  guest: GuestRefund;
+  ownerRefundMinor: number;
+};
 type By = "guest" | "owner";
 
 /**
@@ -155,9 +162,19 @@ export function CancelDialog({ id, currency }: { id: string; currency: string })
                 {t("received", { amount: money(preview.guest.receivedMinor) })}{" "}
                 {by === "owner"
                   ? t("ownerRule")
-                  : preview.policy.depositNonRefundable
-                    ? t("guestRule", { deposit: money(preview.policy.depositAmountMinor) })
-                    : t("guestRuleRefundable")}
+                  : !preview.policy.depositNonRefundable
+                    ? t("guestRuleRefundable")
+                    : preview.policy.schedule
+                      ? // Where today stands on the schedule (GitLab #123).
+                        t("guestRuleToday", {
+                          date: format.date(preview.today, { style: "long" }),
+                          percent:
+                            Math.round(
+                              keptPercentOn(preview.policy, preview.checkIn, preview.today) * 10,
+                            ) / 10,
+                          kept: money(preview.guest.retainedMinor),
+                        })
+                      : t("guestRule", { deposit: money(preview.policy.depositAmountMinor) })}
               </p>
               <Field data-invalid={error ? true : undefined}>
                 <FieldLabel htmlFor={`cancel-${id}-refund`}>{label}</FieldLabel>

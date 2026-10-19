@@ -5,6 +5,8 @@ import { getTranslations } from "next-intl/server";
 
 import { PageHeader } from "@/components/page-header";
 import { PriceLines } from "@/components/price-lines";
+import { describePolicy } from "@/lib/cancellation/describe";
+import { bookingPolicy } from "@/lib/cancellation/service";
 import { SyncBadge } from "@/components/sync-badge";
 import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -72,6 +74,11 @@ export default async function BookingPage({ params }: PageProps<"/bookings/[id]"
   const money = (minor: number) => format.money(minor, booking.currency);
   // As the engine worked it out when the price was set (GitLab #118).
   const breakdown = breakdownOf(booking);
+  // The cancellation policy the guest agreed to, in this stay's dates (GitLab #123).
+  const [policy, tCancellation] = await Promise.all([
+    bookingPolicy(booking),
+    getTranslations("cancellation"),
+  ]);
   const guests = guestsOf(booking);
   const tGuests = await getTranslations("guestFields");
 
@@ -241,6 +248,19 @@ export default async function BookingPage({ params }: PageProps<"/bookings/[id]"
           </CardHeader>
           <CardContent>
             <PriceLines breakdown={breakdown} totalMinor={booking.totalAmountMinor} />
+            {booking.status !== "cancelled" && booking.status !== "expired" ? (
+              <p className="text-muted-foreground mt-3 text-sm">
+                <span className="text-foreground font-medium">{tCancellation("title")}:</span>{" "}
+                {describePolicy(
+                  (key, values) =>
+                    tCancellation(key as Parameters<typeof tCancellation>[0], values),
+                  (date) => format.date(date, { style: "long" }),
+                  policy,
+                  money(policy.depositAmountMinor),
+                  booking.checkIn,
+                )}
+              </p>
+            ) : null}
             {booking.totalIsManual ? (
               <p className="text-muted-foreground mt-2 text-sm">
                 {breakdown.kind === "computed" && breakdown.totalMinor !== booking.totalAmountMinor
