@@ -4,11 +4,11 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "node scripts/check-messages.mjs && next build",
+    "build": "node scripts/check-messages.mjs && node scripts/check-help.mjs && next build",
     "bundle:report": "node scripts/bundle-report.mjs",
     "build:tools": "node scripts/build-tools.mjs",
     "start": "next start",
-    "lint": "eslint && node scripts/check-messages.mjs",
+    "lint": "eslint && node scripts/check-messages.mjs && node scripts/check-help.mjs",
     "lint:fix": "eslint --fix",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
@@ -55,6 +55,7 @@
     "react-is": "19.2.8",
     "react-markdown": "10.1.0",
     "recharts": "3.10.1",
+    "remark-gfm": "4.0.1",
     "sharp": "0.35.5",
     "sonner": "^2.0.8",
     "zod": "^4.5.4"

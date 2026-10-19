@@ -1,4 +1,5 @@
 import Markdown, { type Components } from "react-markdown";
+import remarkGfm from "remark-gfm";
 
 /**
  * Owner-written Markdown on the public site (GitLab #112): the Impressum's
@@ -15,6 +16,12 @@ const ALLOWED = [
   "em",
   "del",
   "a",
+  "table",
+  "thead",
+  "tbody",
+  "tr",
+  "th",
+  "td",
   "h1",
   "h2",
   "h3",
@@ -30,11 +37,29 @@ const ALLOWED = [
   "hr",
 ];
 
-/** The link target when it is http(s) or mailto, else nothing. */
+/** The link target when it is http(s), mailto or a section of the same page, else nothing. */
 export function safeHref(url: string): string {
   const value = url.trim();
-  return /^(https?:\/\/|mailto:)/i.test(value) ? value : "";
+  return /^(https?:\/\/|mailto:)/i.test(value) || /^#[\w-]+$/.test(value) ? value : "";
 }
+
+/** A heading's anchor, as GitHub makes them: "Booking platforms (iCal)" -> "booking-platforms-ical". */
+export function headingId(text: string): string {
+  return text
+    .toLowerCase()
+    .replace(/[^\p{L}\p{N}\s-]/gu, "")
+    .trim()
+    .replace(/\s/g, "-");
+}
+
+const textOf = (node: React.ReactNode): string =>
+  typeof node === "string" || typeof node === "number"
+    ? String(node)
+    : Array.isArray(node)
+      ? node.map(textOf).join("")
+      : node && typeof node === "object" && "props" in node
+        ? textOf((node as { props: { children?: React.ReactNode } }).props.children)
+        : "";
 
 const components: Components = {
   a: ({ href, children }) =>
@@ -59,7 +84,28 @@ const components: Components = {
   ),
 };
 
-export function SafeMarkdown({ children }: { children: string }) {
+/** Headings with anchors, for a long document such as the user guide. */
+const anchored: Components = {
+  h2: ({ children }) => (
+    <h2 id={headingId(textOf(children))} className="mt-8 scroll-mt-4 text-xl font-semibold">
+      {children}
+    </h2>
+  ),
+  h3: ({ children }) => (
+    <h3 id={headingId(textOf(children))} className="mt-6 scroll-mt-4 text-lg font-semibold">
+      {children}
+    </h3>
+  ),
+};
+
+export function SafeMarkdown({
+  children,
+  anchors = false,
+}: {
+  children: string;
+  /** Give h2 and h3 ids, for links to their sections. */
+  anchors?: boolean;
+}) {
   return (
     <div className="space-y-3 leading-relaxed">
       <Markdown
@@ -67,7 +113,9 @@ export function SafeMarkdown({ children }: { children: string }) {
         allowedElements={ALLOWED}
         unwrapDisallowed
         urlTransform={safeHref}
-        components={components}
+        components={anchors ? { ...components, ...anchored } : components}
+        // Tables and the like, for the user guide; the owner's own texts too.
+        remarkPlugins={[remarkGfm]}
       >
         {children}
       </Markdown>

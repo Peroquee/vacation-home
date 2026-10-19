@@ -1,5 +1,6 @@
 "use client";
 
+import { Hint } from "@/components/help/hint";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
@@ -284,6 +285,9 @@ function PaymentTermsDialog({ property, terms }: PropertyTerms) {
               />
               <FieldLabel htmlFor={`${prefix}-depositNonRefundable`}>
                 {t("fields.depositNonRefundable")}
+                <Hint label={t("hintLabels.depositNonRefundable")}>
+                  {t("hintTexts.depositNonRefundable")}
+                </Hint>
               </FieldLabel>
             </Field>
             <FieldDescription>{t("hints.depositNonRefundable")}</FieldDescription>

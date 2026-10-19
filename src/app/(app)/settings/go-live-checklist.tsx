@@ -1,6 +1,7 @@
 import { CircleAlert, CircleCheck, CircleX } from "lucide-react";
 import { getTranslations } from "next-intl/server";
 
+import { Hint } from "@/components/help/hint";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { imprintComplete, type Legal, policyUnchecked } from "@/lib/legal/legal";
 
@@ -57,7 +58,10 @@ export async function GoLiveChecklist({
     <Card id="go-live">
       <CardHeader>
         <CardTitle>{t("title")}</CardTitle>
-        <CardDescription>{ready ? t("ready") : t("notReady")}</CardDescription>
+        <CardDescription>
+          {ready ? t("ready") : t("notReady")}
+          <Hint label={t("hintLabel")}>{t("hintText")}</Hint>
+        </CardDescription>
       </CardHeader>
       <CardContent>
         <ul className="space-y-2 text-sm">

@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { Home } from "lucide-react";
 import { useTranslations } from "next-intl";
 
+import { HelpButton } from "@/components/help/help-button";
 import { MobileNav } from "@/components/shell/mobile-nav";
 import { SidebarNav } from "@/components/shell/sidebar-nav";
 import { UserMenu } from "@/components/shell/user-menu";
@@ -31,7 +32,9 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
       <aside className="bg-sidebar text-sidebar-foreground fixed inset-y-0 left-0 z-40 hidden w-64 flex-col border-r md:flex">
         <Brand />
         <SidebarNav badges={badges} />
-        <div className="border-t p-2">
+        <div className="space-y-1 border-t p-2">
+          {/* Help for the page you are on (GitLab #121). */}
+          <HelpButton />
           <UserMenu user={user} />
         </div>
       </aside>
@@ -39,7 +42,8 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
       {/* Mobile top bar */}
       <header className="bg-sidebar text-sidebar-foreground sticky top-0 z-30 flex h-14 items-center justify-between border-b px-2 md:hidden">
         <Brand />
-        <div className="w-auto max-w-[60%]">
+        <div className="flex w-auto max-w-[60%] items-center gap-1">
+          <HelpButton compact />
           <UserMenu user={user} />
         </div>
       </header>

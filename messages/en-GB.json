@@ -143,6 +143,12 @@
         "revoked": "Google no longer allows this app to use your calendar, for example because access was removed in your Google account.",
         "key_changed": "The server's encryption key changed, so the stored Google access can no longer be read.",
         "unknown": "Google access has stopped working."
+      },
+      "hintLabels": {
+        "connection": "What does connecting Google do?"
+      },
+      "hintTexts": {
+        "connection": "Your bookings appear in your Google Calendar, and appointments you add there can block days here. Only the dates, the number of guests and the amount go to Google, never a guest's name or contact. You can disconnect at any time."
       }
     },
     "archive": {
@@ -199,7 +205,13 @@
       "slug": "Web address",
       "slugHint": "Its page: {path}. Lowercase letters, digits and hyphens.",
       "publiclyListed": "Show on the public booking site",
-      "needsLegal": "Fill in the imprint and privacy policy under Legal pages first."
+      "needsLegal": "Fill in the imprint and privacy policy under Legal pages first.",
+      "hintLabels": {
+        "slug": "What is the web address?"
+      },
+      "hintTexts": {
+        "slug": "The last part of the home's public page, e.g. …/stay/lake-house. Choose something short that guests can type. Changing it later breaks links you have already shared."
+      }
     },
     "doubleBookings": {
       "title": "{count, plural, one {# double booking} other {# double bookings}}",
@@ -254,7 +266,13 @@
       "rotateTitle": "Make a new calendar link?",
       "rotateDescription": "The current link stops working at once. Give the new one to every platform that imports this calendar.",
       "rotateConfirm": "Make a new link",
-      "rotated": "New calendar link made"
+      "rotated": "New calendar link made",
+      "hintLabels": {
+        "exportUrl": "What do I do with this link?"
+      },
+      "hintTexts": {
+        "exportUrl": "Copy it into Airbnb, Booking.com or another platform where it asks to import a calendar. The platform then sees your bookings and blocked days, without any guest's name, and won't sell those nights twice. Keep the link to yourself."
+      }
     },
     "bookingRules": {
       "title": "Booking rules",
@@ -319,6 +337,12 @@
         "full": "at short notice all within {days, plural, one {# day} other {# days}}",
         "nonRefundable": "deposit non-refundable",
         "refundable": "deposit refundable"
+      },
+      "hintLabels": {
+        "depositNonRefundable": "What does a non-refundable deposit mean?"
+      },
+      "hintTexts": {
+        "depositNonRefundable": "When a guest cancels, you keep the deposit they have paid; anything they paid beyond it goes back to them. When you cancel, the guest always gets everything back. Guests read this before they send a request."
       }
     },
     "requestSettings": {
@@ -437,7 +461,9 @@
         "done": "Done",
         "missing": "Missing",
         "warning": "Warning"
-      }
+      },
+      "hintLabel": "What does going live mean?",
+      "hintText": "Once the imprint and privacy policy are filled in, you can tick \"Show on the public booking site\" for a home. Guests can then find it and send requests. Warnings, such as missing bank details, don't stop you, but guests would not know where to pay."
     },
     "seasons": {
       "title": "Seasonal prices",
@@ -1696,6 +1722,13 @@
       "girocode": "Scan with your banking app (GiroCode)",
       "girocodeAlt": "GiroCode: a QR code with this transfer for your banking app",
       "noBankDetails": "The owner will send you the bank details."
+    },
+    "howItWorks": {
+      "title": "How booking works",
+      "request": "<b>Send a request:</b> pick your dates and send us a request. It costs nothing and commits you to nothing yet.",
+      "answer": "<b>Our answer:</b> we get back to you. If we accept, the dates are reserved for you.",
+      "deposit": "<b>Deposit:</b> you transfer the deposit by the deadline given. That confirms the booking.",
+      "balance": "<b>Balance:</b> you transfer the rest before you arrive. Then we send you the exact address and everything for your arrival."
     }
   },
   "listing": {
@@ -1928,5 +1961,17 @@
     "children": "Children aged {from}–{to}",
     "summaryAdults": "{count, plural, one {# adult} other {# adults}}",
     "summaryChildren": "{count, plural, one {# child} other {# children}} aged {from}–{to}"
+  },
+  "help": {
+    "button": "Help",
+    "buttonLabel": "Help for this page",
+    "panelTitle": "Help",
+    "loading": "Loading the help…",
+    "failed": "The help could not be loaded. Please try again.",
+    "none": "There is no help for this page yet.",
+    "more": "More in the user guide",
+    "guideTitle": "User guide",
+    "guideDescription": "Everything the app does, step by step. The help button on each page leads to the matching section.",
+    "hint": "What does this mean?"
   }
 }

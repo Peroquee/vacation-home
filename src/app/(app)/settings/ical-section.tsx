@@ -1,5 +1,6 @@
 "use client";
 
+import { Hint } from "@/components/help/hint";
 import { Check, Copy, RefreshCw } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
@@ -336,7 +337,10 @@ function ExportFeed({ propertyId, url }: { propertyId: string; url: string | nul
         />
         <FieldLabel htmlFor={`${id}-export`}>{t("exportEnable")}</FieldLabel>
       </Field>
-      <p className="text-muted-foreground text-sm">{t("exportHint")}</p>
+      <p className="text-muted-foreground text-sm">
+        {t("exportHint")}
+        <Hint label={t("hintLabels.exportUrl")}>{t("hintTexts.exportUrl")}</Hint>
+      </p>
       {url ? (
         <div className="space-y-2">
           <div className="flex gap-2">

@@ -9,6 +9,12 @@ const nextConfig: NextConfig = {
   // Renders PDFs with its own font and layout engines; loaded as a plain
   // Node module rather than bundled (src/lib/reports).
   serverExternalPackages: ["@react-pdf/renderer"],
+  // Read from disk at run time (GitLab #121): the help texts and the user
+  // guide, so the standalone server carries them.
+  outputFileTracingIncludes: {
+    "/api/help/[key]": ["./help/**/*.md"],
+    "/help": ["./docs/user-guide.md"],
+  },
 };
 
 // Build-time error-tracker setup: names the release and uploads source maps,
