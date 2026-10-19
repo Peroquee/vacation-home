@@ -6,7 +6,7 @@ import { newReference } from "@/lib/booking-requests/reference";
 import { reserveBooking } from "@/lib/bookings/hold";
 import { cancelBooking, createBooking, updateBooking } from "@/lib/bookings/service";
 import { db } from "@/lib/db";
-import { savePaymentTerms, saveRefundSchedule } from "@/lib/payment-terms/service";
+import { getPaymentTerms, savePaymentTerms, saveRefundSchedule } from "@/lib/payment-terms/service";
 import { DEFAULT_TERMS } from "@/lib/payment-terms/terms";
 import { recordPayment } from "@/lib/payments/service";
 
@@ -290,6 +290,35 @@ describe("the refund schedule (GitLab #123)", () => {
   // Free until 6 months before arrival, then 20% -> 100% over 5 months.
   const SCHEDULE = { freeMonthsBefore: 6, rampMonths: 5, startPercent: 20, endPercent: 100 };
   // STAY arrives 2027-03-01: free until 2026-09-01, ramp 2026-09-02 .. 2027-02-01.
+
+  it("is saved, changed and removed without touching the other terms, and they without it", async () => {
+    // Terms without a schedule: the column stays SQL NULL.
+    await savePaymentTerms(property.id, { ...DEFAULT_TERMS, depositPercent: 30 });
+    expect(await getPaymentTerms(property.id)).toMatchObject({
+      depositPercent: 30,
+      refundSchedule: null,
+    });
+    await saveRefundSchedule(property.id, SCHEDULE);
+    // Saving the terms again leaves the schedule alone.
+    await savePaymentTerms(property.id, { ...DEFAULT_TERMS, depositPercent: 25 });
+    expect(await getPaymentTerms(property.id)).toMatchObject({
+      depositPercent: 25,
+      refundSchedule: SCHEDULE,
+    });
+    await saveRefundSchedule(property.id, null);
+    expect((await getPaymentTerms(property.id)).refundSchedule).toBeNull();
+    const [{ stored }] = await db.$queryRaw<{ stored: string | null }[]>`
+      SELECT refund_schedule::text AS stored FROM payment_terms WHERE property_id = ${property.id}::uuid`;
+    expect(stored).toBeNull();
+  });
+
+  it("is left out of a snapshot without one, as before", async () => {
+    const booking = await request();
+    expect((await row(booking.id)).cancellationPolicy).toEqual({
+      depositNonRefundable: true,
+      depositAmountMinor: 22_000,
+    });
+  });
 
   it("is part of the policy the guest agreed to, and kept through a change before reserve", async () => {
     await saveRefundSchedule(property.id, SCHEDULE);

@@ -46,10 +46,23 @@ export async function savePaymentTerms(
   propertyId: string,
   input: PaymentTermsInput,
 ): Promise<PaymentTerms> {
+  // Only the terms' own fields: never the refund schedule (saved on its
+  // own, GitLab #123), even when a whole PaymentTerms object is passed -
+  // its null would be stored as JSON null, which the database refuses.
+  const data = {
+    depositPercent: input.depositPercent,
+    depositFixedMinor: input.depositFixedMinor,
+    depositDueDays: input.depositDueDays,
+    balanceDueDaysBefore: input.balanceDueDaysBefore,
+    fullPaymentDueDays: input.fullPaymentDueDays,
+    ...(input.depositNonRefundable !== undefined && {
+      depositNonRefundable: input.depositNonRefundable,
+    }),
+  };
   const row = await db.paymentTerms.upsert({
     where: { propertyId },
-    create: { propertyId, ...input },
-    update: input,
+    create: { propertyId, ...data },
+    update: data,
   });
   return toTerms(row);
 }

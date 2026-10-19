@@ -23,7 +23,9 @@ export async function currentTerms(
   return {
     depositNonRefundable: terms.depositNonRefundable,
     depositAmountMinor: depositFor(totalMinor, terms),
-    schedule: terms.refundSchedule,
+    // Only when there is one (GitLab #123): snapshots without a schedule
+    // look as they did before.
+    ...(terms.refundSchedule && { schedule: terms.refundSchedule }),
   };
 }
 
