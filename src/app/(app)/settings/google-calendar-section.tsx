@@ -1,5 +1,6 @@
 "use client";
 
+import { Hint } from "@/components/help/hint";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
@@ -112,7 +113,10 @@ export function GoogleCalendarSection({
     <Card>
       <CardHeader>
         <CardTitle>{t("title")}</CardTitle>
-        <CardDescription>{t("description")}</CardDescription>
+        <CardDescription>
+          {t("description")}
+          <Hint label={t("hintLabels.connection")}>{t("hintTexts.connection")}</Hint>
+        </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
         {notice ? (

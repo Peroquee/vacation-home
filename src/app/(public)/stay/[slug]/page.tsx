@@ -117,6 +117,20 @@ export default async function StayPage({ params }: PageProps<"/stay/[slug]">) {
         cancellation={property.cancellation}
       />
 
+      {/* What happens after a request, so guests know what to expect (GitLab #121). */}
+      <section aria-labelledby="how-it-works" className="bg-muted/50 space-y-2 rounded-xl p-4">
+        <h2 id="how-it-works" className="text-lg font-semibold">
+          {t("howItWorks.title")}
+        </h2>
+        <ol className="list-decimal space-y-1 ps-5 text-sm">
+          {(["request", "answer", "deposit", "balance"] as const).map((step) => (
+            <li key={step}>
+              {t.rich(`howItWorks.${step}`, { b: (chunks) => <strong>{chunks}</strong> })}
+            </li>
+          ))}
+        </ol>
+      </section>
+
       {description ? (
         <section className="space-y-2">
           <h2 className="text-lg font-semibold">{t("about")}</h2>

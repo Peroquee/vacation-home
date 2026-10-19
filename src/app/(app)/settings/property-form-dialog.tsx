@@ -1,5 +1,6 @@
 "use client";
 
+import { Hint } from "@/components/help/hint";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useMemo, useState } from "react";
@@ -327,7 +328,10 @@ export function PropertyFormDialog({
                     placeholder="lake-house"
                   />
                 ),
-                t("slugHint", { path: `/stay/${values.slug.trim().toLowerCase() || "…"}` }),
+                <>
+                  {t("slugHint", { path: `/stay/${values.slug.trim().toLowerCase() || "…"}` })}
+                  <Hint label={t("hintLabels.slug")}>{t("hintTexts.slug")}</Hint>
+                </>,
               )}
               <Field
                 orientation="horizontal"

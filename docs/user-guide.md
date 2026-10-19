@@ -28,6 +28,16 @@ and the first day of the week follow the language too.
 
 Press **T** anywhere (outside a text field) to record a transaction.
 
+**Help on every page:** the **Help** button (bottom of the sidebar; the **?**
+at the top on a phone) opens help for the page you are on: what it is for,
+the common tasks step by step, what the statuses mean, and what to do when
+something doesn't go as planned. Its last link leads to the matching part of
+this guide, which the app shows under **/help**. Small **?** signs next to a
+few settings (the non-refundable deposit, the web address, the iCal link,
+Google Calendar, going live) explain them in a sentence or two. The help
+texts are files in the repository (`help/de-DE`, `help/en-GB`), so they can
+be improved without touching the code.
+
 **Who may sign in** (Settings → **Access**): the Google accounts that may
 use the app. Add one by its address - a partner, a second account of your
 own - and remove it again; removing signs it out at once. The accounts set

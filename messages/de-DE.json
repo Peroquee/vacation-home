@@ -143,6 +143,12 @@
         "revoked": "Google erlaubt dieser App nicht mehr, Ihren Kalender zu nutzen, zum Beispiel weil der Zugriff in Ihrem Google-Konto entfernt wurde.",
         "key_changed": "Der Verschlüsselungsschlüssel des Servers hat sich geändert, daher kann der gespeicherte Google-Zugang nicht mehr gelesen werden.",
         "unknown": "Der Google-Zugang funktioniert nicht mehr."
+      },
+      "hintLabels": {
+        "connection": "Was bewirkt die Verbindung mit Google?"
+      },
+      "hintTexts": {
+        "connection": "Ihre Buchungen erscheinen in Ihrem Google Kalender, und Termine, die Sie dort eintragen, können hier Tage blockieren. An Google gehen nur Zeitraum, Zahl der Gäste und Betrag, nie Name oder Kontakt eines Gastes. Sie können die Verbindung jederzeit trennen."
       }
     },
     "archive": {
@@ -199,7 +205,13 @@
       "slug": "Webadresse",
       "slugHint": "Ihre Seite: {path}. Kleinbuchstaben, Ziffern und Bindestriche.",
       "publiclyListed": "Auf der öffentlichen Buchungsseite zeigen",
-      "needsLegal": "Füllen Sie zuerst Impressum und Datenschutzerklärung unter „Rechtliche Seiten“ aus."
+      "needsLegal": "Füllen Sie zuerst Impressum und Datenschutzerklärung unter „Rechtliche Seiten“ aus.",
+      "hintLabels": {
+        "slug": "Was ist die Webadresse?"
+      },
+      "hintTexts": {
+        "slug": "Der letzte Teil der öffentlichen Seite der Unterkunft, z. B. …/stay/haus-am-see. Wählen Sie etwas Kurzes, das Gäste tippen können. Ändern Sie sie später, funktionieren schon geteilte Links nicht mehr."
+      }
     },
     "doubleBookings": {
       "title": "{count, plural, one {# Doppelbuchung} other {# Doppelbuchungen}}",
@@ -254,7 +266,13 @@
       "rotateTitle": "Neuen Kalender-Link erstellen?",
       "rotateDescription": "Der bisherige Link funktioniert sofort nicht mehr. Geben Sie den neuen allen Plattformen, die diesen Kalender importieren.",
       "rotateConfirm": "Neuen Link erstellen",
-      "rotated": "Neuer Kalender-Link erstellt"
+      "rotated": "Neuer Kalender-Link erstellt",
+      "hintLabels": {
+        "exportUrl": "Was mache ich mit diesem Link?"
+      },
+      "hintTexts": {
+        "exportUrl": "Kopieren Sie ihn bei Airbnb, Booking.com oder einer anderen Plattform dorthin, wo ein Kalender importiert werden kann. Die Plattform sieht dann Ihre Buchungen und blockierten Tage, ohne Namen von Gästen, und verkauft diese Nächte nicht doppelt. Behalten Sie den Link für sich."
+      }
     },
     "bookingRules": {
       "title": "Buchungsregeln",
@@ -319,6 +337,12 @@
         "full": "kurzfristig alles binnen {days, plural, one {# Tag} other {# Tagen}}",
         "nonRefundable": "Anzahlung nicht erstattbar",
         "refundable": "Anzahlung erstattbar"
+      },
+      "hintLabels": {
+        "depositNonRefundable": "Was bedeutet eine nicht erstattbare Anzahlung?"
+      },
+      "hintTexts": {
+        "depositNonRefundable": "Storniert der Gast, behalten Sie die Anzahlung, die er bezahlt hat; alles, was darüber hinaus bezahlt wurde, geht zurück. Stornieren Sie, bekommt der Gast immer alles zurück. Gäste lesen das, bevor sie eine Anfrage senden."
       }
     },
     "requestSettings": {
@@ -437,7 +461,9 @@
         "done": "Erledigt",
         "missing": "Fehlt",
         "warning": "Hinweis"
-      }
+      },
+      "hintLabel": "Was bedeutet „live gehen“?",
+      "hintText": "Sind Impressum und Datenschutzerklärung ausgefüllt, können Sie bei einer Unterkunft „Auf der öffentlichen Buchungsseite zeigen“ anhaken. Gäste finden sie dann und können Anfragen senden. Hinweise, etwa eine fehlende Bankverbindung, halten Sie nicht auf, aber Gäste wüssten dann nicht, wohin sie zahlen sollen."
     },
     "seasons": {
       "title": "Saisonpreise",
@@ -1696,6 +1722,13 @@
       "girocode": "Mit Ihrer Banking-App scannen (GiroCode)",
       "girocodeAlt": "GiroCode: ein QR-Code mit dieser Überweisung für Ihre Banking-App",
       "noBankDetails": "Der Gastgeber schickt Ihnen die Bankverbindung."
+    },
+    "howItWorks": {
+      "title": "So funktioniert die Buchung",
+      "request": "<b>Anfrage senden:</b> Wählen Sie Ihre Tage und schicken Sie uns eine Anfrage. Das kostet nichts und verpflichtet noch zu nichts.",
+      "answer": "<b>Zusage:</b> Wir melden uns bei Ihnen. Sagen wir zu, sind die Tage für Sie reserviert.",
+      "deposit": "<b>Anzahlung:</b> Sie überweisen die Anzahlung bis zur genannten Frist. Damit ist die Buchung bestätigt.",
+      "balance": "<b>Restzahlung:</b> Den Rest überweisen Sie vor der Anreise. Danach schicken wir Ihnen die genaue Adresse und alles für die Ankunft."
     }
   },
   "listing": {
@@ -1928,5 +1961,17 @@
     "children": "Kinder {from}–{to} Jahre",
     "summaryAdults": "{count, plural, one {# Erwachsener} other {# Erwachsene}}",
     "summaryChildren": "{count, plural, one {# Kind} other {# Kinder}} {from}–{to} Jahre"
+  },
+  "help": {
+    "button": "Hilfe",
+    "buttonLabel": "Hilfe zu dieser Seite",
+    "panelTitle": "Hilfe",
+    "loading": "Die Hilfe wird geladen …",
+    "failed": "Die Hilfe konnte nicht geladen werden. Bitte versuchen Sie es noch einmal.",
+    "none": "Für diese Seite gibt es noch keine Hilfe.",
+    "more": "Mehr im Benutzerhandbuch",
+    "guideTitle": "Benutzerhandbuch",
+    "guideDescription": "Alles, was die App kann, Schritt für Schritt (auf Englisch). Der Hilfe-Knopf jeder Seite führt zum passenden Abschnitt.",
+    "hint": "Was bedeutet das?"
   }
 }
