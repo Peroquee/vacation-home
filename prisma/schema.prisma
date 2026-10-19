@@ -1171,3 +1171,13 @@ model PropertyTouristTax {
 
   @@map("property_tourist_tax")
 }
+
+/// An account allowed to sign in, added in the app (GitLab #122), on top
+/// of AUTH_ALLOWED_EMAILS (src/lib/allowed-emails.ts). Lower case.
+model AllowedAccount {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  email     String   @unique
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@map("allowed_accounts")
+}

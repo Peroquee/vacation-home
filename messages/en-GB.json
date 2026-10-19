@@ -59,8 +59,12 @@
     "errors": {
       "AccessDenied": "That Google account isn't allowed to use this app. Sign in with an account the owner has added, or ask them to add yours.",
       "Verification": "That sign-in link has expired. Please sign in again.",
-      "fallback": "Signing in didn't work. Please try again."
-    }
+      "fallback": "Signing in didn't work. Please try again.",
+      "AccessDeniedAccount": "This Google account ({account}) has no access. Ask the owner to add it."
+    },
+    "refusedTesting": "If the owner's Google sign-in is still in testing, they also need to add your account as a test user in Google Cloud.",
+    "refusedGuests": "Here to book a stay? Guests don't need to sign in: <link>see the holiday homes</link>.",
+    "buttonOther": "Sign in with another Google account"
   },
   "settings": {
     "syncFailures": {
@@ -487,6 +491,24 @@
       "add": "Add tier",
       "saved": "Discounts saved",
       "saveFailed": "Could not save the discounts"
+    },
+    "access": {
+      "title": "Access",
+      "description": "The Google accounts that may sign in to this app. Guests never need an account: they book on the public site. Removing an account signs it out at once.",
+      "fixed": "Fixed in the server's settings",
+      "you": "You",
+      "addedHere": "Added here",
+      "remove": "Remove {email}",
+      "removeShort": "Remove",
+      "removeTitle": "Remove {email}?",
+      "removeDescription": "This account is signed out at once and can no longer sign in.",
+      "email": "Google account (email address)",
+      "hint": "If the app's Google sign-in is still in testing, add the account as a test user in Google Cloud too (docs/google-cloud-setup.md).",
+      "add": "Add account",
+      "added": "Account added",
+      "removed": "Account removed",
+      "exists": "This account may sign in already.",
+      "addFailed": "Could not add the account"
     },
     "touristTax": {
       "title": "Kurtaxe",
@@ -1571,6 +1593,9 @@
     "notADayOfYear": "is not a day of that year",
     "discountNightsTaken": "already has a discount for this many nights",
     "atMostTiers": "must be at most {max} tiers",
+    "accountExists": "This account may sign in already.",
+    "notYourself": "You cannot remove your own account.",
+    "notTheLast": "The last account cannot be removed.",
     "agesOverlap": "overlaps another age group",
     "periodsOverlap": "overlaps another period",
     "unknownGroup": "names an age group that does not exist",

@@ -154,7 +154,9 @@ In `.env`, set at least these. Each is explained in the file itself.
 - `AUTH_SECRET`, `TOKEN_ENCRYPTION_KEY`: the random values from above.
   Keep a copy of `.env` somewhere safe outside this server, such as your
   password manager: the backups cannot restore it.
-- `AUTH_ALLOWED_EMAILS`: the Google accounts that may sign in.
+- `AUTH_ALLOWED_EMAILS`: your own Google account (or a few). They may always
+  sign in; more accounts can be added later in the app, under Settings →
+  Access.
 - `APP_URL`: `https://vacation.example.com` for option A,
   `http://localhost:3000` for option B, `https://robbenplate.com` (your
   public hostname) for option C.

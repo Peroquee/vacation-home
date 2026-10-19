@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { decideAccess, isPublicPath, isPublicSitePath, safeCallbackUrl } from "@/lib/access";
-import { isAllowedEmail } from "@/lib/allowed-emails";
+import { isFixedEmail, maskEmail, MASKED_EMAIL } from "@/lib/allowed-emails";
 
 const at = (path: string) => {
   const url = new URL(path, "http://localhost");
@@ -79,17 +79,30 @@ describe("safeCallbackUrl", () => {
   });
 });
 
-describe("isAllowedEmail", () => {
+describe("the fixed allow-list (AUTH_ALLOWED_EMAILS)", () => {
   it("accepts listed addresses in any case and with stray spaces", () => {
-    expect(isAllowedEmail("owner@example.test")).toBe(true);
-    expect(isAllowedEmail(" OWNER@example.TEST ")).toBe(true);
-    expect(isAllowedEmail("partner@example.test")).toBe(true);
+    expect(isFixedEmail("owner@example.test")).toBe(true);
+    expect(isFixedEmail(" OWNER@example.TEST ")).toBe(true);
+    expect(isFixedEmail("partner@example.test")).toBe(true);
   });
 
   it("refuses anyone else, and no email at all", () => {
-    expect(isAllowedEmail("stranger@example.test")).toBe(false);
-    expect(isAllowedEmail("owner@example.test.evil")).toBe(false);
-    expect(isAllowedEmail(null)).toBe(false);
-    expect(isAllowedEmail("")).toBe(false);
+    expect(isFixedEmail("stranger@example.test")).toBe(false);
+    expect(isFixedEmail("owner@example.test.evil")).toBe(false);
+    expect(isFixedEmail(null)).toBe(false);
+    expect(isFixedEmail("")).toBe(false);
+  });
+});
+
+describe("a refused account, as the sign-in page and the log show it", () => {
+  it("is masked to its first letter and domain", () => {
+    expect(maskEmail(" Friend@Gmail.com ")).toBe("f…@gmail.com");
+    expect(MASKED_EMAIL.test("f…@gmail.com")).toBe(true);
+  });
+
+  it("comes back from the URL only in that shape, never as other text", () => {
+    for (const value of ["friend@gmail.com", "Click here: evil.example", "f…@", "<b>x</b>…@a.b"]) {
+      expect(MASKED_EMAIL.test(value), value).toBe(false);
+    }
   });
 });

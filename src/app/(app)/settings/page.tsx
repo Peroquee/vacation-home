@@ -24,6 +24,7 @@ import { calendarConnectAvailable, getConnectionStatus } from "@/lib/google/conn
 import { openDoubleBookings } from "@/lib/google/sync-issues";
 import { exportUrl, toFeedDto } from "@/lib/ical/feeds";
 import { legalComplete } from "@/lib/legal/legal";
+import { listAllowedAccounts } from "@/lib/allowed-emails";
 import { getLegal } from "@/lib/legal/service";
 import { emailProviderOf, privacyTemplate } from "@/lib/legal/template";
 import { listProperties, type PropertyDto, toDto } from "@/lib/properties/service";
@@ -38,6 +39,7 @@ import { BookingRulesSection } from "./booking-rules-section";
 import { PaymentTermsSection } from "./payment-terms-section";
 import { RequestSettingsSection } from "./request-settings-section";
 import { BankDetailsSection } from "./bank-details-section";
+import { AccessSection } from "./access-section";
 import { EmailSection } from "./email-section";
 import { GoLiveChecklist } from "./go-live-checklist";
 import { LegalSection } from "./legal-section";
@@ -177,6 +179,7 @@ export default async function SettingsPage({ searchParams }: PageProps<"/setting
     emailProvider: emailProviderOf(env.SMTP_HOST),
   };
   const email = await outboxStatus();
+  const [accounts, user] = await Promise.all([listAllowedAccounts(), getCurrentUser()]);
   const t = await getTranslations("settings.page");
   const tCommon = await getTranslations("common");
   const columns = columnsFor(t, await getFormat(), tCommon("edit"), canList);
@@ -271,6 +274,8 @@ export default async function SettingsPage({ searchParams }: PageProps<"/setting
         />
 
         <EmailSection status={email} />
+
+        <AccessSection accounts={accounts} currentEmail={user?.email ?? ""} />
 
         {active.length > 0 ? (
           <BankDetailsSection

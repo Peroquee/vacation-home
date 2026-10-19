@@ -16,7 +16,7 @@ import type { Adapter } from "next-auth/adapters";
 import Google from "next-auth/providers/google";
 
 import { env } from "@/env";
-import { isAllowedEmail } from "@/lib/allowed-emails";
+import { isAllowedEmail, maskEmail } from "@/lib/allowed-emails";
 import { db } from "@/lib/db";
 import { SIGN_IN_SCOPES } from "@/lib/google/oauth";
 import { logger } from "@/lib/logger";
@@ -79,17 +79,23 @@ function config(): NextAuthConfig {
         clientId: env.AUTH_GOOGLE_ID,
         clientSecret: env.AUTH_GOOGLE_SECRET,
         // Identity only: no calendar, no offline access (see the top of this file).
-        authorization: { params: { scope: SIGN_IN_SCOPES } },
+        // select_account: after a refusal, the next try can pick another
+        // account rather than the same one again (GitLab #122).
+        authorization: { params: { scope: SIGN_IN_SCOPES, prompt: "select_account" } },
       }),
     ],
     callbacks: {
-      signIn({ profile }) {
-        const allowed = profile?.email_verified === true && isAllowedEmail(profile.email);
-        // Turned into /signin?error=AccessDenied, which explains it.
-        // Not the address itself: a stranger's email is personal data we have
-        // no reason to keep.
-        if (!allowed) logger.warn("sign-in refused: account not on the allow-list");
-        return allowed;
+      async signIn({ profile }) {
+        const allowed = profile?.email_verified === true && (await isAllowedEmail(profile.email));
+        if (allowed) return true;
+        // One warning, no stack (GitLab #122), and only the masked address:
+        // a stranger's email is personal data we have no reason to keep.
+        const account = profile?.email ? maskEmail(profile.email) : null;
+        logger.warn({ account }, "sign-in refused: account not allowed");
+        // The sign-in page explains it, naming the account by its mask.
+        const refused = new URLSearchParams({ error: "AccessDenied" });
+        if (account) refused.set("account", account);
+        return `${SIGN_IN_PATH}?${refused}`;
       },
       session({ session, user }) {
         session.user.id = user.id;
@@ -98,7 +104,13 @@ function config(): NextAuthConfig {
     },
     // Through the scrubbing logger: Auth.js errors can carry tokens.
     logger: {
-      error: (error) => logger.error({ err: error }, "auth error"),
+      error: (error) => {
+        // A refused sign-in is no error: it is logged once, as a warning, above.
+        if (error.name === "AccessDenied" || (error as { type?: string }).type === "AccessDenied") {
+          return;
+        }
+        logger.error({ err: error }, "auth error");
+      },
       warn: (code) => logger.warn({ code }, "auth warning"),
       debug: () => {},
     },

@@ -156,7 +156,7 @@ function expireSessionCookies(response: Response) {
 // to the middleware rather than returning it.
 const withSession = auth(async (request) => {
   const requestId = requestIdFrom(request.headers.get(REQUEST_ID_HEADER));
-  const signedIn = isAllowedEmail(request.auth?.user?.email);
+  const signedIn = await isAllowedEmail(request.auth?.user?.email);
   const revoke = request.auth != null && !signedIn;
   if (revoke) {
     const tokens = SESSION_COOKIES.map((name) => request.cookies.get(name)?.value).filter(

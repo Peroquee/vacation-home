@@ -59,8 +59,12 @@
     "errors": {
       "AccessDenied": "Dieses Google-Konto darf die App nicht nutzen. Melde dich mit einem Konto an, das die Eigentümerin oder der Eigentümer freigegeben hat, oder bitte darum, deines hinzuzufügen.",
       "Verification": "Dieser Anmeldelink ist abgelaufen. Bitte melde dich erneut an.",
-      "fallback": "Die Anmeldung hat nicht geklappt. Bitte versuche es noch einmal."
-    }
+      "fallback": "Die Anmeldung hat nicht geklappt. Bitte versuche es noch einmal.",
+      "AccessDeniedAccount": "Dieses Google-Konto ({account}) hat keinen Zugang. Bitten Sie die Inhaberin oder den Inhaber, es freizuschalten."
+    },
+    "refusedTesting": "Ist die Google-Anmeldung der App noch im Testmodus, muss Ihr Konto dort außerdem als Testnutzer eingetragen sein.",
+    "refusedGuests": "Sie möchten buchen? Gäste brauchen keine Anmeldung: <link>zu den Ferienunterkünften</link>.",
+    "buttonOther": "Mit einem anderen Google-Konto anmelden"
   },
   "settings": {
     "syncFailures": {
@@ -487,6 +491,24 @@
       "add": "Stufe hinzufügen",
       "saved": "Rabatte gespeichert",
       "saveFailed": "Die Rabatte konnten nicht gespeichert werden"
+    },
+    "access": {
+      "title": "Zugang",
+      "description": "Die Google-Konten, die sich bei dieser App anmelden dürfen. Gäste brauchen nie ein Konto: Sie buchen auf der öffentlichen Seite. Ein entferntes Konto wird sofort abgemeldet.",
+      "fixed": "Fest eingetragen (Server-Einstellungen)",
+      "you": "Sie",
+      "addedHere": "Hier hinzugefügt",
+      "remove": "{email} entfernen",
+      "removeShort": "Entfernen",
+      "removeTitle": "{email} entfernen?",
+      "removeDescription": "Dieses Konto wird sofort abgemeldet und kann sich nicht mehr anmelden.",
+      "email": "Google-Konto (E-Mail-Adresse)",
+      "hint": "Ist die Google-Anmeldung der App noch im Testmodus, tragen Sie das Konto in Google Cloud auch als Testnutzer ein (docs/google-cloud-setup.md).",
+      "add": "Konto hinzufügen",
+      "added": "Konto hinzugefügt",
+      "removed": "Konto entfernt",
+      "exists": "Dieses Konto darf sich schon anmelden.",
+      "addFailed": "Das Konto konnte nicht hinzugefügt werden"
     },
     "touristTax": {
       "title": "Kurtaxe",
@@ -1571,6 +1593,9 @@
     "notADayOfYear": "ist kein Tag dieses Jahres",
     "discountNightsTaken": "hat für diese Zahl an Nächten schon einen Rabatt",
     "atMostTiers": "darf höchstens {max} Stufen haben",
+    "accountExists": "Dieses Konto darf sich schon anmelden.",
+    "notYourself": "Ihr eigenes Konto können Sie nicht entfernen.",
+    "notTheLast": "Das letzte Konto kann nicht entfernt werden.",
     "agesOverlap": "überschneidet sich mit einer anderen Altersgruppe",
     "periodsOverlap": "überschneidet sich mit einem anderen Zeitraum",
     "unknownGroup": "nennt eine Altersgruppe, die es nicht gibt",
