@@ -193,7 +193,7 @@ export function ListingForm({ propertyId, initial }: { propertyId: string; initi
   );
 
   return (
-    <Card>
+    <Card id="listing-profile">
       <CardHeader>
         <CardTitle>{t("heading")}</CardTitle>
         <CardDescription>{t("hint")}</CardDescription>
