@@ -460,7 +460,10 @@ booking if you want it in the finances and occupancy.
 ## Finance
 
 **Finance** is the ledger: income and expenses, month by month, with
-running totals. Pick the month, property, type or category above it.
+running totals. Pick the month, property, type or category above it, or
+**Receipts: Without a receipt** to find the transactions still missing one
+(after a CSV import, say, or for the tax return); the CSV export follows
+that filter too.
 
 - **Add** (or press **T**) records a transaction: amount, category, date,
   property, optionally the booking it belongs to and a description. It opens
@@ -471,8 +474,13 @@ running totals. Pick the month, property, type or category above it.
   not deleted. Deleting a category in use moves its transactions to another
   first.
 
-**Receipts.** Open a saved transaction to add its receipts: PDFs or photos
-(JPEG, PNG, WebP, HEIC), up to 10 MB each and 5 per transaction. Photos
+**Receipts.** Add a transaction's receipts as you enter it, or later by
+opening it: PDFs or photos (JPEG, PNG, WebP, HEIC), up to 10 MB each and 5
+per transaction. Choose **Add receipts**, drop the files on the window, or
+on a phone or tablet **Take a photo**. A new transaction's receipts upload
+once it is saved; if one fails (too large, say), the transaction stays
+saved, the window names the file and **Try again** uploads only the ones
+still missing, so nothing is entered twice. Photos
 show as small previews; a click opens a photo or downloads a PDF. Location
 data is removed from JPEG photos on upload; HEIC and WebP photos (the
 iPhone's own format, for example) keep theirs, so export those as JPEG

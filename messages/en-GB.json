@@ -1139,7 +1139,11 @@
       "badFilters": "These filters don't work together",
       "categoryIncome": "{name} (income)",
       "categoryExpense": "{name} (expense)",
-      "touristTax": "Kurtaxe"
+      "touristTax": "Kurtaxe",
+      "receipts": "Receipts",
+      "anyReceipts": "With or without",
+      "withoutReceipt": "Without a receipt",
+      "withReceipt": "With a receipt"
     },
     "categories": {
       "title": "Categories",
@@ -1268,7 +1272,15 @@
       "hint": "PDF, JPEG, PNG, WebP or HEIC, up to 10 MB each, {max} per transaction. Location data is removed from JPEG photos; HEIC and WebP photos keep theirs.",
       "full": "This transaction has the most receipts it can hold ({max}).",
       "saveFirst": "Receipts can be added once the transaction is saved.",
-      "count": "{count, plural, one {# receipt} other {# receipts}}"
+      "count": "{count, plural, one {# receipt} other {# receipts}}",
+      "camera": "Take a photo",
+      "connectionFailed": "the connection failed",
+      "added": "Added",
+      "unpick": "Don't add {name}",
+      "retry": "Try again",
+      "closeWithout": "Close without them",
+      "expenseSavedSomeFailed": "The expense is saved, but not every receipt could be added. Try again, or add them later from the ledger.",
+      "incomeSavedSomeFailed": "The income is saved, but not every receipt could be added. Try again, or add them later from the ledger."
     },
     "recurring": {
       "title": "Recurring costs",

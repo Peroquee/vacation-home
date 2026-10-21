@@ -169,6 +169,136 @@ describe("TransactionDialog", () => {
     expect(saved(fetchMock)!.body).toMatchObject({ type: "expense", categoryId: "c-util" });
   });
 
+  // GitLab #131: receipts straight away, uploaded once the entry is saved.
+  describe("receipts on a new transaction", () => {
+    const pdf = (name: string) => new File(["%PDF-1.7"], name, { type: "application/pdf" });
+    /** Saves as t9; `refuse` names the uploads that fail, once each. */
+    function serveUploads(refuse: string[] = []) {
+      const refused = new Set(refuse);
+      const fetchMock = vi.fn<typeof fetch>(async (input, init) => {
+        const url = String(input);
+        if (url.startsWith("/api/bookings")) return Response.json({ items: [] });
+        if (url === "/api/transactions/t9/attachments" && init?.method === "POST") {
+          const name = ((init.body as FormData).get("file") as File).name;
+          if (refused.delete(name)) {
+            return Response.json(
+              {
+                error: {
+                  code: "validation_failed",
+                  message: "x",
+                  fields: { file: ["is larger than 10 MB"] },
+                },
+              },
+              { status: 422 },
+            );
+          }
+          return Response.json({ id: `r-${name}` }, { status: 201 });
+        }
+        if (url === "/api/transactions" && init?.method === "POST") {
+          return Response.json({ id: "t9" }, { status: 201 });
+        }
+        throw new Error(`unexpected ${init?.method ?? "GET"} ${url}`);
+      });
+      vi.stubGlobal("fetch", fetchMock);
+      const calls = (method: string, url: string) =>
+        fetchMock.mock.calls.filter(([u, i]) => String(u) === url && i?.method === method);
+      const uploaded = () =>
+        calls("POST", "/api/transactions/t9/attachments").map(
+          ([, init]) => ((init!.body as FormData).get("file") as File).name,
+        );
+      return { creates: () => calls("POST", "/api/transactions").length, uploaded };
+    }
+
+    it("creates the expense, then attaches both receipts", async () => {
+      const server = serveUploads();
+      const { user, onOpenChange } = renderDialog();
+      await user.keyboard("19,99");
+      await user.selectOptions(screen.getByLabelText("Category"), "c-clean");
+      await user.upload(screen.getByLabelText("Add receipts", { selector: "input" }), [
+        pdf("Rechnung.pdf"),
+        pdf("Lieferschein.pdf"),
+      ]);
+      expect(screen.getByText("Rechnung.pdf")).toBeInTheDocument();
+      expect(screen.getByText("Lieferschein.pdf")).toBeInTheDocument();
+      await user.click(screen.getByRole("button", { name: "Add" }));
+
+      await waitFor(() => expect(onOpenChange).toHaveBeenCalledWith(false));
+      expect(server.creates()).toBe(1);
+      expect(server.uploaded()).toEqual(["Rechnung.pdf", "Lieferschein.pdf"]);
+      expect(toastSuccess).toHaveBeenCalledWith("Expense added");
+    });
+
+    it("a chosen file can be taken out again before saving", async () => {
+      const server = serveUploads();
+      const { user, onOpenChange } = renderDialog();
+      await user.keyboard("5");
+      await user.selectOptions(screen.getByLabelText("Category"), "c-clean");
+      await user.upload(screen.getByLabelText("Add receipts", { selector: "input" }), [
+        pdf("a.pdf"),
+        pdf("b.pdf"),
+      ]);
+      await user.click(screen.getByRole("button", { name: "Don't add a.pdf" }));
+      await user.click(screen.getByRole("button", { name: "Add" }));
+      await waitFor(() => expect(onOpenChange).toHaveBeenCalledWith(false));
+      expect(server.uploaded()).toEqual(["b.pdf"]);
+    });
+
+    it("keeps the expense when an upload fails, says which, and retries only that one", async () => {
+      const server = serveUploads(["Gross.pdf"]);
+      const { user, onOpenChange } = renderDialog();
+      await user.keyboard("80");
+      await user.selectOptions(screen.getByLabelText("Category"), "c-util");
+      await user.upload(screen.getByLabelText("Add receipts", { selector: "input" }), [
+        pdf("Klein.pdf"),
+        pdf("Gross.pdf"),
+      ]);
+      await user.click(screen.getByRole("button", { name: "Add" }));
+
+      expect(await screen.findByRole("alert")).toHaveTextContent(
+        "The expense is saved, but not every receipt could be added.",
+      );
+      expect(screen.getByText("Gross.pdf: is larger than 10 MB")).toBeInTheDocument();
+      expect(onOpenChange).not.toHaveBeenCalled();
+      // Saved and shown in the ledger already; the entry can't be sent twice.
+      expect(refresh).toHaveBeenCalled();
+      expect(screen.getByLabelText("Amount")).toBeDisabled();
+      expect(screen.queryByRole("button", { name: "Add" })).toBeNull();
+
+      await user.click(screen.getByRole("button", { name: "Try again" }));
+      await waitFor(() => expect(onOpenChange).toHaveBeenCalledWith(false));
+      expect(server.creates()).toBe(1);
+      expect(server.uploaded()).toEqual(["Klein.pdf", "Gross.pdf", "Gross.pdf"]);
+      expect(toastSuccess).toHaveBeenCalledWith("Expense added");
+    });
+
+    it("works for income too", async () => {
+      const server = serveUploads();
+      const { user, onOpenChange } = renderDialog();
+      await user.click(screen.getByRole("radio", { name: "Income" }));
+      await user.click(screen.getByLabelText("Amount"));
+      await user.keyboard("300");
+      await user.selectOptions(screen.getByLabelText("Category"), "c-other");
+      await user.upload(
+        screen.getByLabelText("Add receipts", { selector: "input" }),
+        pdf("Auszahlung.pdf"),
+      );
+      await user.click(screen.getByRole("button", { name: "Add" }));
+      await waitFor(() => expect(onOpenChange).toHaveBeenCalledWith(false));
+      expect(server.uploaded()).toEqual(["Auszahlung.pdf"]);
+      expect(toastSuccess).toHaveBeenCalledWith("Income added");
+    });
+
+    it("sends nothing but the entry when no file was chosen", async () => {
+      const server = serveUploads();
+      const { user, onOpenChange } = renderDialog();
+      await user.keyboard("5");
+      await user.selectOptions(screen.getByLabelText("Category"), "c-clean");
+      await user.click(screen.getByRole("button", { name: "Add" }));
+      await waitFor(() => expect(onOpenChange).toHaveBeenCalledWith(false));
+      expect(server.uploaded()).toEqual([]);
+    });
+  });
+
   it("says what is missing or malformed before sending", async () => {
     const fetchMock = serve();
     const { user } = renderDialog();

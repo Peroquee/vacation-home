@@ -4,7 +4,8 @@ import { queryParams } from "@/lib/query";
 
 /**
  * The ledger's transactions as CSV (GitLab #83), with the ledger's filters:
- * `propertyId`, `type`, `categoryId`, `from`, `to`, and `format`
+ * `propertyId`, `type`, `categoryId`, `from`, `to`, `receipts` (`none` or
+ * `some`), and `format`
  * (`standard` or `excel-de`). Columns: src/lib/finance/csv.ts.
  */
 export async function GET(request: Request) {

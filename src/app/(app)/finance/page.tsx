@@ -34,7 +34,8 @@ const STATEMENT_SIZE = 200;
 
 /**
  * The ledger for a month (`?month=2026-07`, the current one by default),
- * filtered by `propertyId`, `type` and `categoryId`, all in the URL.
+ * filtered by `propertyId`, `type`, `categoryId` and `receipts` (`none`:
+ * without a receipt, GitLab #131), all in the URL.
  */
 export default async function FinancePage({ searchParams }: PageProps<"/finance">) {
   const asked = ledgerParams(await searchParams);
@@ -71,6 +72,7 @@ export default async function FinancePage({ searchParams }: PageProps<"/finance"
               propertyId: params.propertyId,
               type: params.type,
               categoryId: params.categoryId,
+              receipts: params.receipts,
             }}
           />
           <Link href="/finance/tourist-tax" className={buttonVariants({ variant: "outline" })}>
@@ -107,6 +109,7 @@ export default async function FinancePage({ searchParams }: PageProps<"/finance"
     propertyId: params.propertyId,
     type: params.type,
     categoryId: params.categoryId,
+    receipts: params.receipts,
     from: period.from,
     to: period.to,
     pageSize: String(STATEMENT_SIZE),
@@ -115,7 +118,7 @@ export default async function FinancePage({ searchParams }: PageProps<"/finance"
   });
 
   const filters = (
-    <Form action="/finance" className="mb-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-5 lg:items-end">
+    <Form action="/finance" className="mb-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-6 lg:items-end">
       <Field>
         <FieldLabel htmlFor="ledger-month">{t("month")}</FieldLabel>
         {/* Choosing a month replaces a custom range. */}
@@ -142,6 +145,19 @@ export default async function FinancePage({ searchParams }: PageProps<"/finance"
         type={params.type === "income" || params.type === "expense" ? params.type : undefined}
         categoryId={params.categoryId}
       />
+      <Field>
+        <FieldLabel htmlFor="ledger-receipts">{t("receipts")}</FieldLabel>
+        <NativeSelect
+          id="ledger-receipts"
+          name="receipts"
+          className="w-full"
+          defaultValue={params.receipts ?? ""}
+        >
+          <NativeSelectOption value="">{t("anyReceipts")}</NativeSelectOption>
+          <NativeSelectOption value="none">{t("withoutReceipt")}</NativeSelectOption>
+          <NativeSelectOption value="some">{t("withReceipt")}</NativeSelectOption>
+        </NativeSelect>
+      </Field>
       <div className="flex gap-2">
         <Button type="submit">{t("apply")}</Button>
         <Link

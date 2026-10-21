@@ -1139,7 +1139,11 @@
       "badFilters": "Diese Filter passen nicht zusammen",
       "categoryIncome": "{name} (Einnahme)",
       "categoryExpense": "{name} (Ausgabe)",
-      "touristTax": "Kurtaxe"
+      "touristTax": "Kurtaxe",
+      "receipts": "Belege",
+      "anyReceipts": "Mit oder ohne",
+      "withoutReceipt": "Ohne Beleg",
+      "withReceipt": "Mit Beleg"
     },
     "categories": {
       "title": "Kategorien",
@@ -1268,7 +1272,15 @@
       "hint": "PDF, JPEG, PNG, WebP oder HEIC, je bis 10 MB, {max} pro Posten. Aus JPEG-Fotos werden Standortdaten entfernt; HEIC- und WebP-Fotos behalten ihre.",
       "full": "Dieser Posten hat schon die meisten Belege, die er haben kann ({max}).",
       "saveFirst": "Belege können hinzugefügt werden, sobald der Posten gespeichert ist.",
-      "count": "{count, plural, one {# Beleg} other {# Belege}}"
+      "count": "{count, plural, one {# Beleg} other {# Belege}}",
+      "camera": "Foto aufnehmen",
+      "connectionFailed": "die Verbindung ist fehlgeschlagen",
+      "added": "Hinzugefügt",
+      "unpick": "{name} nicht hinzufügen",
+      "retry": "Erneut versuchen",
+      "closeWithout": "Ohne sie schließen",
+      "expenseSavedSomeFailed": "Die Ausgabe ist gespeichert, aber nicht jeder Beleg konnte hinzugefügt werden. Versuchen Sie es erneut, oder fügen Sie sie später im Kassenbuch hinzu.",
+      "incomeSavedSomeFailed": "Die Einnahme ist gespeichert, aber nicht jeder Beleg konnte hinzugefügt werden. Versuchen Sie es erneut, oder fügen Sie sie später im Kassenbuch hinzu."
     },
     "recurring": {
       "title": "Wiederkehrende Kosten",
