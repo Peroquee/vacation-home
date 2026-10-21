@@ -24,6 +24,7 @@ Everything you set up once: your homes, rules, payments, emails, the legal pages
 ## Good to know
 
 - **Deposit non-refundable** (in the payment terms): when a guest cancels, you keep the deposit; anything beyond it is refunded.
+- **Guests read your settings:** the help on your public page and on the guest's booking page names the deposit, its deadlines, how long a request waits for your answer and whether bank details are set, as they are now. The contact address there is the Impressum's.
 - A home's **web address** is the name of its public page, e.g. `/stay/lake-house`. Only lower-case letters, digits and hyphens.
 
 ## What if …

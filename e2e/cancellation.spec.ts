@@ -49,10 +49,13 @@ test("a guest's cancellation keeps the deposit, frees the dates and refunds the 
   const visitor = await browser.newContext({ storageState: { cookies: [], origins: [] } });
   const publicPage = await visitor.newPage();
   await publicPage.goto("/stay/cancel-lake");
+  // Next to the price; the guests' help (GitLab #127) says it again further down.
   await expect(
-    publicPage.getByText(
-      "The deposit of 20% of the total is non-refundable if you cancel. Anything paid beyond the deposit is refunded in full.",
-    ),
+    publicPage
+      .locator("header")
+      .getByText(
+        "The deposit of 20% of the total is non-refundable if you cancel. Anything paid beyond the deposit is refunded in full.",
+      ),
   ).toBeVisible();
   await visitor.close();
 
@@ -151,7 +154,7 @@ test("a refund schedule set on the Prices page is shown to guests", async ({
   const publicPage = await visitor.newPage();
   await publicPage.goto("/stay/schedule-lake");
   await expect(
-    publicPage.getByText(/^Free cancellation up to 6 months before arrival\./),
+    publicPage.locator("header").getByText(/^Free cancellation up to 6 months before arrival\./),
   ).toBeVisible();
   await visitor.close();
 });

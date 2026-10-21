@@ -69,8 +69,11 @@ test.describe("guests", () => {
     });
     await owner.dispose();
     await page.goto("/stay/help-lake");
+    // With the default terms (GitLab #127; e2e/guest-help.spec.ts has the rest).
     const box = page.getByRole("region", { name: "How booking works" });
-    await expect(box.getByRole("listitem")).toHaveCount(4);
-    await expect(box).toContainText("Deposit: you transfer the deposit by the deadline given.");
+    await expect(box.getByRole("listitem")).toHaveCount(5);
+    await expect(box).toContainText(
+      "Deposit: you transfer the deposit of 20% of the total within 7 days of our acceptance.",
+    );
   });
 });

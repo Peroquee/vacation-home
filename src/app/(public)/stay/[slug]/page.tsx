@@ -3,9 +3,12 @@ import { getLocale, getTranslations } from "next-intl/server";
 import { notFound } from "next/navigation";
 import { cache } from "react";
 
+import { GuestHelp } from "@/components/help/guest-help";
 import { getFormat } from "@/i18n/get-format";
+import { stayHelp } from "@/lib/help/guest-values";
+import { helpWords } from "@/lib/help/public";
 import { describeStayTimes } from "@/lib/listing/stay-times";
-import { getPublicProperty } from "@/lib/listing/public";
+import { getPublicProperty, getStayHelpFacts } from "@/lib/listing/public";
 import { monthOf } from "@/lib/calendar/month";
 import { pickText, type PublicPhotoDto } from "@/lib/properties/public";
 
@@ -30,18 +33,21 @@ export async function generateMetadata({ params }: PageProps<"/stay/[slug]">): P
  * with the other as a fallback. Server-rendered: plain images with
  * `srcset`, the cover loaded first. Unlisted,
  * archived and unknown properties are all the same 404. The availability
- * calendar and price estimate (GitLab #108) are the one client component.
+ * calendar and price estimate (GitLab #108) are the one client component;
+ * the guests' help (#127) folds its questions away without any.
  */
 export default async function StayPage({ params }: PageProps<"/stay/[slug]">) {
   const property = await listed((await params).slug);
   if (!property) notFound();
-  const [t, tAmenities, tPricing, tTimes, locale, format] = await Promise.all([
+  const [t, tAmenities, tPricing, tTimes, locale, format, helpFacts, words] = await Promise.all([
     getTranslations("stay"),
     getTranslations("listing.amenities"),
     getTranslations("pricing"),
     getTranslations("stayTimes"),
     getLocale(),
     getFormat(),
+    getStayHelpFacts(property.slug),
+    helpWords(property.currency),
   ]);
   const title = pickText(property.title, locale);
   const description = pickText(property.description, locale);
@@ -124,19 +130,10 @@ export default async function StayPage({ params }: PageProps<"/stay/[slug]">) {
         cancellation={property.cancellation}
       />
 
-      {/* What happens after a request, so guests know what to expect (GitLab #121). */}
-      <section aria-labelledby="how-it-works" className="bg-muted/50 space-y-2 rounded-xl p-4">
-        <h2 id="how-it-works" className="text-lg font-semibold">
-          {t("howItWorks.title")}
-        </h2>
-        <ol className="list-decimal space-y-1 ps-5 text-sm">
-          {(["request", "answer", "deposit", "balance"] as const).map((step) => (
-            <li key={step}>
-              {t.rich(`howItWorks.${step}`, { b: (chunks) => <strong>{chunks}</strong> })}
-            </li>
-          ))}
-        </ol>
-      </section>
+      {/* How booking works, with this property's terms (GitLab #121, #127). */}
+      {helpFacts ? (
+        <GuestHelp helpKey="public-stay" help={stayHelp(helpFacts, words)} id="how-it-works" />
+      ) : null}
 
       {description ? (
         <section className="space-y-2">

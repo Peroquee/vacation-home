@@ -35,4 +35,5 @@ Alles, was den Preis einer Unterkunft bestimmt. Ein Aufenthalt wird so berechnet
 
 - **Bestehende Buchungen behalten ihren Preis**, wenn Sie hier etwas ändern.
 - Gäste sehen die Saisonnamen in der Preisaufstellung: Wählen Sie Namen für Gäste.
+- Die Stornostaffel und die Kurtaxe stehen, wie gerade eingestellt, auch in der Hilfe auf Ihrer öffentlichen Seite („So funktioniert die Buchung“).
 - Den Normalpreis und die Reinigungsgebühr ändern Sie bei der Unterkunft unter **Bearbeiten**.

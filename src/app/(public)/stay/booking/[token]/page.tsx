@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 
 import { CalendarPlus } from "lucide-react";
 
+import { GuestHelp } from "@/components/help/guest-help";
 import { PriceLines } from "@/components/price-lines";
 import { buttonVariants } from "@/components/ui/button";
 import { describePolicy } from "@/lib/cancellation/describe";
@@ -18,6 +19,9 @@ import { DEFAULT_LOCALE, isLocale } from "@/i18n/locales";
 import { guestStayEvent } from "@/lib/ical/guest-stay";
 import { googleCalendarLink, outlookCalendarLink, stayCalendarPath } from "@/lib/ical/stay-event";
 import { guestPath } from "@/lib/payments/guest-link";
+import { bookingHelp } from "@/lib/help/guest-values";
+import { helpWords } from "@/lib/help/public";
+import { getLegal } from "@/lib/legal/service";
 
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getTranslations("stay.booking");
@@ -31,17 +35,20 @@ export async function generateMetadata(): Promise<Metadata> {
  * they were given: its status, what to pay next, by when, to whom, with the
  * GiroCode their banking app can scan. An unknown link is a plain 404.
  * A stay that holds its dates can go into the guest's calendar (#125).
+ * Below the status, what it means and what to do next (#127).
  */
 export default async function GuestBookingPage({ params }: PageProps<"/stay/booking/[token]">) {
   const { token } = await params;
   const view = await guestView(token);
   if (!view) notFound();
-  const [t, tCancellation, tTimes, locale, format] = await Promise.all([
+  const [t, tCancellation, tTimes, locale, format, words, legal] = await Promise.all([
     getTranslations("stay.booking"),
     getTranslations("cancellation"),
     getTranslations("stayTimes"),
     getLocale(),
     getFormat(),
+    helpWords(view.currency),
+    getLegal(),
   ]);
   const money = (minor: number) => format.money(minor, view.currency);
   const holds = view.status === "reserved" || view.status === "confirmed" || view.status === "paid";
@@ -97,6 +104,25 @@ export default async function GuestBookingPage({ params }: PageProps<"/stay/book
           <PriceLines breakdown={view.price} className="border-t pt-3" />
         ) : null}
       </section>
+
+      <GuestHelp
+        helpKey="public-booking"
+        help={bookingHelp(
+          {
+            status: view.status,
+            declined: view.declined,
+            wasReserved: view.wasReserved,
+            reference: view.reference,
+            remittance: view.transfer?.remittance ?? null,
+            girocode: Boolean(view.transfer?.girocode),
+            next: view.next,
+            answerBy: view.answerBy,
+            contact: legal.imprintEmail,
+          },
+          words,
+        )}
+        id="booking-help"
+      />
 
       {view.next && view.next.amountMinor > 0 ? (
         <section aria-labelledby="booking-pay" className="space-y-3 rounded-xl border p-4">

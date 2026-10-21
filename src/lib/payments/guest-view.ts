@@ -5,10 +5,13 @@
  * only.
  */
 import type { BookingStatus } from "@/generated/prisma/client";
+import { answerBy } from "@/lib/booking-requests/inbox";
+import { getRequestSettings } from "@/lib/booking-requests/settings";
 import { type CalendarDate, fromUtcDate } from "@/lib/calendar-date";
 import type { CancellationTerms } from "@/lib/cancellation/policy";
 import { bookingPolicy } from "@/lib/cancellation/service";
 import { db } from "@/lib/db";
+import { todayIn } from "@/lib/finance/recurring";
 import { bookingStayTimes, getListing } from "@/lib/listing/service";
 import type { StayTimes } from "@/lib/listing/stay-times";
 
@@ -28,6 +31,12 @@ export type GuestView = {
   checkOut: CalendarDate;
   guestCount: number;
   status: BookingStatus;
+  /** Declined by the owner: a request, now cancelled (GitLab #127). */
+  declined: boolean;
+  /** Was ever reserved: an expiry is then the reservation's, else the request's. */
+  wasReserved: boolean;
+  /** While a request: the day it is answered by, or lapses. */
+  answerBy: CalendarDate | null;
   totalAmountMinor: number;
   /**
    * How the total is made up (GitLab #118). A total the owner set by hand
@@ -58,12 +67,13 @@ export async function guestView(token: string): Promise<GuestView | null> {
   if (!bookingId) return null;
   const booking = await db.booking.findUnique({
     where: { id: bookingId },
-    include: { property: { select: { id: true, name: true } }, payments: true },
+    include: { property: { select: { id: true, name: true, timezone: true } }, payments: true },
   });
   if (!booking) return null;
-  const [listing, bank] = await Promise.all([
+  const [listing, bank, requests] = await Promise.all([
     getListing(booking.propertyId),
     getBankDetails(booking.propertyId),
+    getRequestSettings(booking.propertyId),
   ]);
   const received = netReceived(booking.payments);
   const next = nextDue(
@@ -108,6 +118,12 @@ export async function guestView(token: string): Promise<GuestView | null> {
     checkOut: fromUtcDate(booking.checkOut),
     guestCount: booking.guestCount,
     status: booking.status,
+    declined: booking.declinedAt !== null,
+    wasReserved: booking.reservedAt !== null,
+    answerBy:
+      booking.status === "inquiry"
+        ? answerBy(todayIn(booking.property.timezone, booking.createdAt), requests.expiryDays)
+        : null,
     totalAmountMinor: booking.totalAmountMinor,
     price: guestPrice(booking),
     receivedMinor: received,

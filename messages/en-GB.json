@@ -1760,13 +1760,6 @@
         "google": "Google Calendar",
         "outlook": "Outlook.com"
       }
-    },
-    "howItWorks": {
-      "title": "How booking works",
-      "request": "<b>Send a request:</b> pick your dates and send us a request. It costs nothing and commits you to nothing yet.",
-      "answer": "<b>Our answer:</b> we get back to you. If we accept, the dates are reserved for you.",
-      "deposit": "<b>Deposit:</b> you transfer the deposit by the deadline given. That confirms the booking.",
-      "balance": "<b>Balance:</b> you transfer the rest before you arrive. Then we send you the exact address and everything for your arrival."
     }
   },
   "listing": {
@@ -2067,6 +2060,20 @@
     "departureBetween": "Departure between {from} and {until}",
     "departureFrom": "Departure from {time}",
     "departureUntil": "Departure by {time}"
+  },
+  "guestHelp": {
+    "within": "{count, plural, one {within # day} other {within # days}}",
+    "daysBefore": "{count, plural, =0 {before your arrival} one {# day before your arrival} other {# days before your arrival}}",
+    "days": "{count, plural, one {# day} other {# days}}",
+    "touristTax": {
+      "included": "The Kurtaxe, the municipality's tourist tax, is included in the prices.",
+      "plus": "The Kurtaxe, the municipality's tourist tax, comes on top of the price: {rate} per adult and night.",
+      "child": "Children aged {from} to {to}: {rate} per night.",
+      "childFree": "Children aged {from} to {to} stay free.",
+      "seasons": "The rates differ in some seasons.",
+      "maxNights": "Only the first {count, plural, one {night is} other {# nights are}} charged.",
+      "estimate": "The price estimate shows the Kurtaxe for your stay."
+    }
   },
   "stayCalendar": {
     "summary": "Stay: {title}",

@@ -91,6 +91,25 @@ a colour for the calendar.
   can be picked, and they see an estimate (nights × nightly rate + cleaning
   fee, from the property's defaults). They never see why a night is taken,
   and requests you have not accepted do not block anything.
+- **Help for guests**: the public page explains **How booking works** -
+  request, your answer, deposit, balance, the confirmation with the address -
+  with short questions to unfold: when the dates are held and when an unpaid
+  reservation lapses, how to pay, cancelling, the Kurtaxe, arrival and
+  departure, and their data. The guest's booking page says **What happens
+  now** for its status (request sent, reserved, confirmed, paid, declined,
+  expired, cancelled) and what to do next: what to pay by when, which
+  reference to quote, adding the stay to their calendar, how to cancel and
+  how to reach you.
+  - The numbers are **your settings**, as they are now: the deposit and its
+    deadlines (Payment terms), how long a request waits for your answer
+    (Booking requests), the cancellation schedule, the Kurtaxe, the arrival
+    and departure times, and whether bank details are set. Change one, and
+    the help says the new value; a setting you haven't made is left out.
+    The booking page uses the booking's own amounts and dates.
+  - "How do I reach you?" gives the email address from your
+    [Impressum](#legal-pages-and-going-live); without one, it's left out.
+  - The texts are in `help/de-DE/` and `help/en-GB/` (`public-stay.md`,
+    `public-booking.md`); guests read them in their browser's language.
 - **Prices** (Settings → Properties → **Prices**): everything that changes
   a property's price, on one page per property. A stay is priced night by
   night by its season; then the length-of-stay discount comes off the

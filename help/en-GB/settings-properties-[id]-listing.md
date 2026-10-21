@@ -16,7 +16,7 @@ What guests see on your home's public page.
 
 **Write the texts:** title, description and house rules, in German and English. Where one language is missing, the other is shown.
 
-**Set arrival and departure times:** under **Arrival and departure**, the earliest arrival, the earliest departure and the latest departure, each optional. Guests see them on the public page, on their booking page and in the emails, for example "Arrival from 15:00 · Departure between 08:00 and 10:00".
+**Set arrival and departure times:** under **Arrival and departure**, the earliest arrival, the earliest departure and the latest departure, each optional. Guests see them on the public page (in its help too), on their booking page and in the emails, for example "Arrival from 15:00 · Departure between 08:00 and 10:00".
 
 ## Good to know
 
