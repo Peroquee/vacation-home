@@ -25,7 +25,8 @@ test("the help button opens the page's own help, and leads on to the guide", asy
 
   await panel.getByRole("link", { name: "More in the user guide" }).click();
   await expect(page).toHaveURL(/\/help#bookings$/);
-  await expect(page.locator("#bookings")).toBeVisible();
+  await expect(page.locator("#bookings")).toHaveText("Bookings");
+  await expect(page.getByRole("heading", { level: 1, name: "User guide" })).toBeVisible();
 
   // Another page, another help: the panel follows the page you are on.
   await page.goto("/settings");
@@ -46,6 +47,17 @@ test("the help speaks the user's language", async ({ browser, baseURL }) => {
   await page.goto("/calendar");
   await page.getByRole("button", { name: "Hilfe zu dieser Seite" }).click();
   await expect(page.getByRole("dialog").getByRole("heading", { name: "Kalender" })).toBeVisible();
+
+  // GitLab #128: the guide in German, its sections under the same anchors.
+  await page.getByRole("dialog").getByRole("link", { name: "Mehr im Benutzerhandbuch" }).click();
+  await expect(page).toHaveURL(/\/help#the-calendar$/);
+  await expect(page.locator("#the-calendar")).toHaveText("Der Kalender");
+  await expect(page.locator("#the-calendar")).toBeInViewport();
+  // The contents lead to each section, in this guide's own words.
+  await page.getByRole("link", { name: "Buchungsplattformen (iCal)" }).click();
+  await expect(page).toHaveURL(/\/help#booking-platforms-ical$/);
+  await expect(page.locator("#booking-platforms-ical")).toBeInViewport();
+  await expect(page.getByRole("main")).not.toContainText("{#");
   await context.close();
 });
 

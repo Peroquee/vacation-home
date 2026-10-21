@@ -6,8 +6,13 @@
  * and whose `guide:` anchor is a section of docs/user-guide.md. The guests'
  * help on the public pages (GitLab #127) too, in each language, its blocks
  * balanced and both languages naming the same flags and values (which ones
- * the page provides, src/lib/help/help.test.ts checks). Fails the lint and
- * the build otherwise. Read-only: safe to run any time.
+ * the page provides, src/lib/help/help.test.ts checks). The user guide in
+ * each language (GitLab #128): docs/user-guide.md and
+ * docs/user-guide.de-DE.md have the same outline - the same headings at the
+ * same levels with the same anchors, the German ones written out as
+ * `## Finanzen {#finance}` - and their links to a section, here or in
+ * another doc, lead to one. Fails the lint and the build otherwise.
+ * Read-only: safe to run any time.
  *
  *   node scripts/check-help.mjs
  */
@@ -68,13 +73,30 @@ const anchor = (heading) =>
     .replace(/[^\p{L}\p{N}\s-]/gu, "")
     .trim()
     .replace(/\s/g, "-");
-const sections = new Set(
-  readFileSync(join(ROOT, "docs", "user-guide.md"), "utf8")
+const EXPLICIT = /\s*\{#([a-z0-9-]+)\}\s*$/;
+/** A Markdown file's h2 and h3, in order: level, anchor, and whether it was written out. */
+function outline(text) {
+  return text
     .split("\n")
     .filter((line) => /^#{2,3} /.test(line))
-    .map((line) => anchor(line.replace(/^#+ /, ""))),
+    .map((line) => {
+      const heading = line.replace(/^#+ /, "");
+      const explicit = EXPLICIT.exec(heading);
+      return {
+        level: line.indexOf(" "),
+        anchor: explicit ? explicit[1] : anchor(heading),
+        explicit: Boolean(explicit),
+        line: heading,
+      };
+    });
+}
+/** The guide in each language; English is the reference. */
+const GUIDES = { "en-GB": "user-guide.md", "de-DE": "user-guide.de-DE.md" };
+const read = (path) => (existsSync(path) ? readFileSync(path, "utf8") : null);
+const guides = Object.fromEntries(
+  Object.entries(GUIDES).map(([locale, file]) => [locale, read(join(ROOT, "docs", file))]),
 );
-
+const sections = new Set(outline(guides["en-GB"] ?? "").map((h) => h.anchor));
 const failures = [];
 const pages = routes()
   .filter((route) => !NO_HELP.has(route))
@@ -128,10 +150,59 @@ for (const key of PUBLIC_HELP) {
   }
 }
 
+// The two guides: one outline, and links that lead somewhere.
+const english = outline(guides["en-GB"] ?? "");
+for (const [locale, file] of Object.entries(GUIDES)) {
+  const text = guides[locale];
+  const path = `docs/${file}`;
+  if (text === null) {
+    failures.push(`${path}: missing (the user guide in ${locale})`);
+    continue;
+  }
+  if (locale !== "en-GB") {
+    const own = outline(text);
+    for (const heading of own.filter((h) => !h.explicit)) {
+      failures.push(`${path}: "${heading.line}" needs its English anchor, as {#...}`);
+    }
+    const shape = (list) => list.map((h) => `${"#".repeat(h.level)} {#${h.anchor}}`);
+    const [ours, theirs] = [shape(own), shape(english)];
+    const at = ours.findIndex((h, i) => h !== theirs[i]);
+    if (at !== -1 || ours.length !== theirs.length) {
+      const i = at === -1 ? Math.min(ours.length, theirs.length) : at;
+      failures.push(
+        `${path}: its sections differ from docs/user-guide.md at section ${i + 1}: ${ours[i] ?? "(none)"} here, ${theirs[i] ?? "(none)"} there`,
+      );
+    }
+  }
+  // Links to a section: of this guide, or of a doc next to it.
+  const anchorsOf = new Map([["", new Set(outline(text).map((h) => h.anchor))]]);
+  for (const [, target, hash] of text.matchAll(/\]\(([^)\s#]*)#([^)\s]+)\)/g)) {
+    if (/^[a-z]+:/i.test(target)) continue;
+    if (!anchorsOf.has(target)) {
+      const other = read(join(ROOT, "docs", target));
+      anchorsOf.set(
+        target,
+        other === null
+          ? null
+          : new Set(
+              other
+                .split("\n")
+                .filter((line) => /^#{1,6} /.test(line))
+                .map((line) => anchor(line.replace(/^#+ /, ""))),
+            ),
+      );
+    }
+    const known = anchorsOf.get(target);
+    if (known === null) failures.push(`${path}: links to ${target}, which does not exist`);
+    else if (!known.has(hash))
+      failures.push(`${path}: links to ${target}#${hash}, no such section`);
+  }
+}
+
 if (failures.length > 0) {
   console.error(`Help texts incomplete:\n  ${failures.join("\n  ")}`);
   process.exit(1);
 }
 console.log(
-  `Help texts complete (${pages.length} pages, ${PUBLIC_HELP.length} public, ${LOCALES.length} languages).`,
+  `Help texts complete (${pages.length} pages, ${PUBLIC_HELP.length} public, ${LOCALES.length} languages; the guide in ${Object.keys(GUIDES).length}, ${english.length} sections each).`,
 );

@@ -1,7 +1,8 @@
 # User guide
 
 A short tour of the app for the people who use it day to day. The labels
-below are the English ones; the German interface uses the same layout.
+below are the English ones; with the interface in German, the app shows
+this guide in German (`docs/user-guide.de-DE.md`).
 
 ## Contents
 
@@ -306,7 +307,7 @@ public site arrives as an inquiry with the source "Website".
 An inquiry may overlap other stays; **Confirm booking** checks the dates
 again and refuses if they have been taken since. **Cancel booking** frees the
 dates at once and keeps the booking (marked cancelled); see
-[Cancellations](#cancellations) for the refund. A cancelled or expired
+**Cancellations** below for the refund. A cancelled or expired
 booking can be **reinstated as an inquiry**.
 
 **Requests** (Bookings → Requests; the number next to Bookings in the
@@ -490,7 +491,7 @@ receipts.
 Receipts are accounting records: German tax law requires keeping them **8
 years** (§147 AO). Erasing a guest's personal data leaves them alone, and the
 app never deletes them by age; deleting the transaction or the receipt does.
-They are backed up with the database ([backup-and-restore.md](backup-and-restore.md#7-receipts)).
+They are backed up with the database ([backup-and-restore.md](backup-and-restore.md#7-files-volume-receipts-and-listing-photos)).
 
 **CSV.** **Export CSV** saves what the ledger shows (its month and filters)
 for your accountant or a spreadsheet, in a plain format or one for German

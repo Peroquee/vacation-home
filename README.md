@@ -8,15 +8,15 @@ Tailwind + shadcn/ui · Auth.js (Google OAuth) · next-intl · Recharts · Docke
 
 ## Documentation
 
-| For                           | Read                                                                                       |
-| ----------------------------- | ------------------------------------------------------------------------------------------ |
-| Using the app                 | [docs/user-guide.md](docs/user-guide.md)                                                   |
-| Google sign-in and sync       | [docs/google-cloud-setup.md](docs/google-cloud-setup.md)                                   |
-| Running it on a server        | [docs/deployment.md](docs/deployment.md)                                                   |
-| Backups and restoring         | [docs/backup-and-restore.md](docs/backup-and-restore.md)                                   |
-| How the sync resolves clashes | [docs/calendar-sync.md](docs/calendar-sync.md)                                             |
-| Security measures             | [docs/security.md](docs/security.md)                                                       |
-| Developing                    | This README, and the UI primitives in [src/components/README.md](src/components/README.md) |
+| For                           | Read                                                                                                       |
+| ----------------------------- | ---------------------------------------------------------------------------------------------------------- |
+| Using the app                 | [docs/user-guide.md](docs/user-guide.md), auf Deutsch [docs/user-guide.de-DE.md](docs/user-guide.de-DE.md) |
+| Google sign-in and sync       | [docs/google-cloud-setup.md](docs/google-cloud-setup.md)                                                   |
+| Running it on a server        | [docs/deployment.md](docs/deployment.md)                                                                   |
+| Backups and restoring         | [docs/backup-and-restore.md](docs/backup-and-restore.md)                                                   |
+| How the sync resolves clashes | [docs/calendar-sync.md](docs/calendar-sync.md)                                                             |
+| Security measures             | [docs/security.md](docs/security.md)                                                                       |
+| Developing                    | This README, and the UI primitives in [src/components/README.md](src/components/README.md)                 |
 
 ## Requirements
 
@@ -660,6 +660,17 @@ calendar's first day of the week follow it.
 - **API messages** stay English; [`src/i18n/api-text.ts`](src/i18n/api-text.ts)
   shows known phrases in the page's language through the `api` namespace. A
   new server message needs an entry there to be translated.
+- **Help and the user guide** are in both languages too: each owner page's
+  help in `help/de-DE/` and `help/en-GB/`, the guests' help there as
+  `public-*.md`, and the guide at `/help` as
+  [`docs/user-guide.md`](docs/user-guide.md) and
+  [`docs/user-guide.de-DE.md`](docs/user-guide.de-DE.md). A change that
+  touches one language updates the other in the same MR. The German
+  guide's headings keep the English anchors (`## Finanzen {#finance}`), so
+  links to a section are the same in both. `npm run lint` and the build fail
+  when a page lacks its help, when the two guides' outlines differ, or when
+  a guide links to a section that does not exist
+  ([`scripts/check-help.mjs`](scripts/check-help.mjs)).
 - **Tests** render in English with the real catalogue (`vitest.setup.ts`);
   e2e runs pin `en-GB`, and `e2e/i18n.spec.ts` checks German.
 
