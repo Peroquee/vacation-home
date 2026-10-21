@@ -10,6 +10,7 @@ import { formatReference } from "@/lib/booking-requests/values";
 import { guestView } from "@/lib/payments/guest-view";
 import { pickText } from "@/lib/properties/public";
 import { daysBetween } from "@/lib/calendar-date";
+import { describeStayTimes } from "@/lib/listing/stay-times";
 
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getTranslations("stay.booking");
@@ -26,13 +27,18 @@ export async function generateMetadata(): Promise<Metadata> {
 export default async function GuestBookingPage({ params }: PageProps<"/stay/booking/[token]">) {
   const view = await guestView((await params).token);
   if (!view) notFound();
-  const [t, tCancellation, locale, format] = await Promise.all([
+  const [t, tCancellation, tTimes, locale, format] = await Promise.all([
     getTranslations("stay.booking"),
     getTranslations("cancellation"),
+    getTranslations("stayTimes"),
     getLocale(),
     getFormat(),
   ]);
   const money = (minor: number) => format.money(minor, view.currency);
+  const times = describeStayTimes(
+    (key, values) => tTimes(key as Parameters<typeof tTimes>[0], values),
+    view.times,
+  );
 
   return (
     <main className="mx-auto w-full max-w-xl space-y-6 px-4 py-6 sm:py-10">
@@ -57,6 +63,12 @@ export default async function GuestBookingPage({ params }: PageProps<"/stay/book
             {format.dateRange(view.checkIn, view.checkOut)} ·{" "}
             {t("nights", { count: daysBetween(view.checkIn, view.checkOut) })}
           </dd>
+          {times ? (
+            <>
+              <dt className="text-muted-foreground">{t("times")}</dt>
+              <dd>{times}</dd>
+            </>
+          ) : null}
           <dt className="text-muted-foreground">{t("guests")}</dt>
           <dd>{view.guestCount}</dd>
           {/* The lines it is made of follow, when there are any (GitLab #118). */}

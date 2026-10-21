@@ -2,11 +2,12 @@
  * The listing profile and its photos (GitLab #106). Server-side only.
  */
 import type { PropertyListing, PropertyPhoto, PropertyPhotoSize } from "@/generated/prisma/client";
-import { db } from "@/lib/db";
+import { db, type DbClient } from "@/lib/db";
 import { removeIfUnreferenced, storeFile } from "@/lib/files/store";
 
 import { PHOTO_ERRORS, processPhoto } from "./photo-processing";
-import type { ListingInput } from "./schema";
+import { type ListingInput, parseStayTimes } from "./schema";
+import { NO_STAY_TIMES, type StayTimes } from "./stay-times";
 import { MAX_PHOTOS } from "./values";
 
 export type ListingDto = Omit<PropertyListing, "propertyId" | "createdAt" | "updatedAt">;
@@ -25,6 +26,7 @@ export const EMPTY_LISTING: ListingDto = {
   bathrooms: null,
   amenities: [],
   checkInTime: null,
+  earliestCheckOutTime: null,
   checkOutTime: null,
   exactAddress: "",
   arrivalNotes: "",
@@ -48,6 +50,36 @@ export async function saveListing(propertyId: string, input: ListingInput): Prom
     update: input,
   });
   return toListingDto(row);
+}
+
+// --- Arrival and departure times (GitLab #126) ------------------------------
+
+/** The property's times now; unset until saved. */
+export async function getStayTimes(propertyId: string, client: DbClient = db): Promise<StayTimes> {
+  const row = await client.propertyListing.findUnique({
+    where: { propertyId },
+    select: { checkInTime: true, earliestCheckOutTime: true, checkOutTime: true },
+  });
+  return row ?? NO_STAY_TIMES;
+}
+
+/** Replaces the three times; the rest of the profile stays. */
+export async function saveStayTimes(propertyId: string, times: StayTimes): Promise<StayTimes> {
+  const row = await db.propertyListing.upsert({
+    where: { propertyId },
+    create: { propertyId, ...times },
+    update: times,
+    select: { checkInTime: true, earliestCheckOutTime: true, checkOutTime: true },
+  });
+  return row;
+}
+
+/** The times a booking was reserved or made under, else the property's now. */
+export async function bookingStayTimes(
+  booking: { propertyId: string; stayTimes: unknown },
+  client: DbClient = db,
+): Promise<StayTimes> {
+  return parseStayTimes(booking.stayTimes) ?? (await getStayTimes(booking.propertyId, client));
 }
 
 // --- Photos -----------------------------------------------------------------

@@ -26,6 +26,7 @@ import { bookingPolicy } from "@/lib/cancellation/service";
 import { db } from "@/lib/db";
 import { todayIn } from "@/lib/finance/recurring";
 import { logger } from "@/lib/logger";
+import { bookingStayTimes } from "@/lib/listing/service";
 import { getBankDetails } from "@/lib/payments/bank";
 import { guestPath, issueGuestToken } from "@/lib/payments/guest-link";
 import { netReceived, nextDue } from "@/lib/payments/service";
@@ -165,8 +166,7 @@ async function deliver(row: EmailOutbox, setup: MailSetup, now: Date): Promise<O
       title: titled
         ? { en: listing.titleEn, de: listing.titleDe }
         : { en: booking.property.name, de: "" },
-      checkInTime: listing?.checkInTime ?? null,
-      checkOutTime: listing?.checkOutTime ?? null,
+      times: await bookingStayTimes(booking),
       houseRules: { en: listing?.houseRulesEn ?? "", de: listing?.houseRulesDe ?? "" },
       exactAddress: listing?.exactAddress ?? "",
       arrivalNotes: listing?.arrivalNotes ?? "",

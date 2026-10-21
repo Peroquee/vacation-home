@@ -7,11 +7,12 @@ import { getTranslations } from "next-intl/server";
 import { PageHeader } from "@/components/page-header";
 import { buttonVariants } from "@/components/ui/button";
 import { isUuid } from "@/lib/api";
-import { getListing, listPhotos } from "@/lib/listing/service";
+import { getListing, getStayTimes, listPhotos } from "@/lib/listing/service";
 import { getProperty } from "@/lib/properties/service";
 
 import { ListingForm } from "./listing-form";
 import { PhotoManager } from "./photo-manager";
+import { StayTimesCard } from "./stay-times-card";
 
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getTranslations("listing.page");
@@ -20,7 +21,8 @@ export async function generateMetadata(): Promise<Metadata> {
 
 /**
  * A property's public profile and photos (GitLab #106): what guests see on
- * its page on the booking site, /stay/<slug>.
+ * its page on the booking site, /stay/<slug>; and its arrival and departure
+ * times (GitLab #126).
  */
 export default async function ListingPage({
   params,
@@ -29,7 +31,11 @@ export default async function ListingPage({
   const { id } = await params;
   const property = isUuid(id) ? await getProperty(id) : null;
   if (!property) notFound();
-  const [listing, photos] = await Promise.all([getListing(id), listPhotos(id)]);
+  const [listing, photos, times] = await Promise.all([
+    getListing(id),
+    listPhotos(id),
+    getStayTimes(id),
+  ]);
   const t = await getTranslations("listing.page");
 
   return (
@@ -61,6 +67,7 @@ export default async function ListingPage({
       <div className="space-y-6">
         <PhotoManager propertyId={id} initial={photos} />
         <ListingForm propertyId={id} initial={listing} />
+        <StayTimesCard propertyId={id} initial={times} />
       </div>
     </>
   );

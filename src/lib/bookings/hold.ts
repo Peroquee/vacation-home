@@ -20,6 +20,8 @@
  * ever moves a booking still reserved, under the property's lock.
  */
 import type { BookingEventKind, Prisma } from "@/generated/prisma/client";
+import { parseStayTimes } from "@/lib/listing/schema";
+import { getStayTimes } from "@/lib/listing/service";
 import { invalidateWindows } from "@/lib/availability/cache";
 import { withPropertyLock } from "@/lib/availability/service";
 import { addDays, type CalendarDate, fromUtcDate, toUtcDate } from "@/lib/calendar-date";
@@ -118,6 +120,11 @@ export async function reserveBooking(id: string, now = new Date()): Promise<Writ
           depositDueOn: toUtcDate(hold.depositDueOn),
           balanceDueOn: hold.balanceDueOn && toUtcDate(hold.balanceDueOn),
           expiredAt: null,
+          // The arrival and departure times the guest is told (GitLab #126):
+          // kept from now on, whatever the property's become.
+          stayTimes: parseStayTimes(current.stayTimes) ?? {
+            ...(await getStayTimes(current.propertyId, tx)),
+          },
           // The cancellation policy (GitLab #116): the request's term stands,
           // a booking without one takes the property's now; the deposit it
           // keeps is the one the guest is now asked for, by today's total.

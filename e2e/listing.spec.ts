@@ -62,11 +62,14 @@ test("a stranger sees the profile and photos, never the address or the camera's 
       bedrooms: 2,
       bathrooms: 1,
       amenities: ["wifi", "terrace"],
-      checkInTime: "15:00",
-      checkOutTime: "10:00",
     },
   });
   expect(saved.status()).toBe(200);
+  // Arrival and departure have their own card and endpoint (GitLab #126).
+  const times = await request.put(`/api/properties/${property.id}/stay-times`, {
+    data: { checkInTime: "15:00", earliestCheckOutTime: "08:00", checkOutTime: "10:00" },
+  });
+  expect(times.status()).toBe(200);
   for (const shade of [100, 200]) {
     const uploaded = await request.post(`/api/properties/${property.id}/photos`, {
       multipart: {
@@ -95,7 +98,7 @@ test("a stranger sees the profile and photos, never the address or the camera's 
   await expect(main).toContainText("From €140.00 per night");
   await expect(main).toContainText("Wake up to the lake.");
   await expect(main).toContainText("Wi-Fi");
-  await expect(main).toContainText("Check-in from 15:00 · Check-out until 10:00");
+  await expect(main).toContainText("Arrival from 15:00 · Departure between 08:00 and 10:00");
   await expect(main).not.toContainText("Secretstrasse");
   await expect(main).not.toContainText("Hiddenville");
   await expect(main).not.toContainText("Listing Internal Name");
@@ -201,8 +204,34 @@ test("the owner manages the listing on its settings page", async ({ page, reques
 
   await page.getByLabel("Location").fill("Malcesine, Lake Garda");
   await page.getByRole("group", { name: "English" }).getByLabel("Title").fill("Lake house");
-  await page.getByRole("button", { name: "Save", exact: true }).click();
+  await page.locator("#listing-profile").getByRole("button", { name: "Save", exact: true }).click();
   await expect(page.getByText("Listing saved")).toBeVisible();
   const listing = await (await request.get(`/api/properties/${property.id}/listing`)).json();
   expect(listing).toMatchObject({ titleEn: "Lake house", location: "Malcesine, Lake Garda" });
+
+  // Arrival and departure, in their own card (GitLab #126): the earliest
+  // departure may not be after the latest.
+  const times = page.locator("#stay-times");
+  await times.getByLabel("Earliest arrival").fill("15:00");
+  await times.getByLabel("Earliest departure").fill("11:00");
+  await times.getByLabel("Latest departure").fill("10:00");
+  await times.getByRole("button", { name: "Save", exact: true }).click();
+  await expect(times.getByText("must not be later than the latest departure")).toBeVisible();
+  await times.getByLabel("Earliest departure").fill("08:00");
+  await times.getByRole("button", { name: "Save", exact: true }).click();
+  await expect(page.getByText("Arrival and departure times saved")).toBeVisible();
+  expect(await (await request.get(`/api/properties/${property.id}/stay-times`)).json()).toEqual({
+    checkInTime: "15:00",
+    earliestCheckOutTime: "08:00",
+    checkOutTime: "10:00",
+  });
+  // Saving the profile again leaves them alone.
+  const resaved = page.waitForResponse(
+    (r) => r.url().endsWith("/listing") && r.request().method() === "PUT",
+  );
+  await page.locator("#listing-profile").getByRole("button", { name: "Save", exact: true }).click();
+  expect((await resaved).status()).toBe(200);
+  expect(
+    (await (await request.get(`/api/properties/${property.id}/stay-times`)).json()).checkInTime,
+  ).toBe("15:00");
 });

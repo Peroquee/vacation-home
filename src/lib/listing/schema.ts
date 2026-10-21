@@ -5,6 +5,7 @@
  */
 import { z } from "zod";
 
+import type { StayTimes } from "./stay-times";
 import { AMENITIES, LISTING_LIMITS, TIME } from "./values";
 
 const text = (max: number) =>
@@ -27,7 +28,10 @@ const time = z
   // Blank means not given.
   .transform((value) => value || null);
 
-/** PUT /api/properties/:id/listing: the whole profile; missing fields are blank. */
+/**
+ * PUT /api/properties/:id/listing: the whole profile; missing fields are
+ * blank. The arrival and departure times have their own (GitLab #126).
+ */
 export const listingSchema = z.strictObject({
   titleEn: text(LISTING_LIMITS.title),
   titleDe: text(LISTING_LIMITS.title),
@@ -43,13 +47,42 @@ export const listingSchema = z.strictObject({
     .array(z.enum(AMENITIES, { error: "must be amenities from the list" }))
     .default([])
     .transform((list) => [...new Set(list)].sort()),
-  checkInTime: time,
-  checkOutTime: time,
   // Owner-only (GitLab #111): sent in the final confirmation, never public.
   exactAddress: text(LISTING_LIMITS.exactAddress),
   arrivalNotes: text(LISTING_LIMITS.arrivalNotes),
 });
 export type ListingInput = z.infer<typeof listingSchema>;
+
+// --- Arrival and departure times (GitLab #126) ------------------------------
+
+/** PUT /api/properties/:id/stay-times: all three; missing ones are unset. */
+export const stayTimesSchema = z
+  .strictObject({ checkInTime: time, earliestCheckOutTime: time, checkOutTime: time })
+  .superRefine((times, context) => {
+    if (
+      times.earliestCheckOutTime &&
+      times.checkOutTime &&
+      times.earliestCheckOutTime > times.checkOutTime
+    ) {
+      context.addIssue({
+        code: "custom",
+        path: ["earliestCheckOutTime"],
+        message: "must not be later than the latest departure",
+      });
+    }
+  });
+
+const snapshot = z.object({
+  checkInTime: z.string().regex(TIME).nullable(),
+  earliestCheckOutTime: z.string().regex(TIME).nullable(),
+  checkOutTime: z.string().regex(TIME).nullable(),
+});
+
+/** A booking's stay_times, or null when it has none (or an unreadable one). */
+export function parseStayTimes(value: unknown): StayTimes | null {
+  const parsed = snapshot.safeParse(value);
+  return parsed.success ? parsed.data : null;
+}
 
 /** PATCH /api/properties/:id/photos/:photoId: the alternative text. */
 export const photoSchema = z

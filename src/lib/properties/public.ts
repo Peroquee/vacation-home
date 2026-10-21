@@ -53,7 +53,9 @@ export type PublicPropertyDto = {
   bedrooms: number | null;
   bathrooms: number | null;
   amenities: string[];
+  /** Arrival and departure (GitLab #126). */
   checkInTime: string | null;
+  earliestCheckOutTime: string | null;
   checkOutTime: string | null;
   /** The cover first. */
   photos: PublicPhotoDto[];
@@ -89,6 +91,7 @@ export function toPublicDto(
     bathrooms: listing.bathrooms,
     amenities: listing.amenities,
     checkInTime: listing.checkInTime,
+    earliestCheckOutTime: listing.earliestCheckOutTime,
     checkOutTime: listing.checkOutTime,
     photos: photos.map((photo) => ({
       alt: { en: photo.altEn, de: photo.altDe },

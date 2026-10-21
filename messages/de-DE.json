@@ -1657,7 +1657,8 @@
     "guestRange": "müssen 1 bis 50 Gäste sein",
     "rampAfterFree": "darf nicht länger sein als der kostenlose Zeitraum",
     "startAboveEnd": "darf nicht über dem Endanteil liegen",
-    "rampNeedsFree": "braucht einen kostenlosen Zeitraum davor"
+    "rampNeedsFree": "braucht einen kostenlosen Zeitraum davor",
+    "departureOrder": "darf nicht später als die späteste Abreise sein"
   },
   "stay": {
     "photoOf": "Foto {n} von {title}",
@@ -1668,8 +1669,6 @@
     "about": "Über die Unterkunft",
     "amenities": "Ausstattung",
     "rules": "Hausregeln",
-    "checkIn": "Anreise ab {time} Uhr",
-    "checkOut": "Abreise bis {time} Uhr",
     "morePhotos": "{count, plural, one {# weiteres Foto} other {# weitere Fotos}}",
     "picker": {
       "heading": "Freie Termine",
@@ -1752,7 +1751,8 @@
       "remittance": "Verwendungszweck",
       "girocode": "Mit Ihrer Banking-App scannen (GiroCode)",
       "girocodeAlt": "GiroCode: ein QR-Code mit dieser Überweisung für Ihre Banking-App",
-      "noBankDetails": "Der Gastgeber schickt Ihnen die Bankverbindung."
+      "noBankDetails": "Der Gastgeber schickt Ihnen die Bankverbindung.",
+      "times": "An- und Abreise"
     },
     "howItWorks": {
       "title": "So funktioniert die Buchung",
@@ -1781,8 +1781,6 @@
       "maxGuests": "Höchstzahl Gäste",
       "bedrooms": "Schlafzimmer",
       "bathrooms": "Badezimmer",
-      "checkInTime": "Anreise ab",
-      "checkOutTime": "Abreise bis",
       "amenities": "Ausstattung",
       "languageEn": "Englisch",
       "languageDe": "Deutsch",
@@ -1839,6 +1837,16 @@
       "babyCot": "Babybett",
       "highChair": "Hochstuhl",
       "petsAllowed": "Haustiere erlaubt"
+    },
+    "stayTimes": {
+      "title": "An- und Abreise",
+      "description": "In der Zeitzone der Unterkunft. Erscheinen auf der öffentlichen Seite, auf der Buchungsseite des Gastes, in den E-Mails und im Kalendereintrag. Buchungen behalten die Zeiten, unter denen sie reserviert oder angelegt wurden.",
+      "checkInTime": "Anreise frühestens ab",
+      "earliestCheckOutTime": "Abreise frühestens ab",
+      "checkOutTime": "Abreise spätestens bis",
+      "optional": "Optional. Leer lassen, um sie wegzulassen.",
+      "saved": "An- und Abreisezeiten gespeichert",
+      "saveFailed": "An- und Abreisezeiten konnten nicht gespeichert werden"
     }
   },
   "legal": {
@@ -1953,8 +1961,6 @@
       "paid": {
         "subject": "Alles bezahlt: bis bald in {title}",
         "body": "Wir haben den vollständigen Betrag erhalten. Vielen Dank – wir freuen uns auf Ihren Aufenthalt.",
-        "checkIn": "Anreise ab {time}",
-        "checkOut": "Abreise bis {time}",
         "address": "Die Adresse:",
         "arrival": "Zur Anreise:",
         "rules": "Hausregeln:"
@@ -2041,5 +2047,12 @@
     "guideTitle": "Benutzerhandbuch",
     "guideDescription": "Alles, was die App kann, Schritt für Schritt (auf Englisch). Der Hilfe-Knopf jeder Seite führt zum passenden Abschnitt.",
     "hint": "Was bedeutet das?"
+  },
+  "stayTimes": {
+    "arrival": "Anreise ab {time}",
+    "departureAt": "Abreise um {time}",
+    "departureBetween": "Abreise zwischen {from} und {until}",
+    "departureFrom": "Abreise ab {time}",
+    "departureUntil": "Abreise bis {time}"
   }
 }
