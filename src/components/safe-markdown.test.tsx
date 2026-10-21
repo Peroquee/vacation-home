@@ -43,7 +43,9 @@ describe("owner-written Markdown on the public site", () => {
     expect(out).not.toMatch(/href="(javascript|data|vbscript):/i);
     // As text it is harmless: shown, never a target.
     expect(out).toContain("<p>javascript:alert(1)</p>");
-    expect(out.match(/<a /g)).toHaveLength(3);
+    // Links within the site stay links (GitLab #124); "//" is another host.
+    expect(out).toContain('href="/stay/legal/imprint"');
+    expect(out.match(/<a /g)).toHaveLength(4);
     // The text of a refused link stays.
     expect(out).toContain("js");
     expect(out).toContain("rel");
@@ -61,6 +63,8 @@ describe("owner-written Markdown on the public site", () => {
     expect(safeHref("MAILTO:a@b.test")).toBe("MAILTO:a@b.test");
     expect(safeHref("javascript:alert(1)")).toBe("");
     expect(safeHref("//evil.test")).toBe("");
+    expect(safeHref("/stay/legal/cookies")).toBe("/stay/legal/cookies");
+    expect(safeHref("/\\evil.test")).toBe("");
     expect(safeHref("tel:+49")).toBe("");
   });
 });

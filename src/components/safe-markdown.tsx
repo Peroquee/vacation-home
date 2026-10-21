@@ -37,10 +37,18 @@ const ALLOWED = [
   "hr",
 ];
 
-/** The link target when it is http(s), mailto or a section of the same page, else nothing. */
+/**
+ * The link target when it is http(s), mailto, a section of the same page,
+ * or a page of this site ("/stay/legal/cookies"; never "//", another host),
+ * else nothing.
+ */
 export function safeHref(url: string): string {
   const value = url.trim();
-  return /^(https?:\/\/|mailto:)/i.test(value) || /^#[\w-]+$/.test(value) ? value : "";
+  return /^(https?:\/\/|mailto:)/i.test(value) ||
+    /^#[\w-]+$/.test(value) ||
+    /^\/(?!\/)[\w\-./#]*$/.test(value)
+    ? value
+    : "";
 }
 
 /** A heading's anchor, as GitHub makes them: "Booking platforms (iCal)" -> "booking-platforms-ical". */

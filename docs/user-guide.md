@@ -203,6 +203,17 @@ stopping you, while the privacy policy still has the template's note and for
 every property without bank details, whose guests would not be told where to
 transfer.
 
+### Cookies
+
+The public pages set **no cookies**: guests can look, pick dates and send a
+request without any. Only your sign-in and your own pages use a few, all
+strictly necessary (to keep you signed in, to protect the sign-in, and to
+remember the language and the calendar's home you chose), so the site
+needs and shows **no cookie banner**. The **Cookie notice**
+(`/stay/legal/cookies`, linked in every public page's footer and on the
+sign-in page) lists them with their purpose and how long they are kept; the
+privacy policy template points to it. Cloudflare sets none for this site.
+
 ## The calendar
 
 A month at a glance, one coloured bar per stay. A bar runs from the middle
