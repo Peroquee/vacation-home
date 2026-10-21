@@ -117,7 +117,7 @@ test("the property page and the booking page explain booking with the real terms
   // Folded until asked, by mouse ...
   const times = help.locator("details", { hasText: "Arrival and departure" });
   await expect(times.getByText("Arrival from 15:00 · Departure by 10:00")).toBeHidden();
-  await times.getByText("Arrival and departure").click();
+  await times.locator("summary").click();
   await expect(times.getByText("Arrival from 15:00 · Departure by 10:00")).toBeVisible();
   // ... or by keyboard.
   const pay = help.locator("details", { hasText: "How do I pay?" });
@@ -159,9 +159,9 @@ test("the property page and the booking page explain booking with the real terms
   await open(own.page, path);
   const next = own.page.getByRole("region", { name: "What happens now" });
   await expect(next).toContainText(/Your next step: transfer €300\.00 by/);
-  await next.getByText("How do I pay?").click();
+  await next.locator("summary", { hasText: "How do I pay?" }).click();
   await expect(next).toContainText(/Please quote Booking [A-HJKMNP-Z2-9]{4}-[A-HJKMNP-Z2-9]{4}/);
-  await next.getByText("How do I add the stay to my calendar?").click();
+  await next.locator("summary", { hasText: "How do I add the stay to my calendar?" }).click();
   await expect(next).toContainText("Add to calendar (.ics)");
   await expectAccessible(own.page, "booking-help");
   await own.context.close();

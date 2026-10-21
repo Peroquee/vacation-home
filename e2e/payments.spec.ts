@@ -102,8 +102,11 @@ test("the guest sees what to pay; the owner records the deposit, once in the led
   );
   await expect(guestPage.getByText(/Please pay the deposit of €220.00 by/)).toBeVisible();
   await expect(guestPage.getByText("DE89 3704 0044 0532 0130 00")).toBeVisible();
+  // The reference to quote; the guests' help (GitLab #127) names it too.
   await expect(
-    guestPage.getByText(/^Booking [A-HJKMNP-Z2-9]{4}-[A-HJKMNP-Z2-9]{4}$/),
+    guestPage
+      .getByRole("definition")
+      .filter({ hasText: /^Booking [A-HJKMNP-Z2-9]{4}-[A-HJKMNP-Z2-9]{4}$/ }),
   ).toBeVisible();
   const girocode = guestPage.getByRole("img", { name: /GiroCode/ });
   await expect(girocode).toBeVisible();
