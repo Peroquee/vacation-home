@@ -99,6 +99,27 @@ const keyOf = (d: Pick<Draft, "propertyId" | "type" | "date" | "amountMinor" | "
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
+/**
+ * The default categories are each of their own type (GitLab #129): an
+ * income category as the expenses' default is refused, naming the field,
+ * rather than every row without a category failing on it.
+ */
+export async function checkImportDefaults(
+  defaults: ImportRequest["defaults"],
+): Promise<{ field: string; message: string } | null> {
+  for (const type of ["income", "expense"] as const) {
+    const field = type === "income" ? "incomeCategoryId" : "expenseCategoryId";
+    const id = defaults[field];
+    if (!id) continue;
+    const category = await db.category.findUnique({ where: { id }, select: { type: true } });
+    if (!category) return { field: `defaults.${field}`, message: "does not exist" };
+    if (category.type !== type) {
+      return { field: `defaults.${field}`, message: `is not an ${type} category` };
+    }
+  }
+  return null;
+}
+
 /** Checks every row; with `commit`, writes the ready ones (and confirmed duplicates). */
 export async function importTransactions(request: ImportRequest): Promise<{
   rows: ImportRow[];
@@ -180,6 +201,7 @@ export async function importTransactions(request: ImportRequest): Promise<{
         ? findCategory(categoryText, type)
         : categories.find(
             (c) =>
+              c.type === type &&
               c.id === (type === "income" ? defaults.incomeCategoryId : defaults.expenseCategoryId),
           )
       : undefined;

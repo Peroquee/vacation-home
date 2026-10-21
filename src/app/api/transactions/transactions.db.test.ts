@@ -476,3 +476,44 @@ describe("POST /api/transactions/bulk-delete", () => {
     expect((await tooMany.json()).error.fields.ids).toEqual(["at most 500 at a time"]);
   });
 });
+
+describe("a category of the other type (GitLab #129)", () => {
+  // Read when the test runs: the ids are set in beforeAll.
+  const expense = (over: Record<string, unknown> = {}) => ({
+    propertyId: lake,
+    type: "expense",
+    categoryId: cat.cleaning,
+    amountMinor: 100,
+    date: "2026-07-20",
+    ...over,
+  });
+  const patch = async (id: string, body: Record<string, unknown>) => {
+    const response = await PATCH(new Request(`${BASE}/${id}`, send("PATCH", body)), context(id));
+    return { status: response.status, body: await response.json() };
+  };
+
+  it("is refused for a new transaction and for an edit, on categoryId", async () => {
+    const income = await post(expense({ categoryId: cat.booking_income }));
+    expect(income.status).toBe(422);
+    expect(income.body.error.fields).toEqual({ categoryId: ["is not an expense category"] });
+
+    const { body } = await post(expense());
+    const swapped = await patch(body.id, { categoryId: cat.booking_income });
+    expect(swapped.status).toBe(422);
+    expect(swapped.body.error.fields).toEqual({ categoryId: ["is not an expense category"] });
+    // A new type needs a category of it; the old one is not kept.
+    const retyped = await patch(body.id, { type: "income" });
+    expect(retyped.status).toBe(422);
+    expect(Object.keys(retyped.body.error.fields)).toEqual(["categoryId"]);
+    expect((await patch(body.id, { type: "income", categoryId: cat.booking_income })).status).toBe(
+      200,
+    );
+  });
+
+  it("is refused by the database too", async () => {
+    const { body } = await post(expense());
+    await expect(
+      db.transaction.update({ where: { id: body.id }, data: { categoryId: cat.booking_income } }),
+    ).rejects.toThrow(/transactions_category_id_type_fkey|Foreign key/);
+  });
+});

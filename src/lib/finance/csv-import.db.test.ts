@@ -6,6 +6,7 @@
 import Papa from "papaparse";
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
 
+import { POST } from "@/app/api/transactions/import/route";
 import { toUtcDate } from "@/lib/calendar-date";
 import { db } from "@/lib/db";
 
@@ -174,5 +175,50 @@ describe("importing a spreadsheet", () => {
       request(sheet([`14.07.2026;-1,00;${cleaning.name};x`]), { defaults: { propertyId } }),
     );
     expect(result.rows[0]!.errors).toEqual([{ field: "property", message: "is archived" }]);
+  });
+});
+
+describe("default categories (GitLab #129)", () => {
+  const csv = "date,amount,description\n2026-07-03,-12.50,Soap\n";
+  const post = (body: ImportRequest) =>
+    POST(
+      new Request("http://localhost/api/transactions/import", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(body),
+      }),
+    );
+
+  it("refuses a default of the other type, naming its field", async () => {
+    const wrong = await post(
+      request(csv, { defaults: { propertyId, expenseCategoryId: rent.id } }),
+    );
+    expect(wrong.status).toBe(422);
+    expect((await wrong.json()).error.fields).toEqual({
+      "defaults.expenseCategoryId": ["is not an expense category"],
+    });
+    const swapped = await post(
+      request(csv, { defaults: { propertyId, incomeCategoryId: cleaning.id } }),
+    );
+    expect((await swapped.json()).error.fields).toEqual({
+      "defaults.incomeCategoryId": ["is not an income category"],
+    });
+    // Nothing was imported: the three from before.
+    expect(await count()).toBe(3);
+  });
+
+  it("never gives a row a default of the other type", async () => {
+    const { rows } = await importTransactions(
+      request(csv, { defaults: { propertyId, expenseCategoryId: rent.id } }),
+    );
+    expect(rows[0]).toMatchObject({
+      status: "invalid",
+      errors: [{ field: "category", message: "is required" }],
+    });
+    const right = await post(
+      request(csv, { defaults: { propertyId, expenseCategoryId: cleaning.id }, commit: true }),
+    );
+    expect(right.status).toBe(200);
+    expect(await count()).toBe(4);
   });
 });

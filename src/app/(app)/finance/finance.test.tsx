@@ -116,6 +116,59 @@ describe("TransactionDialog", () => {
     expect(category).toHaveValue("");
   });
 
+  // GitLab #129: "Type expense, and income categories can still be chosen."
+  it("switched to expense, offers only expense categories and drops the income one", async () => {
+    const fetchMock = serve();
+    const { user } = renderDialog();
+    const category = screen.getByLabelText("Category");
+    const offered = () =>
+      within(category)
+        .getAllByRole("option")
+        .map((option) => option.textContent);
+
+    await user.click(screen.getByRole("radio", { name: "Income" }));
+    await user.selectOptions(category, "c-other");
+    await user.click(screen.getByRole("radio", { name: "Expense" }));
+    expect(offered()).toEqual(["Choose…", "Cleaning", "Utilities"]);
+    expect(category).toHaveValue("");
+    // And back: the income category is not quietly restored.
+    await user.click(screen.getByRole("radio", { name: "Income" }));
+    expect(category).toHaveValue("");
+
+    // Nothing of the other type is ever sent.
+    await user.click(screen.getByRole("radio", { name: "Expense" }));
+    await user.click(screen.getByLabelText("Amount"));
+    await user.keyboard("5");
+    await user.click(screen.getByRole("button", { name: "Add" }));
+    expect(await screen.findByText("Category is required")).toBeInTheDocument();
+    expect(saved(fetchMock)).toBeUndefined();
+  });
+
+  it("editing an income entry into an expense asks for an expense category", async () => {
+    const fetchMock = serve(Response.json({}));
+    const { user } = renderDialog({
+      transaction: {
+        id: "t2",
+        propertyId: PROPERTY,
+        type: "income",
+        categoryId: "c-other",
+        amountMinor: 5000,
+        date: "2026-10-02",
+        description: null,
+        bookingId: null,
+      },
+    });
+    const category = screen.getByLabelText("Category");
+    expect(category).toHaveValue("c-other");
+    await user.click(screen.getByRole("radio", { name: "Expense" }));
+    expect(category).toHaveValue("");
+    expect(within(category).queryByRole("option", { name: "Other income" })).toBeNull();
+    await user.selectOptions(category, "c-util");
+    await user.click(screen.getByRole("button", { name: "Save" }));
+    await waitFor(() => expect(saved(fetchMock)).toBeDefined());
+    expect(saved(fetchMock)!.body).toMatchObject({ type: "expense", categoryId: "c-util" });
+  });
+
   it("says what is missing or malformed before sending", async () => {
     const fetchMock = serve();
     const { user } = renderDialog();

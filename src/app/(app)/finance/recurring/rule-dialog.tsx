@@ -60,7 +60,11 @@ export function RuleDialog({
   const firstProperty = active.length === 1 ? active[0]!.id : "";
   const [values, setValues] = useState({
     propertyId: start?.propertyId ?? firstProperty,
-    categoryId: rule?.category.id ?? prefill?.categoryId ?? "",
+    // A prefill's category only if it is offered (GitLab #129): a visible
+    // expense category, never one the select cannot show.
+    categoryId:
+      rule?.category.id ??
+      (prefill && categories.some((c) => c.id === prefill.categoryId) ? prefill.categoryId : ""),
     amount: "",
     interval: (rule?.interval ?? "monthly") as (typeof INTERVALS)[number],
     startDate: rule?.startDate ?? prefill?.startDate ?? today(),

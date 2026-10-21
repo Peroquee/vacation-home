@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
@@ -105,5 +105,34 @@ describe("ImportWizard", () => {
       screen.getByText(/^2 imported, 0 skipped as duplicates, 1 left out with problems\.$/),
     ).toBeInTheDocument();
     expect(refresh).toHaveBeenCalled();
+  });
+
+  // GitLab #129: each default is of its own type only.
+  it("offers each default category of its own type only", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn<typeof fetch>(async () => Response.json(preview)),
+    );
+    render(
+      <ImportWizard
+        properties={[{ id: "p1", name: "Lake House" }]}
+        categories={[
+          { id: "c1", name: "Cleaning", type: "expense" },
+          { id: "c2", name: "Booking income", type: "income" },
+        ]}
+      />,
+    );
+    const user = userEvent.setup();
+    await user.upload(
+      screen.getByLabelText("CSV file"),
+      new File(["Datum;Betrag\n14.07.2026;-12,50\n"], "bank.csv", { type: "text/csv" }),
+    );
+    const names = (label: string) =>
+      within(screen.getByLabelText(label))
+        .getAllByRole("option")
+        .map((option) => option.textContent);
+    expect(await screen.findByLabelText("Category for expenses without one")).toBeInTheDocument();
+    expect(names("Category for expenses without one")).toEqual(["None", "Cleaning"]);
+    expect(names("Category for income without one")).toEqual(["None", "Booking income"]);
   });
 });
