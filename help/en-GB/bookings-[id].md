@@ -28,7 +28,7 @@ Everything about one stay: guest, dates, the price line by line, payments and wh
 
 **Send the guest their booking page**
 
-Choose **Guest link**. It shows the guest what to pay, your bank details and their booking.
+Choose **Guest link**. It shows the guest what to pay, your bank details and their booking. Once the dates are reserved, the guest can add the stay to their calendar from that page (.ics file, Google Calendar or Outlook.com).
 
 **Cancel a booking**
 

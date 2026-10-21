@@ -20,44 +20,14 @@ import { createHash } from "node:crypto";
 import { addDays, type CalendarDate } from "@/lib/calendar-date";
 import type { DateRange } from "@/lib/date-range";
 
+import { icsDate, icsFile, icsStamp, icsText as text } from "./format";
+
 export const FEED_HISTORY_DAYS = 30;
 
 export type FeedEntry = DateRange & { kind: "booking" | "block"; id: string };
 
 const uid = (entry: FeedEntry) =>
   createHash("sha256").update(`${entry.kind}:${entry.id}`).digest("hex").slice(0, 32);
-
-/** "20260714" from "2026-07-14". */
-const icsDate = (date: CalendarDate) => date.replaceAll("-", "");
-
-/** "20261009T120000Z". */
-const icsStamp = (instant: Date) =>
-  instant
-    .toISOString()
-    .replace(/[-:]/g, "")
-    .replace(/\.\d{3}/, "");
-
-/** Escapes TEXT values (RFC 5545, 3.3.11). */
-const text = (value: string) =>
-  value.replace(/\\/g, "\\\\").replace(/;/g, "\;").replace(/,/g, "\\,").replace(/\r?\n/g, "\\n");
-
-/** Folds a content line at 75 octets, continuing with a space (RFC 5545, 3.1). */
-function fold(line: string): string {
-  const bytes = Buffer.from(line, "utf8");
-  if (bytes.length <= 75) return line;
-  const parts: string[] = [];
-  let start = 0;
-  let limit = 75;
-  while (start < bytes.length) {
-    let end = Math.min(start + limit, bytes.length);
-    // Never split a UTF-8 character: back off continuation bytes.
-    while (end < bytes.length && (bytes[end]! & 0xc0) === 0x80) end--;
-    parts.push(bytes.subarray(start, end).toString("utf8"));
-    start = end;
-    limit = 74; // the leading space of a continuation counts
-  }
-  return parts.join("\r\n ");
-}
 
 export function buildFeed({
   propertyName,
@@ -97,5 +67,5 @@ export function buildFeed({
     );
   }
   lines.push("END:VCALENDAR");
-  return lines.map(fold).join("\r\n") + "\r\n";
+  return icsFile(lines);
 }

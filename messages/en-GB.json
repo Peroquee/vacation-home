@@ -1751,7 +1751,14 @@
       "girocode": "Scan with your banking app (GiroCode)",
       "girocodeAlt": "GiroCode: a QR code with this transfer for your banking app",
       "noBankDetails": "The owner will send you the bank details.",
-      "times": "Arrival and departure"
+      "times": "Arrival and departure",
+      "calendar": {
+        "title": "Add to your calendar",
+        "download": "Add to calendar (.ics)",
+        "hint": "The file works with Apple Calendar, Outlook and most other calendar apps. Opening it again later updates the entry instead of adding a second one.",
+        "google": "Google Calendar",
+        "outlook": "Outlook.com"
+      }
     },
     "howItWorks": {
       "title": "How booking works",
@@ -1990,6 +1997,12 @@
         "subject": "Guest cancelled: {name}, {when}",
         "body": "{name} has cancelled. The refund due is {amount}; record it with the payments once sent."
       }
+    },
+    "calendar": {
+      "title": "Add to your calendar",
+      "attached": "The attached file stay.ics adds your stay to Apple Calendar, Outlook and most other calendar apps; opening a newer one updates the entry. Or add it here:",
+      "google": "Add to Google Calendar",
+      "outlook": "Add to Outlook.com"
     }
   },
   "cancellation": {
@@ -2053,5 +2066,10 @@
     "departureBetween": "Departure between {from} and {until}",
     "departureFrom": "Departure from {time}",
     "departureUntil": "Departure by {time}"
+  },
+  "stayCalendar": {
+    "summary": "Stay: {title}",
+    "reference": "Reference: {reference}",
+    "link": "Your booking: {url}"
   }
 }

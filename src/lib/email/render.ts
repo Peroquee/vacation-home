@@ -2,7 +2,9 @@
  * The emails' words and layout (GitLab #111): plain text and simple HTML
  * from the same blocks, in the guest's language. No external images and no
  * tracking: the one image, the GiroCode, travels inline (cid). The footer
- * links the legal pages. Server-side only.
+ * links the legal pages. The confirmations carry the stay for the guest's
+ * calendar: an .ics file and "add event" links (GitLab #125). Server-side
+ * only.
  */
 import { createTranslator } from "next-intl";
 import QRCode from "qrcode";
@@ -63,6 +65,11 @@ export type EmailContext = {
   bank: BankDetails | null;
   /** The guest's own page, for the kinds that link it; made at send time. */
   guestLink: string | null;
+  /**
+   * The stay for the guest's calendar (GitLab #125), for the confirmations:
+   * the .ics file and the same event as Google and Outlook.com links.
+   */
+  calendar?: { file: string; google: string; outlook: string } | null;
 };
 
 type Block =
@@ -76,7 +83,8 @@ export type RenderedEmail = {
   subject: string;
   text: string;
   html: string;
-  attachments: { filename: string; content: Buffer; cid: string; contentType: string }[];
+  /** With a cid when the HTML shows it inline. */
+  attachments: { filename: string; content: Buffer; cid?: string; contentType: string }[];
 };
 
 const escape = (text: string) => text.replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
@@ -225,6 +233,20 @@ export async function renderEmail(context: EmailContext): Promise<RenderedEmail>
   const guestLink: Block[] = context.guestLink
     ? [{ link: t("guestLink"), url: context.guestLink }]
     : [];
+  /** The stay for the guest's calendar: attached, and as links (GitLab #125). */
+  function calendar(): Block[] {
+    if (!context.calendar) return [];
+    attachments.push({
+      filename: "stay.ics",
+      content: Buffer.from(context.calendar.file, "utf8"),
+      contentType: "text/calendar; charset=utf-8; method=PUBLISH",
+    });
+    return [
+      { p: `${t("calendar.title")}: ${t("calendar.attached")}` },
+      { link: t("calendar.google"), url: context.calendar.google },
+      { link: t("calendar.outlook"), url: context.calendar.outlook },
+    ];
+  }
   const ownerLink = (path: string): Block => ({
     link: t("owner.open"),
     url: new URL(path, context.appUrl).toString(),
@@ -328,6 +350,7 @@ export async function renderEmail(context: EmailContext): Promise<RenderedEmail>
           stay,
           ...(await payment()),
           ...policy,
+          ...calendar(),
           ...guestLink,
         );
         break;
@@ -357,7 +380,7 @@ export async function renderEmail(context: EmailContext): Promise<RenderedEmail>
         }
         const rules = pick(property.houseRules);
         if (rules) blocks.push({ p: t("guest.paid.rules") }, { pre: rules });
-        blocks.push(...guestLink);
+        blocks.push(...calendar(), ...guestLink);
         break;
       }
       case "cancelled": {

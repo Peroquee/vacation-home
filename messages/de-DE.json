@@ -1751,7 +1751,14 @@
       "girocode": "Mit Ihrer Banking-App scannen (GiroCode)",
       "girocodeAlt": "GiroCode: ein QR-Code mit dieser Überweisung für Ihre Banking-App",
       "noBankDetails": "Der Gastgeber schickt Ihnen die Bankverbindung.",
-      "times": "An- und Abreise"
+      "times": "An- und Abreise",
+      "calendar": {
+        "title": "In den Kalender eintragen",
+        "download": "In Kalender eintragen (.ics)",
+        "hint": "Die Datei funktioniert mit Apple Kalender, Outlook und den meisten anderen Kalender-Apps. Öffnen Sie sie später erneut, wird der Eintrag aktualisiert statt doppelt angelegt.",
+        "google": "Google Kalender",
+        "outlook": "Outlook.com"
+      }
     },
     "howItWorks": {
       "title": "So funktioniert die Buchung",
@@ -1990,6 +1997,12 @@
         "subject": "Gast hat storniert: {name}, {when}",
         "body": "{name} hat storniert. Zu erstatten sind {amount}; tragen Sie die Erstattung nach der Überweisung bei den Zahlungen ein."
       }
+    },
+    "calendar": {
+      "title": "In den Kalender eintragen",
+      "attached": "Mit der angehängten Datei stay.ics tragen Sie Ihren Aufenthalt in Apple Kalender, Outlook und die meisten anderen Kalender-Apps ein; eine neuere Datei aktualisiert den Eintrag. Oder direkt hier:",
+      "google": "In Google Kalender eintragen",
+      "outlook": "In Outlook.com eintragen"
     }
   },
   "cancellation": {
@@ -2053,5 +2066,10 @@
     "departureBetween": "Abreise zwischen {from} und {until}",
     "departureFrom": "Abreise ab {time}",
     "departureUntil": "Abreise bis {time}"
+  },
+  "stayCalendar": {
+    "summary": "Aufenthalt: {title}",
+    "reference": "Buchungsnummer: {reference}",
+    "link": "Ihre Buchung: {url}"
   }
 }
