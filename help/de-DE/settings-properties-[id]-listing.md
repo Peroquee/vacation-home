@@ -16,7 +16,7 @@ Was Gäste auf der öffentlichen Seite Ihrer Unterkunft sehen.
 
 **Texte schreiben:** Titel, Beschreibung und Hausregeln, jeweils auf Deutsch und Englisch. Fehlt eine Sprache, wird die andere gezeigt.
 
-**An- und Abreisezeiten festlegen:** unter **An- und Abreise** die früheste Anreise, die früheste und die späteste Abreise, jeweils optional. Gäste sehen sie auf der öffentlichen Seite, auf ihrer Buchungsseite und in den E-Mails, etwa „Anreise ab 15:00 · Abreise zwischen 08:00 und 10:00“.
+**An- und Abreisezeiten festlegen:** unter **An- und Abreise** die früheste Anreise, die früheste und die späteste Abreise, jeweils optional. Gäste sehen sie auf der öffentlichen Seite (auch in deren Hilfe), auf ihrer Buchungsseite und in den E-Mails, etwa „Anreise ab 15:00 · Abreise zwischen 08:00 und 10:00“.
 
 ## Gut zu wissen
 

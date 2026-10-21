@@ -24,6 +24,7 @@ Alles, was einmal eingerichtet wird: Ihre Unterkünfte, Regeln, Zahlungen, E-Mai
 ## Gut zu wissen
 
 - **Anzahlung nicht erstattbar** (bei den Zahlungsbedingungen): Storniert der Gast, behalten Sie die Anzahlung; alles darüber hinaus wird erstattet.
+- **Gäste lesen Ihre Einstellungen:** Die Hilfe auf Ihrer öffentlichen Seite und auf der Buchungsseite des Gastes nennt die Anzahlung, ihre Fristen, wie lange eine Anfrage auf Ihre Antwort wartet und ob eine Bankverbindung hinterlegt ist, so wie sie gerade eingestellt sind. Als Kontakt steht dort die E-Mail-Adresse aus dem Impressum.
 - **Webadresse** einer Unterkunft: so heißt ihre öffentliche Seite, z. B. `/stay/haus-am-see`. Nur Kleinbuchstaben, Ziffern und Bindestriche.
 
 ## Was tun, wenn …

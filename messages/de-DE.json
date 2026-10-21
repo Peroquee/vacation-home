@@ -1760,13 +1760,6 @@
         "google": "Google Kalender",
         "outlook": "Outlook.com"
       }
-    },
-    "howItWorks": {
-      "title": "So funktioniert die Buchung",
-      "request": "<b>Anfrage senden:</b> Wählen Sie Ihre Tage und schicken Sie uns eine Anfrage. Das kostet nichts und verpflichtet noch zu nichts.",
-      "answer": "<b>Zusage:</b> Wir melden uns bei Ihnen. Sagen wir zu, sind die Tage für Sie reserviert.",
-      "deposit": "<b>Anzahlung:</b> Sie überweisen die Anzahlung bis zur genannten Frist. Damit ist die Buchung bestätigt.",
-      "balance": "<b>Restzahlung:</b> Den Rest überweisen Sie vor der Anreise. Danach schicken wir Ihnen die genaue Adresse und alles für die Ankunft."
     }
   },
   "listing": {
@@ -2067,6 +2060,20 @@
     "departureBetween": "Abreise zwischen {from} und {until}",
     "departureFrom": "Abreise ab {time}",
     "departureUntil": "Abreise bis {time}"
+  },
+  "guestHelp": {
+    "within": "{count, plural, one {innerhalb eines Tages} other {innerhalb von # Tagen}}",
+    "daysBefore": "{count, plural, =0 {vor Ihrer Anreise} one {einen Tag vor Ihrer Anreise} other {# Tage vor Ihrer Anreise}}",
+    "days": "{count, plural, one {einen Tag} other {# Tage}}",
+    "touristTax": {
+      "included": "Die Kurtaxe der Gemeinde ist in den Preisen enthalten.",
+      "plus": "Die Kurtaxe der Gemeinde kommt zum Preis hinzu: {rate} pro erwachsener Person und Nacht.",
+      "child": "Kinder von {from} bis {to} Jahren: {rate} pro Nacht.",
+      "childFree": "Kinder von {from} bis {to} Jahren sind befreit.",
+      "seasons": "In manchen Zeiten gelten andere Sätze.",
+      "maxNights": "Berechnet {count, plural, one {wird nur die erste Nacht} other {werden nur die ersten # Nächte}}.",
+      "estimate": "Die Preisberechnung zeigt die Kurtaxe für Ihren Aufenthalt."
+    }
   },
   "stayCalendar": {
     "summary": "Aufenthalt: {title}",

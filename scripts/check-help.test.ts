@@ -38,14 +38,23 @@ function run(root: string): { ok: boolean; output: string } {
 }
 
 const GOOD = "---\nguide: the-calendar\n---\n\n# Calendar\n";
+// The guests' help on the public pages (GitLab #127), in both languages.
+const PUBLIC = "# Booking\n\nDue {deposit}.\n:::if-girocode\nScan it.\n:::\n";
+const PUBLIC_FILES = Object.fromEntries(
+  ["de-DE", "en-GB"].flatMap((locale) =>
+    ["public-stay", "public-booking"].map((key) => [`${locale}/${key}.md`, PUBLIC]),
+  ),
+);
 
 describe("the help check (scripts/check-help.mjs)", () => {
   it("passes when every page has its help in both languages", () => {
-    expect(run(project({ "de-DE/calendar.md": GOOD, "en-GB/calendar.md": GOOD })).ok).toBe(true);
+    expect(
+      run(project({ "de-DE/calendar.md": GOOD, "en-GB/calendar.md": GOOD, ...PUBLIC_FILES })).ok,
+    ).toBe(true);
   });
 
   it("fails for a page without help in a language", () => {
-    const result = run(project({ "de-DE/calendar.md": GOOD }));
+    const result = run(project({ "de-DE/calendar.md": GOOD, ...PUBLIC_FILES }));
     expect(result.ok).toBe(false);
     expect(result.output).toContain("/calendar: no help in en-GB");
   });
@@ -55,10 +64,27 @@ describe("the help check (scripts/check-help.mjs)", () => {
       project({
         "de-DE/calendar.md": `${GOOD}\n:::if-email\nnever closed\n`,
         "en-GB/calendar.md": "---\nguide: nowhere\n---\n",
+        ...PUBLIC_FILES,
       }),
     );
     expect(result.ok).toBe(false);
     expect(result.output).toContain("the block is never closed");
     expect(result.output).toContain('guide "nowhere" is no section');
+  });
+
+  it("fails for a guests' help missing in a language, or naming other values there", () => {
+    const rest = { ...PUBLIC_FILES };
+    delete rest["en-GB/public-booking.md"];
+    const result = run(
+      project({
+        "de-DE/calendar.md": GOOD,
+        "en-GB/calendar.md": GOOD,
+        ...rest,
+        "en-GB/public-stay.md": PUBLIC.replace("{deposit}", "{depost}"),
+      }),
+    );
+    expect(result.ok).toBe(false);
+    expect(result.output).toContain("public-booking: no help in en-GB");
+    expect(result.output).toContain("help/en-GB/public-stay.md: names the values depost");
   });
 });

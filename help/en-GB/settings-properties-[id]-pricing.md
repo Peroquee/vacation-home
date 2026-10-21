@@ -35,4 +35,5 @@ Everything that sets a home's price. A stay is priced like this: night by night 
 
 - **Existing bookings keep their price** when you change anything here.
 - Guests see the season names in the price: choose names for guests.
+- The cancellation schedule and the Kurtaxe also appear, as set now, in the help on your public page ("How booking works").
 - The standard rate and the cleaning fee are changed on the home itself, under **Edit**.

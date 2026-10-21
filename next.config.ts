@@ -10,9 +10,12 @@ const nextConfig: NextConfig = {
   // Node module rather than bundled (src/lib/reports).
   serverExternalPackages: ["@react-pdf/renderer"],
   // Read from disk at run time (GitLab #121): the help texts and the user
-  // guide, so the standalone server carries them.
+  // guide, so the standalone server carries them; the guests' help on the
+  // public pages too (#127).
   outputFileTracingIncludes: {
     "/api/help/[key]": ["./help/**/*.md"],
+    "/stay/[slug]": ["./help/*/public-*.md"],
+    "/stay/booking/[token]": ["./help/*/public-*.md"],
     "/help": ["./docs/user-guide.md"],
   },
 };

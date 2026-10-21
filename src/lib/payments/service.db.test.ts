@@ -3,8 +3,10 @@ import { beforeAll, beforeEach, describe, expect, it } from "vitest";
 import type { Property } from "@/generated/prisma/client";
 import { reserveBooking } from "@/lib/bookings/hold";
 import { createBooking, updateBooking } from "@/lib/bookings/service";
+import { declineRequest } from "@/lib/booking-requests/inbox";
 import { addDays } from "@/lib/calendar-date";
 import { db } from "@/lib/db";
+import { todayIn } from "@/lib/finance/recurring";
 import { FROM_PAYMENT, updateTransaction } from "@/lib/finance/transactions";
 
 import { saveBankDetails } from "./bank";
@@ -241,5 +243,35 @@ describe("the guest's link", () => {
       },
     });
     expect(JSON.stringify(view)).not.toMatch(/Ada"|notes/);
+  });
+
+  it("says what became of a request, for the guest's help (GitLab #127)", async () => {
+    const request = await booking(day(80));
+    const token = await issueGuestToken(request.id);
+    // Answered by the request settings' days (3 by default) after it came in.
+    expect(await guestView(token)).toMatchObject({
+      status: "inquiry",
+      declined: false,
+      wasReserved: false,
+      answerBy: addDays(todayIn(property.timezone), 3),
+    });
+    await declineRequest(request.id, "Taken");
+    expect(await guestView(token)).toMatchObject({
+      status: "cancelled",
+      declined: true,
+      wasReserved: false,
+      answerBy: null,
+    });
+    // The reason stays the owner's.
+    expect(JSON.stringify(await guestView(token))).not.toContain("Taken");
+
+    const reserved = await booking(day(100));
+    await reserveBooking(reserved.id, NOW);
+    expect(await guestView(await issueGuestToken(reserved.id))).toMatchObject({
+      status: "reserved",
+      declined: false,
+      wasReserved: true,
+      answerBy: null,
+    });
   });
 });

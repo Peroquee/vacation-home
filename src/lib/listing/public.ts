@@ -3,6 +3,9 @@
  * #106). Server-side only. Null for an unlisted, archived or unknown
  * property alike.
  */
+import { getRequestSettings } from "@/lib/booking-requests/settings";
+import type { StayHelpFacts } from "@/lib/help/guest-values";
+import { getBankDetails } from "@/lib/payments/bank";
 import { type PublicPropertyDto, toPublicDto } from "@/lib/properties/public";
 import { todayIn } from "@/lib/finance/recurring";
 import { getPaymentTerms } from "@/lib/payment-terms/service";
@@ -10,11 +13,36 @@ import { lowestRate } from "@/lib/pricing/engine";
 import { pricingRulesFor } from "@/lib/pricing/service";
 import { getListedProperty, listListedProperties } from "@/lib/properties/service";
 
-import { getListing, listPhotos } from "./service";
+import { getListing, getStayTimes, listPhotos } from "./service";
 
 export async function getPublicProperty(slug: string): Promise<PublicPropertyDto | null> {
   const property = await getListedProperty(slug);
   return property ? publicFace(property) : null;
+}
+
+/**
+ * What the guests' help on the property page tells (GitLab #127): its
+ * terms, deadlines, Kurtaxe and times as set. Whether bank details are set,
+ * never the details: the booking page shows those to a guest with a booking.
+ */
+export async function getStayHelpFacts(slug: string): Promise<StayHelpFacts | null> {
+  const property = await getListedProperty(slug);
+  if (!property) return null;
+  const [terms, pricing, requests, times, bank] = await Promise.all([
+    getPaymentTerms(property.id),
+    pricingRulesFor(property),
+    getRequestSettings(property.id),
+    getStayTimes(property.id),
+    getBankDetails(property.id),
+  ]);
+  return {
+    terms,
+    currency: property.currency,
+    requestExpiryDays: requests.expiryDays,
+    touristTax: pricing.touristTax,
+    times,
+    bankDetails: bank !== null,
+  };
 }
 
 /** Every listed property's public face, oldest first: the start page's (GitLab #117). */
