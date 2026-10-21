@@ -14,6 +14,7 @@ import { formatReference } from "@/lib/booking-requests/values";
 import { type CalendarDate, daysBetween } from "@/lib/calendar-date";
 import { describePolicy } from "@/lib/cancellation/describe";
 import type { CancellationTerms } from "@/lib/cancellation/policy";
+import { describeStayTimes, type StayTimes } from "@/lib/listing/stay-times";
 import type { BankDetails } from "@/lib/payments/bank";
 import { epcPayload, remittanceFor } from "@/lib/payments/girocode";
 import { formatIban } from "@/lib/payments/iban";
@@ -53,8 +54,8 @@ export type EmailContext = {
   guestName: string;
   property: {
     title: { en: string; de: string };
-    checkInTime: string | null;
-    checkOutTime: string | null;
+    /** As the booking was reserved or made under (GitLab #126). */
+    times: StayTimes;
     houseRules: { en: string; de: string };
     exactAddress: string;
     arrivalNotes: string;
@@ -124,6 +125,7 @@ export async function renderEmail(context: EmailContext): Promise<RenderedEmail>
       : DEFAULT_LOCALE;
   const t = createTranslator({ locale, messages: MESSAGES[locale], namespace: "email" });
   const tc = createTranslator({ locale, messages: MESSAGES[locale], namespace: "cancellation" });
+  const tt = createTranslator({ locale, messages: MESSAGES[locale], namespace: "stayTimes" });
   const format = formattersFor(locale);
   const { booking, property } = context;
   const money = (minor: number) => format.money(minor, booking.currency);
@@ -342,11 +344,11 @@ export async function renderEmail(context: EmailContext): Promise<RenderedEmail>
       case "fully_paid": {
         subject = t("guest.paid.subject", { title });
         blocks.push(hello, { p: t("guest.paid.body") }, stay);
-        const times = [
-          property.checkInTime && t("guest.paid.checkIn", { time: property.checkInTime }),
-          property.checkOutTime && t("guest.paid.checkOut", { time: property.checkOutTime }),
-        ].filter(Boolean) as string[];
-        if (times.length > 0) blocks.push({ p: times.join(" · ") });
+        const times = describeStayTimes(
+          (key, values) => tt(key as Parameters<typeof tt>[0], values),
+          property.times,
+        );
+        if (times) blocks.push({ p: times });
         if (property.exactAddress) {
           blocks.push({ p: t("guest.paid.address") }, { pre: property.exactAddress });
         }

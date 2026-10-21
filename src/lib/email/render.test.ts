@@ -26,8 +26,7 @@ const base: EmailContext = {
   guestName: "Ada",
   property: {
     title: { en: "Lake house", de: "Haus am See" },
-    checkInTime: "15:00",
-    checkOutTime: "10:00",
+    times: { checkInTime: "15:00", earliestCheckOutTime: "08:00", checkOutTime: "10:00" },
     houseRules: { en: "No parties.", de: "Keine Partys." },
     exactAddress: "Uferweg 7, 37000 Seedorf",
     arrivalNotes: "Key box code 4711",
@@ -82,7 +81,7 @@ describe("the emails", () => {
     expect(paid.text).toContain("Uferweg 7, 37000 Seedorf");
     expect(paid.text).toContain("Key box code 4711");
     expect(paid.text).toContain("Keine Partys.");
-    expect(paid.text).toContain("Anreise ab 15:00 · Abreise bis 10:00");
+    expect(paid.text).toContain("Anreise ab 15:00 · Abreise zwischen 08:00 und 10:00");
   });
 
   it("write to the owner in the default language, escaping what the guest wrote", async () => {

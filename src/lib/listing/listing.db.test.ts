@@ -75,15 +75,11 @@ describe("the listing profile", () => {
       location: "Malcesine, Lake Garda",
       maxGuests: 4,
       amenities: ["wifi", "bbq", "wifi"],
-      checkInTime: "15:00",
-      checkOutTime: "",
     });
     const saved = await saveListing(propertyId, input);
     expect(saved).toMatchObject({
       titleDe: "Seehaus mit Blick",
       amenities: ["bbq", "wifi"],
-      checkInTime: "15:00",
-      checkOutTime: null,
     });
   });
 

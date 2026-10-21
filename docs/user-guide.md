@@ -74,11 +74,18 @@ a colour for the calendar.
   [legal pages](#legal-pages-and-going-live) are filled in.
 - **Listing**: **Settings → Properties → Listing** is what guests see on
   the public page: a title, description and house rules in English and
-  German, the number of guests, bedrooms and bathrooms, amenities, check-in
-  and check-out times, and the town or region (never the exact address).
+  German, the number of guests, bedrooms and bathrooms, amenities, and the
+  town or region (never the exact address).
   Add photos there too, from a computer or straight from an iPhone or iPad:
   the first one is the cover, and the arrows change the order. Photos are
   stored resized, without the location or camera data a phone puts in them.
+- **Arrival and departure**: on the same page, the earliest arrival, the
+  earliest departure and the latest departure, each optional, in the
+  property's timezone (the earliest departure can't be after the latest).
+  Guests see them on the public page, on their booking page and in the
+  emails, as "Arrival from 15:00 · Departure between 08:00 and 10:00". A
+  booking keeps the times it was reserved or made under, so changing them
+  only affects new bookings.
 - **Availability on the public page**: guests see which nights are free and
   pick an arrival and a departure day; only stays your booking rules allow
   can be picked, and they see an estimate (nights × nightly rate + cleaning
@@ -336,7 +343,7 @@ language they used there:
 | You accept it                        | That the dates are reserved, what to pay by when, bank details, a GiroCode and the link to their booking page |
 | Shortly before a payment is due      | A reminder (only while it is still unpaid)                                                                    |
 | The first payment arrives            | That the booking is confirmed, and what is left to pay                                                        |
-| Everything is paid                   | Check-in and check-out times, the exact address, arrival notes and the house rules                            |
+| Everything is paid                   | Arrival and departure times, the exact address, arrival notes and the house rules                             |
 | You or the guest cancel              | That the booking is cancelled, and what is refunded                                                           |
 | You decline, or it lapses or expires | That it did not work out, with your reason if you gave one                                                    |
 

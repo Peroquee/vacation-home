@@ -213,6 +213,9 @@ model Booking {
   /// src/lib/cancellation/policy.ts: taken when they sent the request, or
   /// when a booking without one is reserved or made.
   cancellationPolicy    Json?         @map("cancellation_policy")
+  /// The arrival and departure times it was reserved under (GitLab #126);
+  /// null before: the property's times apply. src/lib/listing/stay-times.ts.
+  stayTimes             Json?         @map("stay_times")
   /// A cancelled booking: who cancelled, when, and what is to be paid back.
   cancelledBy           CancelledBy?  @map("cancelled_by")
   cancelledAt           DateTime?     @map("cancelled_at")
@@ -751,29 +754,31 @@ model BankDetails {
 /// Text comes in both languages; the page shows the visitor's, falling back
 /// to the other. Never the exact address: `location` is a town or region.
 model PropertyListing {
-  propertyId    String   @id @map("property_id") @db.Uuid
-  titleEn       String   @default("") @map("title_en")
-  titleDe       String   @default("") @map("title_de")
-  descriptionEn String   @default("") @map("description_en")
-  descriptionDe String   @default("") @map("description_de")
-  houseRulesEn  String   @default("") @map("house_rules_en")
-  houseRulesDe  String   @default("") @map("house_rules_de")
+  propertyId           String   @id @map("property_id") @db.Uuid
+  titleEn              String   @default("") @map("title_en")
+  titleDe              String   @default("") @map("title_de")
+  descriptionEn        String   @default("") @map("description_en")
+  descriptionDe        String   @default("") @map("description_de")
+  houseRulesEn         String   @default("") @map("house_rules_en")
+  houseRulesDe         String   @default("") @map("house_rules_de")
   /// Town or region, e.g. "Malcesine, Lake Garda".
-  location      String   @default("")
-  maxGuests     Int?     @map("max_guests")
-  bedrooms      Int?
-  bathrooms     Int?
+  location             String   @default("")
+  maxGuests            Int?     @map("max_guests")
+  bedrooms             Int?
+  bathrooms            Int?
   /// Keys from src/lib/listing/values.ts (AMENITIES), sorted.
-  amenities     String[] @default([])
-  /// "HH:MM" in the property's timezone.
-  checkInTime   String?  @map("check_in_time")
-  checkOutTime  String?  @map("check_out_time")
+  amenities            String[] @default([])
+  /// "HH:MM" in the property's timezone (GitLab #126): the earliest
+  /// arrival, the earliest departure and the latest departure.
+  checkInTime          String?  @map("check_in_time")
+  earliestCheckOutTime String?  @map("earliest_check_out_time")
+  checkOutTime         String?  @map("check_out_time")
   /// Owner-only (GitLab #111): never on the public page, only in the
   /// final confirmation email once the guest has paid in full.
-  exactAddress  String   @default("") @map("exact_address")
-  arrivalNotes  String   @default("") @map("arrival_notes")
-  createdAt     DateTime @default(now()) @map("created_at")
-  updatedAt     DateTime @updatedAt @map("updated_at")
+  exactAddress         String   @default("") @map("exact_address")
+  arrivalNotes         String   @default("") @map("arrival_notes")
+  createdAt            DateTime @default(now()) @map("created_at")
+  updatedAt            DateTime @updatedAt @map("updated_at")
 
   property Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
 

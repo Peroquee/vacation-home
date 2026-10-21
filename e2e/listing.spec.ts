@@ -62,11 +62,14 @@ test("a stranger sees the profile and photos, never the address or the camera's 
       bedrooms: 2,
       bathrooms: 1,
       amenities: ["wifi", "terrace"],
-      checkInTime: "15:00",
-      checkOutTime: "10:00",
     },
   });
   expect(saved.status()).toBe(200);
+  // Arrival and departure have their own card and endpoint (GitLab #126).
+  const times = await request.put(`/api/properties/${property.id}/stay-times`, {
+    data: { checkInTime: "15:00", earliestCheckOutTime: "08:00", checkOutTime: "10:00" },
+  });
+  expect(times.status()).toBe(200);
   for (const shade of [100, 200]) {
     const uploaded = await request.post(`/api/properties/${property.id}/photos`, {
       multipart: {
@@ -95,7 +98,7 @@ test("a stranger sees the profile and photos, never the address or the camera's 
   await expect(main).toContainText("From €140.00 per night");
   await expect(main).toContainText("Wake up to the lake.");
   await expect(main).toContainText("Wi-Fi");
-  await expect(main).toContainText("Check-in from 15:00 · Check-out until 10:00");
+  await expect(main).toContainText("Arrival from 15:00 · Departure between 08:00 and 10:00");
   await expect(main).not.toContainText("Secretstrasse");
   await expect(main).not.toContainText("Hiddenville");
   await expect(main).not.toContainText("Listing Internal Name");

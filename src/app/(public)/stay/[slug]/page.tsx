@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { cache } from "react";
 
 import { getFormat } from "@/i18n/get-format";
+import { describeStayTimes } from "@/lib/listing/stay-times";
 import { getPublicProperty } from "@/lib/listing/public";
 import { monthOf } from "@/lib/calendar/month";
 import { pickText, type PublicPhotoDto } from "@/lib/properties/public";
@@ -34,16 +35,22 @@ export async function generateMetadata({ params }: PageProps<"/stay/[slug]">): P
 export default async function StayPage({ params }: PageProps<"/stay/[slug]">) {
   const property = await listed((await params).slug);
   if (!property) notFound();
-  const [t, tAmenities, tPricing, locale, format] = await Promise.all([
+  const [t, tAmenities, tPricing, tTimes, locale, format] = await Promise.all([
     getTranslations("stay"),
     getTranslations("listing.amenities"),
     getTranslations("pricing"),
+    getTranslations("stayTimes"),
     getLocale(),
     getFormat(),
   ]);
   const title = pickText(property.title, locale);
   const description = pickText(property.description, locale);
   const rules = pickText(property.houseRules, locale);
+  // Arrival and departure (GitLab #126).
+  const times = describeStayTimes(
+    (key, values) => tTimes(key as Parameters<typeof tTimes>[0], values),
+    property,
+  );
   const facts = [
     property.maxGuests !== null && t("guests", { count: property.maxGuests }),
     property.bedrooms !== null && t("bedrooms", { count: property.bedrooms }),
@@ -149,19 +156,10 @@ export default async function StayPage({ params }: PageProps<"/stay/[slug]">) {
         </section>
       ) : null}
 
-      {rules || property.checkInTime || property.checkOutTime ? (
+      {rules || times ? (
         <section className="space-y-2">
           <h2 className="text-lg font-semibold">{t("rules")}</h2>
-          {property.checkInTime || property.checkOutTime ? (
-            <p>
-              {[
-                property.checkInTime && t("checkIn", { time: property.checkInTime }),
-                property.checkOutTime && t("checkOut", { time: property.checkOutTime }),
-              ]
-                .filter(Boolean)
-                .join(" · ")}
-            </p>
-          ) : null}
+          {times ? <p>{times}</p> : null}
           {rules ? <p className="whitespace-pre-line">{rules}</p> : null}
         </section>
       ) : null}

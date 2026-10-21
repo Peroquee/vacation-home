@@ -18,6 +18,7 @@
  * never needs to touch booking amounts or dates.
  */
 import type { Booking, BookingSource, Prisma } from "@/generated/prisma/client";
+import { getStayTimes } from "@/lib/listing/service";
 import { invalidateWindows } from "@/lib/availability/cache";
 import {
   type Conflict,
@@ -318,6 +319,8 @@ export async function createBooking(
           tx,
         );
       }
+      // The arrival and departure times it is made under (GitLab #126).
+      if (holdsDates(input.status)) data.stayTimes = { ...(await getStayTimes(property.id, tx)) };
       const booking = await tx.booking.create({ data, include: withRelations });
       await syncBookingIncome(booking.id, tx, { justConfirmed: isBooked(booking.status) });
       await scheduleBookingSync(booking.id, tx);

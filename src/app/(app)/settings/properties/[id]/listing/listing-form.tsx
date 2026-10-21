@@ -38,8 +38,6 @@ type Values = Record<TextKey, string> & {
   maxGuests: string;
   bedrooms: string;
   bathrooms: string;
-  checkInTime: string;
-  checkOutTime: string;
   amenities: string[];
 };
 
@@ -58,8 +56,6 @@ function toValues(listing: ListingDto): Values {
     maxGuests: count(listing.maxGuests),
     bedrooms: count(listing.bedrooms),
     bathrooms: count(listing.bathrooms),
-    checkInTime: listing.checkInTime ?? "",
-    checkOutTime: listing.checkOutTime ?? "",
     amenities: listing.amenities,
   };
 }
@@ -178,17 +174,6 @@ export function ListingForm({ propertyId, initial }: { propertyId: string; initi
         />
       );
     };
-  const timeInput = (key: "checkInTime" | "checkOutTime") =>
-    function TimeControl(props: { id: string }) {
-      return (
-        <Input
-          {...props}
-          type="time"
-          value={values[key]}
-          onChange={(event) => set(key, event.target.value)}
-        />
-      );
-    };
 
   const language = (suffix: "En" | "De") => (
     <FieldSet>
@@ -226,10 +211,6 @@ export function ListingForm({ propertyId, initial }: { propertyId: string; initi
               {field("maxGuests", t("maxGuests"), countInput("maxGuests"))}
               {field("bedrooms", t("bedrooms"), countInput("bedrooms"))}
               {field("bathrooms", t("bathrooms"), countInput("bathrooms"))}
-            </div>
-            <div className="grid gap-5 sm:grid-cols-2">
-              {field("checkInTime", t("checkInTime"), timeInput("checkInTime"))}
-              {field("checkOutTime", t("checkOutTime"), timeInput("checkOutTime"))}
             </div>
             <FieldSet>
               <FieldLegend variant="label">{t("amenities")}</FieldLegend>

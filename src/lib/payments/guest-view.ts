@@ -9,7 +9,8 @@ import { type CalendarDate, fromUtcDate } from "@/lib/calendar-date";
 import type { CancellationTerms } from "@/lib/cancellation/policy";
 import { bookingPolicy } from "@/lib/cancellation/service";
 import { db } from "@/lib/db";
-import { getListing } from "@/lib/listing/service";
+import { bookingStayTimes, getListing } from "@/lib/listing/service";
+import type { StayTimes } from "@/lib/listing/stay-times";
 
 import { getBankDetails } from "./bank";
 import { bookingForToken } from "./guest-link";
@@ -38,6 +39,8 @@ export type GuestView = {
   next: NextDue | null;
   /** The cancellation policy the guest agreed to (GitLab #116). */
   policy: CancellationTerms;
+  /** Arrival and departure, as the booking was reserved or made under (GitLab #126). */
+  times: StayTimes;
   transfer: {
     accountHolder: string;
     iban: string;
@@ -111,6 +114,7 @@ export async function guestView(token: string): Promise<GuestView | null> {
     currency: booking.currency,
     next,
     policy: await bookingPolicy(booking),
+    times: await bookingStayTimes(booking),
     transfer,
   };
 }

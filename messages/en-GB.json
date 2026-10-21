@@ -1668,8 +1668,6 @@
     "about": "About this place",
     "amenities": "Amenities",
     "rules": "House rules",
-    "checkIn": "Check-in from {time}",
-    "checkOut": "Check-out until {time}",
     "morePhotos": "{count, plural, one {# more photo} other {# more photos}}",
     "picker": {
       "heading": "Availability",
@@ -1752,7 +1750,8 @@
       "remittance": "Reference to quote",
       "girocode": "Scan with your banking app (GiroCode)",
       "girocodeAlt": "GiroCode: a QR code with this transfer for your banking app",
-      "noBankDetails": "The owner will send you the bank details."
+      "noBankDetails": "The owner will send you the bank details.",
+      "times": "Arrival and departure"
     },
     "howItWorks": {
       "title": "How booking works",
@@ -1781,8 +1780,6 @@
       "maxGuests": "Maximum guests",
       "bedrooms": "Bedrooms",
       "bathrooms": "Bathrooms",
-      "checkInTime": "Check-in from",
-      "checkOutTime": "Check-out until",
       "amenities": "Amenities",
       "languageEn": "English",
       "languageDe": "German",
@@ -1839,6 +1836,16 @@
       "babyCot": "Baby cot",
       "highChair": "High chair",
       "petsAllowed": "Pets allowed"
+    },
+    "stayTimes": {
+      "title": "Arrival and departure",
+      "description": "In the property's timezone. Shown on the public page, on the guest's booking page, in the emails and in the calendar entry. Bookings keep the times they were reserved or made under.",
+      "checkInTime": "Earliest arrival",
+      "earliestCheckOutTime": "Earliest departure",
+      "checkOutTime": "Latest departure",
+      "optional": "Optional. Leave blank to leave it out.",
+      "saved": "Arrival and departure times saved",
+      "saveFailed": "Could not save the arrival and departure times"
     }
   },
   "legal": {
@@ -1953,8 +1960,6 @@
       "paid": {
         "subject": "Everything is paid: see you at {title}",
         "body": "We have received the full amount. Thank you - we look forward to your stay.",
-        "checkIn": "Check-in from {time}",
-        "checkOut": "check-out until {time}",
         "address": "The address:",
         "arrival": "Arriving:",
         "rules": "House rules:"
@@ -2041,5 +2046,12 @@
     "guideTitle": "User guide",
     "guideDescription": "Everything the app does, step by step. The help button on each page leads to the matching section.",
     "hint": "What does this mean?"
+  },
+  "stayTimes": {
+    "arrival": "Arrival from {time}",
+    "departureAt": "Departure at {time}",
+    "departureBetween": "Departure between {from} and {until}",
+    "departureFrom": "Departure from {time}",
+    "departureUntil": "Departure by {time}"
   }
 }
