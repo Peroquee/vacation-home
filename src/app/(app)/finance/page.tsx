@@ -14,7 +14,7 @@ import { addDays } from "@/lib/calendar-date";
 import { addMonths } from "@/lib/calendar/month";
 import { db } from "@/lib/db";
 import { listCategories } from "@/lib/finance/categories";
-import { ledgerHref, ledgerParams, ledgerPeriod } from "@/lib/finance/ledger";
+import { categoriesOfType, ledgerHref, ledgerParams, ledgerPeriod } from "@/lib/finance/ledger";
 import { listTransactions, listTransactionsSchema, toDto } from "@/lib/finance/transactions";
 import { getApiText } from "@/i18n/get-api-text";
 import { getFormat } from "@/i18n/get-format";
@@ -22,6 +22,7 @@ import { listProperties } from "@/lib/properties/service";
 
 import { CsvActions } from "./csv-actions";
 import { LedgerView, type LedgerRow } from "./ledger-view";
+import { TypeCategoryFilter } from "./type-category-filter";
 
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getTranslations("finance.page");
@@ -36,12 +37,18 @@ const STATEMENT_SIZE = 200;
  * filtered by `propertyId`, `type` and `categoryId`, all in the URL.
  */
 export default async function FinancePage({ searchParams }: PageProps<"/finance">) {
-  const params = ledgerParams(await searchParams);
+  const asked = ledgerParams(await searchParams);
   const today = todayUtc();
-  const period = ledgerPeriod(params, today);
+  const period = ledgerPeriod(asked, today);
   // Month navigation starts from the period's month, also for a custom range.
   const month = period.month ?? period.from.slice(0, 7);
   const [properties, categories] = await Promise.all([listProperties(), listCategories()]);
+  // A category of the other type matches nothing (GitLab #129): dropped, so
+  // the list, the export and the filter agree.
+  const params = {
+    ...asked,
+    categoryId: categoriesOfType(asked.categoryId, asked.type, categories),
+  };
   const t = await getTranslations("finance.page");
   const tRecurring = await getTranslations("finance.recurring");
   const format = await getFormat();
@@ -130,35 +137,11 @@ export default async function FinancePage({ searchParams }: PageProps<"/finance"
           ))}
         </NativeSelect>
       </Field>
-      <Field>
-        <FieldLabel htmlFor="ledger-type">{t("type")}</FieldLabel>
-        <NativeSelect
-          id="ledger-type"
-          name="type"
-          className="w-full"
-          defaultValue={params.type ?? ""}
-        >
-          <NativeSelectOption value="">{t("bothTypes")}</NativeSelectOption>
-          <NativeSelectOption value="income">{t("income")}</NativeSelectOption>
-          <NativeSelectOption value="expense">{t("expenses")}</NativeSelectOption>
-        </NativeSelect>
-      </Field>
-      <Field>
-        <FieldLabel htmlFor="ledger-category">{t("category")}</FieldLabel>
-        <NativeSelect
-          id="ledger-category"
-          name="categoryId"
-          className="w-full"
-          defaultValue={params.categoryId ?? ""}
-        >
-          <NativeSelectOption value="">{t("anyCategory")}</NativeSelectOption>
-          {categories.map((c) => (
-            <NativeSelectOption key={c.id} value={c.id}>
-              {t(c.type === "income" ? "categoryIncome" : "categoryExpense", { name: c.name })}
-            </NativeSelectOption>
-          ))}
-        </NativeSelect>
-      </Field>
+      <TypeCategoryFilter
+        categories={categories.map((c) => ({ id: c.id, name: c.name, type: c.type }))}
+        type={params.type === "income" || params.type === "expense" ? params.type : undefined}
+        categoryId={params.categoryId}
+      />
       <div className="flex gap-2">
         <Button type="submit">{t("apply")}</Button>
         <Link

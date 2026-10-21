@@ -180,4 +180,36 @@ describe("RuleDialog", () => {
     expect(screen.getByText(/^Last due \(optional\) /)).toBeInTheDocument();
     expect(onClose).not.toHaveBeenCalled();
   });
+
+  // GitLab #129: a rule is an expense; "make recurring" never brings another category along.
+  it("takes a prefill's category only if it is one of the expense categories offered", () => {
+    const prefill = (categoryId: string) => ({
+      propertyId: "p1",
+      categoryId,
+      amountMinor: 4_200,
+      startDate: "2026-11-02",
+      description: "Water",
+    });
+    const { unmount } = render(
+      <RuleDialog
+        prefill={prefill("c-utilities")}
+        properties={properties}
+        categories={categories}
+        onClose={vi.fn()}
+      />,
+    );
+    expect(screen.getByLabelText("Category")).toHaveValue("c-utilities");
+    unmount();
+
+    render(
+      <RuleDialog
+        prefill={prefill("c-booking-income")}
+        properties={properties}
+        categories={categories}
+        onClose={vi.fn()}
+      />,
+    );
+    expect(screen.getByLabelText("Category")).toHaveValue("");
+    expect(screen.queryByRole("option", { name: /income/i })).toBeNull();
+  });
 });

@@ -92,3 +92,22 @@ export function dateOrToday(value: string | undefined, today: CalendarDate): Cal
 export function bookingWindow(date: CalendarDate): { from: CalendarDate; to: CalendarDate } {
   return { from: addDays(date, -60), to: addDays(date, 60) };
 }
+
+/**
+ * The `categoryId` filter (one id, or several comma-separated) without the
+ * categories of the other type when a type is chosen (GitLab #129): they
+ * would match nothing, and the filter would show a category the type does
+ * not offer. Ids of categories not in `categories` (hidden ones) stay.
+ * Undefined when none is left.
+ */
+export function categoriesOfType(
+  categoryId: string | undefined,
+  type: string | undefined,
+  categories: { id: string; type: string }[],
+): string | undefined {
+  if (!categoryId || (type !== "income" && type !== "expense")) return categoryId;
+  const kept = categoryId
+    .split(",")
+    .filter((id) => !categories.some((c) => c.id === id.trim() && c.type !== type));
+  return kept.length > 0 ? kept.join(",") : undefined;
+}
