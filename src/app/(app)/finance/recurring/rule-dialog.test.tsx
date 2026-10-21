@@ -33,6 +33,7 @@ const rule: Rule = {
   startDate: "2026-01-01",
   endDate: null,
   description: "Sparkasse loan",
+  documents: 0,
   status: "active",
   nextDueDate: "2026-11-01",
   pausedAt: null,
@@ -40,13 +41,22 @@ const rule: Rule = {
   updatedAt: "2026-01-01T00:00:00.000Z",
 };
 
+/** Saves with `response`; an edited rule's documents and payments (GitLab #130) are none. */
 function serve(response: Response = Response.json({}, { status: 201 })) {
-  const fetchMock = vi.fn<typeof fetch>(async () => response);
+  const fetchMock = vi.fn<typeof fetch>(async (url, init) =>
+    init?.method
+      ? response
+      : String(url).endsWith("/payments")
+        ? Response.json({ items: [], total: 0 })
+        : Response.json([]),
+  );
   vi.stubGlobal("fetch", fetchMock);
   return fetchMock;
 }
+const saves = (fetchMock: ReturnType<typeof serve>) =>
+  fetchMock.mock.calls.filter(([, init]) => init?.method);
 const sent = (fetchMock: ReturnType<typeof serve>) => {
-  const [url, init] = fetchMock.mock.calls[0]!;
+  const [url, init] = saves(fetchMock)[0]!;
   return [url, init?.method, JSON.parse(String(init?.body))];
 };
 

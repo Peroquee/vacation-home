@@ -851,9 +851,11 @@ model RecurringExpense {
   createdAt      DateTime           @default(now()) @map("created_at")
   updatedAt      DateTime           @updatedAt @map("updated_at")
 
-  property     Property      @relation(fields: [propertyId, currency], references: [id, currency], onDelete: Cascade, onUpdate: Restrict)
-  category     Category      @relation(fields: [categoryId, type], references: [id, type], onDelete: Restrict, onUpdate: Restrict)
+  property     Property                @relation(fields: [propertyId, currency], references: [id, currency], onDelete: Cascade, onUpdate: Restrict)
+  category     Category                @relation(fields: [categoryId, type], references: [id, type], onDelete: Restrict, onUpdate: Restrict)
   transactions Transaction[]
+  /// Its contract, statements and invoices (GitLab #130).
+  documents    TransactionAttachment[]
 
   @@index([propertyId])
   @@map("recurring_expenses")
@@ -1083,28 +1085,33 @@ model IcalFeed {
 
 // --- Receipts --------------------------------------------------------------------
 
-/// A receipt on a transaction (GitLab #82): a PDF or photo kept as a file in
-/// the receipts volume (RECEIPTS_DIR), named by its SHA-256, so identical
+/// A receipt on a transaction (GitLab #82), or a document on a recurring
+/// cost such as its contract (GitLab #130): exactly one of the two is set
+/// (a CHECK in the migration). A PDF or photo kept as a file in the
+/// receipts volume (RECEIPTS_DIR), named by its SHA-256, so identical
 /// uploads share one file. Accounting records: guest erasure leaves them
-/// alone; deleting the transaction deletes them, and a daily job removes
-/// files nothing points to (src/lib/finance/receipts.ts).
+/// alone; deleting the transaction or the rule deletes them, and a daily
+/// job removes files nothing points to (src/lib/finance/receipts.ts).
 model TransactionAttachment {
-  id              String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  transactionId   String   @map("transaction_id") @db.Uuid
+  id                 String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  transactionId      String?  @map("transaction_id") @db.Uuid
+  recurringExpenseId String?  @map("recurring_expense_id") @db.Uuid
   /// The name it was uploaded with, for downloads.
-  fileName        String   @map("file_name")
+  fileName           String   @map("file_name")
   /// Checked from the file's own bytes, not the browser's word.
-  mediaType       String   @map("media_type")
-  size            Int
-  sha256          String   @db.Char(64)
+  mediaType          String   @map("media_type")
+  size               Int
+  sha256             String   @db.Char(64)
   /// A small JPEG preview made in the browser, for images; null for PDFs
   /// and HEIC.
-  thumbnailSha256 String?  @map("thumbnail_sha256") @db.Char(64)
-  createdAt       DateTime @default(now()) @map("created_at")
+  thumbnailSha256    String?  @map("thumbnail_sha256") @db.Char(64)
+  createdAt          DateTime @default(now()) @map("created_at")
 
-  transaction Transaction @relation(fields: [transactionId], references: [id], onDelete: Cascade)
+  transaction      Transaction?      @relation(fields: [transactionId], references: [id], onDelete: Cascade)
+  recurringExpense RecurringExpense? @relation(fields: [recurringExpenseId], references: [id], onDelete: Cascade)
 
   @@index([transactionId])
+  @@index([recurringExpenseId])
   @@index([sha256])
   @@map("transaction_attachments")
 }

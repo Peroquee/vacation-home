@@ -47,6 +47,12 @@ describe("rateLimitKey", () => {
     expect(
       rateLimitKey("POST", `/api/properties/${ID}/photos`, { user: "u1", client: null })?.key,
     ).toBe("photo-upload:u1");
+    // Receipts and a recurring cost's documents (GitLab #130) share one budget.
+    for (const owner of ["transactions", "recurring-expenses"]) {
+      expect(
+        rateLimitKey("POST", `/api/${owner}/${ID}/attachments`, { user: "u1", client: null })?.key,
+      ).toBe("receipt-upload:u1");
+    }
     // Without a trusted address, everyone shares one window.
     expect(rateLimitKey("GET", "/stay/lake-house", { user: null, client: null })?.key).toBe(
       "public-page:everyone",

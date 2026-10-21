@@ -51,7 +51,6 @@ export default async function FinancePage({ searchParams }: PageProps<"/finance"
     categoryId: categoriesOfType(asked.categoryId, asked.type, categories),
   };
   const t = await getTranslations("finance.page");
-  const tRecurring = await getTranslations("finance.recurring");
   const format = await getFormat();
   const apiText = await getApiText();
 
@@ -75,15 +74,6 @@ export default async function FinancePage({ searchParams }: PageProps<"/finance"
               receipts: params.receipts,
             }}
           />
-          <Link href="/finance/tourist-tax" className={buttonVariants({ variant: "outline" })}>
-            {t("touristTax")}
-          </Link>
-          <Link href="/finance/recurring" className={buttonVariants({ variant: "outline" })}>
-            {tRecurring("link")}
-          </Link>
-          <Link href="/finance/categories" className={buttonVariants({ variant: "outline" })}>
-            {t("categories")}
-          </Link>
         </>
       }
     />

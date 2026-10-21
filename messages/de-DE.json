@@ -1120,7 +1120,6 @@
       "title": "Finanzen",
       "monthly": "Einnahmen und Ausgaben, Monat für Monat.",
       "range": "Einnahmen und Ausgaben, {range}.",
-      "categories": "Kategorien",
       "noProperties": "Noch keine Unterkünfte",
       "noPropertiesHint": "Legen Sie eine Unterkunft an, bevor Sie ihre Einnahmen und Ausgaben erfassen.",
       "addProperty": "Unterkunft anlegen",
@@ -1139,7 +1138,6 @@
       "badFilters": "Diese Filter passen nicht zusammen",
       "categoryIncome": "{name} (Einnahme)",
       "categoryExpense": "{name} (Ausgabe)",
-      "touristTax": "Kurtaxe",
       "receipts": "Belege",
       "anyReceipts": "Mit oder ohne",
       "withoutReceipt": "Ohne Beleg",
@@ -1325,7 +1323,7 @@
       "resumed": "Fortgesetzt",
       "changeFailed": "Die wiederkehrenden Kosten konnten nicht geändert werden",
       "deleteTitle": "{name} löschen?",
-      "deleteDescription": "Es werden keine weiteren Posten dafür eingetragen. Die schon im Kassenbuch stehenden bleiben unverändert.",
+      "deleteDescription": "Es werden keine weiteren Posten dafür eingetragen. Die schon im Kassenbuch stehenden bleiben unverändert, mit ihren Belegen; die Dokumente der Regel selbst werden mit ihr gelöscht.",
       "keep": "Behalten",
       "deleted": "{name} gelöscht",
       "addTitle": "Wiederkehrende Kosten hinzufügen",
@@ -1353,7 +1351,28 @@
       "badge": "wiederkehrend",
       "badgeLabel": "Wiederkehrend: Regel anzeigen",
       "makeRecurring": "Wiederkehrend machen",
-      "link": "Wiederkehrende Kosten"
+      "regularHint": "Kommt diese Ausgabe regelmäßig?",
+      "documents": {
+        "title": "Dokumente",
+        "none": "Noch keine Dokumente: Fügen Sie den Vertrag, die Police oder eine Jahresabrechnung hinzu.",
+        "hint": "PDF, JPEG, PNG, WebP oder HEIC, je bis 10 MB, {max} pro wiederkehrender Ausgabe. Aus JPEG-Fotos werden Standortdaten entfernt; HEIC- und WebP-Fotos behalten ihre. Die Rechnung eines einzelnen Monats gehört zu dessen Zahlung, weiter unten.",
+        "full": "Diese wiederkehrende Ausgabe hat schon die meisten Dokumente, die sie haben kann ({max}).",
+        "removeTitle": "{name} entfernen?",
+        "saveFirst": "Dokumente wie der Vertrag können hinzugefügt werden, sobald die wiederkehrende Ausgabe gespeichert ist.",
+        "count": "{count, plural, one {# Dokument} other {# Dokumente}}",
+        "add": "Dokumente hinzufügen"
+      },
+      "payments": {
+        "title": "Zahlungen",
+        "loading": "Zahlungen werden geladen…",
+        "loadFailed": "Die Zahlungen konnten nicht geladen werden.",
+        "none": "Noch keine Zahlungen: Die erste wird an ihrem Fälligkeitstag eingetragen.",
+        "noReceipt": "ohne Beleg",
+        "attach": "Beleg zur Zahlung vom {date} hinzufügen",
+        "attachFile": "Beleg für eine Zahlung",
+        "attached": "Beleg zur Zahlung vom {date} hinzugefügt",
+        "more": "Die letzten {shown} von {total}; die übrigen stehen im Kassenbuch."
+      }
     },
     "touristTax": {
       "title": "Kurtaxe",
@@ -1369,6 +1388,13 @@
       "owed": "Geschuldet",
       "collected": "Eingenommen",
       "total": "Summe"
+    },
+    "tabs": {
+      "label": "Finanzen",
+      "ledger": "Kassenbuch",
+      "recurring": "Wiederkehrende Kosten",
+      "touristTax": "Kurtaxe",
+      "categories": "Kategorien"
     }
   },
   "dashboard": {

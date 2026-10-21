@@ -1120,7 +1120,6 @@
       "title": "Finance",
       "monthly": "Income and expenses, month by month.",
       "range": "Income and expenses, {range}.",
-      "categories": "Categories",
       "noProperties": "No properties yet",
       "noPropertiesHint": "Add a property before recording its income and expenses.",
       "addProperty": "Add a property",
@@ -1139,7 +1138,6 @@
       "badFilters": "These filters don't work together",
       "categoryIncome": "{name} (income)",
       "categoryExpense": "{name} (expense)",
-      "touristTax": "Kurtaxe",
       "receipts": "Receipts",
       "anyReceipts": "With or without",
       "withoutReceipt": "Without a receipt",
@@ -1325,7 +1323,7 @@
       "resumed": "Resumed",
       "changeFailed": "Could not change the recurring cost",
       "deleteTitle": "Delete {name}?",
-      "deleteDescription": "No more transactions are entered for it. Those already in the ledger stay as they are.",
+      "deleteDescription": "No more transactions are entered for it. Those already in the ledger stay as they are, with their receipts; the rule's own documents are deleted with it.",
       "keep": "Keep it",
       "deleted": "{name} deleted",
       "addTitle": "Add a recurring cost",
@@ -1353,7 +1351,28 @@
       "badge": "recurring",
       "badgeLabel": "Recurring: show its rule",
       "makeRecurring": "Make recurring",
-      "link": "Recurring costs"
+      "regularHint": "Does this expense come back regularly?",
+      "documents": {
+        "title": "Documents",
+        "none": "No documents yet: add the contract, the policy or a yearly statement.",
+        "hint": "PDF, JPEG, PNG, WebP or HEIC, up to 10 MB each, {max} per recurring cost. Location data is removed from JPEG photos; HEIC and WebP photos keep theirs. A single month's invoice belongs on that payment, below.",
+        "full": "This recurring cost has the most documents it can hold ({max}).",
+        "removeTitle": "Remove {name}?",
+        "saveFirst": "Documents such as the contract can be added once the recurring cost is saved.",
+        "count": "{count, plural, one {# document} other {# documents}}",
+        "add": "Add documents"
+      },
+      "payments": {
+        "title": "Payments",
+        "loading": "Loading payments…",
+        "loadFailed": "The payments could not be loaded.",
+        "none": "No payments yet: the first is entered on its due date.",
+        "noReceipt": "no receipt",
+        "attach": "Add a receipt to the payment of {date}",
+        "attachFile": "Receipt for a payment",
+        "attached": "Receipt added to the payment of {date}",
+        "more": "The latest {shown} of {total}; the others are in the ledger."
+      }
     },
     "touristTax": {
       "title": "Kurtaxe",
@@ -1369,6 +1388,13 @@
       "owed": "Owed",
       "collected": "Collected",
       "total": "Total"
+    },
+    "tabs": {
+      "label": "Finance",
+      "ledger": "Ledger",
+      "recurring": "Recurring costs",
+      "touristTax": "Kurtaxe",
+      "categories": "Categories"
     }
   },
   "dashboard": {

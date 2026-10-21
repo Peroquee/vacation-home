@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { useApiText } from "@/i18n/use-api-text";
 import { cn } from "@/lib/utils";
 
-const ACCEPT = "application/pdf,image/jpeg,image/png,image/webp,image/heic,.heic";
+export const ACCEPT = "application/pdf,image/jpeg,image/png,image/webp,image/heic,.heic";
 /** Longest side of a thumbnail, in pixels. */
 const THUMBNAIL_SIZE = 320;
 
@@ -74,8 +74,11 @@ export function ReceiptPicker({
   disabled,
   busy,
   hint,
+  label,
 }: {
   onFiles: (files: File[]) => void;
+  /** The file button's words: "Add receipts" unless said otherwise. */
+  label?: string;
   disabled?: boolean;
   busy?: boolean;
   hint: string;
@@ -114,7 +117,7 @@ export function ReceiptPicker({
         ref={files}
         id={`${id}-file`}
         type="file"
-        aria-label={t("add")}
+        aria-label={label ?? t("add")}
         accept={ACCEPT}
         multiple
         className="sr-only"
@@ -141,7 +144,7 @@ export function ReceiptPicker({
         onClick={() => files.current?.click()}
       >
         <Paperclip data-icon="inline-start" aria-hidden />
-        {busy ? t("uploading") : t("add")}
+        {busy ? t("uploading") : (label ?? t("add"))}
       </Button>
       {/* Only where there is a camera to speak of: phones and tablets. */}
       <Button
