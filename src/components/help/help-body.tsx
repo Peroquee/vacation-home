@@ -12,7 +12,14 @@ import type { HelpText } from "@/lib/help/content";
  * rendered with the safe Markdown renderer, and a link to the matching
  * section of the user guide. Loaded on demand by ./help-button.tsx.
  */
-export function HelpBody({ helpKey }: { helpKey: string }) {
+export function HelpBody({
+  helpKey,
+  onLeave,
+}: {
+  helpKey: string;
+  /** Called on the way to the guide, so the panel does not stay over it. */
+  onLeave?: () => void;
+}) {
   const t = useTranslations("help");
   const [state, setState] = useState<
     { key: string; help: HelpText } | { key: string; failed: true } | null
@@ -47,7 +54,7 @@ export function HelpBody({ helpKey }: { helpKey: string }) {
       <SafeMarkdown>{state.help.markdown}</SafeMarkdown>
       {state.help.guide ? (
         <p>
-          <Link href={`/help#${state.help.guide}`} className="underline">
+          <Link href={`/help#${state.help.guide}`} className="underline" onClick={onLeave}>
             {t("more")}
           </Link>
         </p>

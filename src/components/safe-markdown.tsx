@@ -92,18 +92,37 @@ const components: Components = {
   ),
 };
 
+/** A heading's own anchor, `## Finanzen {#finance}`: the German user guide keeps the English ones (GitLab #128). */
+const EXPLICIT = /\s*\{#([a-z0-9-]+)\}\s*$/;
+
+/** The heading's id, and its text without an explicit `{#id}`. */
+function anchorOf(children: React.ReactNode): { id: string; children: React.ReactNode } {
+  const parts = Array.isArray(children) ? [...children] : [children];
+  const last = parts.at(-1);
+  const explicit = typeof last === "string" ? EXPLICIT.exec(last) : null;
+  if (!explicit) return { id: headingId(textOf(children)), children };
+  parts[parts.length - 1] = (last as string).slice(0, explicit.index);
+  return { id: explicit[1]!, children: parts };
+}
+
 /** Headings with anchors, for a long document such as the user guide. */
 const anchored: Components = {
-  h2: ({ children }) => (
-    <h2 id={headingId(textOf(children))} className="mt-8 scroll-mt-4 text-xl font-semibold">
-      {children}
-    </h2>
-  ),
-  h3: ({ children }) => (
-    <h3 id={headingId(textOf(children))} className="mt-6 scroll-mt-4 text-lg font-semibold">
-      {children}
-    </h3>
-  ),
+  h2: ({ children }) => {
+    const anchor = anchorOf(children);
+    return (
+      <h2 id={anchor.id} className="mt-8 scroll-mt-4 text-xl font-semibold">
+        {anchor.children}
+      </h2>
+    );
+  },
+  h3: ({ children }) => {
+    const anchor = anchorOf(children);
+    return (
+      <h3 id={anchor.id} className="mt-6 scroll-mt-4 text-lg font-semibold">
+        {anchor.children}
+      </h3>
+    );
+  },
 };
 
 export function SafeMarkdown({

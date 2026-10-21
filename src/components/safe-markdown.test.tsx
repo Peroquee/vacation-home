@@ -68,3 +68,27 @@ describe("owner-written Markdown on the public site", () => {
     expect(safeHref("tel:+49")).toBe("");
   });
 });
+
+// GitLab #128: the German guide keeps the English anchors, written out.
+describe("headings with anchors, for the user guide", () => {
+  const guide = (text: string) => renderToStaticMarkup(<SafeMarkdown anchors>{text}</SafeMarkdown>);
+
+  it("anchor a heading by its text, as GitHub does", () => {
+    expect(guide("## Booking platforms (iCal)")).toContain('id="booking-platforms-ical"');
+  });
+
+  it("take a written-out anchor, and leave it out of the text", () => {
+    const out = guide(
+      "## Buchungsplattformen (iCal) {#booking-platforms-ical}\n\n### Cookies {#cookies}",
+    );
+    expect(out).toMatch(/<h2 id="booking-platforms-ical"[^>]*>Buchungsplattformen \(iCal\)<\/h2>/);
+    expect(out).toMatch(/<h3 id="cookies"[^>]*>Cookies<\/h3>/);
+    expect(out).not.toContain("{#");
+  });
+
+  it("keep the written-out anchor after emphasis too", () => {
+    expect(guide("## Die **Übersicht** {#dashboard}")).toMatch(
+      /<h2 id="dashboard"[^>]*>Die <strong>Übersicht<\/strong><\/h2>/,
+    );
+  });
+});
