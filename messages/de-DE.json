@@ -1657,7 +1657,8 @@
     "guestRange": "müssen 1 bis 50 Gäste sein",
     "rampAfterFree": "darf nicht länger sein als der kostenlose Zeitraum",
     "startAboveEnd": "darf nicht über dem Endanteil liegen",
-    "rampNeedsFree": "braucht einen kostenlosen Zeitraum davor"
+    "rampNeedsFree": "braucht einen kostenlosen Zeitraum davor",
+    "departureOrder": "darf nicht später als die späteste Abreise sein"
   },
   "stay": {
     "photoOf": "Foto {n} von {title}",

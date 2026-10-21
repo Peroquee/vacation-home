@@ -1657,7 +1657,8 @@
     "guestRange": "must be from 1 to 50 guests",
     "rampAfterFree": "must not be longer than the free window",
     "startAboveEnd": "must not be above the share at the end",
-    "rampNeedsFree": "needs a free window to follow"
+    "rampNeedsFree": "needs a free window to follow",
+    "departureOrder": "must not be later than the latest departure"
   },
   "stay": {
     "photoOf": "Photo {n} of {title}",
