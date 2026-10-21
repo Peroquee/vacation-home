@@ -95,6 +95,14 @@ describe("the .ics file", () => {
     expect(Number(later.getFirstPropertyValue("sequence"))).toBeGreaterThan(
       Number(first.getFirstPropertyValue("sequence")),
     );
+    // Both confirmations of one payment, in the same second: the final one wins.
+    const sameSecond = parse(stayCalendar({ ...EVENT, final: true }, NOW)).vevent;
+    expect(Number(sameSecond.getFirstPropertyValue("sequence"))).toBeGreaterThan(
+      Number(first.getFirstPropertyValue("sequence")),
+    );
+    expect(Number(later.getFirstPropertyValue("sequence"))).toBeGreaterThan(
+      Number(sameSecond.getFirstPropertyValue("sequence")),
+    );
     expect(stayUid("another")).not.toBe(stayUid(EVENT.bookingId));
     // A hash: no id of the app in it.
     expect(stayUid(EVENT.bookingId)).not.toContain(EVENT.bookingId.slice(0, 8));

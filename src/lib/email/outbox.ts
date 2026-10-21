@@ -139,8 +139,9 @@ async function deliver(row: EmailOutbox, setup: MailSetup, now: Date): Promise<O
   const times = await bookingStayTimes(booking);
   // The stay for the guest's calendar, in the confirmations (GitLab #125):
   // where it is, the exact address only once all is paid, as the email
-  // itself. Its version is the event's, so the fully-paid email's file
-  // updates the entry the deposit email's made.
+  // itself. Its version is the event's, the fully-paid one final, so that
+  // email's file updates the entry the deposit email's made, even when both
+  // come of one payment.
   const guestLocale = booking.guestLocale ?? undefined;
   const stay =
     guestLink && CARRIES_CALENDAR.has(event.kind)
@@ -150,6 +151,7 @@ async function deliver(row: EmailOutbox, setup: MailSetup, now: Date): Promise<O
           guestUrl: guestLink,
           version: event.createdAt,
           ...(event.kind === "fully_paid" && {
+            final: true,
             location: listing?.exactAddress || listing?.location || "",
           }),
         })

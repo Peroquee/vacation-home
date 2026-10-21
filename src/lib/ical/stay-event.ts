@@ -39,6 +39,11 @@ export type StayEvent = {
   timezone: string;
   /** When this version was written (the email's event, the booking's last change): its SEQUENCE. */
   version: Date;
+  /**
+   * The fully-paid email's: wins over any other written in the same second
+   * (a guest who pays all at once gets both confirmations together).
+   */
+  final?: boolean;
   summary: string;
   description: string;
   /** Blank for none. */
@@ -108,10 +113,14 @@ const STATUS: Record<BookingStatus, "TENTATIVE" | "CONFIRMED" | "CANCELLED"> = {
   cancelled: "CANCELLED",
 };
 
-/** Seconds since 2026-01-01: growing with each version, and a 32-bit integer until 2094. */
+/**
+ * Twice the seconds since 2026-01-01, one more for the final version:
+ * growing with each version, the final one last within its second, and a
+ * 32-bit integer until 2060.
+ */
 const SEQUENCE_EPOCH = Date.UTC(2026, 0, 1);
-export const stayVersion = (version: Date) =>
-  Math.max(0, Math.floor((version.getTime() - SEQUENCE_EPOCH) / 1000));
+export const stayVersion = (version: Date, final = false) =>
+  2 * Math.max(0, Math.floor((version.getTime() - SEQUENCE_EPOCH) / 1000)) + (final ? 1 : 0);
 
 export const stayUid = (bookingId: string) =>
   `${createHash("sha256").update(`stay:${bookingId}`).digest("hex").slice(0, 32)}@vacation-home`;
@@ -129,7 +138,7 @@ export function stayCalendar(event: StayEvent, now = new Date()): string {
     `UID:${stayUid(event.bookingId)}`,
     `DTSTAMP:${icsStamp(now)}`,
     `LAST-MODIFIED:${icsStamp(event.version)}`,
-    `SEQUENCE:${stayVersion(event.version)}`,
+    `SEQUENCE:${stayVersion(event.version, event.final)}`,
     ...(when.allDay
       ? [`DTSTART;VALUE=DATE:${icsDate(when.start)}`, `DTEND;VALUE=DATE:${icsDate(when.end)}`]
       : [`DTSTART:${icsStamp(when.start)}`, `DTEND:${icsStamp(when.end)}`]),

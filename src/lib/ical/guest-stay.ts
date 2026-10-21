@@ -48,7 +48,14 @@ export type StaySource = {
  */
 export function stayEventOf(
   booking: StaySource,
-  stay: { times: StayTimes; locale: Locale; guestUrl: string; version: Date; location?: string },
+  stay: {
+    times: StayTimes;
+    locale: Locale;
+    guestUrl: string;
+    version: Date;
+    final?: boolean;
+    location?: string;
+  },
 ): StayEvent {
   const listing = booking.property.listing;
   const pick = (text: { en: string; de: string }) =>
@@ -65,6 +72,7 @@ export function stayEventOf(
     times: stay.times,
     timezone: booking.property.timezone,
     version: stay.version,
+    final: stay.final ?? false,
     ...stayEventWords(translator(stay.locale, "stayCalendar"), {
       title,
       reference: booking.reference,
