@@ -38,7 +38,8 @@ test("an expense saved with a PDF shows the paperclip, and the filter finds the 
   });
 
   await page.goto("/finance");
-  await page.getByRole("button", { name: "Add a transaction" }).first().click();
+  // With rows in the ledger, its button is just "Add".
+  await page.getByRole("button", { name: "Add", exact: true }).click();
   const dialog = page.getByRole("dialog");
   await dialog.getByLabel("Amount").fill("45");
   await dialog.getByLabel("Category").selectOption(category.id);
