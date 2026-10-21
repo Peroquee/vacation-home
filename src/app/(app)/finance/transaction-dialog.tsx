@@ -202,6 +202,20 @@ function TransactionForm({
     return () => controller.abort();
   }, [values.propertyId, values.date]);
 
+  /** A new rule with what is typed so far, starting on this date (GitLab #130). */
+  function recurringHref() {
+    const amountMinor = inputToMinor(values.amount, currency);
+    const params = new URLSearchParams({
+      new: "1",
+      propertyId: values.propertyId,
+      date: values.date,
+    });
+    if (values.categoryId) params.set("categoryId", values.categoryId);
+    if (amountMinor) params.set("amountMinor", String(amountMinor));
+    if (values.description) params.set("description", values.description);
+    return `/finance/recurring?${params}`;
+  }
+
   /** Uploads the receipts not added yet; true when all of them are. */
   async function uploadReceipts(transactionId: string): Promise<boolean> {
     const results: PendingReceipt[] = [];
@@ -449,6 +463,15 @@ function TransactionForm({
           ))}
         </FieldGroup>
       </fieldset>
+      {!transaction && !created && values.type === "expense" ? (
+        // GitLab #130: a regular cost belongs in a rule, which enters it itself.
+        <p className="text-muted-foreground text-sm">
+          {tRecurring("regularHint")}{" "}
+          <Link href={recurringHref()} className="text-foreground font-medium underline">
+            {tRecurring("makeRecurring")}
+          </Link>
+        </p>
+      ) : null}
       {transaction ? null : (
         <section aria-labelledby="new-receipts-title" className="space-y-2">
           <h3 id="new-receipts-title" className="text-sm font-medium">

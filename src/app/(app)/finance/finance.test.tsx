@@ -299,6 +299,33 @@ describe("TransactionDialog", () => {
     });
   });
 
+  // GitLab #130: "Kommt diese Ausgabe regelmäßig? → Wiederkehrend machen".
+  it("offers to make a new expense recurring, with what is typed so far", async () => {
+    serve();
+    const { user } = renderDialog();
+    await user.keyboard("45");
+    await user.selectOptions(screen.getByLabelText("Category"), "c-util");
+    await user.type(screen.getByLabelText("Description"), "Internet");
+    expect(screen.getByText("Does this expense come back regularly?")).toBeInTheDocument();
+    const href = new URL(
+      screen.getByRole("link", { name: "Make recurring" }).getAttribute("href")!,
+      "http://x",
+    );
+    expect(href.pathname).toBe("/finance/recurring");
+    expect(Object.fromEntries(href.searchParams)).toEqual({
+      new: "1",
+      propertyId: PROPERTY,
+      date: "2026-10-08",
+      categoryId: "c-util",
+      amountMinor: "4500",
+      description: "Internet",
+    });
+
+    // Not for income.
+    await user.click(screen.getByRole("radio", { name: "Income" }));
+    expect(screen.queryByRole("link", { name: "Make recurring" })).toBeNull();
+  });
+
   it("says what is missing or malformed before sending", async () => {
     const fetchMock = serve();
     const { user } = renderDialog();

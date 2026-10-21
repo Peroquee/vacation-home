@@ -10,6 +10,7 @@ import { fromUtcDate } from "@/lib/calendar-date";
 import { db } from "@/lib/db";
 import { listCategories } from "@/lib/finance/categories";
 import { listRecurringExpenses, occurrenceDate, toDto } from "@/lib/finance/recurring";
+import { newRulePrefill } from "@/lib/finance/rule-prefill";
 import { listProperties } from "@/lib/properties/service";
 
 import { type Rule, type RulePrefill, RecurringView } from "./recurring-view";
@@ -24,6 +25,10 @@ export async function generateMetadata(): Promise<Metadata> {
  * utilities' prepayments and the like into ledger entries by themselves.
  * `?from=<transaction id>` opens a new rule pre-filled from that expense,
  * starting one month after it, so the expense itself is not made twice.
+ * `?new=1` opens a new rule pre-filled from the expense dialog's values
+ * instead (GitLab #130): `propertyId`, `categoryId`, `amountMinor`, `date`
+ * and `description`, each only if it is valid; the rule then starts on
+ * that date and enters that expense itself.
  */
 export default async function RecurringPage({ searchParams }: PageProps<"/finance/recurring">) {
   const params = await searchParams;
@@ -51,6 +56,8 @@ export default async function RecurringPage({ searchParams }: PageProps<"/financ
       };
     }
   }
+
+  if (!prefill && params.new === "1") prefill = newRulePrefill(params);
 
   return (
     <>

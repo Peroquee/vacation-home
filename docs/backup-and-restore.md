@@ -1,7 +1,8 @@
 # Database backup and restore
 
 Bookings, guests and finances live only in the PostgreSQL database, and the
-receipts on transactions in the `receipts` volume. Nothing else can rebuild
+receipts on transactions and the documents on recurring costs in the
+`receipts` volume. Nothing else can rebuild
 them, so this is the procedure that keeps them safe.
 
 | What           | How                                                                                                                   |
@@ -400,7 +401,8 @@ records of processing (Verzeichnis von Verarbeitungstätigkeiten) under
 
 ## 7. Files volume: receipts and listing photos
 
-Receipts on transactions and the photos of the public listings (GitLab
+Receipts on transactions, the documents on recurring costs (GitLab #130,
+stored exactly like receipts) and the photos of the public listings (GitLab
 #106) are files in one volume, still called `receipts` so existing
 deployments keep it. Each file is named by its SHA-256, so it never changes
 once written, and one file can serve both a receipt and a photo. Photos are

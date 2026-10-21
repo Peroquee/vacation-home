@@ -29,6 +29,7 @@ const rule = (over: Partial<Rule> = {}): Rule => ({
   startDate: "2026-01-01",
   endDate: null,
   description: "Sparkasse loan",
+  documents: 0,
   status: "active",
   nextDueDate: "2026-11-01",
   pausedAt: null,
@@ -116,7 +117,9 @@ describe("RecurringView", () => {
     const user = userEvent.setup();
     await user.click(screen.getByRole("button", { name: "Delete Sparkasse loan" }));
     const dialog = await screen.findByRole("alertdialog");
-    expect(dialog).toHaveTextContent("Those already in the ledger stay as they are.");
+    expect(dialog).toHaveTextContent(
+      "Those already in the ledger stay as they are, with their receipts; the rule's own documents are deleted with it.",
+    );
     expect(fetchMock).not.toHaveBeenCalled();
     await user.click(within(dialog).getByRole("button", { name: "Delete" }));
     await waitFor(() => expect(refresh).toHaveBeenCalled());

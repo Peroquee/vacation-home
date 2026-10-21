@@ -21,7 +21,9 @@ import { useAmountHint } from "@/i18n/use-amount-hint";
 import { useApiText } from "@/i18n/use-api-text";
 import { inputToMinor, minorToInput } from "@/lib/properties/form";
 
+import { ReceiptsSection } from "../receipts-section";
 import type { Rule, RuleCategory, RulePrefill, RuleProperty } from "./recurring-view";
+import { RulePayments } from "./rule-payments";
 
 type FieldErrors = Record<string, string[] | undefined>;
 const INTERVALS = ["monthly", "quarterly", "annual"] as const;
@@ -305,6 +307,15 @@ export function RuleDialog({
             </Button>
           </DialogFooter>
         </form>
+        {/* GitLab #130: the contract and statements on the rule, the invoices on each payment. */}
+        {rule ? (
+          <>
+            <ReceiptsSection recurringExpenseId={rule.id} />
+            <RulePayments ruleId={rule.id} />
+          </>
+        ) : (
+          <p className="text-muted-foreground border-t pt-4 text-sm">{t("documents.saveFirst")}</p>
+        )}
       </DialogContent>
     </Dialog>
   );

@@ -17,6 +17,8 @@ export type ReceiptType = (typeof RECEIPT_TYPES)[number];
 export const MAX_RECEIPT_BYTES = 10 * 1024 * 1024;
 /** At most this many receipts per transaction. */
 export const MAX_RECEIPTS = 5;
+/** A recurring cost's documents (GitLab #130): its contract and years of statements. */
+export const MAX_RULE_DOCUMENTS = 20;
 /** A thumbnail is a small JPEG made in the browser. */
 export const MAX_THUMBNAIL_BYTES = 200 * 1024;
 

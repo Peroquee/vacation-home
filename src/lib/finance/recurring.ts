@@ -15,7 +15,11 @@
  * - **Pausing** stops creation; the periods that fall due while paused are
  *   skipped when it resumes. Past transactions are never touched. Rules of an
  *   archived property create nothing.
- * - **Deleting** a rule keeps the transactions it created, as history.
+ * - **Deleting** a rule keeps the transactions it created, as history; its
+ *   documents (GitLab #130) go with it.
+ * - **Documents**: a rule holds its contract, statements and invoices like
+ *   a transaction holds receipts (src/lib/finance/receipts.ts); each
+ *   payment it made keeps its own receipts.
  */
 import { z } from "zod";
 
@@ -118,6 +122,7 @@ export const listRecurringExpensesSchema = z.object({
 
 const withRelations = {
   category: { select: { id: true, name: true, color: true } },
+  _count: { select: { documents: true } },
 } satisfies Prisma.RecurringExpenseInclude;
 type RuleWithRelations = Prisma.RecurringExpenseGetPayload<{ include: typeof withRelations }>;
 
@@ -139,6 +144,8 @@ export function toDto(rule: RuleWithRelations) {
     startDate: fromUtcDate(rule.startDate),
     endDate: rule.endDate ? fromUtcDate(rule.endDate) : null,
     description: rule.description,
+    /** How many documents it holds (GitLab #130). */
+    documents: rule._count.documents,
     status: rule.pausedAt ? "paused" : next === null ? "ended" : "active",
     nextDueDate: next,
     pausedAt: rule.pausedAt?.toISOString() ?? null,
@@ -334,6 +341,44 @@ export async function resumeRecurringExpense(id: string, today?: CalendarDate) {
   }
   return getRecurringExpense(id);
 }
+
+/** How many of a rule's past payments are listed with it. */
+export const RULE_PAYMENTS_SHOWN = 24;
+
+/**
+ * The transactions a rule made (GitLab #130), newest first, each with how
+ * many receipts it has; null for an unknown rule.
+ */
+export async function listRulePayments(id: string) {
+  const rule = await db.recurringExpense.findUnique({ where: { id }, select: { id: true } });
+  if (!rule) return null;
+  const [items, total] = await Promise.all([
+    db.transaction.findMany({
+      where: { recurringExpenseId: id },
+      orderBy: [{ date: "desc" }, { id: "asc" }],
+      take: RULE_PAYMENTS_SHOWN,
+      select: {
+        id: true,
+        date: true,
+        amountMinor: true,
+        currency: true,
+        _count: { select: { attachments: true } },
+      },
+    }),
+    db.transaction.count({ where: { recurringExpenseId: id } }),
+  ]);
+  return {
+    items: items.map((t) => ({
+      id: t.id,
+      date: fromUtcDate(t.date),
+      amountMinor: t.amountMinor,
+      currency: t.currency,
+      receipts: t._count.attachments,
+    })),
+    total,
+  };
+}
+export type RulePayments = NonNullable<Awaited<ReturnType<typeof listRulePayments>>>;
 
 /** Deletes the rule; the transactions it created stay, unlinked. */
 export async function deleteRecurringExpense(id: string): Promise<boolean> {

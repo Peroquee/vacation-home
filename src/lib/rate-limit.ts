@@ -100,10 +100,12 @@ export const RULES: Rule[] = [
     by: "user",
   },
   {
-    // Each upload writes up to 10 MB to disk.
+    // Each upload writes up to 10 MB to disk: receipts, and the documents of
+    // recurring costs (GitLab #130), in one budget.
     name: "receipt-upload",
     matches: (method, path) =>
-      method === "POST" && new RegExp(`^/api/transactions/${UUID}/attachments$`).test(path),
+      method === "POST" &&
+      new RegExp(`^/api/(transactions|recurring-expenses)/${UUID}/attachments$`).test(path),
     limit: 60,
     windowMs: 10 * MINUTE,
     by: "user",

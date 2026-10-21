@@ -1,6 +1,6 @@
 "use client";
 
-import { Plus, Repeat } from "lucide-react";
+import { Paperclip, Plus, Repeat } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
@@ -23,10 +23,10 @@ export type RuleProperty = { id: string; name: string; currency: string; archive
 export type RuleCategory = { id: string; name: string };
 /** A new rule's starting values, e.g. from a ledger transaction. */
 export type RulePrefill = {
-  propertyId: string;
+  propertyId?: string;
   categoryId: string;
-  amountMinor: number;
-  startDate: string;
+  amountMinor?: number;
+  startDate?: string;
   description: string;
 };
 
@@ -99,7 +99,18 @@ export function RecurringView({
             style={{ backgroundColor: rule.category.color }}
           />
           <span>
-            <span className="block font-medium">{rule.description || rule.category.name}</span>
+            <span className="block font-medium">
+              {rule.description || rule.category.name}
+              {rule.documents > 0 ? (
+                // Its contract and statements (GitLab #130), under Edit.
+                <span className="text-muted-foreground ml-1.5 inline-flex items-center align-middle">
+                  <Paperclip aria-hidden className="size-3.5" />
+                  <span className="sr-only">
+                    , {t("documents.count", { count: rule.documents })}
+                  </span>
+                </span>
+              ) : null}
+            </span>
             {rule.description ? (
               <span className="text-muted-foreground block text-xs">{rule.category.name}</span>
             ) : null}
