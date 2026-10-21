@@ -84,6 +84,32 @@ describe("the emails", () => {
     expect(paid.text).toContain("Anreise ab 15:00 · Abreise zwischen 08:00 und 10:00");
   });
 
+  it("carry the stay for the guest's calendar in the confirmations only (GitLab #125)", async () => {
+    const calendar = {
+      file: "BEGIN:VCALENDAR\r\nEND:VCALENDAR\r\n",
+      google: "https://calendar.google.com/calendar/render?action=TEMPLATE&text=x",
+      outlook: "https://outlook.live.com/calendar/0/action/compose?subject=x",
+    };
+    for (const kind of ["deposit_received", "fully_paid"] as const) {
+      const email = await render({ kind, calendar });
+      const ics = email.attachments.filter((a) => a.filename === "stay.ics");
+      expect(ics).toHaveLength(1);
+      expect(ics[0]).toMatchObject({ contentType: expect.stringContaining("text/calendar") });
+      expect(ics[0]!.cid).toBeUndefined();
+      expect(ics[0]!.content.toString()).toBe(calendar.file);
+      expect(email.text).toContain(`Add to Google Calendar: ${calendar.google}`);
+      expect(email.text).toContain(`Add to Outlook.com: ${calendar.outlook}`);
+      expect(email.html).toContain(`href="${calendar.google.replace("&", "&#38;")}"`);
+    }
+    const german = await render({ kind: "fully_paid", locale: "de-DE", calendar });
+    expect(german.text).toContain("In den Kalender eintragen:");
+    for (const kind of ["reserved", "balance_reminder"] as const) {
+      const email = await render({ kind, calendar });
+      expect(email.attachments.map((a) => a.filename)).not.toContain("stay.ics");
+      expect(email.text).not.toContain("calendar.google.com");
+    }
+  });
+
   it("write to the owner in the default language, escaping what the guest wrote", async () => {
     const email = await render({
       kind: "requested",

@@ -26,6 +26,9 @@ import { bookingPolicy } from "@/lib/cancellation/service";
 import { db } from "@/lib/db";
 import { todayIn } from "@/lib/finance/recurring";
 import { logger } from "@/lib/logger";
+import { DEFAULT_LOCALE, isLocale } from "@/i18n/locales";
+import { stayEventOf } from "@/lib/ical/guest-stay";
+import { googleCalendarLink, outlookCalendarLink, stayCalendar } from "@/lib/ical/stay-event";
 import { bookingStayTimes } from "@/lib/listing/service";
 import { getBankDetails } from "@/lib/payments/bank";
 import { guestPath, issueGuestToken } from "@/lib/payments/guest-link";
@@ -49,6 +52,9 @@ const LINKS_GUEST_PAGE = new Set([
   "balance_reminder",
   "fully_paid",
 ]);
+
+/** The guest emails that carry the stay for their calendar (GitLab #125). */
+const CARRIES_CALENDAR = new Set(["deposit_received", "fully_paid"]);
 
 /** Adds the missing outbox rows for every event; the number added. */
 export async function enqueue(): Promise<number> {
@@ -130,6 +136,26 @@ async function deliver(row: EmailOutbox, setup: MailSetup, now: Date): Promise<O
     row.recipient === "guest" && LINKS_GUEST_PAGE.has(event.kind)
       ? new URL(guestPath(await issueGuestToken(booking.id)), setup.appUrl).toString()
       : null;
+  const times = await bookingStayTimes(booking);
+  // The stay for the guest's calendar, in the confirmations (GitLab #125):
+  // where it is, the exact address only once all is paid, as the email
+  // itself. Its version is the event's, the fully-paid one final, so that
+  // email's file updates the entry the deposit email's made, even when both
+  // come of one payment.
+  const guestLocale = booking.guestLocale ?? undefined;
+  const stay =
+    guestLink && CARRIES_CALENDAR.has(event.kind)
+      ? stayEventOf(booking, {
+          times,
+          locale: isLocale(guestLocale) ? guestLocale : DEFAULT_LOCALE,
+          guestUrl: guestLink,
+          version: event.createdAt,
+          ...(event.kind === "fully_paid" && {
+            final: true,
+            location: listing?.exactAddress || listing?.location || "",
+          }),
+        })
+      : null;
   const email = await renderEmail({
     kind: event.kind,
     recipient: row.recipient,
@@ -166,13 +192,18 @@ async function deliver(row: EmailOutbox, setup: MailSetup, now: Date): Promise<O
       title: titled
         ? { en: listing.titleEn, de: listing.titleDe }
         : { en: booking.property.name, de: "" },
-      times: await bookingStayTimes(booking),
+      times,
       houseRules: { en: listing?.houseRulesEn ?? "", de: listing?.houseRulesDe ?? "" },
       exactAddress: listing?.exactAddress ?? "",
       arrivalNotes: listing?.arrivalNotes ?? "",
     },
     bank: await getBankDetails(booking.propertyId),
     guestLink,
+    calendar: stay && {
+      file: stayCalendar(stay, now),
+      google: googleCalendarLink(stay),
+      outlook: outlookCalendarLink(stay),
+    },
   });
 
   const host = new URL(setup.appUrl).hostname;

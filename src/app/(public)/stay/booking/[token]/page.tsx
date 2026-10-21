@@ -1,6 +1,9 @@
 import type { Metadata } from "next";
 
+import { CalendarPlus } from "lucide-react";
+
 import { PriceLines } from "@/components/price-lines";
+import { buttonVariants } from "@/components/ui/button";
 import { describePolicy } from "@/lib/cancellation/describe";
 import { getLocale, getTranslations } from "next-intl/server";
 import { notFound } from "next/navigation";
@@ -11,6 +14,10 @@ import { guestView } from "@/lib/payments/guest-view";
 import { pickText } from "@/lib/properties/public";
 import { daysBetween } from "@/lib/calendar-date";
 import { describeStayTimes } from "@/lib/listing/stay-times";
+import { DEFAULT_LOCALE, isLocale } from "@/i18n/locales";
+import { guestStayEvent } from "@/lib/ical/guest-stay";
+import { googleCalendarLink, outlookCalendarLink, stayCalendarPath } from "@/lib/ical/stay-event";
+import { guestPath } from "@/lib/payments/guest-link";
 
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getTranslations("stay.booking");
@@ -23,9 +30,11 @@ export async function generateMetadata(): Promise<Metadata> {
  * The guest's own page for their booking (GitLab #115), opened by the link
  * they were given: its status, what to pay next, by when, to whom, with the
  * GiroCode their banking app can scan. An unknown link is a plain 404.
+ * A stay that holds its dates can go into the guest's calendar (#125).
  */
 export default async function GuestBookingPage({ params }: PageProps<"/stay/booking/[token]">) {
-  const view = await guestView((await params).token);
+  const { token } = await params;
+  const view = await guestView(token);
   if (!view) notFound();
   const [t, tCancellation, tTimes, locale, format] = await Promise.all([
     getTranslations("stay.booking"),
@@ -35,6 +44,9 @@ export default async function GuestBookingPage({ params }: PageProps<"/stay/book
     getFormat(),
   ]);
   const money = (minor: number) => format.money(minor, view.currency);
+  const holds = view.status === "reserved" || view.status === "confirmed" || view.status === "paid";
+  const calendarLocale = isLocale(locale) ? locale : DEFAULT_LOCALE;
+  const stay = holds ? await guestStayEvent(token, calendarLocale) : null;
   const times = describeStayTimes(
     (key, values) => tTimes(key as Parameters<typeof tTimes>[0], values),
     view.times,
@@ -136,6 +148,41 @@ export default async function GuestBookingPage({ params }: PageProps<"/stay/book
           ) : (
             <p className="text-sm">{t("noBankDetails")}</p>
           )}
+        </section>
+      ) : null}
+
+      {stay ? (
+        <section aria-labelledby="booking-calendar" className="space-y-3 rounded-xl border p-4">
+          <h2 id="booking-calendar" className="font-semibold">
+            {t("calendar.title")}
+          </h2>
+          <div className="flex flex-wrap gap-2">
+            <a
+              href={`${stayCalendarPath(guestPath(token))}?lang=${calendarLocale}`}
+              download="stay.ics"
+              className={buttonVariants()}
+            >
+              <CalendarPlus aria-hidden="true" />
+              {t("calendar.download")}
+            </a>
+            <a
+              href={googleCalendarLink(stay)}
+              target="_blank"
+              rel="noopener noreferrer"
+              className={buttonVariants({ variant: "outline" })}
+            >
+              {t("calendar.google")}
+            </a>
+            <a
+              href={outlookCalendarLink(stay)}
+              target="_blank"
+              rel="noopener noreferrer"
+              className={buttonVariants({ variant: "outline" })}
+            >
+              {t("calendar.outlook")}
+            </a>
+          </div>
+          <p className="text-muted-foreground text-sm">{t("calendar.hint")}</p>
         </section>
       ) : null}
 

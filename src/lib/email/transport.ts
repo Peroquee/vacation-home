@@ -16,7 +16,7 @@ export type MailTransport = {
     subject: string;
     text: string;
     html: string;
-    attachments: { filename: string; content: Buffer; cid: string; contentType: string }[];
+    attachments: { filename: string; content: Buffer; cid?: string; contentType: string }[];
     messageId: string;
   }): Promise<unknown>;
 };

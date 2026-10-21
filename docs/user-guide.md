@@ -347,6 +347,15 @@ language they used there:
 | You or the guest cancel              | That the booking is cancelled, and what is refunded                                                           |
 | You decline, or it lapses or expires | That it did not work out, with your reason if you gave one                                                    |
 
+The two confirmations (first payment, everything paid) carry the stay for
+the guest's calendar: a `stay.ics` file and links for Google Calendar and
+Outlook.com. The entry runs from the earliest arrival on the arrival day to
+the latest departure on the departure day, in the property's timezone (whole
+days when a time is not set), and names the reference and a link to the
+guest's booking page. The second file updates the entry the first one made.
+Only the "everything paid" one has the exact address. Once the dates are
+reserved, the guest can also add the stay from their booking page.
+
 You get an email for each new request, each reservation that lapsed, each
 balance that is overdue and each cancellation by a guest.
 

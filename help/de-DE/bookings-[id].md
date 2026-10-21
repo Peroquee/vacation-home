@@ -28,7 +28,7 @@ Alles zu einem Aufenthalt: Gast, Tage, Preis mit allen Posten, Zahlungen und was
 
 **Dem Gast seine Buchungsseite schicken**
 
-Wählen Sie **Link für den Gast**. Dort sieht der Gast, was zu zahlen ist, Ihre Bankverbindung und die eigene Buchung.
+Wählen Sie **Link für den Gast**. Dort sieht der Gast, was zu zahlen ist, Ihre Bankverbindung und die eigene Buchung. Sobald die Daten reserviert sind, kann der Gast den Aufenthalt dort in den eigenen Kalender eintragen (.ics-Datei, Google Kalender oder Outlook.com).
 
 **Eine Buchung stornieren**
 
