@@ -51,7 +51,13 @@ export function HelpButton({ compact = false }: { compact?: boolean }) {
           <SheetDescription className="sr-only">{t("buttonLabel")}</SheetDescription>
         </SheetHeader>
         <div className="px-4 pb-6">
-          {open ? key ? <HelpBody helpKey={key} /> : <p className="text-sm">{t("none")}</p> : null}
+          {open ? (
+            key ? (
+              <HelpBody helpKey={key} onLeave={() => setOpen(false)} />
+            ) : (
+              <p className="text-sm">{t("none")}</p>
+            )
+          ) : null}
         </div>
       </SheetContent>
     </Sheet>
