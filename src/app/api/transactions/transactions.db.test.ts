@@ -6,6 +6,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 
 import { DELETE, GET as getOne, PATCH } from "@/app/api/transactions/[id]/route";
 import { POST as bulkDelete } from "@/app/api/transactions/bulk-delete/route";
+import { GET as exportCsv } from "@/app/api/transactions/export/route";
 import { GET as list, POST as create } from "@/app/api/transactions/route";
 import { toUtcDate } from "@/lib/calendar-date";
 import { db } from "@/lib/db";
@@ -515,5 +516,53 @@ describe("a category of the other type (GitLab #129)", () => {
     await expect(
       db.transaction.update({ where: { id: body.id }, data: { categoryId: cat.booking_income } }),
     ).rejects.toThrow(/transactions_category_id_type_fkey|Foreign key/);
+  });
+});
+
+describe("the receipts filter (GitLab #131)", () => {
+  async function entry(amountMinor: number) {
+    const { body } = await post({
+      propertyId: lake,
+      type: "expense",
+      categoryId: cat.cleaning,
+      amountMinor,
+      date: "2026-07-20",
+    });
+    return body.id as string;
+  }
+
+  it("finds the transactions without a receipt, or with one, in the list and the export", async () => {
+    const withReceipt = await entry(1_000);
+    await entry(2_000);
+    await db.transactionAttachment.create({
+      data: {
+        transactionId: withReceipt,
+        fileName: "Rechnung.pdf",
+        mediaType: "application/pdf",
+        size: 8,
+        sha256: "a".repeat(64),
+      },
+    });
+    const amounts = async (receipts: string) =>
+      (await query(`propertyId=${lake}&receipts=${receipts}`)).body.items.map(
+        (t: { amountMinor: number }) => t.amountMinor,
+      );
+    expect(await amounts("none")).toEqual([2_000]);
+    expect(await amounts("some")).toEqual([1_000]);
+    expect((await query(`propertyId=${lake}`)).body.total).toBe(2);
+
+    const csv = await (
+      await exportCsv(
+        new Request(`${BASE}/export?propertyId=${lake}&receipts=none&format=standard`),
+      )
+    ).text();
+    expect(csv).toContain("20.00");
+    expect(csv).not.toContain("10.00");
+  });
+
+  it("rejects any other value", async () => {
+    const { status, body } = await query("receipts=missing");
+    expect(status).toBe(422);
+    expect(body.error.fields).toHaveProperty("receipts");
   });
 });

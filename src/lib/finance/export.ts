@@ -11,6 +11,7 @@ import { calendarDate, csv, fromBeforeTo } from "@/lib/query";
 
 import { TRANSACTION_TYPES } from "./categories";
 import { type CsvFormat, toCsv } from "./csv";
+import { receiptsFilter, receiptsWhere } from "./transactions";
 
 /** Generous for a holiday home's books; beyond it, export a shorter range. */
 export const MAX_EXPORT_ROWS = 50_000;
@@ -23,6 +24,7 @@ export const exportSchema = z
     /** Dates from `from` (inclusive) to `to` (exclusive), like the ledger. */
     from: calendarDate.optional(),
     to: calendarDate.optional(),
+    receipts: receiptsFilter,
     format: z.enum(["standard", "excel-de"]).default("standard"),
   })
   .refine(...fromBeforeTo);
@@ -38,6 +40,7 @@ export async function exportTransactions(
       ...(query.from && { gte: toUtcDate(query.from) }),
       ...(query.to && { lt: toUtcDate(query.to) }),
     },
+    ...receiptsWhere(query.receipts),
   };
   const count = await db.transaction.count({ where });
   if (count > MAX_EXPORT_ROWS) return { tooMany: count };

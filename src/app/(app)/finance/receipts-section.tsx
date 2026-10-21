@@ -1,43 +1,17 @@
 "use client";
 
-import { FileText, Paperclip, Trash2 } from "lucide-react";
+import { FileText, Trash2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { useCallback, useEffect, useId, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useState } from "react";
 
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { toastError } from "@/components/toast";
 import { Button } from "@/components/ui/button";
-import { useApiText } from "@/i18n/use-api-text";
 import { MAX_RECEIPTS } from "@/lib/finance/receipt-files";
 import type { ReceiptDto } from "@/lib/finance/receipts";
 
-const ACCEPT = "application/pdf,image/jpeg,image/png,image/webp,image/heic,.heic";
-/** Longest side of a thumbnail, in pixels. */
-const THUMBNAIL_SIZE = 320;
-
-/**
- * A small JPEG preview of an image, made here so the server needs no image
- * library; drawing it on a canvas also leaves its metadata behind. Null when
- * the browser cannot draw the file (HEIC outside Safari, a PDF).
- */
-async function thumbnailOf(file: File): Promise<Blob | null> {
-  if (!/^image\/(jpeg|png|webp)$/.test(file.type) || typeof createImageBitmap !== "function") {
-    return null;
-  }
-  try {
-    const bitmap = await createImageBitmap(file);
-    const scale = Math.min(1, THUMBNAIL_SIZE / Math.max(bitmap.width, bitmap.height));
-    const canvas = document.createElement("canvas");
-    canvas.width = Math.max(1, Math.round(bitmap.width * scale));
-    canvas.height = Math.max(1, Math.round(bitmap.height * scale));
-    canvas.getContext("2d")?.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
-    bitmap.close();
-    return await new Promise((resolve) => canvas.toBlob(resolve, "image/jpeg", 0.8));
-  } catch {
-    return null;
-  }
-}
+import { ReceiptPicker, useUploadReceipt } from "./receipt-picker";
 
 /**
  * The receipts of a saved transaction (GitLab #82): previews, downloads,
@@ -47,10 +21,9 @@ async function thumbnailOf(file: File): Promise<Blob | null> {
 export function ReceiptsSection({ transactionId }: { transactionId: string }) {
   const t = useTranslations("finance.receipts");
   const tCommon = useTranslations("common");
-  const api = useApiText();
   const router = useRouter();
   const id = useId();
-  const input = useRef<HTMLInputElement>(null);
+  const uploadReceipt = useUploadReceipt();
   const [receipts, setReceipts] = useState<ReceiptDto[] | null>(null);
   const [failed, setFailed] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -76,33 +49,17 @@ export function ReceiptsSection({ transactionId }: { transactionId: string }) {
     return () => controller.abort();
   }, [load]);
 
-  async function upload(files: FileList) {
+  async function upload(files: File[]) {
     setUploading(true);
     try {
-      for (const file of Array.from(files)) {
-        const form = new FormData();
-        form.set("file", file);
-        const thumbnail = await thumbnailOf(file);
-        if (thumbnail) form.set("thumbnail", thumbnail, "thumbnail.jpg");
-        const response = await fetch(`/api/transactions/${transactionId}/attachments`, {
-          method: "POST",
-          body: form,
-        });
-        if (!response.ok) {
-          const body = await response.json().catch(() => null);
-          const field = body?.error?.fields?.file?.[0] ?? body?.error?.fields?.thumbnail?.[0];
-          throw new Error(
-            field
-              ? `${file.name}: ${api.text(field)}`
-              : (api.message(body) ?? tCommon("serverAnswered", { status: response.status })),
-          );
-        }
+      for (const file of files) {
+        const failure = await uploadReceipt(`/api/transactions/${transactionId}/attachments`, file);
+        if (failure) throw new Error(failure);
       }
     } catch (error) {
       toastError(error, t("uploadFailed"));
     } finally {
       setUploading(false);
-      if (input.current) input.current.value = "";
       await load();
       // The ledger shows which transactions have receipts.
       router.refresh();
@@ -178,35 +135,12 @@ export function ReceiptsSection({ transactionId }: { transactionId: string }) {
           ))}
         </ul>
       )}
-      <input
-        ref={input}
-        id={`${id}-file`}
-        type="file"
-        aria-label={t("add")}
-        accept={ACCEPT}
-        multiple
-        className="sr-only"
-        disabled={uploading || full}
-        onChange={(event) => {
-          if (event.target.files?.length) void upload(event.target.files);
-        }}
+      <ReceiptPicker
+        onFiles={(files) => void upload(files)}
+        disabled={uploading || full || receipts === null}
+        busy={uploading}
+        hint={full ? t("full", { max: MAX_RECEIPTS }) : t("hint", { max: MAX_RECEIPTS })}
       />
-      <div className="flex flex-wrap items-center gap-2">
-        <Button
-          type="button"
-          size="sm"
-          variant="outline"
-          disabled={uploading || full || receipts === null}
-          aria-busy={uploading}
-          onClick={() => input.current?.click()}
-        >
-          <Paperclip data-icon="inline-start" aria-hidden />
-          {uploading ? t("uploading") : t("add")}
-        </Button>
-        <p className="text-muted-foreground text-xs">
-          {full ? t("full", { max: MAX_RECEIPTS }) : t("hint", { max: MAX_RECEIPTS })}
-        </p>
-      </div>
     </section>
   );
 }

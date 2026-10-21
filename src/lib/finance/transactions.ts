@@ -48,6 +48,16 @@ export const updateTransactionSchema = z
   .partial()
   .refine((update) => Object.keys(update).length > 0, "at least one field is required");
 
+/** The "without a receipt" filter (GitLab #131), for the ledger and its export. */
+export const receiptsFilter = z.enum(["none", "some"]).optional();
+
+export function receiptsWhere(
+  receipts: z.infer<typeof receiptsFilter>,
+): Prisma.TransactionWhereInput {
+  if (!receipts) return {};
+  return { attachments: receipts === "none" ? { none: {} } : { some: {} } };
+}
+
 export const listTransactionsSchema = z
   .object({
     propertyId: z.uuid().optional(),
@@ -60,6 +70,8 @@ export const listTransactionsSchema = z
     bookingId: z.uuid().optional(),
     /** Only those linked to some booking ("true") or to none ("false"). */
     linked: z.enum(["true", "false"]).optional(),
+    /** Only those without a receipt ("none") or with one ("some"), GitLab #131. */
+    receipts: receiptsFilter,
     page,
     pageSize: pageSize(200, 50),
     sort: z.enum(["date", "-date", "amount", "-amount"]).default("-date"),
@@ -252,6 +264,7 @@ export async function listTransactions(query: z.infer<typeof listTransactionsSch
     ...(query.bookingId
       ? { bookingId: query.bookingId }
       : query.linked && { bookingId: query.linked === "true" ? { not: null } : null }),
+    ...receiptsWhere(query.receipts),
   };
   const [field, direction] = query.sort.startsWith("-")
     ? [query.sort.slice(1), "desc" as const]

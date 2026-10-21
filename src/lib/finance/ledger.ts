@@ -10,7 +10,7 @@ import { addMonths, isMonthKey, type MonthKey } from "@/lib/calendar/month";
 
 type SearchParams = Record<string, string | string[] | undefined>;
 
-const KEYS = ["month", "from", "until", "propertyId", "type", "categoryId"] as const;
+const KEYS = ["month", "from", "until", "propertyId", "type", "categoryId", "receipts"] as const;
 export type LedgerParams = Partial<Record<(typeof KEYS)[number], string>>;
 
 /** The first value of each known param, blanks dropped. */
