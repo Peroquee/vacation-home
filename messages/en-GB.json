@@ -64,7 +64,8 @@
     },
     "refusedTesting": "If the owner's Google sign-in is still in testing, they also need to add your account as a test user in Google Cloud.",
     "refusedGuests": "Here to book a stay? Guests don't need to sign in: <link>see the holiday homes</link>.",
-    "buttonOther": "Sign in with another Google account"
+    "buttonOther": "Sign in with another Google account",
+    "cookies": "Signing in stores a few strictly necessary cookies: <link>cookie notice</link>."
   },
   "settings": {
     "syncFailures": {
@@ -1854,7 +1855,38 @@
     },
     "notYet": "This page is not available yet. Please check back later.",
     "footer": "Legal",
-    "ownerSignIn": "Owner sign-in"
+    "ownerSignIn": "Owner sign-in",
+    "cookies": {
+      "title": "Cookie notice",
+      "guests": "Guests looking at the homes, picking dates or sending a request get no cookies at all from this site.",
+      "owner": "Only the owner's sign-in and the owner's own pages use a few cookies, all strictly necessary: to keep you signed in, to protect the sign-in, and to remember settings you chose yourself.",
+      "noTracking": "There is no tracking, no advertising and no third-party cookie. Cloudflare, which passes the site's traffic on, sets none for this site.",
+      "caption": "The cookies of this site",
+      "columns": {
+        "name": "Name",
+        "purpose": "Purpose",
+        "duration": "Kept for",
+        "necessary": "Strictly necessary"
+      },
+      "yes": "Yes",
+      "purposes": {
+        "session": "Keeps the owner signed in.",
+        "csrf": "Protects the sign-in against forged requests.",
+        "callback": "Remembers the page to return to after signing in.",
+        "pkce": "Secures the sign-in with Google while it happens.",
+        "googleConnect": "Secures connecting Google Calendar while it happens.",
+        "locale": "Remembers the language the owner chose.",
+        "calendarProperty": "Remembers which home the owner's calendar shows."
+      },
+      "durations": {
+        "days30": "30 days",
+        "browserSession": "Until the browser is closed",
+        "minutes15": "15 minutes",
+        "minutes10": "10 minutes",
+        "year": "1 year"
+      },
+      "why": "Cookies that are strictly necessary for a service you asked for need no consent (§ 25(2) no. 2 TTDSG, Art. 5(3) ePrivacy Directive); that is why this site shows no cookie banner. The second name is used on the owner's local network, without https."
+    }
   },
   "email": {
     "hello": "Hello {name},",

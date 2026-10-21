@@ -124,7 +124,11 @@ test.describe("a listed property", () => {
     await expect(page.getByRole("navigation", { name: "Main" })).toHaveCount(0);
     await expect(page.getByRole("button", { name: /account/i })).toHaveCount(0);
     const legal = page.getByRole("navigation", { name: "Legal" });
-    await expect(legal.getByRole("link")).toHaveText(["Imprint", "Privacy policy"]);
+    await expect(legal.getByRole("link")).toHaveText([
+      "Imprint",
+      "Privacy policy",
+      "Cookie notice",
+    ]);
     // The owner's way in, beside the legal links rather than among them.
     await expect(page.getByRole("link", { name: "Owner sign-in" })).toHaveAttribute(
       "href",

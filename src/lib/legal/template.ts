@@ -88,6 +88,10 @@ function german(facts: TemplateFacts): string {
         body: "Das Anfrageformular schützt eine Rechenaufgabe, die Ihr Browser löst (ALTCHA). Sie läuft auf unserem eigenen Server, ohne Dienste Dritter und ohne Cookies. Um Missbrauch zu begrenzen, zählt der Server Anfragen je IP-Adresse; die Adressen werden dafür nur kurz im Arbeitsspeicher gehalten und nicht gespeichert. Rechtsgrundlage ist unser berechtigtes Interesse an einem sicheren Betrieb (Art. 6 Abs. 1 lit. f DSGVO).",
       },
       {
+        title: "Cookies",
+        body: "Gäste bekommen von dieser Seite keine Cookies. Nur die Anmeldung der Gastgeber und deren eigene Seiten nutzen einige Cookies, die dafür unbedingt erforderlich sind (§ 25 Abs. 2 Nr. 2 TTDSG); es gibt kein Tracking und keine Cookies von Dritten. Welche Cookies das sind und wie lange sie gespeichert werden, steht im [Cookie-Hinweis](/stay/legal/cookies).",
+      },
+      {
         title: "Server-Protokolle",
         body: `Beim Aufruf der Seite verarbeitet der Server technisch notwendige Daten (aufgerufene Adresse, Zeitpunkt, Browser-Kennung und ${cloudflare ? "Ihre IP-Adresse, die Cloudflare weitergibt" : "[beim vorgeschalteten Webserver] Ihre IP-Adresse"}). Die Protokolle der Anwendung enthalten keine Namen oder E-Mail-Adressen. Protokolle werden nach [Zeitraum] gelöscht. Rechtsgrundlage ist Art. 6 Abs. 1 lit. f DSGVO.`,
       },
@@ -151,6 +155,10 @@ function english(facts: TemplateFacts): string {
       {
         title: "Protection against spam and abuse",
         body: "The request form is protected by a small puzzle your browser solves (ALTCHA). It runs on our own server, without third parties and without cookies. To limit abuse, the server counts requests per IP address; the addresses are only held briefly in memory for this and are not stored. The legal basis is our legitimate interest in running the site securely (Art. 6(1)(f) GDPR).",
+      },
+      {
+        title: "Cookies",
+        body: "Guests get no cookies from this site. Only the owner's sign-in and the owner's own pages use a few cookies, strictly necessary for them (§ 25(2) no. 2 TTDSG); there is no tracking and no third-party cookie. Which cookies they are and how long they are kept is in the [cookie notice](/stay/legal/cookies).",
       },
       {
         title: "Server logs",

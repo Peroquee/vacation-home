@@ -78,6 +78,16 @@ export default async function SignInPage({ searchParams }: PageProps<"/signin">)
               {refused ? t("buttonOther") : t("button")}
             </Button>
           </form>
+          {/* What signing in stores (GitLab #124). */}
+          <p className="text-muted-foreground text-xs">
+            {t.rich("cookies", {
+              link: (chunks) => (
+                <Link href="/stay/legal/cookies" className="underline">
+                  {chunks}
+                </Link>
+              ),
+            })}
+          </p>
         </CardContent>
       </Card>
     </main>

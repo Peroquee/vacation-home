@@ -64,7 +64,8 @@
     },
     "refusedTesting": "Ist die Google-Anmeldung der App noch im Testmodus, muss Ihr Konto dort außerdem als Testnutzer eingetragen sein.",
     "refusedGuests": "Sie möchten buchen? Gäste brauchen keine Anmeldung: <link>zu den Ferienunterkünften</link>.",
-    "buttonOther": "Mit einem anderen Google-Konto anmelden"
+    "buttonOther": "Mit einem anderen Google-Konto anmelden",
+    "cookies": "Bei der Anmeldung werden einige unbedingt erforderliche Cookies gespeichert: <link>Cookie-Hinweis</link>."
   },
   "settings": {
     "syncFailures": {
@@ -1854,7 +1855,38 @@
     },
     "notYet": "Diese Seite ist noch nicht verfügbar. Bitte schauen Sie später wieder vorbei.",
     "footer": "Rechtliches",
-    "ownerSignIn": "Anmeldung für Gastgeber"
+    "ownerSignIn": "Anmeldung für Gastgeber",
+    "cookies": {
+      "title": "Cookie-Hinweis",
+      "guests": "Gäste, die sich die Unterkünfte ansehen, Tage auswählen oder eine Anfrage senden, bekommen von dieser Seite keine Cookies.",
+      "owner": "Nur die Anmeldung der Gastgeber und deren eigene Seiten nutzen einige Cookies, alle unbedingt erforderlich: um angemeldet zu bleiben, um die Anmeldung zu schützen und um selbst gewählte Einstellungen zu merken.",
+      "noTracking": "Es gibt kein Tracking, keine Werbung und keine Cookies von Dritten. Cloudflare, das den Datenverkehr der Seite weiterleitet, setzt für diese Seite keine.",
+      "caption": "Die Cookies dieser Seite",
+      "columns": {
+        "name": "Name",
+        "purpose": "Zweck",
+        "duration": "Gespeichert für",
+        "necessary": "Unbedingt erforderlich"
+      },
+      "yes": "Ja",
+      "purposes": {
+        "session": "Hält die Gastgeber angemeldet.",
+        "csrf": "Schützt die Anmeldung vor gefälschten Anfragen.",
+        "callback": "Merkt sich die Seite, zu der es nach der Anmeldung zurückgeht.",
+        "pkce": "Sichert die Anmeldung mit Google, während sie läuft.",
+        "googleConnect": "Sichert die Verbindung mit Google Kalender, während sie hergestellt wird.",
+        "locale": "Merkt sich die Sprache, die die Gastgeber gewählt haben.",
+        "calendarProperty": "Merkt sich, welche Unterkunft der Kalender der Gastgeber zeigt."
+      },
+      "durations": {
+        "days30": "30 Tage",
+        "browserSession": "Bis der Browser geschlossen wird",
+        "minutes15": "15 Minuten",
+        "minutes10": "10 Minuten",
+        "year": "1 Jahr"
+      },
+      "why": "Cookies, die für einen von Ihnen gewünschten Dienst unbedingt erforderlich sind, brauchen keine Einwilligung (§ 25 Abs. 2 Nr. 2 TTDSG, Art. 5 Abs. 3 ePrivacy-Richtlinie); deshalb zeigt diese Seite kein Cookie-Banner. Der zweite Name wird im lokalen Netz der Gastgeber ohne https verwendet."
+    }
   },
   "email": {
     "hello": "Hallo {name},",

@@ -37,6 +37,7 @@ describe("the privacy policy template", () => {
           /ALTCHA/,
           /IP/,
           /§ 147/,
+          /\/stay\/legal\/cookies/,
           /Art\. 15/,
           /Art\. 21/,
           /Google/,
@@ -69,7 +70,7 @@ describe("the privacy policy template", () => {
     expect(text).toContain("anonymised after 3 months");
     expect(text).not.toMatch(/Google|Cloudflare|Brevo|processor/);
     const numbers = [...text.matchAll(/^## (\d+)\./gm)].map((m) => Number(m[1]));
-    expect(numbers).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
+    expect(numbers).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]);
   });
 
   it("names an email provider other than Brevo only as a placeholder", () => {

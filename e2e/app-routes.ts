@@ -37,6 +37,8 @@ export const PUBLIC_ROUTES = [
   "/stay/[slug]",
   // The guest's own booking page (GitLab #115): a 128-bit token, stored hashed.
   "/stay/booking/[token]",
+  // The cookie notice (GitLab #124).
+  "/stay/legal/cookies",
   "/stay/legal/imprint",
   "/stay/legal/privacy",
   // Signing in, and what has its own secret or reveals nothing.
