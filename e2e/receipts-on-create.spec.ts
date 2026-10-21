@@ -39,7 +39,10 @@ test("an expense saved with a PDF shows the paperclip, and the filter finds the 
 
   await page.goto("/finance");
   // With rows in the ledger, its button is "Add" with its shortcut, T.
-  await page.getByRole("button", { name: /^Add\b/ }).first().click();
+  await page
+    .getByRole("button", { name: /^Add\b/ })
+    .first()
+    .click();
   const dialog = page.getByRole("dialog");
   await dialog.getByLabel("Amount").fill("45");
   await dialog.getByLabel("Category").selectOption(category.id);
