@@ -1,0 +1,15 @@
+{
+  "task": "guest-request",
+  "clicks": 8,
+  "fields": 4,
+  "pages": 2,
+  "steps": [
+    "start",
+    "property",
+    "arrival",
+    "departure",
+    "form",
+    "form-filled",
+    "sent"
+  ]
+}

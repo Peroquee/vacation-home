@@ -1,0 +1,10 @@
+{
+  "task": "month-on-dashboard",
+  "clicks": 2,
+  "fields": 0,
+  "pages": 2,
+  "steps": [
+    "dashboard",
+    "last-month"
+  ]
+}

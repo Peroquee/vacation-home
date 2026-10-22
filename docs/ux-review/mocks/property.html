@@ -1,0 +1,502 @@
+<!doctype html>
+<!--
+  UX review (GitLab #132): a mock of the public property page in the proposed
+  visual direction. Not app code: a static picture to decide on. Rendered to
+  property-desktop.webp and property-phone.webp by e2e/ux/mocks.spec.ts.
+  The webfont comes from Google Fonts here only; the app would self-host it
+  (no third-party requests on the public pages).
+-->
+<html lang="de">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Haus am See</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Literata:ital,opsz,wght@0,7..72,400;0,7..72,600;0,7..72,700;1,7..72,400&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --ink: #17262b;
+        --ink-soft: #4a5a5f;
+        --lake: #2b5d6b;
+        --mist: #e9eeec;
+        --paper: #f7f9f8;
+        --reed: #b9a66a;
+        --thatch: #d9a441;
+        --season: #8fb3bd;
+        --radius-photo: 14px;
+        --radius-control: 8px;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        background: var(--mist);
+        color: var(--ink);
+        font-family: "Literata", Georgia, serif;
+        font-size: 17px;
+        line-height: 1.65;
+        font-variant-numeric: tabular-nums;
+      }
+      .wrap {
+        max-width: 1180px;
+        margin: 0 auto;
+        padding: 0 32px;
+      }
+      header.site {
+        display: flex;
+        justify-content: space-between;
+        align-items: baseline;
+        padding: 22px 0;
+        font-size: 15px;
+        color: var(--ink-soft);
+      }
+      header.site strong {
+        color: var(--ink);
+        font-weight: 600;
+        font-size: 17px;
+      }
+      .mosaic {
+        display: grid;
+        grid-template-columns: 2fr 1fr 1fr;
+        grid-template-rows: 220px 220px;
+        gap: 8px;
+      }
+      .mosaic img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        display: block;
+      }
+      .mosaic .hero {
+        grid-row: span 2;
+        border-radius: var(--radius-photo) 0 0 var(--radius-photo);
+      }
+      .mosaic .tr {
+        border-radius: 0 var(--radius-photo) 0 0;
+      }
+      .mosaic .br {
+        border-radius: 0 0 var(--radius-photo) 0;
+        position: relative;
+      }
+      .all-photos {
+        position: absolute;
+        right: 14px;
+        bottom: 14px;
+        background: var(--paper);
+        color: var(--ink);
+        border-radius: var(--radius-control);
+        padding: 6px 12px;
+        font-size: 14px;
+        font-family: inherit;
+        border: 0;
+      }
+      .layout {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) 380px;
+        gap: 64px;
+        padding: 40px 0 80px;
+      }
+      h1 {
+        font-size: 44px;
+        line-height: 1.1;
+        font-weight: 700;
+        letter-spacing: -0.01em;
+        margin: 0 0 10px;
+        font-variation-settings: "opsz" 72;
+      }
+      .place {
+        font-size: 18px;
+        color: var(--ink-soft);
+        margin: 0 0 28px;
+      }
+      .facts {
+        display: flex;
+        gap: 28px;
+        padding: 16px 0;
+        border-top: 1px solid var(--reed);
+        border-bottom: 1px solid var(--reed);
+        margin-bottom: 32px;
+        font-size: 16px;
+      }
+      .facts b {
+        display: block;
+        font-size: 22px;
+        font-weight: 600;
+      }
+      .story p {
+        max-width: 62ch;
+        margin: 0 0 1em;
+      }
+      .host {
+        display: grid;
+        grid-template-columns: 64px 1fr;
+        gap: 18px;
+        align-items: start;
+        background: var(--paper);
+        border-radius: var(--radius-photo);
+        padding: 22px 24px;
+        margin: 36px 0;
+      }
+      .host .face {
+        width: 64px;
+        height: 64px;
+        border-radius: 50%;
+        background: var(--lake);
+        color: var(--paper);
+        display: grid;
+        place-items: center;
+        font-size: 24px;
+        font-weight: 600;
+      }
+      .host p {
+        margin: 0 0 6px;
+        font-style: italic;
+      }
+      .host small {
+        color: var(--ink-soft);
+        font-size: 15px;
+      }
+      h2 {
+        font-size: 24px;
+        font-weight: 600;
+        margin: 40px 0 14px;
+      }
+      ul.amenities {
+        columns: 2;
+        padding: 0;
+        margin: 0;
+        list-style: none;
+      }
+      ul.amenities li {
+        padding: 4px 0;
+      }
+      /* The booking card */
+      .card {
+        align-self: start;
+        position: sticky;
+        top: 24px;
+        background: var(--paper);
+        border-radius: var(--radius-photo);
+        padding: 26px;
+        box-shadow: 0 1px 0 var(--reed);
+      }
+      .price {
+        font-size: 30px;
+        font-weight: 700;
+      }
+      .price span {
+        font-size: 16px;
+        font-weight: 400;
+        color: var(--ink-soft);
+      }
+      .year {
+        margin: 14px 0 6px;
+      }
+      .year .bars {
+        display: grid;
+        grid-template-columns: repeat(12, 1fr);
+        gap: 3px;
+        align-items: end;
+        height: 34px;
+      }
+      .year .bars i {
+        display: block;
+        background: var(--season);
+        border-radius: 2px;
+      }
+      .year .bars i.high {
+        background: var(--lake);
+      }
+      .year .months {
+        display: grid;
+        grid-template-columns: repeat(12, 1fr);
+        font-size: 11px;
+        color: var(--ink-soft);
+        text-align: center;
+        margin-top: 4px;
+      }
+      .year p {
+        font-size: 14px;
+        color: var(--ink-soft);
+        margin: 6px 0 0;
+      }
+      .dates {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        border: 1px solid var(--ink-soft);
+        border-radius: var(--radius-control);
+        margin: 22px 0 10px;
+      }
+      .dates div {
+        padding: 10px 14px;
+      }
+      .dates div + div {
+        border-left: 1px solid var(--ink-soft);
+      }
+      .dates label,
+      .guests label {
+        display: block;
+        font-size: 13px;
+        color: var(--ink-soft);
+      }
+      .guests {
+        border: 1px solid var(--ink-soft);
+        border-radius: var(--radius-control);
+        padding: 10px 14px;
+      }
+      .cta {
+        display: block;
+        width: 100%;
+        margin: 18px 0 14px;
+        padding: 15px;
+        border: 0;
+        border-radius: var(--radius-control);
+        background: var(--thatch);
+        color: var(--ink);
+        font:
+          600 18px/1 "Literata",
+          serif;
+      }
+      .assure {
+        font-size: 14px;
+        color: var(--ink-soft);
+        margin: 0;
+        padding: 0;
+        list-style: none;
+      }
+      .assure li {
+        padding: 3px 0 3px 22px;
+        position: relative;
+      }
+      .assure li::before {
+        content: "";
+        position: absolute;
+        left: 4px;
+        top: 11px;
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: var(--lake);
+      }
+      footer {
+        border-top: 1px solid var(--reed);
+        padding: 22px 0 40px;
+        font-size: 14px;
+        color: var(--ink-soft);
+        display: flex;
+        gap: 22px;
+      }
+      .sticky-bar {
+        display: none;
+      }
+      @media (max-width: 760px) {
+        body {
+          font-size: 16px;
+        }
+        .wrap {
+          padding: 0 16px;
+        }
+        header.site {
+          padding: 14px 0;
+        }
+        header.site span {
+          display: none;
+        }
+        .mosaic {
+          display: flex;
+          overflow: hidden;
+          gap: 6px;
+          margin: 0 -16px;
+          grid-template-rows: none;
+        }
+        .mosaic img,
+        .mosaic .br {
+          flex: 0 0 86%;
+          height: 260px;
+          border-radius: 0;
+        }
+        .mosaic .tr,
+        .mosaic .br {
+          display: none;
+        }
+        .mosaic .hero {
+          border-radius: 0;
+        }
+        .dots {
+          text-align: center;
+          font-size: 13px;
+          color: var(--ink-soft);
+          padding-top: 8px;
+        }
+        .layout {
+          grid-template-columns: 1fr;
+          gap: 0;
+          padding: 22px 0 110px;
+        }
+        h1 {
+          font-size: 32px;
+        }
+        .facts {
+          gap: 20px;
+        }
+        .facts b {
+          font-size: 19px;
+        }
+        .card {
+          position: static;
+          margin-top: 8px;
+        }
+        .card .cta,
+        .card .dates,
+        .card .guests {
+          display: none;
+        }
+        ul.amenities {
+          columns: 2;
+        }
+        .sticky-bar {
+          display: flex;
+          position: fixed;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          align-items: center;
+          justify-content: space-between;
+          gap: 12px;
+          padding: 12px 16px calc(12px + env(safe-area-inset-bottom));
+          background: var(--paper);
+          border-top: 1px solid var(--reed);
+        }
+        .sticky-bar .p {
+          font-weight: 700;
+          font-size: 19px;
+          line-height: 1.2;
+        }
+        .sticky-bar .p span {
+          display: block;
+          font-weight: 400;
+          font-size: 13px;
+          color: var(--ink-soft);
+        }
+        .sticky-bar .cta {
+          width: auto;
+          margin: 0;
+          padding: 14px 20px;
+          font-size: 17px;
+          white-space: nowrap;
+        }
+      }
+      @media (min-width: 761px) {
+        .dots {
+          display: none;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <header class="site">
+        <strong>Ferienhäuser Albers</strong>
+        <span>Haus am See und Berghütte, direkt bei uns gebucht</span>
+      </header>
+      <div class="mosaic">
+        <img class="hero" src="img/lake.webp" alt="Das Haus vom See aus gesehen" />
+        <img src="img/terrace.webp" alt="Terrasse mit Blick auf den See" />
+        <img class="tr" src="img/living.webp" alt="Wohnzimmer" />
+        <img src="img/bedroom.webp" alt="Schlafzimmer" />
+        <div class="br">
+          <img src="img/kitchen.webp" alt="Küche" style="border-radius: inherit" />
+          <button class="all-photos">Alle 5 Fotos</button>
+        </div>
+      </div>
+      <div class="dots">Foto 1 von 5, wischen für mehr</div>
+      <div class="layout">
+        <main>
+          <h1>Reetdachhaus mit Steg am Kellersee</h1>
+          <p class="place">Malente, Holsteinische Schweiz</p>
+          <div class="facts">
+            <div><b>4</b> Gäste</div>
+            <div><b>2</b> Schlafzimmer</div>
+            <div><b>1</b> Bad</div>
+            <div><b>12 m</b> zum Wasser</div>
+          </div>
+          <div class="story">
+            <p>
+              Unser Reetdachhaus liegt direkt am Kellersee, mit eigenem Steg und Ruderboot. Morgens
+              Kaffee auf der Terrasse, abends Sonnenuntergang über dem Wasser.
+            </p>
+            <p>
+              Das Haus hat zwei Schlafzimmer, eine offene Küche mit Essplatz und einen Kaminofen für
+              kühle Abende. Malente mit Bäcker und Supermarkt ist fünf Minuten mit dem Rad entfernt.
+            </p>
+          </div>
+          <div class="host">
+            <div class="face" aria-hidden="true">KA</div>
+            <div>
+              <p>
+                „Wir vermieten das Haus selbst, seit 2019. Ich beantworte jede Anfrage persönlich,
+                meist am selben Tag.“
+              </p>
+              <small>Katrin Albers, Ihre Gastgeberin</small>
+            </div>
+          </div>
+          <h2>Was es gibt</h2>
+          <ul class="amenities">
+            <li>Eigener Steg und Ruderboot</li>
+            <li>Kaminofen</li>
+            <li>Terrasse zum See</li>
+            <li>Geschirrspüler</li>
+            <li>WLAN</li>
+            <li>Parkplatz am Haus</li>
+            <li>Grill</li>
+            <li>Garten</li>
+          </ul>
+          <h2>Gut zu wissen</h2>
+          <div class="story">
+            <p>
+              Anreise ab 16 Uhr, Abreise bis 10 Uhr. Hunde nach Absprache. Ab 7 Nächten sind die
+              Nächte 10 % günstiger.
+            </p>
+          </div>
+        </main>
+        <aside class="card" aria-label="Buchen">
+          <div class="price">ab 125 € <span>pro Nacht</span></div>
+          <div class="year" aria-label="Preis pro Nacht übers Jahr">
+            <div class="bars">
+              <i style="height: 60%"></i><i style="height: 60%"></i><i style="height: 60%"></i
+              ><i style="height: 60%"></i><i style="height: 60%"></i
+              ><i class="high" style="height: 100%"></i><i class="high" style="height: 100%"></i
+              ><i class="high" style="height: 100%"></i><i class="high" style="height: 100%"></i
+              ><i style="height: 60%"></i><i style="height: 60%"></i><i style="height: 60%"></i>
+            </div>
+            <div class="months">
+              <span>J</span><span>F</span><span>M</span><span>A</span><span>M</span><span>J</span
+              ><span>J</span><span>A</span><span>S</span><span>O</span><span>N</span><span>D</span>
+            </div>
+            <p>Mitte Juni bis Mitte September 165 €, sonst 125 € pro Nacht.</p>
+          </div>
+          <div class="dates">
+            <div><label>Anreise</label>Datum wählen</div>
+            <div><label>Abreise</label>Datum wählen</div>
+          </div>
+          <div class="guests"><label>Gäste</label>2 Erwachsene</div>
+          <button class="cta">Freie Termine ansehen</button>
+          <ul class="assure">
+            <li>Direkt bei der Gastgeberin, ohne Plattformgebühr</li>
+            <li>Anfragen ist kostenlos und unverbindlich</li>
+            <li>Antwort innerhalb von 3 Tagen</li>
+          </ul>
+        </aside>
+      </div>
+      <footer><span>Impressum</span><span>Datenschutz</span><span>Cookie-Hinweis</span></footer>
+    </div>
+    <div class="sticky-bar">
+      <div class="p">ab 125 €<span>pro Nacht, Anfrage kostenlos</span></div>
+      <button class="cta">Termine wählen</button>
+    </div>
+  </body>
+</html>

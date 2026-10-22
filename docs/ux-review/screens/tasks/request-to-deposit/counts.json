@@ -1,0 +1,15 @@
+{
+  "task": "request-to-deposit",
+  "clicks": 6,
+  "fields": 0,
+  "pages": 4,
+  "steps": [
+    "start",
+    "bookings",
+    "requests",
+    "accepted",
+    "booking",
+    "payment-dialog",
+    "recorded"
+  ]
+}
