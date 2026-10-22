@@ -71,6 +71,39 @@ export function isBooked(status: BookingStatus): boolean {
  */
 export const FLOW_STATUSES = ["reserved", "expired"] as const satisfies readonly BookingStatus[];
 export const FLOW_ONLY = "is set by the booking flow only";
+
+/**
+ * The statuses the owner may set by hand (GitLab #135), and only on a
+ * booking outside the payment flow: entered by hand (not from the website),
+ * never reserved, no payment recorded - a platform booking, paid there, or
+ * one by phone. Everything else moves through the actions: accept, record a
+ * payment, cancel, reinstate.
+ */
+export const HAND_STATUSES = [
+  "inquiry",
+  "confirmed",
+  "paid",
+] as const satisfies readonly BookingStatus[];
+export const STATUS_BY_ACTION =
+  "is changed by the booking's actions only: accept, record a payment, cancel or reinstate";
+export const ONLY_ENDED = "only a cancelled or expired booking can be reinstated";
+export const MONEY_HELD =
+  "cannot be reinstated while money is held: refund it first, or make a new booking";
+
+/** Whether a booking's status is the owner's to set by hand. */
+export function statusByHand(booking: {
+  source: string;
+  status: string;
+  reservedAt: Date | string | null;
+  hasPayments: boolean;
+}): boolean {
+  return (
+    booking.source !== "website" &&
+    booking.reservedAt === null &&
+    !booking.hasPayments &&
+    (HAND_STATUSES as readonly string[]).includes(booking.status)
+  );
+}
 /**
  * As the API speaks them; stored as the BookingSource enum. "website" is a
  * request from the public booking site (GitLab #109): only that site
