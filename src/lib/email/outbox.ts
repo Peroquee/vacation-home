@@ -5,19 +5,24 @@
  *
  * - `enqueue` adds a row per (event, recipient) still missing; the unique
  *   key makes that safe to repeat.
- * - `sendDue` claims due rows (FOR UPDATE SKIP LOCKED, so two runs never
- *   take the same one), writes each email from the booking as it now is,
- *   sends it, and marks it sent. A mail server that fails is tried again
- *   after 1, 5, 15 and 60 minutes, then hourly, and given up on (`failed`)
- *   after a day. An email no longer true, too old, or without an address
- *   is `skipped`, with the reason.
+ * - `sendDue` claims one due row at a time (`claimed_until`, taken with
+ *   SKIP LOCKED and committed at once, so two runs never take the same one),
+ *   writes the email from the booking as it now is, sends it, and marks it.
+ *   No transaction is open while the mail server is talking (GitLab #134),
+ *   and whatever goes wrong with one email - writing it or sending it - is
+ *   that email's alone: it is tried again after 1, 5, 15 and 60 minutes,
+ *   then hourly, and given up on (`failed`) after a day. An email no longer
+ *   true, too old, or without an address is `skipped`, with the reason.
  * - Without SMTP nothing is claimed: the rows wait, and go out once it is
  *   set. The same for the owner's emails without OWNER_EMAIL.
  *
+ * Every time here is the app's, in UTC; none is left to a database default,
+ * which would be in the database server's timezone.
+ *
  * Exactly once, as far as SMTP allows: a crash between the server taking a
- * mail and the row being marked sent would send it again on restart. The
- * Message-ID is the same each time (event and recipient), so a mail program
- * shows such a repeat as the same message.
+ * mail and the row being marked sent would send it again once its claim has
+ * run out. The Message-ID is the same each time (event and recipient), so a
+ * mail program shows such a repeat as the same message.
  */
 import type { EmailOutbox, EmailRecipient } from "@/generated/prisma/client";
 import { env } from "@/env";
@@ -37,12 +42,13 @@ import { scrubString } from "@/lib/scrub";
 
 import { irrelevance, MAX_AGE_DAYS, RECIPIENTS } from "./kinds";
 import { renderEmail } from "./render";
-import { mailTransport, type MailTransport } from "./transport";
+import { mailTransport, type MailTransport, SEND_TIMEOUT_MS } from "./transport";
 
 const DAY_MS = 86_400_000;
 const RETRY_MINUTES = [1, 5, 15, 60];
 const GIVE_UP_MS = DAY_MS;
-const BATCH = 20;
+/** How long a run holds an email it is writing and sending: ten sends' worth. */
+const CLAIM_MS = 10 * SEND_TIMEOUT_MS;
 
 /** The events whose guest email links to the guest's own page. */
 const LINKS_GUEST_PAGE = new Set([
@@ -57,13 +63,13 @@ const LINKS_GUEST_PAGE = new Set([
 const CARRIES_CALENDAR = new Set(["deposit_received", "fully_paid"]);
 
 /** Adds the missing outbox rows for every event; the number added. */
-export async function enqueue(): Promise<number> {
+export async function enqueue(now = new Date()): Promise<number> {
   let added = 0;
   for (const [kind, recipients] of Object.entries(RECIPIENTS)) {
     for (const recipient of recipients) {
       added += await db.$executeRaw`
-        INSERT INTO email_outbox (event_id, recipient, updated_at)
-        SELECT e.id, ${recipient}::email_recipient, now()
+        INSERT INTO email_outbox (event_id, recipient, next_attempt_at, created_at, updated_at)
+        SELECT e.id, ${recipient}::email_recipient, ${now}, ${now}, ${now}
         FROM booking_events e
         WHERE e.kind = ${kind}::booking_event_kind
         ON CONFLICT (event_id, recipient) DO NOTHING`;
@@ -234,68 +240,89 @@ export function retryAt(attempts: number, now: Date): Date {
 }
 
 /**
- * Sends what is due at `now`, a batch at a time, until nothing due is left.
- * Does nothing without a transport; leaves the owner's emails waiting
+ * Takes the next email due at `now` for `recipients` until `claimedUntil`,
+ * or null when none is left. Committed at once: nothing stays locked while
+ * the email is written and sent.
+ */
+async function claimNext(
+  recipients: EmailRecipient[],
+  now: Date,
+  claimedUntil: Date,
+): Promise<EmailOutbox | null> {
+  const [row] = await db.$queryRaw<EmailOutbox[]>`
+    UPDATE email_outbox SET claimed_until = ${claimedUntil}, updated_at = ${now}
+    WHERE id = (
+      SELECT id FROM email_outbox
+      WHERE status = 'pending' AND next_attempt_at <= ${now}
+        AND (claimed_until IS NULL OR claimed_until < ${now})
+        AND recipient::text = ANY(${recipients})
+      ORDER BY next_attempt_at, created_at
+      LIMIT 1
+      FOR UPDATE SKIP LOCKED)
+    RETURNING id, event_id AS "eventId", recipient, status, attempts,
+              next_attempt_at AS "nextAttemptAt", created_at AS "createdAt"`;
+  return row ?? null;
+}
+
+/**
+ * Sends what is due at `now`, one email at a time, until nothing due is
+ * left. Does nothing without a transport; leaves the owner's emails waiting
  * without OWNER_EMAIL.
  */
 export async function sendDue(setup = mailSetup(), now = new Date()): Promise<SendRun> {
   const run: SendRun = { sent: 0, skipped: 0, retried: 0, failed: 0 };
   if (!setup.transport || !setup.from) return run;
   const recipients: EmailRecipient[] = setup.ownerEmail ? ["guest", "owner"] : ["guest"];
+  const claimedUntil = new Date(now.getTime() + CLAIM_MS);
 
   for (;;) {
-    const handled = await db.$transaction(
-      async (tx) => {
-        const rows = await tx.$queryRaw<EmailOutbox[]>`
-          SELECT id, event_id AS "eventId", recipient, status, attempts,
-                 next_attempt_at AS "nextAttemptAt", created_at AS "createdAt"
-          FROM email_outbox
-          WHERE status = 'pending' AND next_attempt_at <= ${now}
-            AND recipient::text = ANY(${recipients})
-          ORDER BY next_attempt_at, created_at
-          LIMIT ${BATCH}
-          FOR UPDATE SKIP LOCKED`;
-        for (const row of rows) {
-          const outcome = await deliver(row, setup, now);
-          if ("sent" in outcome) {
-            await tx.emailOutbox.update({
-              where: { id: row.id },
-              data: {
-                status: "sent",
-                sentAt: now,
-                messageId: outcome.sent,
-                attempts: { increment: 1 },
-                lastError: null,
-              },
-            });
-            run.sent++;
-          } else if ("skipped" in outcome) {
-            await tx.emailOutbox.update({
-              where: { id: row.id },
-              data: { status: "skipped", skipReason: outcome.skipped },
-            });
-            run.skipped++;
-          } else {
-            const attempts = row.attempts + 1;
-            const giveUp = now.getTime() - row.createdAt.getTime() >= GIVE_UP_MS;
-            await tx.emailOutbox.update({
-              where: { id: row.id },
-              data: {
-                attempts,
-                lastError: outcome.error,
-                ...(giveUp ? { status: "failed" } : { nextAttemptAt: retryAt(attempts, now) }),
-              },
-            });
-            if (giveUp) run.failed++;
-            else run.retried++;
-            logger.warn({ outboxId: row.id, attempts, err: outcome.error }, "email not sent");
-          }
-        }
-        return rows.length;
-      },
-      { maxWait: 5_000, timeout: 120_000 },
-    );
-    if (handled < BATCH) return run;
+    const row = await claimNext(recipients, now, claimedUntil);
+    if (!row) return run;
+
+    let outcome: Outcome;
+    try {
+      outcome = await deliver(row, setup, now);
+    } catch (error) {
+      // Writing it failed (a template, a lookup): this email's problem only.
+      outcome = {
+        error: scrubString(error instanceof Error ? error.message : String(error)).slice(0, 500),
+      };
+    }
+
+    let data;
+    if ("sent" in outcome) {
+      data = {
+        status: "sent" as const,
+        sentAt: now,
+        messageId: outcome.sent,
+        attempts: { increment: 1 },
+        lastError: null,
+      };
+      run.sent++;
+    } else if ("skipped" in outcome) {
+      data = { status: "skipped" as const, skipReason: outcome.skipped };
+      run.skipped++;
+    } else {
+      const attempts = row.attempts + 1;
+      const giveUp = now.getTime() - row.createdAt.getTime() >= GIVE_UP_MS;
+      data = {
+        attempts,
+        lastError: outcome.error,
+        ...(giveUp ? { status: "failed" as const } : { nextAttemptAt: retryAt(attempts, now) }),
+      };
+      if (giveUp) run.failed++;
+      else run.retried++;
+      logger.warn({ outboxId: row.id, attempts, err: outcome.error }, "email not sent");
+    }
+    // Only while the claim is still ours: a run that took over after it ran
+    // out decides from then on.
+    const { count } = await db.emailOutbox.updateMany({
+      where: { id: row.id, claimedUntil },
+      data: { ...data, claimedUntil: null },
+    });
+    if (count === 0) {
+      logger.warn({ outboxId: row.id }, "email's claim ran out before it was marked");
+    }
   }
 }
 

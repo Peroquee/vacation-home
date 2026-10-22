@@ -16,6 +16,15 @@ import { defineConfig } from "vitest/config";
 // resets exactly this database.
 process.env.TEST_DATABASE_URL ??=
   "postgresql://vacation:vacation@localhost:5433/vacation_home_test";
+// PostgreSQL's sessions run far from UTC as well (GitLab #134), unless the
+// URL already sets options: a `TIMESTAMP` the database fills in from its own
+// clock (`DEFAULT CURRENT_TIMESTAMP`, `now()`) is then 14 hours off from the
+// UTC the app writes, and fails loudly here rather than on a server whose
+// timezone someone changed.
+if (!new URL(process.env.TEST_DATABASE_URL).searchParams.has("options")) {
+  const url = process.env.TEST_DATABASE_URL;
+  process.env.TEST_DATABASE_URL = `${url}${url.includes("?") ? "&" : "?"}options=-c%20timezone%3DPacific%2FKiritimati`;
+}
 const TEST_DATABASE_URL = process.env.TEST_DATABASE_URL;
 
 export default defineConfig({
