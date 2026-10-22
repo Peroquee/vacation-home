@@ -1,0 +1,11 @@
+{
+  "task": "guest-page",
+  "clicks": 1,
+  "fields": 0,
+  "pages": 1,
+  "steps": [
+    "open",
+    "how-to-pay",
+    "payment-details"
+  ]
+}

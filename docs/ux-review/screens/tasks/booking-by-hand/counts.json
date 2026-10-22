@@ -1,0 +1,13 @@
+{
+  "task": "booking-by-hand",
+  "clicks": 10,
+  "fields": 5,
+  "pages": 3,
+  "steps": [
+    "start",
+    "form",
+    "new-guest",
+    "filled",
+    "saved"
+  ]
+}

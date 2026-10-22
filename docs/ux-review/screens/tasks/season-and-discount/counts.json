@@ -1,0 +1,14 @@
+{
+  "task": "season-and-discount",
+  "clicks": 11,
+  "fields": 6,
+  "pages": 3,
+  "steps": [
+    "settings",
+    "pricing",
+    "season-filled",
+    "season-saved",
+    "discount-filled",
+    "discount-saved"
+  ]
+}

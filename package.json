@@ -18,6 +18,7 @@
     "test:db": "vitest run -c vitest.db.config.mts",
     "test:e2e": "playwright test --project=chromium",
     "test:lighthouse": "playwright test --project=lighthouse",
+    "ux:screenshots": "playwright test -c playwright.ux.config.ts",
     "migrate:dev": "prisma migrate dev",
     "postmigrate:dev": "prisma generate",
     "migrate:deploy": "prisma migrate deploy",

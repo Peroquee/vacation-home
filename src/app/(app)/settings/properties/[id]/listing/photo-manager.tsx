@@ -107,6 +107,7 @@ export function PhotoManager({ propertyId, initial }: { propertyId: string; init
             ref={input}
             id="listing-photo-upload"
             type="file"
+            aria-label={t("add")}
             accept={PHOTO_ACCEPT}
             multiple
             className="sr-only"

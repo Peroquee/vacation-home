@@ -1,0 +1,12 @@
+{
+  "task": "expense-with-receipt",
+  "clicks": 9,
+  "fields": 2,
+  "pages": 2,
+  "steps": [
+    "finance",
+    "dialog",
+    "filled",
+    "saved"
+  ]
+}

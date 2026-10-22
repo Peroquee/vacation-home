@@ -1,0 +1,12 @@
+{
+  "task": "recurring-cost",
+  "clicks": 10,
+  "fields": 2,
+  "pages": 3,
+  "steps": [
+    "finance",
+    "recurring",
+    "filled",
+    "saved"
+  ]
+}

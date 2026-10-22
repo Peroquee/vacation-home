@@ -19,3 +19,6 @@ test-results/
 playwright-report/
 blob-report/
 .cache/
+
+# The UX review's generated screenshots and counts (npm run ux:screenshots).
+docs/ux-review/screens/

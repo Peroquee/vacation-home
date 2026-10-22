@@ -1,0 +1,16 @@
+{
+  "task": "publish-property",
+  "clicks": 11,
+  "fields": 9,
+  "pages": 3,
+  "steps": [
+    "settings",
+    "new-property",
+    "created",
+    "listing",
+    "listing-filled",
+    "listing-saved",
+    "publish",
+    "published"
+  ]
+}
