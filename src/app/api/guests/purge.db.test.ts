@@ -21,6 +21,7 @@ import { GET as search, POST as createGuest } from "@/app/api/guests/route";
 import { toUtcDate } from "@/lib/calendar-date";
 import { db } from "@/lib/db";
 import { PURGED_GUEST_NAME } from "@/lib/guests/purge";
+import { bookingForToken, issueGuestToken } from "@/lib/payments/guest-link";
 
 const BASE = "http://localhost/api/guests";
 const PERSONAL = {
@@ -57,21 +58,42 @@ async function guestWithBookings(count = 2) {
         totalAmountMinor: 4 * 12_345 + 4_999,
         currency: "EUR",
         notes: BOOKING_NOTE,
+        // Free text the owner writes, which can name the guest (GitLab #136).
+        touristTaxNote: "exempt, Zebulon disabled",
+        payments: {
+          create: {
+            kind: "deposit",
+            method: "bank_transfer",
+            amountMinor: 10_000,
+            receivedOn: toUtcDate(`2026-0${i + 1}-01`),
+            note: "from Zebulon Q., his sister's account",
+          },
+        },
       },
     });
   }
   return guest;
 }
 
-/** Rows anywhere in these tables whose text contains `value`, any case. */
+/**
+ * Rows anywhere in the database whose text contains `value`, any case: every
+ * table, so a column added later is covered without anyone thinking of it
+ * (GitLab #136). Only the migrations' own bookkeeping is left out.
+ */
 async function rowsMentioning(value: string): Promise<number> {
-  const [row] = await db.$queryRaw<{ n: bigint }[]>`
-    SELECT
-      (SELECT count(*) FROM guests g WHERE row_to_json(g)::text ILIKE '%' || ${value} || '%') +
-      (SELECT count(*) FROM bookings b WHERE row_to_json(b)::text ILIKE '%' || ${value} || '%') +
-      (SELECT count(*) FROM audit_events a WHERE row_to_json(a)::text ILIKE '%' || ${value} || '%')
-      AS n`;
-  return Number(row!.n);
+  const tables = await db.$queryRaw<{ name: string }[]>`
+    SELECT tablename AS name FROM pg_tables
+    WHERE schemaname = 'public' AND tablename <> '_prisma_migrations'`;
+  let total = 0;
+  for (const { name } of tables) {
+    const [row] = await db.$queryRawUnsafe<{ n: bigint }[]>(
+      `SELECT count(*) AS n FROM "${name.replaceAll('"', '""')}" t
+       WHERE row_to_json(t)::text ILIKE '%' || $1 || '%'`,
+      value,
+    );
+    total += Number(row!.n);
+  }
+  return total;
 }
 
 beforeAll(async () => {
@@ -83,11 +105,13 @@ beforeAll(async () => {
 });
 
 beforeEach(async () => {
+  await db.bookingPayment.deleteMany();
   await db.booking.deleteMany();
   await db.guest.deleteMany();
 });
 
 afterAll(async () => {
+  await db.bookingPayment.deleteMany();
   await db.booking.deleteMany();
   await db.guest.deleteMany();
   await db.property.deleteMany({ where: { id: propertyId } });
@@ -122,9 +146,21 @@ describe("purging a guest with bookings", () => {
       "Quackenbush",
       "912 345",
       "feathers",
+      "sister",
     ]) {
       expect(await rowsMentioning(value), value).toBe(0);
     }
+  });
+
+  it("closes the guest's links to their booking page", async () => {
+    const guest = await guestWithBookings(1);
+    const booking = await db.booking.findFirstOrThrow({ where: { guestId: guest.id } });
+    const token = await issueGuestToken(booking.id);
+    expect(await bookingForToken(token)).toBe(booking.id);
+
+    await purgeRequest(guest.id);
+    expect(await bookingForToken(token)).toBeNull();
+    expect(await db.guestAccessToken.count({ where: { bookingId: booking.id } })).toBe(0);
   });
 
   it("keeps the bookings, with dates and amounts unchanged", async () => {
@@ -144,10 +180,24 @@ describe("purging a guest with bookings", () => {
     const accounting = (b: (typeof before)[number]) => ({
       ...b,
       notes: undefined,
+      touristTaxNote: undefined,
       updatedAt: undefined,
     });
     expect(after.map(accounting)).toEqual(before.map(accounting));
-    expect(after.map((b) => b.notes)).toEqual([null, null]);
+    expect(after.map((b) => [b.notes, b.touristTaxNote])).toEqual([
+      [null, null],
+      [null, null],
+    ]);
+
+    // The payments keep amount, kind and day; only the note goes.
+    const payments = await db.bookingPayment.findMany({
+      where: { bookingId: { in: before.map((b) => b.id) } },
+      orderBy: { receivedOn: "asc" },
+    });
+    expect(payments.map((p) => [p.kind, p.amountMinor, p.receivedOn, p.note])).toEqual([
+      ["deposit", 10_000, toUtcDate("2026-01-01"), null],
+      ["deposit", 10_000, toUtcDate("2026-02-01"), null],
+    ]);
   });
 
   it("records the purge in the audit trail without the removed data", async () => {
@@ -270,6 +320,7 @@ describe("purging a guest with bookings", () => {
       // purge came first and the booking was refused.
       expect([201, 422]).toContain(booked.status);
       expect(await rowsMentioning("Zebulon")).toBe(0);
+      await db.bookingPayment.deleteMany();
       await db.booking.deleteMany();
       await db.guest.deleteMany();
     }
@@ -307,6 +358,7 @@ describe("purging a guest with bookings", () => {
       const row = await db.guest.findUniqueOrThrow({ where: { id: guest.id } });
       expect(row).toMatchObject({ name: PURGED_GUEST_NAME, email: null, phone: null, notes: null });
       expect(row.purgedAt).not.toBeNull();
+      await db.bookingPayment.deleteMany();
       await db.booking.deleteMany();
       await db.guest.deleteMany();
     }

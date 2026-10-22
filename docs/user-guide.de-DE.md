@@ -448,8 +448,11 @@ schiefgegangen ist, und **Jetzt senden** sendet das Wartende sofort.
 Die Seite eines Gastes zeigt seine Kontaktdaten und alle seine Aufenthalte.
 **Persönliche Daten löschen** setzt einen Antrag auf Löschung um (DSGVO Art.
 17): Der Name wird zu „Gelöschter Gast“, E-Mail, Telefon und Notizen
-verschwinden, ebenso die Notizen seiner Buchungen. Die Buchungen selbst
-bleiben, anonymisiert, weil sie Buchhaltungsunterlagen sind. Das lässt sich
+verschwinden, ebenso die Notizen seiner Buchungen, die Notizen zur Kurtaxe
+und die Notizen zu seinen Zahlungen. Links, die der Gast zu seiner
+Buchungsseite bekommen hat, funktionieren nicht mehr. Die Buchungen und
+Zahlungen selbst bleiben, anonymisiert, mit Beträgen und Daten, weil sie
+Buchhaltungsunterlagen sind. Das lässt sich
 nicht rückgängig machen. Belege an Posten bleiben unberührt: Sie sind
 Buchhaltungsunterlagen. Wie gelöschte Gäste aus den Backups verschwinden:
 [backup-and-restore.md](backup-and-restore.md).
