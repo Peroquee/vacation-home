@@ -112,11 +112,21 @@ around them ([T10](#t10)).
 
 ### Flakiness
 
-_Pending: five local runs of the whole e2e suite (`npm run e2e:flaky`)._
+**No flaky test found.** Five full runs of the e2e suite
+(`npm run e2e:flaky`, each from a fresh database and a fresh build, with
+Mailpit, as in CI): 5 × 89 tests, **0 failures**, 70–91 s per run
+including the build. The slowest tests (median) are the go-live check in
+`legal.spec.ts` (6.8 s), the two request tests in `booking-requests.spec.ts`
+(5.0 s and 4.1 s, mostly the anti-bot wait), and `emails.spec.ts` (4.3 s).
 
 CI history: of the last 8 pipelines, 1 failed (204, !108: two
 `help.spec.ts` tests that the MR's own next commit fixed), so no flaky
 test there either.
+
+Five runs can't rule out a rare flake. They do show that the locators and
+order-dependent data under [Test quality](#test-quality) are risks for
+later, not failures today. The suite is stable because it runs with one
+worker, from one reset; sharding or a second worker would change that.
 
 ### Coverage (a measurement, not a gate)
 

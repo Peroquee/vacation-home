@@ -68,13 +68,17 @@ if (!flag("--report")) {
 /** Every test result of one report: file, title, status, duration. */
 function results(report) {
   const out = [];
-  const walk = (suite, file) => {
+  // The describe titles are part of the name: a test generated per locale
+  // has the same title and line in each describe.
+  const walk = (suite, file, describes) => {
     const here = suite.file ?? file;
+    // Only the top-level suite is the file itself; every level below is a describe.
+    const path = file === undefined ? describes : [...describes, suite.title];
     for (const spec of suite.specs ?? []) {
       for (const test of spec.tests) {
         for (const result of test.results) {
           out.push({
-            key: `${test.projectName} › ${here} › ${spec.title}`,
+            key: [test.projectName, here, ...path, spec.title].join(" › "),
             status: result.status,
             ms: result.duration,
             error: result.error?.message?.split("\n")[0],
@@ -82,9 +86,9 @@ function results(report) {
         }
       }
     }
-    for (const child of suite.suites ?? []) walk(child, here);
+    for (const child of suite.suites ?? []) walk(child, here, path);
   };
-  for (const suite of report.suites) walk(suite);
+  for (const suite of report.suites) walk(suite, undefined, []);
   return out;
 }
 
