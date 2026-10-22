@@ -1,4 +1,4 @@
-import { beforeAll, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { BookingEventKind } from "@/generated/prisma/client";
 import { recordEvent } from "@/lib/bookings/hold";
@@ -6,7 +6,14 @@ import { createBooking } from "@/lib/bookings/service";
 import { db } from "@/lib/db";
 
 import { enqueue, type MailSetup, outboxStatus, sendDue } from "./outbox";
+import { renderEmail } from "./render";
 import type { MailTransport } from "./transport";
+
+// The real renderer, which a test can make fail for one email.
+vi.mock("./render", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("./render")>();
+  return { ...actual, renderEmail: vi.fn(actual.renderEmail) };
+});
 
 type Sent = Parameters<MailTransport["sendMail"]>[0];
 
@@ -84,6 +91,9 @@ beforeEach(async () => {
   await db.bookingEvent.deleteMany();
   await db.booking.deleteMany();
 });
+
+// Back to the real renderer, which `vi.fn` was given.
+afterEach(() => vi.mocked(renderEmail).mockReset());
 
 describe("the outbox", () => {
   it("queues each event once per recipient, however often it runs", async () => {
@@ -181,5 +191,99 @@ describe("the outbox", () => {
     const ids = [...a.sent, ...b.sent].map((m) => m.messageId);
     expect(new Set(ids).size).toBe(30);
     expect((await rows()).every((r) => r.status === "sent")).toBe(true);
+  });
+
+  // GitLab #134: the database's sessions run 14 hours from UTC in this suite
+  // (vitest.db.config.mts), so a time the database fills in itself shows.
+  it("dates its rows by the app's clock, whatever the database's timezone", async () => {
+    const { id } = await booking();
+    await recordEvent(db, id, "declined", "k");
+    const now = new Date("2026-10-24T22:30:00.000Z");
+    expect(await enqueue(now)).toBe(1);
+    const [row] = await rows();
+    expect(row!.createdAt.toISOString()).toBe(now.toISOString());
+    expect(row!.nextAttemptAt.toISOString()).toBe(now.toISOString());
+  });
+
+  it("sends the others when one email can't be written, and sends none twice", async () => {
+    await event("declined", "a");
+    const bad = await event("declined", "b");
+    await event("declined", "c");
+    const { renderEmail: real } = await vi.importActual<typeof import("./render")>("./render");
+    vi.mocked(renderEmail).mockImplementation(async (context) => {
+      if (context.booking.id === bad) throw new Error("template broke");
+      return real(context);
+    });
+    const { sent, transport } = fakeTransport();
+    const now = new Date();
+
+    await expect(sendDue(setupWith(transport), now)).resolves.toMatchObject({
+      sent: 2,
+      retried: 1,
+    });
+    const failed = (await rows()).find((r) => r.status !== "sent")!;
+    expect(failed).toMatchObject({ status: "pending", attempts: 1, lastError: "template broke" });
+
+    // Not due yet, then due and failing again: the sent ones stay sent.
+    expect(await sendDue(setupWith(transport), new Date(now.getTime() + 30_000))).toMatchObject({
+      sent: 0,
+      retried: 0,
+    });
+    expect(await sendDue(setupWith(transport), new Date(now.getTime() + 2 * 60_000))).toMatchObject(
+      { sent: 0, retried: 1 },
+    );
+    expect(sent).toHaveLength(2);
+
+    // Fixed: it goes out once, and nothing else goes out again.
+    vi.mocked(renderEmail).mockReset();
+    expect(
+      await sendDue(setupWith(transport), new Date(now.getTime() + 10 * 60_000)),
+    ).toMatchObject({ sent: 1 });
+    expect(new Set(sent.map((m) => m.messageId)).size).toBe(3);
+    expect(sent).toHaveLength(3);
+  });
+
+  it("lets a slow send finish without a later run taking the same email", async () => {
+    await event("declined");
+    let release!: () => void;
+    const gate = new Promise<void>((resolve) => (release = resolve));
+    let begin!: () => void;
+    const begun = new Promise<void>((resolve) => (begin = resolve));
+    const slowSent: Sent[] = [];
+    const slow: MailTransport = {
+      async sendMail(message) {
+        begin();
+        await gate;
+        slowSent.push(message);
+        return {};
+      },
+    };
+    const now = new Date();
+    const first = sendDue(setupWith(slow), now);
+    await begun;
+
+    // A run five minutes on, while the first still waits for the server.
+    const other = fakeTransport();
+    expect(
+      await sendDue(setupWith(other.transport), new Date(now.getTime() + 5 * 60_000)),
+    ).toMatchObject({ sent: 0 });
+    release();
+    expect(await first).toMatchObject({ sent: 1 });
+    expect(other.sent).toEqual([]);
+    expect(slowSent).toHaveLength(1);
+    expect((await rows()).map((r) => r.status)).toEqual(["sent"]);
+  });
+
+  it("takes over an email whose sender stopped, once its claim has run out", async () => {
+    await event("declined");
+    const now = new Date();
+    // As a run that claimed it and then died would leave it.
+    await db.$executeRaw`UPDATE email_outbox SET claimed_until = ${new Date(now.getTime() + 60_000)}`;
+    const { sent, transport } = fakeTransport();
+    expect(await sendDue(setupWith(transport), now)).toMatchObject({ sent: 0 });
+    expect(await sendDue(setupWith(transport), new Date(now.getTime() + 2 * 60_000))).toMatchObject(
+      { sent: 1 },
+    );
+    expect(sent).toHaveLength(1);
   });
 });
