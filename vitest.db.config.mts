@@ -27,6 +27,14 @@ export default defineConfig({
     // Each file starts from a clean database; see the file for why.
     setupFiles: ["./vitest.db.each-file.mts"],
     fileParallelism: false,
+    // `npm run test:coverage` only: the same measurement as the unit suite's.
+    coverage: {
+      provider: "v8",
+      include: ["src/**/*.{ts,tsx}", "scripts/**/*.{ts,mjs}"],
+      exclude: ["src/generated/**", "**/*.test.{ts,tsx}", "**/*.d.ts"],
+      reporter: ["text-summary", "json-summary", "html"],
+      reportsDirectory: "coverage/db",
+    },
     env: {
       DATABASE_URL: TEST_DATABASE_URL,
       AUTH_SECRET: "db-test-secret-db-test-secret-1234567",

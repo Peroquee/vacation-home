@@ -53,6 +53,8 @@ next-env.d.ts
 /test-results/
 /playwright-report/
 /blob-report/
+# Repeated e2e runs (npm run e2e:flaky)
+/test-results-flaky/
 
 # Playwright browsers, relocated into the project in CI for caching
 /.cache/

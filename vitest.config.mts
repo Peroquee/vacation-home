@@ -16,6 +16,17 @@ export default defineConfig({
     // `// @vitest-environment jsdom` comment at the top of the file.
     environment: "node",
     setupFiles: ["./vitest.setup.ts"],
+    // `npm run test:coverage` only (GitLab #133): a measurement, not a gate,
+    // so no thresholds. The database suite reports to coverage/db. The
+    // instrumentation slows the component tests, so the script raises
+    // their timeout for this run only.
+    coverage: {
+      provider: "v8",
+      include: ["src/**/*.{ts,tsx}", "scripts/**/*.{ts,mjs}"],
+      exclude: ["src/generated/**", "**/*.test.{ts,tsx}", "**/*.d.ts"],
+      reporter: ["text-summary", "json-summary", "html"],
+      reportsDirectory: "coverage/unit",
+    },
     // A valid configuration for modules that import `@/env`, which validates
     // on import. Placeholders only: unit tests never reach a real service.
     env: {
