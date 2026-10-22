@@ -273,7 +273,9 @@
       },
       "hintTexts": {
         "exportUrl": "Copy it into Airbnb, Booking.com or another platform where it asks to import a calendar. The platform then sees your bookings and blocked days, without any guest's name, and won't sell those nights twice. Keep the link to yourself."
-      }
+      },
+      "held": "{count, plural, one {# stay the feed no longer lists stays blocked: too much would go at once. It goes once the next reading agrees (held since {time}, UTC).} other {# stays the feed no longer lists stay blocked: too much would go at once. They go once the next reading agrees (held since {time}, UTC).}}",
+      "dropped": "{count, plural, one {# event in the feed can't be read; its dates stay blocked, and nothing missing from the feed is freed while it has no ID.} other {# events in the feed can't be read; their dates stay blocked, and nothing missing from the feed is freed while one has no ID.}}"
     },
     "bookingRules": {
       "title": "Booking rules",

@@ -522,6 +522,16 @@ Plattform, die Daten und die Buchung. Stornieren Sie eine der beiden, auf der
 Plattform oder hier; die Warnung verschwindet von selbst, sobald sich die
 Tage nicht mehr überschneiden.
 
+**Aufenthalte, die auf einmal verschwinden.** Ein auf der Plattform
+stornierter Aufenthalt gibt seine Tage hier beim nächsten Lesen frei. Würde
+ein Lesen aber alle kommenden Aufenthalte einer Plattform freigeben, oder
+mehr als die Hälfte, wartet die App: Eine Plattform liefert manchmal aus
+Versehen einen leeren Kalender, und die Website böte diese Tage dann an.
+Die Aufenthalte bleiben blockiert, die Einstellungen sagen es, und frei
+werden sie erst, wenn das nächste Lesen dasselbe ergibt. Aufenthalte, die
+der Kalender der Plattform in einer Form nennt, die die App nicht lesen
+kann, bleiben ebenfalls blockiert; die Einstellungen zählen sie.
+
 Die Aufenthalte einer Plattform sind hier Blockierungen, keine Buchungen:
 Legen Sie einen Aufenthalt als Buchung an, wenn er in den Finanzen und der
 Auslastung erscheinen soll.

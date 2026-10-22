@@ -1052,30 +1052,38 @@ model VerificationToken {
 /// A booking platform's iCal export (Airbnb, Booking.com, ...) for one
 /// property. Its events become read-only `ical` blocks (src/lib/ical).
 model IcalFeed {
-  id            String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  propertyId    String    @map("property_id") @db.Uuid
+  id                String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  propertyId        String    @map("property_id") @db.Uuid
   /// Shown on its blocks, e.g. "Airbnb".
-  name          String
+  name              String
   /// The platform's export URL. It carries the platform's secret token, so
   /// the API only ever shows its host.
-  url           String
+  url               String
   /// When the feed is next fetched.
-  nextFetchAt   DateTime  @default(now()) @map("next_fetch_at")
-  lastFetchedAt DateTime? @map("last_fetched_at")
+  nextFetchAt       DateTime  @default(now()) @map("next_fetch_at")
+  lastFetchedAt     DateTime? @map("last_fetched_at")
   /// The last successful fetch (a 304 counts).
-  lastSuccessAt DateTime? @map("last_success_at")
+  lastSuccessAt     DateTime? @map("last_success_at")
   /// Why the last fetch failed, as a code (src/lib/ical/fetch.ts); null after a success.
-  lastError     String?   @map("last_error")
+  lastError         String?   @map("last_error")
   /// Events in the last successful fetch that block dates.
-  eventCount    Int       @default(0) @map("event_count")
+  eventCount        Int       @default(0) @map("event_count")
   /// Of those, the ones that overlap a confirmed booking: each is an open
   /// `ical_overlap` issue instead of a block.
-  conflictCount Int       @default(0) @map("conflict_count")
+  conflictCount     Int       @default(0) @map("conflict_count")
+  /// Events in the last fetch it couldn't read (GitLab #144): their stays'
+  /// blocks are kept, never taken for cancelled.
+  droppedEventCount Int       @default(0) @map("dropped_event_count")
+  /// UIDs whose blocks the last fetch would have removed, held back because
+  /// it was too many at once; removed once the next full fetch agrees.
+  heldRemovals      String[]  @default([]) @map("held_removals")
+  /// Since when that removal has been held back.
+  heldSince         DateTime? @map("held_since")
   /// HTTP validators, so an unchanged feed costs a 304.
-  etag          String?
-  lastModified  String?   @map("last_modified")
-  createdAt     DateTime  @default(now()) @map("created_at")
-  updatedAt     DateTime  @updatedAt @map("updated_at")
+  etag              String?
+  lastModified      String?   @map("last_modified")
+  createdAt         DateTime  @default(now()) @map("created_at")
+  updatedAt         DateTime  @updatedAt @map("updated_at")
 
   property Property            @relation(fields: [propertyId], references: [id], onDelete: Cascade)
   blocks   Block[]

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { FeedParseError, parseFeed } from "./parse";
+import { FeedParseError, parseFeed, readFeed } from "./parse";
 
 const ics = (...lines: string[]) => [...lines, ""].join("\r\n");
 
@@ -133,5 +133,61 @@ describe("parseFeed", () => {
   it("refuses what is not iCalendar", () => {
     expect(() => parseFeed("<html>Sign in</html>", "UTC")).toThrow(FeedParseError);
     expect(() => parseFeed("", "UTC")).toThrow(FeedParseError);
+  });
+});
+
+// GitLab #144: an event it can't read must never look like a cancelled one.
+describe("readFeed", () => {
+  const feed = ics(
+    "BEGIN:VCALENDAR",
+    "VERSION:2.0",
+    "BEGIN:VEVENT",
+    "UID:fine@airbnb.com",
+    "DTSTART;VALUE=DATE:20261102",
+    "DTEND;VALUE=DATE:20261105",
+    "END:VEVENT",
+    // Cancelled on the platform: not unreadable, simply not blocking.
+    "BEGIN:VEVENT",
+    "UID:cancelled@airbnb.com",
+    "STATUS:CANCELLED",
+    "DTSTART;VALUE=DATE:20261110",
+    "DTEND;VALUE=DATE:20261112",
+    "END:VEVENT",
+    // No start: a stay we can't read.
+    "BEGIN:VEVENT",
+    "UID:broken@airbnb.com",
+    "SUMMARY:Reserved",
+    "END:VEVENT",
+    // No UID: can't be told apart from any other stay.
+    "BEGIN:VEVENT",
+    "DTSTART;VALUE=DATE:20261120",
+    "DTEND;VALUE=DATE:20261122",
+    "END:VEVENT",
+    "END:VCALENDAR",
+  );
+
+  it("names the events it couldn't read, apart from the cancelled ones", () => {
+    expect(readFeed(feed, "UTC")).toEqual({
+      events: [{ uid: "fine@airbnb.com", start: "2026-11-02", end: "2026-11-05" }],
+      unreadable: ["broken@airbnb.com"],
+      unreadableWithoutUid: 1,
+    });
+  });
+
+  it("counts as read any UID that also has an event it could read", () => {
+    const twice = ics(
+      "BEGIN:VCALENDAR",
+      "VERSION:2.0",
+      "BEGIN:VEVENT",
+      "UID:same@airbnb.com",
+      "END:VEVENT",
+      "BEGIN:VEVENT",
+      "UID:same@airbnb.com",
+      "DTSTART;VALUE=DATE:20261102",
+      "DTEND;VALUE=DATE:20261105",
+      "END:VEVENT",
+      "END:VCALENDAR",
+    );
+    expect(readFeed(twice, "UTC")).toMatchObject({ unreadable: [], unreadableWithoutUid: 0 });
   });
 });

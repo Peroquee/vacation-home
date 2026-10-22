@@ -26,6 +26,9 @@ const feed = (over: Partial<FeedDto> = {}): FeedDto => ({
   lastError: null,
   eventCount: 3,
   conflictCount: 0,
+  droppedEventCount: 0,
+  heldCount: 0,
+  heldSince: null,
   nextFetchAt: "2026-10-09T09:30:00.000Z",
   ...over,
 });
@@ -78,6 +81,25 @@ describe("IcalSection", () => {
     expect(
       screen.getByText(/^1 stay clashes with a confirmed booking: a double booking/),
     ).toBeInTheDocument();
+  });
+
+  it("says when stays missing from a feed are kept, and when it can't read some", () => {
+    render(
+      <IcalSection
+        properties={[
+          lake({
+            feeds: [
+              feed({ id: "a", heldCount: 3, heldSince: "2026-10-09T09:00:00.000Z" }),
+              feed({ id: "b", name: "Booking.com", droppedEventCount: 1 }),
+            ],
+          }),
+        ]}
+      />,
+    );
+    expect(
+      screen.getByText(/^3 stays the feed no longer lists stay blocked: too much would go at once/),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/^1 event in the feed can't be read/)).toBeInTheDocument();
   });
 
   it("adds a feed and reads it at once", async () => {

@@ -14,6 +14,14 @@
  *   review list) naming the bookings in the way, shown on the calendar, in
  *   settings and as a banner. It resolves itself once the stay is gone from
  *   the feed or no longer overlaps (it is imported as a block then).
+ * - **Many at once** (GitLab #144): a fetch that would remove every current
+ *   block of the feed, or more than half of them (two or more), is held
+ *   back - a platform's glitch can serve an empty calendar, and would free
+ *   those dates for the website. The feed shows it, and the next full fetch
+ *   applies it only if it wants exactly the same removal.
+ * - **Unreadable events** never remove their stay's block, and while the
+ *   feed has one without a UID nothing is removed at all: there is no
+ *   telling which stay it is. The feed counts them for the settings page.
  * - **Failures** leave the blocks as they were and record a code on the feed.
  *
  * Writes for one feed happen under the property's lock, like every other
@@ -29,7 +37,7 @@ import { todayIn } from "@/lib/finance/recurring";
 import { logger } from "@/lib/logger";
 
 import { fetchFeed } from "./fetch";
-import { FeedParseError, type FeedEvent, parseFeed } from "./parse";
+import { type FeedEvent, FeedParseError, type FeedRead, readFeed } from "./parse";
 
 /** Stays that ended longer ago than this are not imported. */
 const HISTORY_DAYS = 365;
@@ -37,9 +45,26 @@ const HISTORY_DAYS = 365;
 export type FeedImport =
   | { kind: "unchanged" }
   | { kind: "failed"; code: string }
-  | { kind: "imported"; created: number; updated: number; deleted: number; conflicts: number };
+  | {
+      kind: "imported";
+      created: number;
+      updated: number;
+      deleted: number;
+      conflicts: number;
+      /** Blocks the feed no longer lists but that were kept, for now. */
+      held: number;
+    };
 
 const externalId = (feedId: string, uid: string) => `${feedId}:${uid}`;
+const uidOf = (feedId: string, externalEventId: string) => externalEventId.slice(feedId.length + 1);
+
+/** Whether removing `gone` of a feed's `current` blocks in one go is too much to trust. */
+function tooManyAtOnce(gone: number, current: number): boolean {
+  return gone > 0 && (gone === current || (gone >= 2 && gone * 2 > current));
+}
+
+const sameList = (a: readonly string[], b: readonly string[]) =>
+  a.length === b.length && a.every((x, i) => x === b[i]);
 
 /** Fetches one feed now and applies it. Never throws for a feed's own failure. */
 export async function importFeed(
@@ -74,9 +99,9 @@ export async function importFeed(
     return failed ? { kind: "failed", code: fetched.code } : { kind: "unchanged" };
   }
 
-  let events: FeedEvent[];
+  let read: FeedRead;
   try {
-    events = parseFeed(fetched.text, feed.property.timezone);
+    read = readFeed(fetched.text, feed.property.timezone);
   } catch (error) {
     if (!(error instanceof FeedParseError)) throw error;
     await db.icalFeed.update({
@@ -89,8 +114,9 @@ export async function importFeed(
 
   const today = todayIn(feed.property.timezone, now);
   const oldest = addDays(today, -HISTORY_DAYS);
-  const wanted = events.filter((e) => e.end > oldest);
-  const result = { created: 0, updated: 0, deleted: 0, conflicts: 0 };
+  const wanted = read.events.filter((e) => e.end > oldest);
+  const result = { created: 0, updated: 0, deleted: 0, conflicts: 0, held: 0 };
+  let heldRemovals: string[] = [];
   const conflicted: string[] = [];
   const touched: DateRange[] = [];
 
@@ -125,12 +151,25 @@ export async function importFeed(
       }
     }
 
-    // Current blocks whose stay is no longer in the feed: cancelled there.
+    // Current blocks whose stay is no longer in the feed: cancelled there -
+    // unless the feed lists the stay in a form it couldn't read.
+    const current = existing.filter((b) => fromUtcDate(b.endDate) > today);
     const present = new Set(wanted.map((e) => externalId(feed.id, e.uid)));
-    const gone = existing.filter(
-      (b) => !present.has(b.externalEventId!) && fromUtcDate(b.endDate) > today,
+    const unreadable = new Set(read.unreadable.map((uid) => externalId(feed.id, uid)));
+    const gone = current.filter(
+      (b) => !present.has(b.externalEventId!) && !unreadable.has(b.externalEventId!),
     );
-    if (gone.length > 0) {
+    const goneUids = gone.map((b) => uidOf(feed.id, b.externalEventId!)).sort();
+    if (read.unreadableWithoutUid > 0) {
+      // Any of them could be the stay of an event it can't read.
+      result.held = gone.length;
+    } else if (
+      tooManyAtOnce(gone.length, current.length) &&
+      !sameList(goneUids, feed.heldRemovals)
+    ) {
+      heldRemovals = goneUids;
+      result.held = gone.length;
+    } else if (gone.length > 0) {
       await tx.block.deleteMany({ where: { id: { in: gone.map((b) => b.id) } } });
       touched.push(...gone.map(span));
       result.deleted += gone.length;
@@ -151,8 +190,13 @@ export async function importFeed(
         lastError: null,
         eventCount: wanted.length,
         conflictCount: result.conflicts,
-        etag: fetched.etag,
-        lastModified: fetched.lastModified,
+        droppedEventCount: read.unreadable.length + read.unreadableWithoutUid,
+        heldRemovals,
+        heldSince: heldRemovals.length > 0 ? now : null,
+        // While something is held back, the next fetch is a full one: a 304
+        // could never confirm (or undo) the removal.
+        etag: result.held > 0 ? null : fetched.etag,
+        lastModified: result.held > 0 ? null : fetched.lastModified,
       },
     });
   });
