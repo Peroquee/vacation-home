@@ -23,6 +23,14 @@ export type MailTransport = {
 
 let transport: MailTransport | null = null;
 
+/**
+ * The longest one send can wait on a silent server: connecting, the
+ * greeting, and the longest pause mid-conversation (GitLab #134). Nodemailer
+ * waits up to ten minutes for each by default. The outbox claims an email
+ * for well over this, so no other run takes it while it is being sent.
+ */
+export const SEND_TIMEOUT_MS = 60_000;
+
 export function mailTransport(): MailTransport {
   transport ??= nodemailer.createTransport({
     host: env.SMTP_HOST,
@@ -30,6 +38,9 @@ export function mailTransport(): MailTransport {
     secure: env.SMTP_SECURE,
     requireTLS: !env.SMTP_SECURE && env.SMTP_REQUIRE_TLS,
     ...(env.SMTP_USER && { auth: { user: env.SMTP_USER, pass: env.SMTP_PASSWORD ?? "" } }),
+    connectionTimeout: 15_000,
+    greetingTimeout: 15_000,
+    socketTimeout: 30_000,
     // No file or URL access for message content: only what the app writes.
     disableFileAccess: true,
     disableUrlAccess: true,

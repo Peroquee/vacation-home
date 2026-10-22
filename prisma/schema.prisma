@@ -301,12 +301,15 @@ model EmailOutbox {
   recipient     EmailRecipient
   status        EmailStatus    @default(pending)
   attempts      Int            @default(0)
-  nextAttemptAt DateTime       @default(now()) @map("next_attempt_at")
+  /// Written by the outbox itself (GitLab #134), never by a database default.
+  nextAttemptAt DateTime       @map("next_attempt_at")
+  /// Taken by a run until then; free again after, if that run died.
+  claimedUntil  DateTime?      @map("claimed_until")
   lastError     String?        @map("last_error")
   skipReason    String?        @map("skip_reason")
   messageId     String?        @map("message_id")
   sentAt        DateTime?      @map("sent_at")
-  createdAt     DateTime       @default(now()) @map("created_at")
+  createdAt     DateTime       @map("created_at")
   updatedAt     DateTime       @updatedAt @map("updated_at")
 
   event BookingEvent @relation(fields: [eventId], references: [id], onDelete: Cascade)
