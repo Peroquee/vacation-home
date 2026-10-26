@@ -6,6 +6,7 @@ import { checkStayAt } from "@/lib/booking-rules/service";
 import { addDays, fromUtcDate, toUtcDate } from "@/lib/calendar-date";
 import { db } from "@/lib/db";
 import { savePaymentTerms } from "@/lib/payment-terms/service";
+import { recordPayment } from "@/lib/payments/service";
 
 import { changeDeadlines, NOT_PAST, ONLY_REQUESTS, reserveBooking, runHold } from "./hold";
 import { createBooking, updateBooking } from "./service";
@@ -35,6 +36,23 @@ async function inquiry(checkIn: string, checkOut: string, propertyId = property.
 }
 
 const row = (id: string) => db.booking.findUniqueOrThrow({ where: { id } });
+
+/** The 220.00 deposit, received `days` after NOW; its payment's id. */
+async function depositPaid(bookingId: string, days: number) {
+  const result = await recordPayment(
+    bookingId,
+    {
+      kind: "deposit",
+      method: "bank_transfer",
+      amountMinor: 22_000,
+      receivedOn: day(days),
+      note: null,
+    },
+    at(days),
+  );
+  if (!("payment" in result)) throw new Error(JSON.stringify(result));
+  return result.payment.id;
+}
 const events = (bookingId: string) =>
   db.bookingEvent
     .findMany({ where: { bookingId }, orderBy: { createdAt: "asc" } })
@@ -56,6 +74,8 @@ beforeAll(async () => {
 });
 
 beforeEach(async () => {
+  await db.transaction.deleteMany({ where: { bookingId: { not: null } } });
+  await db.bookingPayment.deleteMany();
   await db.booking.deleteMany();
   await db.block.deleteMany();
   await db.paymentTerms.deleteMany();
@@ -282,9 +302,8 @@ describe("the hold job, against a fake clock", () => {
     const booking = await inquiry(day(60), day(64));
     await reserveBooking(booking.id, NOW);
     // The deposit arrived on day 3.
-    expect(await updateBooking(booking.id, { status: "confirmed" })).toMatchObject({
-      booking: { status: "confirmed" },
-    });
+    const deposit = await depositPaid(booking.id, 3);
+    expect((await row(booking.id)).status).toBe("confirmed");
 
     expect(await runHold(at(8))).toMatchObject({ expired: 0, balanceReminders: 0 });
     expect((await row(booking.id)).status).toBe("confirmed");
@@ -298,6 +317,7 @@ describe("the hold job, against a fake clock", () => {
     expect((await row(booking.id)).status).toBe("confirmed");
     expect(await events(booking.id)).toEqual([
       `reserved:${NOW.toISOString()}`,
+      `deposit_received:${deposit}`,
       `balance_reminder:${day(30)}`,
       `balance_overdue:${day(30)}`,
     ]);
@@ -333,7 +353,7 @@ describe("the hold job, against a fake clock", () => {
       error: "invalid",
       field: "depositDueOn",
     });
-    await updateBooking(booking.id, { status: "confirmed" });
+    await depositPaid(booking.id, 0);
     expect(await changeDeadlines(booking.id, { depositDueOn: day(9) }, NOW)).toMatchObject({
       error: "invalid",
       field: "depositDueOn",

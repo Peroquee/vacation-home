@@ -24,7 +24,12 @@ import {
   turnoverFix,
 } from "@/lib/bookings/form";
 import { SOURCE_KEYS } from "@/lib/bookings/labels";
-import { BOOKING_SOURCES, type BookingStatus, holdsDates } from "@/lib/bookings/values";
+import {
+  BOOKING_SOURCES,
+  type BookingStatus,
+  HAND_STATUSES,
+  holdsDates,
+} from "@/lib/bookings/values";
 import type { RuleViolation } from "@/lib/booking-rules/rules";
 import type { BookingDto } from "@/lib/bookings/service";
 import { addDays, isCalendarDate } from "@/lib/calendar-date";
@@ -38,8 +43,14 @@ import { type GuestOption, GuestPicker } from "./guest-picker";
 import { useRuleWarnings } from "./use-rule-warnings";
 import { useStayAvailability } from "./use-stay-availability";
 
-/** The booking being edited: its DTO, with the guest's email for the picker. */
-export type EditableBooking = Omit<BookingDto, "guest"> & { guest: GuestOption };
+/**
+ * The booking being edited: its DTO, with the guest's email for the picker,
+ * and whether its status is the owner's to set by hand (GitLab #135).
+ */
+export type EditableBooking = Omit<BookingDto, "guest"> & {
+  guest: GuestOption;
+  statusByHand: boolean;
+};
 
 type FieldErrors = Record<string, string[] | undefined>;
 
@@ -366,12 +377,11 @@ export function BookingForm({
   }
 
   const shownConflicts = serverConflicts ?? conflicts;
-  // The booking's own status stays choosable; reserved and expired are
-  // otherwise the booking flow's to set (GitLab #114).
-  const statusOptions: BookingStatus[] =
-    booking && !["inquiry", "confirmed"].includes(booking.status)
-      ? ["inquiry", "confirmed", booking.status]
-      : ["inquiry", "confirmed"];
+  // Set by hand only on a booking outside the payment flow (GitLab #135):
+  // a new one, or one entered by hand, never accepted and with no payment.
+  // Any other keeps its status here; its actions change it.
+  const statusLocked = booking !== undefined && !booking.statusByHand;
+  const statusOptions: readonly BookingStatus[] = statusLocked ? [booking.status] : HAND_STATUSES;
 
   return (
     <form onSubmit={submit} noValidate className="max-w-2xl">
@@ -463,20 +473,26 @@ export function BookingForm({
         />
 
         <div className="grid gap-5 sm:grid-cols-2">
-          {field("status", t("form.statusLabel"), (props) => (
-            <NativeSelect
-              {...props}
-              className="w-full"
-              value={values.status}
-              onChange={(event) => set("status", event.target.value)}
-            >
-              {statusOptions.map((status) => (
-                <NativeSelectOption key={status} value={status}>
-                  {t(`status.${status}`)}
-                </NativeSelectOption>
-              ))}
-            </NativeSelect>
-          ))}
+          {field(
+            "status",
+            t("form.statusLabel"),
+            (props) => (
+              <NativeSelect
+                {...props}
+                className="w-full"
+                value={values.status}
+                disabled={statusLocked}
+                onChange={(event) => set("status", event.target.value)}
+              >
+                {statusOptions.map((status) => (
+                  <NativeSelectOption key={status} value={status}>
+                    {t(`status.${status}`)}
+                  </NativeSelectOption>
+                ))}
+              </NativeSelect>
+            ),
+            statusLocked ? t("form.statusByAction") : undefined,
+          )}
           {field("source", t("form.sourceLabel"), (props) => (
             <NativeSelect
               {...props}

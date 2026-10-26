@@ -17,6 +17,8 @@ export const RECIPIENTS: Record<BookingEventKind, readonly EmailRecipient[]> = {
   deposit_received: ["guest"],
   fully_paid: ["guest"],
   cancelled: ["guest", "owner"],
+  // Recorded for the history and for #140's answer window; no email.
+  reinstated: [],
 };
 
 /** Mail nothing older than this, whatever it is: a second guard. */
@@ -79,5 +81,8 @@ export function irrelevance(
     case "fully_paid":
     case "declined":
       return null;
+    case "reinstated":
+      // Never queued (no recipients); here for completeness.
+      return "nothing to tell";
   }
 }

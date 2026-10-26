@@ -699,7 +699,8 @@
       "overrideTax": "Set the Kurtaxe by hand",
       "taxAmount": "Kurtaxe for this booking",
       "taxNote": "Reason (optional)",
-      "taxNoteHint": "For example an exemption under the statute; shown with the amount."
+      "taxNoteHint": "For example an exemption under the statute; shown with the amount.",
+      "statusByAction": "Changed on the booking's page: accept, record a payment, cancel or reinstate."
     },
     "actions": {
       "confirmed": "Booking confirmed",
@@ -1696,7 +1697,10 @@
     "rampAfterFree": "must not be longer than the free window",
     "startAboveEnd": "must not be above the share at the end",
     "rampNeedsFree": "needs a free window to follow",
-    "departureOrder": "must not be later than the latest departure"
+    "departureOrder": "must not be later than the latest departure",
+    "statusByAction": "is changed by the booking's actions only: accept, record a payment, cancel or reinstate",
+    "onlyEnded": "only a cancelled or expired booking can be reinstated",
+    "moneyHeld": "cannot be reinstated while money is held: refund it first, or make a new booking"
   },
   "stay": {
     "photoOf": "Photo {n} of {title}",

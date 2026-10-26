@@ -50,16 +50,21 @@ const patchStatus = (id: string, status: Status, fail: (body: unknown, status: n
  * refused, and the refusal says what is in the way. Reserving (GitLab #114)
  * holds the dates until the payment deadline; recording the payments
  * (./payments.tsx) confirms it and marks it paid. Cancelling (./cancel-dialog.tsx)
- * asks who cancels and what is refunded, and frees the dates at once; a cancelled or expired booking can be reinstated as an
- * inquiry.
+ * asks who cancels and what is refunded, and frees the dates at once; a
+ * cancelled or expired booking can be reinstated as an inquiry, unless money
+ * is still held or its dates have been taken (GitLab #135). A request from
+ * the website is never confirmed by hand: it is accepted, and its payments
+ * confirm it.
  */
 export function BookingActions({
   id,
   status,
+  fromWebsite,
   currency,
 }: {
   id: string;
   status: Status;
+  fromWebsite: boolean;
   currency: string;
 }) {
   const router = useRouter();
@@ -70,8 +75,20 @@ export function BookingActions({
   const tCommon = useTranslations("common");
   const text = useConflictText();
   const api = useApiText();
-  const fail = (body: unknown, status: number) =>
-    api.message(body) ?? tCommon("serverAnswered", { status });
+  // A refusal's own reason first ("refund it first"), not "invalid fields".
+  const fail = (body: unknown, status: number) => {
+    const fields = (body as { error?: { fields?: Record<string, unknown> } } | null)?.error?.fields;
+    const reason =
+      fields &&
+      Object.values(fields)
+        .flat()
+        .find((m) => typeof m === "string");
+    if (typeof reason === "string") {
+      const text = api.text(reason);
+      return text.charAt(0).toUpperCase() + text.slice(1);
+    }
+    return api.message(body) ?? tCommon("serverAnswered", { status });
+  };
 
   async function run(action: () => Promise<void>, done: string, failed: string) {
     setPending(true);
@@ -108,16 +125,18 @@ export function BookingActions({
             >
               {t("reserve")}
             </Button>
-            <Button
-              variant="outline"
-              disabled={pending}
-              aria-busy={pending}
-              onClick={() =>
-                run(() => patchStatus(id, "confirmed", fail), t("confirmed"), t("confirmFailed"))
-              }
-            >
-              {t("confirm")}
-            </Button>
+            {fromWebsite ? null : (
+              <Button
+                variant="outline"
+                disabled={pending}
+                aria-busy={pending}
+                onClick={() =>
+                  run(() => patchStatus(id, "confirmed", fail), t("confirmed"), t("confirmFailed"))
+                }
+              >
+                {t("confirm")}
+              </Button>
+            )}
           </>
         ) : null}
         {status === "cancelled" || status === "expired" ? (
@@ -126,7 +145,11 @@ export function BookingActions({
             disabled={pending}
             aria-busy={pending}
             onClick={() =>
-              run(() => patchStatus(id, "inquiry", fail), t("reinstated"), t("reinstateFailed"))
+              run(
+                () => send(`/api/bookings/${id}/reinstate`, fail, { method: "POST" }),
+                t("reinstated"),
+                t("reinstateFailed"),
+              )
             }
           >
             {t("reinstate")}

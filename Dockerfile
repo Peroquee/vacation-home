@@ -61,7 +61,8 @@ COPY --from=build /app/dist-tools ./dist-tools
 USER node
 # Applies pending migrations; the compose `migrate` service runs this once
 # before each deploy's app starts. The maintenance commands keep their
-# names: `npm run guests:repurge -- <file>`, `npm run tokens:rotate`.
+# names: `npm run guests:repurge -- <file>`, `npm run tokens:rotate`,
+# `npm run bookings:check`.
 CMD ["npm", "run", "migrate:deploy"]
 
 FROM node:${NODE_VERSION}-bookworm-slim AS app
