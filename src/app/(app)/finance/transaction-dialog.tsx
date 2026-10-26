@@ -3,7 +3,7 @@
 import { Check, Repeat, X } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { useEffect, useRef, useState } from "react";
 
 import { ConfirmDialog } from "@/components/confirm-dialog";
@@ -61,11 +61,12 @@ function initial(
   transaction: EditableTransaction | undefined,
   defaults: { propertyId: string; date: string },
   currencyOf: (propertyId: string) => string,
+  locale: string,
 ) {
   if (transaction) {
     return {
       type: transaction.type,
-      amount: minorToInput(transaction.amountMinor, currencyOf(transaction.propertyId)),
+      amount: minorToInput(transaction.amountMinor, currencyOf(transaction.propertyId), locale),
       categoryId: transaction.categoryId,
       date: transaction.date,
       propertyId: transaction.propertyId,
@@ -149,11 +150,12 @@ function TransactionForm({
   const tCommon = useTranslations("common");
   const purgedName = useTranslations("guests")("purgedName");
   const format = useFormat();
+  const locale = useLocale();
   const api = useApiText();
   const fail = (body: unknown, status: number) =>
     api.message(body) ?? tCommon("serverAnswered", { status });
   const currencyOf = (id: string) => properties.find((p) => p.id === id)?.currency ?? "EUR";
-  const [values, setValues] = useState(() => initial(transaction, defaults, currencyOf));
+  const [values, setValues] = useState(() => initial(transaction, defaults, currencyOf, locale));
   const [errors, setErrors] = useState<FieldErrors>({});
   const [pending, setPending] = useState(false);
   const [bookings, setBookings] = useState<BookingOption[]>([]);
@@ -204,7 +206,7 @@ function TransactionForm({
 
   /** A new rule with what is typed so far, starting on this date (GitLab #130). */
   function recurringHref() {
-    const amountMinor = inputToMinor(values.amount, currency);
+    const amountMinor = inputToMinor(values.amount, currency, locale);
     const params = new URLSearchParams({
       new: "1",
       propertyId: values.propertyId,
@@ -254,7 +256,7 @@ function TransactionForm({
       }
       return;
     }
-    const amountMinor = inputToMinor(values.amount, currency);
+    const amountMinor = inputToMinor(values.amount, currency, locale);
     const local: FieldErrors = {};
     if (amountMinor === null || amountMinor === 0) {
       local.amountMinor = [amountMinor === 0 ? tForms("required") : amountHint(currency)];
@@ -369,7 +371,7 @@ function TransactionForm({
                 {...props}
                 autoFocus
                 inputMode="decimal"
-                placeholder={minorToInput(0, currency)}
+                placeholder={minorToInput(0, currency, locale)}
                 value={values.amount}
                 onChange={(event) => set("amount", event.target.value)}
               />

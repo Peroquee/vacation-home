@@ -4,7 +4,7 @@ import { db } from "@/lib/db";
 import { buildFeed, FEED_HISTORY_DAYS } from "@/lib/ical/export";
 import { propertyForToken } from "@/lib/ical/feeds";
 import { addDays, fromUtcDate } from "@/lib/calendar-date";
-import { todayIn } from "@/lib/finance/recurring";
+import { todayIn } from "@/lib/today";
 
 /**
  * A property's export feed, for the booking platforms (GitLab #99). Public:

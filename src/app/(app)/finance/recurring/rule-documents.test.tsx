@@ -149,7 +149,7 @@ describe("RuleDialog", () => {
       "/api/recurring-expenses/r1/attachments": [],
       "/api/recurring-expenses/r1/payments": payments,
     });
-    render(<RuleDialog rule={rule} {...props} />);
+    render(<RuleDialog today="2026-10-26" rule={rule} {...props} />);
     const dialog = screen.getByRole("dialog");
     expect(within(dialog).getByRole("region", { name: "Documents" })).toBeInTheDocument();
     expect(
@@ -161,7 +161,7 @@ describe("RuleDialog", () => {
 
   it("asks a new rule to be saved first", () => {
     serve({});
-    render(<RuleDialog {...props} />);
+    render(<RuleDialog today="2026-10-26" {...props} />);
     expect(screen.queryByRole("region", { name: "Documents" })).toBeNull();
     expect(screen.getByText(/can be added once the recurring cost is saved/)).toBeInTheDocument();
   });

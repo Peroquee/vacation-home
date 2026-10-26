@@ -8,7 +8,7 @@ import { PageHeader } from "@/components/page-header";
 import { buttonVariants } from "@/components/ui/button";
 import { getFormat } from "@/i18n/get-format";
 import { isUuid } from "@/lib/api";
-import { todayIn } from "@/lib/finance/recurring";
+import { todayIn } from "@/lib/today";
 import { getPaymentTerms } from "@/lib/payment-terms/service";
 import { getTouristTax, listDiscounts, listSeasons } from "@/lib/pricing/service";
 import { getProperty } from "@/lib/properties/service";

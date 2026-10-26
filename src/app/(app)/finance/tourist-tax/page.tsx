@@ -17,6 +17,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { getFormat } from "@/i18n/get-format";
+import { appToday } from "@/lib/app-today";
 import { touristTaxReport } from "@/lib/finance/tourist-tax-report";
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -31,7 +32,7 @@ export async function generateMetadata(): Promise<Metadata> {
 export default async function TouristTaxPage({ searchParams }: PageProps<"/finance/tourist-tax">) {
   await connection();
   const raw = (await searchParams).year;
-  const thisYear = new Date().getUTCFullYear();
+  const thisYear = Number(appToday().slice(0, 4));
   const year =
     typeof raw === "string" && /^\d{4}$/.test(raw) && Number(raw) >= 2000 && Number(raw) <= 2100
       ? Number(raw)

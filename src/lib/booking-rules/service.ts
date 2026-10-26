@@ -9,7 +9,7 @@ import type { BookingRules as BookingRulesRow } from "@/generated/prisma/client"
 import { addDays, fromUtcDate, toUtcDate } from "@/lib/calendar-date";
 import { findOverlappingBlocks } from "@/lib/blocks/service";
 import { db, type DbClient } from "@/lib/db";
-import { todayIn } from "@/lib/finance/recurring";
+import { todayIn } from "@/lib/today";
 
 import {
   type BookingRules,

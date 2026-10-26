@@ -33,7 +33,7 @@ import { isOverlapViolation, withPropertyLock } from "@/lib/availability/service
 import { addDays, fromUtcDate, toUtcDate } from "@/lib/calendar-date";
 import type { DateRange } from "@/lib/date-range";
 import { db, type DbClient } from "@/lib/db";
-import { todayIn } from "@/lib/finance/recurring";
+import { todayIn } from "@/lib/today";
 import { logger } from "@/lib/logger";
 
 import { fetchFeed } from "./fetch";

@@ -5,7 +5,7 @@ import { Suspense } from "react";
 import { PageHeader } from "@/components/page-header";
 import { CardSkeleton } from "@/components/skeletons";
 import { getFormat } from "@/i18n/get-format";
-import { todayUtc } from "@/lib/bookings/list-params";
+import { appToday } from "@/lib/app-today";
 import { dashboardState } from "@/lib/dashboard/params";
 import { listProperties } from "@/lib/properties/service";
 
@@ -27,7 +27,7 @@ export async function generateMetadata(): Promise<Metadata> {
  * or all (`?propertyId=`), compared with the same dates a year earlier.
  */
 export default async function DashboardPage({ searchParams }: PageProps<"/dashboard">) {
-  const today = todayUtc();
+  const today = appToday();
   const state = dashboardState(await searchParams, today);
   const properties = await listProperties();
   const t = await getTranslations("dashboard");

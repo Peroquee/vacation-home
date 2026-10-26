@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { useState } from "react";
 
 import { ConfirmDialog } from "@/components/confirm-dialog";
@@ -160,15 +160,16 @@ function RecordPayment({
   const api = useApiText();
   const amountHint = useAmountHint();
   const router = useRouter();
+  const locale = useLocale();
   // A refund still to send comes first; else the next amount due.
   const initial = () => ({
     kind: (refundDue > 0 ? "refund" : (next?.kind ?? "other")) as (typeof PAYMENT_KINDS)[number],
     method: "bank_transfer" as (typeof PAYMENT_METHODS)[number],
     amount:
       refundDue > 0
-        ? minorToInput(refundDue, currency)
+        ? minorToInput(refundDue, currency, locale)
         : next && next.amountMinor > 0
-          ? minorToInput(next.amountMinor, currency)
+          ? minorToInput(next.amountMinor, currency, locale)
           : "",
     receivedOn: today,
     note: "",
@@ -180,7 +181,7 @@ function RecordPayment({
 
   async function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const amountMinor = inputToMinor(values.amount, currency);
+    const amountMinor = inputToMinor(values.amount, currency, locale);
     if (amountMinor === null) {
       setErrors({ amountMinor: [amountHint(currency)] });
       return;

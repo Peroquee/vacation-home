@@ -7,7 +7,7 @@
 import type { Property } from "@/generated/prisma/client";
 import { getCalendars } from "@/lib/availability/calendar";
 import { addDays, type CalendarDate } from "@/lib/calendar-date";
-import { todayIn } from "@/lib/finance/recurring";
+import { todayIn } from "@/lib/today";
 import type { PricingRules } from "@/lib/pricing/engine";
 import { pricingRulesFor } from "@/lib/pricing/service";
 

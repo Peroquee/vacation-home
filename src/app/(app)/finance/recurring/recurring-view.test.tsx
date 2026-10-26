@@ -48,6 +48,7 @@ describe("RecurringView", () => {
   it("lists each rule with property, amount per interval, next due date and status", () => {
     render(
       <RecurringView
+        today="2026-10-26"
         rules={[
           rule(),
           rule({
@@ -88,6 +89,7 @@ describe("RecurringView", () => {
     const fetchMock = serve();
     render(
       <RecurringView
+        today="2026-10-26"
         rules={[rule(), rule({ id: "r2", status: "paused", description: "Water" })]}
         properties={properties}
         categories={categories}
@@ -108,6 +110,7 @@ describe("RecurringView", () => {
     const fetchMock = serve();
     render(
       <RecurringView
+        today="2026-10-26"
         rules={[rule()]}
         properties={properties}
         categories={categories}
@@ -128,13 +131,20 @@ describe("RecurringView", () => {
 
   it("offers to add the first one, and opens straight away from a ledger transaction", () => {
     const { unmount } = render(
-      <RecurringView rules={[]} properties={properties} categories={categories} prefill={null} />,
+      <RecurringView
+        today="2026-10-26"
+        rules={[]}
+        properties={properties}
+        categories={categories}
+        prefill={null}
+      />,
     );
     expect(screen.getByText("No recurring costs yet")).toBeInTheDocument();
     unmount();
 
     render(
       <RecurringView
+        today="2026-10-26"
         rules={[]}
         properties={properties}
         categories={categories}

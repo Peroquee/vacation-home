@@ -28,6 +28,31 @@ const eslintConfig = defineConfig([
     },
   },
   {
+    // "Today" is a date somewhere (GitLab #139): todayIn(timezone) or
+    // appToday() from src/lib/today.ts and src/lib/app-today.ts. A bare
+    // new Date() turned into a date is UTC's (or the browser's) day, which
+    // between midnight and 02:00 in Berlin is still yesterday. Tests may.
+    files: ["src/**/*.{ts,tsx}"],
+    ignores: ["src/**/*.test.{ts,tsx}"],
+    rules: {
+      "no-restricted-syntax": [
+        "error",
+        {
+          selector:
+            "MemberExpression[property.name=/^(slice|split|substring)$/][object.callee.property.name='toISOString'][object.callee.object.type='NewExpression'][object.callee.object.arguments.length=0]",
+          message:
+            "That is today in UTC. Use todayIn(timezone) from @/lib/today, or appToday() from @/lib/app-today.",
+        },
+        {
+          selector:
+            "CallExpression[callee.property.name=/^get(UTC)?(FullYear|Month|Date)$/][callee.object.type='NewExpression'][callee.object.arguments.length=0]",
+          message:
+            "That is today in UTC or in the browser. Use todayIn(timezone) from @/lib/today, or appToday() from @/lib/app-today.",
+        },
+      ],
+    },
+  },
+  {
     // The config modules are the places allowed to touch the raw environment.
     // prisma.config.ts is read by the Prisma CLI, never by the app, so it
     // cannot use `@/env`.

@@ -2,7 +2,7 @@
 
 import { Hint } from "@/components/help/hint";
 import { useRouter } from "next/navigation";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { useState } from "react";
 
 import { toastError, toastSuccess } from "@/components/toast";
@@ -103,12 +103,14 @@ type Values = {
   depositNonRefundable: boolean;
 };
 
-function toValues(terms: PaymentTermsDto, currency: string): Values {
+function toValues(terms: PaymentTermsDto, currency: string, locale: string): Values {
   return {
     kind: terms.depositPercent !== null ? "percent" : "fixed",
     depositPercent: String(terms.depositPercent ?? 20),
     depositFixed:
-      terms.depositFixedMinor !== null ? minorToInput(terms.depositFixedMinor, currency) : "",
+      terms.depositFixedMinor !== null
+        ? minorToInput(terms.depositFixedMinor, currency, locale)
+        : "",
     depositDueDays: String(terms.depositDueDays),
     balanceDueDaysBefore: String(terms.balanceDueDaysBefore),
     fullPaymentDueDays: String(terms.fullPaymentDueDays),
@@ -129,8 +131,9 @@ function PaymentTermsDialog({ property, terms }: PropertyTerms) {
   const tCommon = useTranslations("common");
   const api = useApiText();
   const amountHint = useAmountHint();
+  const locale = useLocale();
   const [open, setOpen] = useState(false);
-  const [values, setValues] = useState(() => toValues(terms, property.currency));
+  const [values, setValues] = useState(() => toValues(terms, property.currency, locale));
   const [errors, setErrors] = useState<FieldErrors>({});
   const [pending, setPending] = useState(false);
   const prefix = `terms-${property.id}`;
@@ -143,7 +146,7 @@ function PaymentTermsDialog({ property, terms }: PropertyTerms) {
     event.preventDefault();
     let fixed: number | null = null;
     if (values.kind === "fixed") {
-      fixed = inputToMinor(values.depositFixed, property.currency);
+      fixed = inputToMinor(values.depositFixed, property.currency, locale);
       if (fixed === null) {
         setErrors({ depositFixedMinor: [amountHint(property.currency)] });
         return;
@@ -217,7 +220,7 @@ function PaymentTermsDialog({ property, terms }: PropertyTerms) {
       onOpenChange={(next) => {
         if (pending) return;
         if (next) {
-          setValues(toValues(terms, property.currency));
+          setValues(toValues(terms, property.currency, locale));
           setErrors({});
         }
         setOpen(next);

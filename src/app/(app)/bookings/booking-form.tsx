@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { useId, useState } from "react";
 
 import { GuestFields, guestSplitOf, guestValues } from "@/components/guest-fields";
@@ -74,8 +74,9 @@ const FIELD_ORDER = [
 
 function initialValues(
   properties: PropertyChoice[],
-  booking?: EditableBooking,
-  preset: { propertyId?: string; checkIn?: string; checkOut?: string } = {},
+  booking: EditableBooking | undefined,
+  preset: { propertyId?: string; checkIn?: string; checkOut?: string },
+  locale: string,
 ) {
   if (booking) {
     return {
@@ -94,7 +95,7 @@ function initialValues(
       taxAmount:
         booking.touristTaxManualMinor == null
           ? ""
-          : minorToInput(booking.touristTaxManualMinor, booking.currency),
+          : minorToInput(booking.touristTaxManualMinor, booking.currency, locale),
       taxNote: booking.touristTaxNote ?? "",
       status: booking.status as string,
       source: booking.source as string,
@@ -102,10 +103,10 @@ function initialValues(
       nightlyRate:
         booking.nightlyRateMinor === null
           ? ""
-          : minorToInput(booking.nightlyRateMinor, booking.currency),
-      cleaningFee: minorToInput(booking.cleaningFeeMinor, booking.currency),
+          : minorToInput(booking.nightlyRateMinor, booking.currency, locale),
+      cleaningFee: minorToInput(booking.cleaningFeeMinor, booking.currency, locale),
       overrideTotal: booking.totalIsManual,
-      total: minorToInput(booking.totalAmountMinor, booking.currency),
+      total: minorToInput(booking.totalAmountMinor, booking.currency, locale),
       notes: booking.notes ?? "",
     };
   }
@@ -124,7 +125,9 @@ function initialValues(
     status: "inquiry",
     source: "direct",
     nightlyRate: "",
-    cleaningFee: property ? minorToInput(property.defaultCleaningFeeMinor, property.currency) : "",
+    cleaningFee: property
+      ? minorToInput(property.defaultCleaningFeeMinor, property.currency, locale)
+      : "",
     overrideTotal: false,
     total: "",
     notes: "",
@@ -154,9 +157,12 @@ export function BookingForm({
   const t = useTranslations("bookings");
   const tForms = useTranslations("forms");
   const tCommon = useTranslations("common");
+  const locale = useLocale();
   const api = useApiText();
   const prefix = useId();
-  const [values, setValues] = useState(() => initialValues(properties, booking, preset));
+  const [values, setValues] = useState(() =>
+    initialValues(properties, booking, preset ?? {}, locale),
+  );
   const [errors, setErrors] = useState<FieldErrors>({});
   const [serverConflicts, setServerConflicts] = useState<Conflict[] | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
@@ -171,16 +177,17 @@ export function BookingForm({
   const nights = stayNights(values.checkIn, values.checkOut);
   // Empty: no rate of its own, the seasons price the nights.
   const ownRate = values.nightlyRate.trim() !== "";
-  const nightlyRateMinor = currency && ownRate ? inputToMinor(values.nightlyRate, currency) : null;
+  const nightlyRateMinor =
+    currency && ownRate ? inputToMinor(values.nightlyRate, currency, locale) : null;
   const rateInvalid = ownRate && nightlyRateMinor === null;
-  const cleaningFeeMinor = currency ? inputToMinor(values.cleaningFee, currency) : null;
+  const cleaningFeeMinor = currency ? inputToMinor(values.cleaningFee, currency, locale) : null;
   // Editing what the price is not made of keeps the price as agreed, as the
   // API does; anything else is priced anew, by the same engine and rules.
   // Who stays, and the owner's own Kurtaxe (GitLab #120).
   const groups = groupsFor(property, booking);
   const guests = guestSplitOf(values.guests, groups);
   const taxAmountMinor =
-    currency && values.overrideTax ? inputToMinor(values.taxAmount, currency) : null;
+    currency && values.overrideTax ? inputToMinor(values.taxAmount, currency, locale) : null;
   const manualTax =
     values.overrideTax && taxAmountMinor !== null
       ? { amountMinor: taxAmountMinor, note: values.taxNote.trim() || null }
@@ -249,7 +256,7 @@ export function BookingForm({
       propertyId: id,
       ...(next &&
         !ratesEdited && {
-          cleaningFee: minorToInput(next.defaultCleaningFeeMinor, next.currency),
+          cleaningFee: minorToInput(next.defaultCleaningFeeMinor, next.currency, locale),
         }),
     }));
     setServerConflicts(null);
@@ -281,7 +288,7 @@ export function BookingForm({
     if (currency && rateInvalid) local.nightlyRateMinor = [amountError];
     if (currency && cleaningFeeMinor === null) local.cleaningFeeMinor = [amountError];
     const totalMinor =
-      currency && values.overrideTotal ? inputToMinor(values.total, currency) : null;
+      currency && values.overrideTotal ? inputToMinor(values.total, currency, locale) : null;
     if (values.overrideTotal && totalMinor === null) local.totalAmountMinor = [amountError];
     if (!guests) local.guestCount = [tForms("wholeNumber")];
     if (values.overrideTax && taxAmountMinor === null) local.touristTaxMinor = [amountError];
@@ -554,7 +561,7 @@ export function BookingForm({
                 breakdown={breakdown}
                 totalMinor={
                   currency && values.overrideTotal
-                    ? (inputToMinor(values.total, currency) ?? undefined)
+                    ? (inputToMinor(values.total, currency, locale) ?? undefined)
                     : undefined
                 }
               />
@@ -575,7 +582,7 @@ export function BookingForm({
                 set("overrideTotal", checked);
                 // Start the override from the calculated total.
                 if (checked && !values.total && currency && calculated !== null) {
-                  set("total", minorToInput(calculated, currency));
+                  set("total", minorToInput(calculated, currency, locale));
                 }
               }}
             />

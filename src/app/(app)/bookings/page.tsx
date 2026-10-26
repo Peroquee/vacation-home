@@ -14,6 +14,7 @@ import { type Formatters } from "@/i18n/format";
 import { getApiText } from "@/i18n/get-api-text";
 import { getFormat } from "@/i18n/get-format";
 import { SOURCE_KEYS } from "@/lib/bookings/labels";
+import { appToday } from "@/lib/app-today";
 import { type ListState, listHref, nextSort, parseListParams } from "@/lib/bookings/list-params";
 import type { BookingSort } from "@/lib/bookings/schema";
 import { type BookingDto, listBookings, toDto } from "@/lib/bookings/service";
@@ -223,7 +224,7 @@ function Pagination({
 }
 
 export default async function BookingsPage({ searchParams }: PageProps<"/bookings">) {
-  const state = parseListParams(await searchParams);
+  const state = parseListParams(await searchParams, appToday());
   const properties = (await listProperties({ includeArchived: true })).map((p) => ({
     id: p.id,
     name: p.name,

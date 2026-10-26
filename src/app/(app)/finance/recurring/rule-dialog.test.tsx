@@ -61,11 +61,33 @@ const sent = (fetchMock: ReturnType<typeof serve>) => {
 };
 
 describe("RuleDialog", () => {
+  it("starts a new rule on today as the server says, not the UTC date (GitLab #139)", () => {
+    // 00:30 on 15 July in Berlin is still the 14th in UTC.
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date("2026-07-14T22:30:00Z"));
+    try {
+      serve();
+      render(
+        <RuleDialog
+          today="2026-07-15"
+          prefill={null}
+          properties={properties}
+          categories={categories}
+          onClose={vi.fn()}
+        />,
+      );
+      expect(screen.getByLabelText("First due")).toHaveValue("2026-07-15");
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it("adds a rule with every field", async () => {
     const fetchMock = serve();
     const onClose = vi.fn();
     render(
       <RuleDialog
+        today="2026-10-26"
         prefill={null}
         properties={properties}
         categories={categories}
@@ -107,6 +129,7 @@ describe("RuleDialog", () => {
     const fetchMock = serve();
     render(
       <RuleDialog
+        today="2026-10-26"
         prefill={null}
         properties={properties}
         categories={categories}
@@ -126,6 +149,7 @@ describe("RuleDialog", () => {
     const onClose = vi.fn();
     render(
       <RuleDialog
+        today="2026-10-26"
         rule={rule}
         prefill={null}
         properties={properties}
@@ -174,6 +198,7 @@ describe("RuleDialog", () => {
     const onClose = vi.fn();
     render(
       <RuleDialog
+        today="2026-10-26"
         rule={rule}
         prefill={null}
         properties={properties}
@@ -202,6 +227,7 @@ describe("RuleDialog", () => {
     });
     const { unmount } = render(
       <RuleDialog
+        today="2026-10-26"
         prefill={prefill("c-utilities")}
         properties={properties}
         categories={categories}
@@ -213,6 +239,7 @@ describe("RuleDialog", () => {
 
     render(
       <RuleDialog
+        today="2026-10-26"
         prefill={prefill("c-booking-income")}
         properties={properties}
         categories={categories}

@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 
-import { firstOccurrenceFrom, occurrenceDate, todayIn } from "./recurring";
+import { todayIn } from "@/lib/today";
+
+import { firstOccurrenceFrom, occurrenceDate } from "./recurring";
 
 describe("occurrenceDate", () => {
   it("steps by the interval, keeping the day of the month", () => {

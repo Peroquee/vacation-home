@@ -15,7 +15,7 @@ import { recordEvent } from "@/lib/bookings/hold";
 import { locked, withRelations, type WriteResult } from "@/lib/bookings/service";
 import { addDays, type CalendarDate, fromUtcDate } from "@/lib/calendar-date";
 import { db } from "@/lib/db";
-import { todayIn } from "@/lib/finance/recurring";
+import { todayIn } from "@/lib/today";
 
 import { DEFAULT_REQUEST_SETTINGS, getRequestSettingsFor } from "./settings";
 

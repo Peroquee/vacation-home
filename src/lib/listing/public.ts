@@ -7,7 +7,7 @@ import { getRequestSettings } from "@/lib/booking-requests/settings";
 import type { StayHelpFacts } from "@/lib/help/guest-values";
 import { getBankDetails } from "@/lib/payments/bank";
 import { type PublicPropertyDto, toPublicDto } from "@/lib/properties/public";
-import { todayIn } from "@/lib/finance/recurring";
+import { todayIn } from "@/lib/today";
 import { getPaymentTerms } from "@/lib/payment-terms/service";
 import { lowestRate } from "@/lib/pricing/engine";
 import { pricingRulesFor } from "@/lib/pricing/service";
@@ -59,8 +59,10 @@ async function publicFace(
     getPaymentTerms(property.id),
     pricingRulesFor(property),
   ]);
+  const today = todayIn(property.timezone);
   return toPublicDto(property, listing, photos, terms, {
-    nightlyRateFromMinor: lowestRate(pricing, todayIn(property.timezone)),
+    today,
+    nightlyRateFromMinor: lowestRate(pricing, today),
     discounts: pricing.discounts,
     touristTax: pricing.touristTax ? (pricing.touristTax.included ? "included" : "plus") : null,
   });

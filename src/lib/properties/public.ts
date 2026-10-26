@@ -33,6 +33,8 @@ export type PublicPropertyDto = {
   title: PublicText;
   /** ISO 4217: every price on the public page is in it. */
   currency: string;
+  /** Today where the property is (GitLab #139): the calendar starts there. */
+  today: string;
   /**
    * The lowest nightly rate of the next 12 months, seasons included (GitLab
    * #118), shown as "from"; null when no night is charged.
@@ -68,6 +70,7 @@ export function toPublicDto(
   photos: PhotoDto[],
   terms: PaymentTerms,
   prices: {
+    today: string;
     nightlyRateFromMinor: number | null;
     discounts: StayDiscount[];
     touristTax: "plus" | "included" | null;
@@ -80,6 +83,7 @@ export function toPublicDto(
     slug: property.slug,
     title: titled ? { en: listing.titleEn, de: listing.titleDe } : { en: property.name, de: "" },
     currency: property.currency,
+    today: prices.today,
     nightlyRateFromMinor: prices.nightlyRateFromMinor,
     discounts: prices.discounts,
     touristTax: prices.touristTax,

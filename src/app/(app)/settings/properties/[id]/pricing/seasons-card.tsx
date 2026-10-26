@@ -120,7 +120,7 @@ function PropertySeasonList({ property, seasons, today }: PropertySeasons & { to
         <p id={`seasons-${property.id}`} className="text-muted-foreground text-sm">
           {t("standardRate", { rate: money(property.defaultNightlyRateMinor) })}
         </p>
-        <SeasonDialog property={property} />
+        <SeasonDialog property={property} today={today} />
       </div>
       {seasons.length > 0 ? (
         <ul className="divide-y rounded-lg border text-sm">
@@ -139,7 +139,7 @@ function PropertySeasonList({ property, seasons, today }: PropertySeasons & { to
                 </div>
               </div>
               <div className="flex gap-2">
-                <SeasonDialog property={property} season={season} />
+                <SeasonDialog property={property} season={season} today={today} />
                 <ConfirmDialog
                   trigger={
                     <Button
@@ -260,9 +260,12 @@ const MONTHS = Array.from({ length: 12 }, (_, i) => i + 1);
 function SeasonDialog({
   property,
   season,
+  today,
 }: {
   property: PropertySeasons["property"];
   season?: Season;
+  /** Today in the property's timezone: a new season's year (GitLab #139). */
+  today: string;
 }) {
   const t = useTranslations("settings.seasons");
   const tCommon = useTranslations("common");
@@ -278,8 +281,8 @@ function SeasonDialog({
     endDay: String(season?.endDay ?? 31),
     endMonth: String(season?.endMonth ?? 8),
     everyYear: season ? season.year === null : true,
-    year: String(season?.year ?? new Date().getFullYear()),
-    rate: season ? minorToInput(season.rateMinor, property.currency) : "",
+    year: String(season?.year ?? Number(today.slice(0, 4))),
+    rate: season ? minorToInput(season.rateMinor, property.currency, locale) : "",
   });
   const [open, setOpen] = useState(false);
   const [values, setValues] = useState(initial);
@@ -295,7 +298,7 @@ function SeasonDialog({
 
   async function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const rateMinor = inputToMinor(values.rate, property.currency);
+    const rateMinor = inputToMinor(values.rate, property.currency, locale);
     if (rateMinor === null) {
       setErrors({ rateMinor: [amountHint(property.currency)] });
       return;

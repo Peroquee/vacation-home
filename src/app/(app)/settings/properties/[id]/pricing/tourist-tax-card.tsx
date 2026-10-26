@@ -112,7 +112,7 @@ function TouristTaxDialog({
   const api = useApiText();
   const amountHint = useAmountHint();
   const router = useRouter();
-  const money = (minor: number) => minorToInput(minor, currency);
+  const money = (minor: number) => minorToInput(minor, currency, locale);
 
   const initial = () => {
     const groups: GroupRow[] = (rules?.childGroups ?? []).map((g, i) => ({
@@ -161,7 +161,7 @@ function TouristTaxDialog({
 
   function body(): { rules: unknown } | string {
     if (!values.enabled) return { rules: null };
-    const amount = (text: string) => inputToMinor(text, currency);
+    const amount = (text: string) => inputToMinor(text, currency, locale);
     const adult = amount(values.adultRate);
     if (adult === null) return amountHint(currency);
     const groups = values.groups.map((g) => ({

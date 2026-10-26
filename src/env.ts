@@ -43,6 +43,16 @@ function optionalExact<T extends z.ZodType>(schema: T) {
   );
 }
 
+/** Whether `name` is a timezone this runtime knows, e.g. "Europe/Berlin". */
+function isTimeZone(name: string): boolean {
+  try {
+    new Intl.DateTimeFormat("en", { timeZone: name });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 const envSchema = z.object({
   /** PostgreSQL connection string used by Prisma. */
   DATABASE_URL: z.url({
@@ -118,6 +128,15 @@ const envSchema = z.object({
   GOOGLE_CALENDAR_POLL_SECONDS: optional(
     z.coerce.number().int().min(60, "must be at least 60"),
   ).default(300),
+
+  /**
+   * The owner's timezone, an IANA name: where "today" is for what spans
+   * properties, such as the calendar, the dashboard and the ledger (GitLab
+   * #139). A property's own dates use its timezone. Default Europe/Berlin.
+   */
+  APP_TIMEZONE: optional(
+    z.string().refine(isTimeZone, "must be an IANA timezone such as Europe/Berlin"),
+  ).default("Europe/Berlin"),
 
   /**
    * How often each booking platform's iCal feed is fetched (src/lib/ical).

@@ -9,7 +9,7 @@ import { buttonVariants } from "@/components/ui/button";
 import { getCalendars } from "@/lib/availability/calendar";
 import { fromUtcDate, toUtcDate } from "@/lib/calendar-date";
 import { db } from "@/lib/db";
-import { todayUtc } from "@/lib/bookings/list-params";
+import { appToday } from "@/lib/app-today";
 import { gridRange, isMonthKey, monthOf, monthWeeks, weekStartFor } from "@/lib/calendar/month";
 import { CALENDAR_PROPERTY_COOKIE, resolveChoice } from "@/lib/calendar/property-choice";
 import { pricingRulesForMany } from "@/lib/pricing/service";
@@ -33,7 +33,7 @@ const MAX_PROPERTIES = 20;
 export default async function CalendarPage({ searchParams }: PageProps<"/calendar">) {
   const params = await searchParams;
   const raw = params.month;
-  const today = todayUtc();
+  const today = appToday();
   const month = typeof raw === "string" && isMonthKey(raw) ? raw : monthOf(today);
   const weekStart = weekStartFor(await getLocale());
   const t = await getTranslations("calendar.page");

@@ -1,6 +1,6 @@
 import { apiError, notFound } from "@/lib/api";
 import { buildReportContent } from "@/app/(app)/dashboard/report";
-import { todayUtc } from "@/lib/bookings/list-params";
+import { appToday } from "@/lib/app-today";
 import { dashboardState } from "@/lib/dashboard/params";
 import { db } from "@/lib/db";
 import { queryParams } from "@/lib/query";
@@ -12,7 +12,7 @@ import { renderFinancialReport } from "@/lib/reports/financial-pdf";
  * figures are the dashboard's for the same filters.
  */
 export async function GET(request: Request) {
-  const today = todayUtc();
+  const today = appToday();
   const state = dashboardState(queryParams(request), today);
   const property = state.propertyId
     ? await db.property.findUnique({ where: { id: state.propertyId }, select: { name: true } })
