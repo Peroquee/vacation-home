@@ -308,7 +308,17 @@ An inquiry may overlap other stays; **Confirm booking** checks the dates
 again and refuses if they have been taken since. **Cancel booking** frees the
 dates at once and keeps the booking (marked cancelled); see
 **Cancellations** below for the refund. A cancelled or expired
-booking can be **reinstated as an inquiry**.
+booking can be **reinstated as an inquiry**, as long as no money from it is
+still held (refund it first, or make a new booking) and its dates are still
+free.
+
+You set the status yourself only on a booking you entered by hand that is
+outside the payment flow: never accepted, and no payment recorded for it.
+A booking from Airbnb or Booking.com, paid there, can be **Paid** straight
+away. Every other change of status goes through the booking's buttons:
+accept, record a payment, cancel, reinstate. So **Confirm booking** is
+offered only for bookings entered by hand; a request from the website is
+accepted, and its payments confirm it.
 
 **Requests** (Bookings → Requests; the number next to Bookings in the
 menu counts them) lists the requests guests sent from your public page:

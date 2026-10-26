@@ -3,7 +3,7 @@ import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { toastSuccess } from "@/components/toast";
+import { toastError, toastSuccess } from "@/components/toast";
 
 import { BookingActions } from "./booking-actions";
 
@@ -29,7 +29,7 @@ describe("BookingActions", () => {
   it("confirms an inquiry", async () => {
     const fetchMock = serve(Response.json({}));
     const user = userEvent.setup();
-    render(<BookingActions id={ID} status="inquiry" currency="EUR" />);
+    render(<BookingActions id={ID} status="inquiry" fromWebsite={false} currency="EUR" />);
 
     await user.click(screen.getByRole("button", { name: "Confirm booking" }));
 
@@ -63,7 +63,7 @@ describe("BookingActions", () => {
       ),
     );
     const user = userEvent.setup();
-    render(<BookingActions id={ID} status="inquiry" currency="EUR" />);
+    render(<BookingActions id={ID} status="inquiry" fromWebsite={false} currency="EUR" />);
 
     await user.click(screen.getByRole("button", { name: "Confirm booking" }));
 
@@ -85,7 +85,7 @@ describe("BookingActions", () => {
     );
     vi.stubGlobal("fetch", fetchMock);
     const user = userEvent.setup();
-    render(<BookingActions id={ID} status="confirmed" currency="EUR" />);
+    render(<BookingActions id={ID} status="confirmed" fromWebsite={false} currency="EUR" />);
 
     await user.click(screen.getByRole("button", { name: "Cancel booking" }));
     const dialog = await screen.findByRole("dialog");
@@ -112,22 +112,59 @@ describe("BookingActions", () => {
   });
 
   it("offers no confirm on a confirmed booking", () => {
-    render(<BookingActions id={ID} status="confirmed" currency="EUR" />);
+    render(<BookingActions id={ID} status="confirmed" fromWebsite={false} currency="EUR" />);
     expect(screen.queryByRole("button", { name: "Confirm booking" })).not.toBeInTheDocument();
   });
 
   it("reinstates a cancelled booking as an inquiry", async () => {
     const fetchMock = serve(Response.json({}));
     const user = userEvent.setup();
-    render(<BookingActions id={ID} status="cancelled" currency="EUR" />);
+    render(<BookingActions id={ID} status="cancelled" fromWebsite={false} currency="EUR" />);
 
     expect(screen.queryByRole("button", { name: "Cancel booking" })).not.toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Reinstate as inquiry" }));
 
     await waitFor(() => expect(refresh).toHaveBeenCalled());
+    // Its own action (GitLab #135), not a status written by hand.
     expect(fetchMock).toHaveBeenCalledWith(
-      `/api/bookings/${ID}`,
-      expect.objectContaining({ body: JSON.stringify({ status: "inquiry" }) }),
+      `/api/bookings/${ID}/reinstate`,
+      expect.objectContaining({ method: "POST" }),
     );
+  });
+
+  it("offers no hand confirm for a request from the website: it is accepted", () => {
+    render(<BookingActions id={ID} status="inquiry" fromWebsite currency="EUR" />);
+    expect(screen.queryByRole("button", { name: "Confirm booking" })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Accept and reserve" })).toBeInTheDocument();
+  });
+
+  it("says why a booking can't be reinstated while money is held", async () => {
+    serve(
+      Response.json(
+        {
+          error: {
+            code: "validation_failed",
+            message: "Validation failed.",
+            fields: {
+              status: [
+                "cannot be reinstated while money is held: refund it first, or make a new booking",
+              ],
+            },
+          },
+        },
+        { status: 422 },
+      ),
+    );
+    const user = userEvent.setup();
+    render(<BookingActions id={ID} status="cancelled" fromWebsite={false} currency="EUR" />);
+    await user.click(screen.getByRole("button", { name: "Reinstate as inquiry" }));
+
+    await waitFor(() => expect(toastError).toHaveBeenCalled());
+    const [error, title] = vi.mocked(toastError).mock.calls[0]!;
+    expect(title).toBe("Could not reinstate");
+    expect((error as Error).message).toBe(
+      "Cannot be reinstated while money is held: refund it first, or make a new booking",
+    );
+    expect(refresh).not.toHaveBeenCalled();
   });
 });

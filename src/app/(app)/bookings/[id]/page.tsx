@@ -132,7 +132,12 @@ export default async function BookingPage({ params }: PageProps<"/bookings/[id]"
             ) : null}
           </div>
         ) : null}
-        <BookingActions id={booking.id} status={booking.status} currency={booking.currency} />
+        <BookingActions
+          id={booking.id}
+          status={booking.status}
+          fromWebsite={booking.source === "website"}
+          currency={booking.currency}
+        />
       </div>
 
       <div className="grid gap-4 md:grid-cols-2">

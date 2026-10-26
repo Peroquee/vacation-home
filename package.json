@@ -27,6 +27,7 @@
     "studio": "prisma studio",
     "seed": "tsx prisma/seed.ts",
     "guests:repurge": "tsx scripts/guests-repurge.ts",
+    "bookings:check": "tsx scripts/bookings-check.ts",
     "tokens:rotate": "tsx scripts/tokens-rotate.ts",
     "audit": "node scripts/audit.mjs",
     "db:generate": "prisma generate",
