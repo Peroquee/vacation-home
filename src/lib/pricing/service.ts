@@ -3,6 +3,8 @@
  * Season writes run under the property's lock, so two edits cannot both
  * pass the overlap check.
  */
+import "server-only";
+
 import type { Prisma, Property, PropertySeason } from "@/generated/prisma/client";
 import { withPropertyLock } from "@/lib/availability/service";
 import { db, type DbClient } from "@/lib/db";

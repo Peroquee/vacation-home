@@ -7,6 +7,8 @@
  * one is listed. The services ask first, for a clear answer, and the
  * triggers settle a race.
  */
+import "server-only";
+
 import type { SiteLegal } from "@/generated/prisma/client";
 import { db } from "@/lib/db";
 import { raisedByDatabase } from "@/lib/db-errors";

@@ -44,7 +44,7 @@ export default defineConfig({
     // Fresh database, the review seed, then the production build, as e2e.
     // UX_REUSE_SERVER=1 skips all three and uses a server already running on
     // the port (seeded the same way), for quick reruns of the spec alone.
-    command: `node e2e/reset-database.mjs && npx tsx scripts/ux/seed.ts && npm run build && npm start -- --port ${PORT}`,
+    command: `node e2e/reset-database.mjs && npx tsx --import ./scripts/server-only-hook.mjs scripts/ux/seed.ts && npm run build && npm start -- --port ${PORT}`,
     url: baseURL,
     reuseExistingServer: Boolean(process.env.UX_REUSE_SERVER),
     timeout: 300_000,

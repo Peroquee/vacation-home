@@ -10,6 +10,8 @@
  * The configuration is a function so that it is read per request, never at
  * import: `next build` imports this module without any configuration.
  */
+import "server-only";
+
 import { PrismaAdapter } from "@auth/prisma-adapter";
 import NextAuth, { type NextAuthConfig } from "next-auth";
 import type { Adapter } from "next-auth/adapters";

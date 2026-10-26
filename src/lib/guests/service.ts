@@ -1,4 +1,6 @@
 /** Guest persistence. Server-side only. */
+import "server-only";
+
 import type { Guest } from "@/generated/prisma/client";
 import { clearWindows } from "@/lib/availability/cache";
 import { db } from "@/lib/db";

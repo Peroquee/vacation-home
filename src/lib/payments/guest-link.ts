@@ -8,6 +8,8 @@
  * emails each carry their own, GitLab #111). The booking's reference never
  * opens anything: it is printed on bank transfers.
  */
+import "server-only";
+
 import { createHash, randomBytes } from "node:crypto";
 
 import { db } from "@/lib/db";

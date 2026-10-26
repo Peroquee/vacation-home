@@ -13,6 +13,8 @@
  * check-then-write, so the check can report *what* is in the way (a 409
  * naming the conflict) and stays true until the write commits.
  */
+import "server-only";
+
 import type { Booking, Block } from "@/generated/prisma/client";
 import { type CalendarDate, fromUtcDate, toUtcDate } from "@/lib/calendar-date";
 import { isUuid } from "@/lib/api";

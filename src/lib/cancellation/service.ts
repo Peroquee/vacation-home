@@ -5,6 +5,8 @@
  * `depositNonRefundable` and sets the deposit to the one the guest is then
  * asked for (src/lib/bookings/hold.ts). Server-side only.
  */
+import "server-only";
+
 import type { Prisma } from "@/generated/prisma/client";
 import { db, type DbClient } from "@/lib/db";
 import { getPaymentTerms } from "@/lib/payment-terms/service";

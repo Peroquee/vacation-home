@@ -3,11 +3,66 @@ import nextVitals from "eslint-config-next/core-web-vitals";
 import nextTs from "eslint-config-next/typescript";
 import prettier from "eslint-config-prettier/flat";
 
+/**
+ * Keeps server code out of browser bundles (GitLab #148): a "use client"
+ * file may not import zod, Prisma's client, the validated environment, the
+ * database or Node's built-ins. Type-only imports are fine: they vanish in
+ * the build. What a client file reaches through other modules is caught by
+ * `import "server-only"` in the server modules, at build time.
+ */
+const SERVER_ONLY_IMPORTS = [
+  /^zod(\/|$)/,
+  /^@prisma\//,
+  /^@\/generated\/prisma(\/|$)/,
+  /^@\/env$/,
+  /^@\/lib\/db$/,
+  /^@\/auth$/,
+  /^node:/,
+];
+const noServerImportsInClient = {
+  meta: {
+    type: "problem",
+    messages: {
+      server:
+        'A "use client" file must not import {{source}}: it is server code, and would reach the browser bundle. Fetch it through an API route or pass it in as props.',
+    },
+    schema: [],
+  },
+  create(context) {
+    const client = context.sourceCode.ast.body.some(
+      (node) => node.type === "ExpressionStatement" && node.directive === "use client",
+    );
+    if (!client) return {};
+    const check = (node, source, typeOnly) => {
+      if (typeOnly || typeof source !== "string") return;
+      if (SERVER_ONLY_IMPORTS.some((pattern) => pattern.test(source))) {
+        context.report({ node, messageId: "server", data: { source } });
+      }
+    };
+    const typeOnly = (node) =>
+      node.importKind === "type" ||
+      node.exportKind === "type" ||
+      (node.specifiers?.length > 0 &&
+        node.specifiers.every((s) => s.importKind === "type" || s.exportKind === "type"));
+    return {
+      ImportDeclaration: (node) => check(node, node.source.value, typeOnly(node)),
+      ExportNamedDeclaration: (node) =>
+        node.source && check(node, node.source.value, typeOnly(node)),
+      ExportAllDeclaration: (node) => check(node, node.source.value, node.exportKind === "type"),
+      ImportExpression: (node) => check(node, node.source.value, false),
+    };
+  },
+};
+
 const eslintConfig = defineConfig([
   ...nextVitals,
   ...nextTs,
   // Switches off every rule that would fight Prettier. Must stay after the presets.
   prettier,
+  {
+    plugins: { local: { rules: { "no-server-imports-in-client": noServerImportsInClient } } },
+    rules: { "local/no-server-imports-in-client": "error" },
+  },
   {
     rules: {
       // The environment is read and validated in exactly one module; everything

@@ -1,6 +1,7 @@
 import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 
 import { defineConfig } from "vitest/config";
 
@@ -28,7 +29,13 @@ if (!new URL(process.env.TEST_DATABASE_URL).searchParams.has("options")) {
 const TEST_DATABASE_URL = process.env.TEST_DATABASE_URL;
 
 export default defineConfig({
-  resolve: { tsconfigPaths: true },
+  resolve: {
+    tsconfigPaths: true,
+    // As in vitest.config.mts (GitLab #148).
+    alias: {
+      "server-only": fileURLToPath(new URL("./node_modules/server-only/empty.js", import.meta.url)),
+    },
+  },
   test: {
     include: ["src/**/*.db.test.ts", "scripts/**/*.db.test.ts"],
     environment: "node",

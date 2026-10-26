@@ -1052,6 +1052,16 @@ Checked in CI (GitLab #97), so it does not erode unnoticed:
   `lib/*/values.ts`, not the schemas), the dashboard's charts load as their
   own chunk ([`src/components/charts/lazy.tsx`](src/components/charts/lazy.tsx)),
   and so does the error tracker.
+- **No server code in the browser** (GitLab #148). A `"use client"` file may
+  not import zod, Prisma's client, `@/env`, `@/lib/db`, `@/auth` or `node:*`;
+  type-only imports are fine. A local lint rule in
+  [`eslint.config.mjs`](eslint.config.mjs) enforces that. What a client file
+  reaches through other modules is caught at build time: the database,
+  environment, auth, guest-link and `lib/*/service.ts` modules
+  `import "server-only"`. Outside Next, the tests alias it to its empty
+  entry, and the maintenance scripts load
+  [`scripts/server-only-hook.mjs`](scripts/server-only-hook.mjs), which
+  does the same.
 - **Lighthouse** on the calendar and the dashboard, signed in and with
   realistic data, under Lighthouse's mobile throttling:
   `npm run test:lighthouse` ([`e2e/lighthouse.spec.ts`](e2e/lighthouse.spec.ts)).

@@ -11,6 +11,8 @@
  * imports route modules to collect page data, and must not need DATABASE_URL
  * to do so.
  */
+import "server-only";
+
 import { PrismaPg } from "@prisma/adapter-pg";
 
 import { env } from "@/env";

@@ -1,3 +1,5 @@
+import { fileURLToPath } from "node:url";
+
 import { configDefaults, defineConfig } from "vitest/config";
 
 export default defineConfig({
@@ -5,6 +7,12 @@ export default defineConfig({
     // Reads `paths` from tsconfig.json, so `@/...` resolves exactly as it does
     // in the app rather than through a second alias list that could drift.
     tsconfigPaths: true,
+    // Server modules import "server-only" (GitLab #148), whose default entry
+    // throws to keep them out of browser bundles; tests run them on the
+    // server side, so it resolves to its empty entry, as Next does.
+    alias: {
+      "server-only": fileURLToPath(new URL("./node_modules/server-only/empty.js", import.meta.url)),
+    },
   },
   test: {
     // Unit tests sit next to the code they cover, also the shell scripts'
