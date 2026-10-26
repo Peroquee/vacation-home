@@ -16,3 +16,4 @@ Bring in many transactions at once from a CSV file, such as a bank statement.
 ## What if …
 
 - **… the amounts look wrong?** Check whether the file uses a comma or a point for decimals, and choose the matching format.
+- **… a row with a negative income is refused?** That is a refund. Refunds are recorded on their booking (**Record payment**), not imported.

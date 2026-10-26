@@ -597,7 +597,10 @@ die geprüften Zeilen an und importieren Sie. Zeilen mit Problemen werden mit
 ihrer Zeilennummer aufgeführt und ausgelassen; mögliche Doppel (gleiches
 Datum, gleicher Betrag und gleiche Beschreibung wie ein vorhandener Eintrag)
 werden übersprungen, außer Sie haken sie an. Eine hier exportierte Datei
-lässt sich wieder importieren, ohne etwas doppelt anzulegen.
+lässt sich wieder importieren, ohne etwas doppelt anzulegen. Eine
+Erstattung wird als negative Einnahme exportiert (`-20,00`); eine solche
+Zeile weist der Import ab, denn Erstattungen werden bei ihrer Buchung
+erfasst.
 
 **Einnahmen aus Buchungen** füllen das Kassenbuch automatisch: Jede
 bestätigte Buchung wird zu Einnahmen (Unterkunft, Reinigungsgebühr und
