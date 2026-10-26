@@ -129,6 +129,18 @@ services:
       WEBHOOK_ERROR_URL: ${BACKUP_FAILURE_URL:-**None**}
     volumes:
       - ${BACKUP_HOST_DIR:-./backups}:/backups
+    # Healthy while the newest dump is under 26 hours old (GitLab #145). The
+    # image updates last/<db>-latest.sql.gz only after a dump succeeded; its
+    # own check only asks whether the scheduler answers. With a
+    # BACKUP_SCHEDULE rarer than daily, raise BACKUP_HEALTH_MAX_AGE_MIN.
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - find -L /backups/last -name '*-latest.sql.gz' -mmin -${BACKUP_HEALTH_MAX_AGE_MIN:-1560} | grep -q .
+      interval: 10m
+      timeout: 10s
+      retries: 1
+      start_period: 30m
     depends_on:
       db:
         condition: service_healthy
@@ -157,6 +169,16 @@ services:
       - app
     # Once at start, then every 24 hours.
     command: ["sh", "-c", "while :; do /opt/backup/receipts-mirror.sh; sleep 86400; done"]
+    # Healthy while the last run, under 26 hours ago, succeeded (GitLab #145):
+    # receipts-mirror.sh records each result in .last-run.
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - grep -qs '^ok ' /backups/receipts/.last-run && find /backups/receipts/.last-run -mmin -1560 | grep -q .
+      interval: 10m
+      timeout: 10s
+      retries: 1
+      start_period: 30m
 
 volumes:
   db-data:

@@ -14,7 +14,10 @@
 #   Both need root: run as root, or with sudo that asks no password
 #   (`sudo -n`); otherwise it stops and prints the commands to run.
 # - Network share (NFS, SMB): only checked, since ownership is set on the
-#   NAS. A missing folder stops it; a folder 999 cannot write gets a warning.
+#   NAS. A missing folder stops it. Unless its owner, group or mode already
+#   let 999 write, it writes and removes a test file as 999 in a container
+#   (alpine, as the receipts backup uses), since the NAS may map owners and
+#   modes differently; a folder 999 cannot write stops it (GitLab #145).
 #
 # BACKUP_UID (default 999) is for tests.
 
@@ -87,10 +90,20 @@ if $network; then
   if { [ "$group" = "$uid" ] && (( (8#$mode & 8#020) != 0 )); } || (( (8#$mode & 8#002) != 0 )); then
     exit 0
   fi
-  echo "WARNING: the backup folder $dir (network share) belongs to user $owner," >&2
-  echo "  and user 999 may not be able to write to it. Backups fail until it is" >&2
-  echo "  fixed on the NAS: owner 999:999, as in docs/backup-and-restore.md, 1.2." >&2
-  exit 0
+  if $dry_run; then
+    echo "    [dry-run] would test writing to it as user $uid (docker run alpine:3.24)"
+    exit 0
+  fi
+  echo "    testing that user $uid can write to the backup folder $dir (network share)"
+  if docker run --rm --user "$uid:$uid" -v "$(cd "$dir" && pwd -P):/check" alpine:3.24 \
+    sh -c 'f=/check/.write-test.$$ && touch "$f" && rm -f "$f"'; then
+    exit 0
+  fi
+  echo "The backup folder $dir is on a network share (owner $owner, mode $mode)," >&2
+  echo "  and user 999 cannot write to it, so every backup would fail. Fix it on" >&2
+  echo "  the NAS: owner 999:999, as in docs/backup-and-restore.md, 1.2. Then" >&2
+  echo "  deploy again." >&2
+  exit 1
 fi
 
 echo "    giving the backup folder $dir to the backup services (user 999)"
