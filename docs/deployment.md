@@ -510,8 +510,15 @@ log shows the deploy script's output.
 
 ## 12. Rolling back
 
+A deploy whose new version does not become ready within two minutes goes
+back by itself: it starts the build that ran before, checks that it is
+ready, and fails with "Deploy of … FAILED: it did not become ready. … is
+running again." The new version's migrations stay applied (the rule in step
+10 keeps that safe). Look at `docker compose logs --tail 100 app` to see why
+it failed.
+
 The last five builds stay on the server. To go back to the version before
-the last deploy, run the command the deploy printed at the end, or:
+the last deploy by hand, run the command the deploy printed at the end, or:
 
 ```bash
 docker images vacation-home                                   # lists the kept builds by commit; "current" is the running one

@@ -250,8 +250,24 @@ if $dry_run || exists "$target"; then
 fi
 change sql "ALTER DATABASE \"$staging\" RENAME TO \"$target\""
 
+# Production's app does not migrate on start (development's does): the
+# tools image of the running version brings an older backup's schema up to
+# the code before the app sees it (GitLab #141).
+production=false
+grep -qs '^COMPOSE_FILE=.*compose\.prod\.yml' .env && production=true
+
+if $live && $production; then
+  step "Applying the running version's migrations to the restored database"
+  on_failure="The restored database is in place as '$target', but its migrations failed and the app is stopped. Fix what the output above says, then: docker compose run --rm migrate && docker compose start app"
+  change compose run --rm migrate
+fi
+
 if $live; then
-  step "Starting the app again (it applies any newer migrations on start)"
+  if $production; then
+    step "Starting the app again"
+  else
+    step "Starting the app again (in development it applies any newer migrations on start)"
+  fi
   on_failure="The restored database is in place as '$target'; the app did not start. Try: docker compose start app"
   change compose start app
 fi
@@ -265,7 +281,7 @@ if $live; then
   printf '\nRestore finished. Check the app in the browser.\n'
   if [ -n "$back_file" ]; then
     printf '\nERASE THESE GUESTS AGAIN NOW, before anyone uses the app:\n'
-    if grep -qs '^COMPOSE_FILE=.*compose\.prod\.yml' .env; then
+    if $production; then
       # Production: the app image has no npm scripts; the tools image does,
       # and needs the saved ids mounted in.
       printf '  docker compose run --rm -v "$PWD/%s:/app/%s:ro" migrate npm run guests:repurge -- %s\n' \
