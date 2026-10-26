@@ -587,8 +587,16 @@ werden übersprungen, außer Sie haken sie an. Eine hier exportierte Datei
 lässt sich wieder importieren, ohne etwas doppelt anzulegen.
 
 **Einnahmen aus Buchungen** füllen das Kassenbuch automatisch: Jede
-bestätigte Buchung wird zu Einnahmen (Unterkunft und Reinigungsgebühr).
-Das wird vorerst über die API eingerichtet (siehe die [README](../README.md#api)).
+bestätigte Buchung wird zu Einnahmen (Unterkunft, Reinigungsgebühr und
+Kurtaxe), zum Anreisetag, und sie folgen der Buchung, wenn sie sich ändert.
+Eine Buchung mit erfassten Zahlungen zählt stattdessen mit ihren Zahlungen.
+Bei einer neuen Unterkunft ist das an. Geschaltet wird es unter
+**Einstellungen → Einnahmen aus Buchungen**; dort wählen Sie auch, was bei
+einer Stornierung mit den Einträgen geschieht (gelöscht oder mit 0
+behalten). Einschalten trägt auch die bisher bestätigten Buchungen ein,
+außer denen, mit denen Sie schon von Hand eine Einnahme verknüpft haben;
+Ausschalten nimmt die automatischen Einträge wieder heraus. Einen Eintrag,
+den Sie von Hand bearbeiten, ändert oder entfernt es nie.
 
 ### Wiederkehrende Kosten {#recurring-costs}
 

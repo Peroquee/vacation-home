@@ -206,8 +206,8 @@ async function main() {
     [cabin, CABIN_LISTING, CABIN_SCENES],
   ] as const) {
     await saveListing(property.id, listingSchema.parse(listing));
-    // Booking income in the ledger, as the settings switch turns it on (it
-    // is off for a new property; PUT /api/properties/[id]/income-automation).
+    // Booking income in the ledger, on as for any property created in the
+    // app (GitLab #137); this seed writes the property directly.
     await db.incomeAutomation.create({ data: { propertyId: property.id, enabled: true } });
     for (const scene of scenes) {
       const { photo } = ok(await addPhoto(property.id, await scenePhoto(scene)), "photo");

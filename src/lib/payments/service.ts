@@ -250,7 +250,9 @@ export async function recordPayment(
 
 /**
  * Takes back a payment recorded by mistake, with its ledger entry (unless
- * that was edited by hand). The booking's status stays as it is.
+ * that was edited by hand). The booking's status stays as it is. Its last
+ * payment gone, the booking's income is the automation's again (GitLab
+ * #137).
  */
 export async function deletePayment(bookingId: string, paymentId: string): Promise<boolean> {
   return db.$transaction(async (tx) => {
@@ -258,6 +260,7 @@ export async function deletePayment(bookingId: string, paymentId: string): Promi
     if (!payment) return false;
     await tx.transaction.deleteMany({ where: { paymentId, detachedAt: null } });
     await tx.bookingPayment.delete({ where: { id: paymentId } });
+    await syncBookingIncome(bookingId, tx, { backfill: true });
     return true;
   });
 }

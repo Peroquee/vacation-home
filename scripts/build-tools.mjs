@@ -12,6 +12,7 @@ await build({
     "scripts/guests-repurge.ts",
     "scripts/tokens-rotate.ts",
     "scripts/bookings-check.ts",
+    "scripts/income-backfill.ts",
   ],
   outdir: "dist-tools",
   outExtension: { ".js": ".mjs" },

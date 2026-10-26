@@ -362,6 +362,35 @@
       },
       "summary": "{days, plural, one {Antwort binnen # Tag} other {Antwort binnen # Tagen}} · {months, plural, one {# Monat aufbewahrt} other {# Monate aufbewahrt}}"
     },
+    "incomeAutomation": {
+      "title": "Einnahmen aus Buchungen",
+      "description": "Bestätigte Buchungen kommen von selbst als Einnahmen ins Kassenbuch: Übernachtung, Reinigung und Kurtaxe, zum Anreisetag. Eine Buchung mit erfassten Zahlungen zählt stattdessen mit ihren Zahlungen.",
+      "edit": "Einnahmen aus Buchungen von {name} bearbeiten",
+      "dialogTitle": "Einnahmen aus Buchungen: {name}",
+      "dialogDescription": "Einträge, die Sie von Hand bearbeiten, werden nie geändert oder entfernt.",
+      "saved": "Einnahmen aus Buchungen gespeichert",
+      "savedAdded": "Eingeschaltet: {count, plural, one {# Eintrag} other {# Einträge}} ins Kassenbuch eingetragen",
+      "savedRemoved": "Ausgeschaltet: {count, plural, one {# Eintrag} other {# Einträge}} aus dem Kassenbuch entfernt",
+      "saveFailed": "Einnahmen aus Buchungen konnten nicht gespeichert werden",
+      "fields": {
+        "enabled": "Buchungen automatisch als Einnahmen ins Kassenbuch eintragen",
+        "onCancel": "Bei Stornierung"
+      },
+      "onCancel": {
+        "delete": "Einträge löschen",
+        "zero": "Einträge mit 0 behalten"
+      },
+      "hints": {
+        "onCancel": "Für Stornierungen ab jetzt.",
+        "switchOn": "Bisher bestätigte Buchungen werden mit eingetragen, außer mit ihnen ist schon eine von Ihnen eingetippte Einnahme verknüpft.",
+        "switchOff": "Die automatisch erstellten Einträge werden aus dem Kassenbuch entfernt; von Ihnen bearbeitete bleiben."
+      },
+      "summary": {
+        "delete": "An · bei Stornierung: Einträge gelöscht",
+        "zero": "An · bei Stornierung: Einträge mit 0 behalten",
+        "off": "Aus: Buchungen kommen nur mit ihren Zahlungen ins Kassenbuch"
+      }
+    },
     "bankDetails": {
       "title": "Bankverbindung",
       "description": "Wohin Gäste ihre Zahlungen überweisen. Gäste sehen sie auf ihrer Buchungsseite mit dem fälligen Betrag, dem Verwendungszweck und einem GiroCode, den ihre Banking-App scannen kann.",

@@ -18,6 +18,7 @@ import { getPaymentTermsFor } from "@/lib/payment-terms/service";
 import { toTermsDto } from "@/lib/payment-terms/terms";
 import { DEFAULT_REQUEST_SETTINGS, getRequestSettingsFor } from "@/lib/booking-requests/settings";
 import { getBankDetailsFor } from "@/lib/payments/bank";
+import { getIncomeAutomationFor } from "@/lib/finance/income-automation";
 import { outboxStatus } from "@/lib/email/outbox";
 import { fromUtcDate } from "@/lib/calendar-date";
 import { toDto as calendarDto } from "@/lib/google/calendar-settings";
@@ -40,6 +41,7 @@ import { BookingRulesSection } from "./booking-rules-section";
 import { PaymentTermsSection } from "./payment-terms-section";
 import { RequestSettingsSection } from "./request-settings-section";
 import { BankDetailsSection } from "./bank-details-section";
+import { IncomeAutomationSection } from "./income-automation-section";
 import { AccessSection } from "./access-section";
 import { EmailSection } from "./email-section";
 import { GoLiveChecklist } from "./go-live-checklist";
@@ -155,6 +157,7 @@ export default async function SettingsPage({ searchParams }: PageProps<"/setting
     paymentTerms,
     requestSettings,
     bankDetails,
+    incomeAutomation,
     legal,
     calendars,
   ] = await Promise.all([
@@ -164,6 +167,7 @@ export default async function SettingsPage({ searchParams }: PageProps<"/setting
     getPaymentTermsFor(active.map((p) => p.id)),
     getRequestSettingsFor(active.map((p) => p.id)),
     getBankDetailsFor(active.map((p) => p.id)),
+    getIncomeAutomationFor(active.map((p) => p.id)),
     getLegal(),
     db.propertyCalendar.count({ where: { outbound: true } }),
   ]);
@@ -283,6 +287,15 @@ export default async function SettingsPage({ searchParams }: PageProps<"/setting
             properties={active.map((p) => ({
               property: { id: p.id, name: p.name },
               details: bankDetails.get(p.id) ?? null,
+            }))}
+          />
+        ) : null}
+
+        {active.length > 0 ? (
+          <IncomeAutomationSection
+            properties={active.map((p) => ({
+              property: { id: p.id, name: p.name },
+              settings: incomeAutomation.get(p.id)!,
             }))}
           />
         ) : null}

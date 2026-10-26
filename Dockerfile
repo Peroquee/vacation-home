@@ -62,7 +62,7 @@ USER node
 # Applies pending migrations; the compose `migrate` service runs this once
 # before each deploy's app starts. The maintenance commands keep their
 # names: `npm run guests:repurge -- <file>`, `npm run tokens:rotate`,
-# `npm run bookings:check`.
+# `npm run bookings:check`, `npm run income:backfill`.
 CMD ["npm", "run", "migrate:deploy"]
 
 FROM node:${NODE_VERSION}-bookworm-slim AS app

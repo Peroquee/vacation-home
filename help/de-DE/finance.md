@@ -4,7 +4,7 @@ guide: finance
 
 # Finanzen
 
-Ihre Einnahmen und Ausgaben, Monat für Monat. Zahlungen, die Sie bei Buchungen erfassen, stehen hier von selbst.
+Ihre Einnahmen und Ausgaben, Monat für Monat. Bestätigte Buchungen stehen hier von selbst (Schalter: **Einstellungen → Einnahmen aus Buchungen**), eine Buchung mit erfassten Zahlungen steht mit ihren Zahlungen da.
 
 ## Häufige Aufgaben
 

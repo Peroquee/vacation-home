@@ -14,6 +14,8 @@ function day(offset: number): string {
 
 test.afterEach(async () => {
   await withE2eDb(async (db) => {
+    // Booking income is on (GitLab #137): bookings have ledger entries.
+    await db.query("DELETE FROM transactions WHERE booking_id IS NOT NULL");
     await db.query("DELETE FROM bookings");
     await db.query("DELETE FROM blocks");
     await db.query("DELETE FROM ical_feeds");

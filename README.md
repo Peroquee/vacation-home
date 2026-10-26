@@ -400,17 +400,26 @@ pageSize, totals: [{ currency, incomeMinor, expenseMinor, netMinor }] }`, where
   per currency, since minor units of different currencies can't be added. A
   repeated parameter (`?categoryId=a&categoryId=b`) counts like a comma list.
 
-- **Income from bookings** (per property, off by default:
-  `GET`/`PUT /api/properties/:id/income-automation` with
-  `{ enabled, onCancel: "delete" | "zero" }`):
-  - When a booking is confirmed, it creates two income entries linked to the
-    booking and marked `generated`. `booking_accommodation` holds the total
-    less the cleaning fee, in "Booking income". `booking_cleaning` holds the
-    cleaning fee, in "Cleaning fees".
-  - Both are dated on the check-in day and follow the booking's amounts and
-    dates. They're never duplicated.
+- **Income from bookings** (per property, on for a new one, switched under
+  Settings → Booking income: `GET`/`PUT /api/properties/:id/income-automation`
+  with `{ enabled, onCancel: "delete" | "zero" }`; the `PUT` answers with
+  `added` and `removed`, the entries it created and took out):
+  - When a booking is confirmed, it creates up to three income entries linked
+    to the booking and marked `generated`. `booking_accommodation` holds the
+    total less the cleaning fee and the Kurtaxe, in "Booking income".
+    `booking_cleaning` holds the cleaning fee, in "Cleaning fees".
+    `booking_tourist_tax` holds the Kurtaxe, in "Kurtaxe (durchlaufend)".
+  - They are dated on the check-in day and follow the booking's amounts and
+    dates. They're never duplicated. A booking with payments counts with the
+    payments' entries instead; when its last payment is deleted, the
+    generated entries come back.
   - Cancelling deletes them, or sets them to zero, per `onCancel`.
-  - Bookings confirmed before the automation was on aren't backfilled.
+  - Switching it on creates the entries of the bookings already confirmed,
+    except those with hand-typed income linked to them; switching it off
+    deletes the generated entries not edited by hand. For the properties that
+    existed before it was on by default (GitLab #137),
+    `npm run income:backfill` does the first (a dry run unless `-- --apply`)
+    and lists hand-typed income linked to no booking, to check for doubles.
   - Editing a generated entry by hand detaches it (`detachedAt` is set) and
     the response carries `warning.code: "detached_from_booking"`. From then
     on the automation leaves it alone.
