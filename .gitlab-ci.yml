@@ -233,7 +233,10 @@ deploy:
   resource_group: production
   interruptible: false
   cache: []
-  needs: [lint, audit, typecheck, format, test, e2e, build]
+  # Every check, lighthouse included (GitLab #143): on the serial runner the
+  # job order varies, and a job left out here could fail after the deploy.
+  # scripts/ci.test.ts keeps this list complete.
+  needs: [lint, audit, typecheck, format, test, e2e, lighthouse, build]
   rules:
     - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH && $DEPLOY_HOST && $DEPLOY_SSH_KEY
   before_script:
