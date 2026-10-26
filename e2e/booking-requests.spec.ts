@@ -3,6 +3,7 @@ import { solveChallenge } from "altcha-lib";
 import { deriveKey } from "altcha-lib/algorithms/pbkdf2";
 
 import { withE2eDb } from "./database";
+import { day } from "./dates";
 
 // Booking requests from the public site (GitLab #109): a guest picks a stay
 // and sends a request; it reaches the owner as an inquiry from the website.
@@ -11,13 +12,6 @@ import { withE2eDb } from "./database";
 //
 // Without TRUST_PROXY_HEADERS every visitor shares the request rate limit
 // (10 per 10 minutes), so this file sends fewer than that.
-
-const today = new Date().toISOString().slice(0, 10);
-function day(offset: number): string {
-  const date = new Date(`${today}T00:00:00Z`);
-  date.setUTCDate(date.getUTCDate() + offset);
-  return date.toISOString().slice(0, 10);
-}
 
 test.afterEach(async () => {
   await withE2eDb(async (db) => {

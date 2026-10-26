@@ -1,16 +1,10 @@
 import { type APIRequestContext, expect, test } from "@playwright/test";
 
 import { withE2eDb } from "./database";
+import { day } from "./dates";
 
 // The public availability calendar (GitLab #108): free or not per night,
 // never why, and a price estimate equal to the booking total.
-
-const today = new Date().toISOString().slice(0, 10);
-function day(offset: number): string {
-  const date = new Date(`${today}T00:00:00Z`);
-  date.setUTCDate(date.getUTCDate() + offset);
-  return date.toISOString().slice(0, 10);
-}
 
 test.afterEach(async () => {
   await withE2eDb(async (db) => {

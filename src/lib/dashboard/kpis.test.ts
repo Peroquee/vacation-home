@@ -71,7 +71,8 @@ describe("changes", () => {
 
   it("formats changes in the page's language", () => {
     const german = { ...words, locale: "de-DE" };
-    expect(relativeChange(1125, 1000, true, "year", german)?.text).toBe("+12,5\u00a0%");
+    // Any space before the %: ICU versions differ (GitLab #147).
+    expect(relativeChange(1125, 1000, true, "year", german)?.text).toMatch(/^\+12,5\s%$/);
     expect(pointsChange(0.74, 0.6, "year", german)?.text).toBe("+14 pts");
   });
 });

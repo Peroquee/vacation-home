@@ -2,19 +2,13 @@ import AxeBuilder from "@axe-core/playwright";
 import { type Browser, expect, type Page, test } from "@playwright/test";
 
 import { withE2eDb } from "./database";
+import { day } from "./dates";
 
 // The guests' help on the public pages (GitLab #127): the property page
 // explains how booking works with the property's own terms, the guest's
 // booking page what its status means and what to do next. In the visitor's
 // language, folded in <details> that open by mouse and keyboard alike, and
 // still without a single cookie.
-
-const today = new Date().toISOString().slice(0, 10);
-function day(offset: number): string {
-  const date = new Date(`${today}T00:00:00Z`);
-  date.setUTCDate(date.getUTCDate() + offset);
-  return date.toISOString().slice(0, 10);
-}
 
 test.afterEach(async () => {
   await withE2eDb(async (db) => {

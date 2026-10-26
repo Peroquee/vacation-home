@@ -1,18 +1,12 @@
 import { expect, test } from "@playwright/test";
 
 import { withE2eDb } from "./database";
+import { day, today } from "./dates";
 
 // The cancellation policy (GitLab #116): the deposit is kept when a guest
 // cancels, anything beyond it is refunded; the guest reads that next to the
 // price before requesting. Cancelling frees the dates at once, and the
 // refund is due until the owner records it, which puts it in the ledger.
-
-const today = new Date().toISOString().slice(0, 10);
-function day(offset: number): string {
-  const date = new Date(`${today}T00:00:00Z`);
-  date.setUTCDate(date.getUTCDate() + offset);
-  return date.toISOString().slice(0, 10);
-}
 
 test.afterEach(async () => {
   await withE2eDb(async (db) => {
@@ -71,7 +65,7 @@ test("a guest's cancellation keeps the deposit, frees the dates and refunds the 
     ["balance", 88_000],
   ] as const) {
     const paid = await request.post(`/api/bookings/${booking.id}/payments`, {
-      data: { kind, amountMinor, receivedOn: today },
+      data: { kind, amountMinor, receivedOn: today() },
     });
     expect(paid.status()).toBe(201);
   }

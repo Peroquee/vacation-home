@@ -1,18 +1,12 @@
 import { type APIRequestContext, expect, test } from "@playwright/test";
 
 import { withE2eDb } from "./database";
+import { day } from "./dates";
 
 // Payment recording (GitLab #115): the owner enters bank details, gives the
 // guest a link to their booking - amount, deadline, IBAN, GiroCode - and
 // records the deposit when it arrives, which confirms the booking and
 // enters it in the ledger once.
-
-const today = new Date().toISOString().slice(0, 10);
-function day(offset: number): string {
-  const date = new Date(`${today}T00:00:00Z`);
-  date.setUTCDate(date.getUTCDate() + offset);
-  return date.toISOString().slice(0, 10);
-}
 
 test.afterEach(async () => {
   await withE2eDb(async (db) => {

@@ -614,13 +614,29 @@ app does, and need no database.
 run against a real PostgreSQL: the Compose `db` service, in a database of
 their own (`vacation_home_test`), dropped and re-migrated before each run. They
 cover what only the database can prove: constraints, exact money round-trips,
-dates. They run with the process clock at UTC+14, so a calendar date pushed
-through local time by mistake fails loudly.
+dates. They run with the process clock at UTC+14 and the database sessions in
+that timezone too, so a calendar date pushed through local time by mistake
+fails loudly. Unit tests run at UTC+14 as well.
 
 ```bash
 docker compose up -d db
 npm run test:db
 ```
+
+**Another day** (GitLab #147): `TEST_NOW` starts `Date` at another instant for
+either suite, and the clock moves on from there. A test that leans on the real
+date shows up this way. Before a release, and after adding tests with dates,
+run both at an awkward moment: a month's last UTC hour and a date months
+ahead.
+
+```bash
+TEST_NOW=2026-10-31T23:30:00Z npm test             # the last UTC hour of a month, already November in Berlin
+TEST_NOW=2027-02-15T12:00:00Z npm run test:db      # months ahead: fixed dates in tests run out
+```
+
+Only `Date` is faked. File times and the database's own `now()` stay real, so a
+test that compares those with the app's clock takes its "now" from them (see
+`src/lib/files/store.db.test.ts`).
 
 **End-to-end tests** use [Playwright](https://playwright.dev) and live in
 [`e2e/`](e2e). They need the Compose database running:

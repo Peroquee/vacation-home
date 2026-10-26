@@ -14,7 +14,11 @@ import {
 } from "@/app/api/properties/[id]/ical-export/route";
 import { GET as listFeeds, POST as addFeed } from "@/app/api/properties/[id]/ical-feeds/route";
 import { createBooking } from "@/lib/bookings/service";
+import { addDays, toUtcDate } from "@/lib/calendar-date";
 import { db } from "@/lib/db";
+
+/** `days` after today: the feed only carries what is recent or ahead (GitLab #147). */
+const soon = (days: number) => addDays(new Date().toISOString().slice(0, 10), days);
 
 const ctx = <T extends Record<string, string>>(params: T) => ({ params: Promise.resolve(params) });
 const json = (body: unknown) =>
@@ -99,8 +103,8 @@ describe("the export feed", () => {
     await createBooking({
       propertyId,
       guestId: guest.id,
-      checkIn: "2026-12-01",
-      checkOut: "2026-12-04",
+      checkIn: soon(30),
+      checkOut: soon(33),
       status: "confirmed",
       source: "direct",
       guestCount: 2,
@@ -108,8 +112,8 @@ describe("the export feed", () => {
     await db.block.create({
       data: {
         propertyId,
-        startDate: new Date("2026-12-10"),
-        endDate: new Date("2026-12-12"),
+        startDate: toUtcDate(soon(39)),
+        endDate: toUtcDate(soon(41)),
         reason: "Painting",
       },
     });
@@ -126,8 +130,8 @@ describe("the export feed", () => {
       .getAllSubcomponents("vevent")
       .map((v) => new ICAL.Event(v));
     expect(events.map((e) => [e.summary, e.startDate.toString(), e.endDate.toString()])).toEqual([
-      ["Booked", "2026-12-01", "2026-12-04"],
-      ["Blocked", "2026-12-10", "2026-12-12"],
+      ["Booked", soon(30), soon(33)],
+      ["Blocked", soon(39), soon(41)],
     ]);
     expect(text).not.toMatch(/Ada|Lovelace|example\.test|Painting/);
 

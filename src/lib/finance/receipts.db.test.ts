@@ -4,6 +4,7 @@
  * limit, serving, deleting and the orphan cleanup.
  */
 import { readdirSync } from "node:fs";
+import { stat } from "node:fs/promises";
 
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
 
@@ -13,6 +14,7 @@ import { GET as listReceipts, POST as upload } from "@/app/api/transactions/[id]
 import { env } from "@/env";
 import { toUtcDate } from "@/lib/calendar-date";
 import { db } from "@/lib/db";
+import { storedFilePath } from "@/lib/files/store";
 
 import { readReceiptFile, removeOrphanFiles } from "./receipts";
 
@@ -193,9 +195,12 @@ describe("deleting", () => {
     expect(await db.transactionAttachment.count({ where: { id: receipt.id } })).toBe(0);
 
     // Within the grace period an orphan stays: it may be an upload in progress.
-    await removeOrphanFiles();
+    // Measured from when the file was written, by the file system's clock
+    // (GitLab #147).
+    const written = (await stat(storedFilePath(sha256))).mtime;
+    await removeOrphanFiles({ now: written });
     await expect(readReceiptFile(sha256)).resolves.toBeTruthy();
-    const later = new Date(Date.now() + 2 * 60 * 60_000);
+    const later = new Date(written.getTime() + 2 * 60 * 60_000);
     const result = await removeOrphanFiles({ now: later });
     expect(result.removed).toBeGreaterThanOrEqual(1);
     await expect(readReceiptFile(sha256)).rejects.toThrow();

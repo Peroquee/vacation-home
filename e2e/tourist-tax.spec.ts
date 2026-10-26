@@ -1,17 +1,11 @@
 import { expect, test } from "@playwright/test";
 
 import { withE2eDb } from "./database";
+import { day } from "./dates";
 
 // The Kurtaxe (GitLab #120), on the built server: the owner sets the rules
 // on the property's Prices page, a booking for a family gets its Kurtaxe
 // line, and the Kurtaxe report shows what is owed for it.
-
-const today = new Date().toISOString().slice(0, 10);
-function day(offset: number): string {
-  const date = new Date(`${today}T00:00:00Z`);
-  date.setUTCDate(date.getUTCDate() + offset);
-  return date.toISOString().slice(0, 10);
-}
 
 test.afterEach(async () => {
   await withE2eDb(async (db) => {

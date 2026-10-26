@@ -1,17 +1,11 @@
 import { type APIRequestContext, expect, test } from "@playwright/test";
 
 import { withE2eDb } from "./database";
+import { day } from "./dates";
 
 // Booking rules per property (GitLab #107): set in settings, refused on the
 // public site with a message per field, and only a warning in the owner's
 // own booking form.
-
-const today = new Date().toISOString().slice(0, 10);
-function day(offset: number): string {
-  const date = new Date(`${today}T00:00:00Z`);
-  date.setUTCDate(date.getUTCDate() + offset);
-  return date.toISOString().slice(0, 10);
-}
 
 const RULES = {
   minNights: 3,
