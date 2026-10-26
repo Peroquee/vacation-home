@@ -52,6 +52,8 @@ next-env.d.ts
 # Playwright output
 /test-results/
 /playwright-report/
+# JUnit reports of the CI test jobs (GitLab #149).
+/reports/
 /blob-report/
 # Repeated e2e runs (npm run e2e:flaky)
 /test-results-flaky/

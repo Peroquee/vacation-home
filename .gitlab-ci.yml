@@ -4,11 +4,15 @@
 # pipelines after a merge. A push to a feature branch with no open merge
 # request creates nothing, because no workflow rule matches it.
 
+# The runner takes one job at a time, so a pipeline lasts as long as its jobs
+# together (GitLab #149): the app is built once, before the tests, which
+# start it from the build's output; the four quick checks share one job; and
+# the browser and its system libraries come from caches, not downloads.
 stages:
   - install
   - quality
-  - test
   - build
+  - test
   - deploy
 
 workflow:
@@ -82,7 +86,14 @@ install:
     - <<: *node_modules
       policy: pull-push
   script:
-    - npm ci --prefer-offline --no-audit --no-fund
+    # The installed tree is cached under the lockfile's hash, so a cache hit
+    # is exactly what `npm ci` would produce; only a miss installs.
+    - |
+      if [ -d node_modules ]; then
+        echo "node_modules restored from the cache for this lockfile"
+      else
+        npm ci --prefer-offline --no-audit --no-fund
+      fi
     # A block scalar, because an unquoted script item containing ": " is valid
     # YAML but parses as a map rather than a command string.
     - |
@@ -92,41 +103,63 @@ install:
         exit 1
       fi
 
-lint:
+# Lint, the dependency audit, the type check and formatting: each takes
+# seconds, a job of its own costs more than that in setup. All four run even
+# when one fails, so a single pipeline shows every problem.
+quality:
   stage: quality
   extends: .node
+  # Needs no build output.
+  dependencies: []
   script:
-    - npm run lint
+    - |
+      failed=""
+      npm run lint || failed="$failed lint"
+      # High and critical advisories in production dependencies fail the
+      # pipeline unless reviewed in security/audit-allowlist.json.
+      npm run audit || failed="$failed audit"
+      npm run typecheck || failed="$failed typecheck"
+      npm run format:check || failed="$failed format"
+      if [ -n "$failed" ]; then
+        echo "Failed:$failed"
+        exit 1
+      fi
 
-audit:
-  stage: quality
-  extends: .node
-  script:
-    # High and critical advisories in production dependencies fail the
-    # pipeline unless reviewed in security/audit-allowlist.json.
-    - npm run audit
-
-typecheck:
-  stage: quality
-  extends: .node
-  script:
-    - npm run typecheck
-
-format:
-  stage: quality
-  extends: .node
-  script:
-    - npm run format:check
-
+# Unit tests, then the database tests against a PostgreSQL service of their
+# own: a failure here no longer hides the browser tests' result, which run in
+# their own job. Both suites run even when the first fails.
 test:
   stage: test
   extends: .node
+  dependencies: []
+  services:
+    - name: postgres:16.15
+      alias: postgres
+  variables:
+    POSTGRES_USER: vacation
+    POSTGRES_PASSWORD: vacation
+    POSTGRES_DB: vacation_home
+    TEST_DATABASE_URL: postgresql://vacation:vacation@postgres:5432/vacation_home_test
   script:
-    - npm test
+    - |
+      failed=""
+      npm test -- --reporter=default --reporter=junit --outputFile.junit=reports/unit.xml || failed="$failed unit"
+      npm run test:db -- --reporter=default --reporter=junit --outputFile.junit=reports/db.xml || failed="$failed db"
+      if [ -n "$failed" ]; then
+        echo "Failed:$failed"
+        exit 1
+      fi
+  artifacts:
+    when: always
+    expire_in: 1 week
+    reports:
+      junit: reports/*.xml
 
 e2e:
   stage: test
   extends: .node
+  # The build job's .next: the server starts on it (E2E_PREBUILT).
+  dependencies: [build]
   # The same server version as docker-compose.yml. The harness drops and
   # recreates its own database on it before the run, so no state survives
   # between pipelines.
@@ -142,9 +175,9 @@ e2e:
     POSTGRES_PASSWORD: vacation
     POSTGRES_DB: vacation_home
     E2E_DATABASE_URL: postgresql://vacation:vacation@postgres:5432/vacation_home_e2e
-    TEST_DATABASE_URL: postgresql://vacation:vacation@postgres:5432/vacation_home_test
     E2E_SMTP_HOST: mailpit
     E2E_MAILPIT_URL: http://mailpit:8025
+    E2E_PREBUILT: "1"
     # Inside the project directory so the cache below can carry the browser.
     PLAYWRIGHT_BROWSERS_PATH: "$CI_PROJECT_DIR/.cache/ms-playwright"
   cache:
@@ -160,46 +193,90 @@ e2e:
           - package-lock.json
       paths:
         - .cache/ms-playwright/
+    # The browser's system libraries as Debian packages (about 77 MB, a
+    # minute to download): only the first run of a Playwright version fetches
+    # them. Not Playwright's own image: its 1 GB pull from mcr.microsoft.com
+    # broke off on this network.
+    - key:
+        prefix: playwright-apt
+        files:
+          - package-lock.json
+      paths:
+        - .cache/apt/
+  before_script:
+    - !reference [.node, before_script]
+    # The browser has to match the installed @playwright/test exactly. Debian's
+    # image deletes downloaded packages (docker-clean); kept, they are cached.
+    - |
+      rm -f /etc/apt/apt.conf.d/docker-clean
+      mkdir -p .cache/apt
+      cp .cache/apt/*.deb /var/cache/apt/archives/ 2>/dev/null || true
+      npx playwright install --with-deps chromium
+      cp /var/cache/apt/archives/*.deb .cache/apt/ 2>/dev/null || true
   script:
-    # The browser has to match the installed @playwright/test exactly. On a
-    # cache hit only the system libraries are installed; the Node image ships
-    # neither them nor the browser.
-    - npx playwright install --with-deps chromium
-    # Database tests share this job for its postgres service; each suite
-    # resets its own database, so they do not interfere.
-    - npm run test:db
-    # Builds and starts the app itself (see webServer in playwright.config.ts),
-    # so this does not depend on the build job below.
     - npm run test:e2e
   artifacts:
-    when: on_failure
+    when: always
     expire_in: 1 week
     paths:
       - playwright-report/
       - test-results/
+    reports:
+      junit: reports/playwright.xml
 
 # Lighthouse on the calendar, the dashboard (GitLab #97) and the public
-# property page (GitLab #105): the same setup as e2e (database, browser, a
-# production build), measuring performance under Lighthouse's mobile
+# property page (GitLab #105): the same setup as e2e (database, browser, the
+# build's output), measuring performance under Lighthouse's mobile
 # throttling. Every page must score 90 or more,
 # judged by the median of LIGHTHOUSE_RUNS runs (scores move a few points
 # between identical runs). Reports of every run: lighthouse/.
 lighthouse:
   extends: e2e
+  # It sends no email: no Mailpit, and no SMTP for the app.
+  services:
+    - name: postgres:16.15
+      alias: postgres
   variables:
+    E2E_SMTP_HOST: ""
+    E2E_MAILPIT_URL: ""
     LIGHTHOUSE_RUNS: "3"
+  # e2e keeps the browser caches up to date; this job only reads them.
+  cache:
+    - <<: *npm_store
+      policy: pull
+    - <<: *node_modules
+      policy: pull
+    - key:
+        prefix: playwright
+        files:
+          - package-lock.json
+      paths:
+        - .cache/ms-playwright/
+      policy: pull
+    - key:
+        prefix: playwright-apt
+        files:
+          - package-lock.json
+      paths:
+        - .cache/apt/
+      policy: pull
   script:
-    - npx playwright install --with-deps chromium
     - npm run test:lighthouse
   artifacts:
     when: always
     expire_in: 30 days
     paths:
       - lighthouse/
+    reports:
+      junit: reports/playwright.xml
 
 build:
   stage: build
   extends: .node
+  dependencies: []
+  # No cache of .next/cache: Turbopack's is about 230 MB, and archiving and
+  # restoring it on this runner costs about what it saves (34 s cold, 11 s
+  # warm, measured for GitLab #149).
   script:
     # No environment variables here on purpose: validation runs from
     # src/instrumentation.ts at server boot, not at build time, so a build
@@ -213,9 +290,15 @@ build:
     - node scripts/bundle-report.mjs
   artifacts:
     when: always
-    expire_in: 30 days
+    expire_in: 1 day
+    # For e2e and lighthouse, which start the server on it (`next start`):
+    # without Next's cache and the standalone copy, which only the image uses.
     paths:
       - bundle-report.json
+      - .next/
+    exclude:
+      - .next/cache/**/*
+      - .next/standalone/**/*
 
 # Deploys main to your own server once everything above has passed: over SSH,
 # it runs scripts/deploy/deploy.sh on the Docker host, which builds the new
@@ -236,7 +319,14 @@ deploy:
   # Every check, lighthouse included (GitLab #143): on the serial runner the
   # job order varies, and a job left out here could fail after the deploy.
   # scripts/ci.test.ts keeps this list complete.
-  needs: [lint, audit, typecheck, format, test, e2e, lighthouse, build]
+  needs:
+    - quality
+    - test
+    - e2e
+    - lighthouse
+    # Only that it passed: the deploy builds on the server, not from here.
+    - job: build
+      artifacts: false
   rules:
     - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH && $DEPLOY_HOST && $DEPLOY_SSH_KEY
   before_script:
