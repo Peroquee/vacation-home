@@ -364,6 +364,35 @@
       },
       "summary": "{days, plural, one {answer within # day} other {answer within # days}} · {months, plural, one {kept # month} other {kept # months}}"
     },
+    "incomeAutomation": {
+      "title": "Booking income",
+      "description": "Confirmed bookings enter the ledger as income by themselves: the stay, the cleaning fee and the Kurtaxe, dated on the check-in day. A booking with payments recorded counts with its payments instead.",
+      "edit": "Edit the booking income of {name}",
+      "dialogTitle": "Booking income: {name}",
+      "dialogDescription": "Entries you edit by hand are never changed or removed.",
+      "saved": "Booking income saved",
+      "savedAdded": "Booking income switched on: {count, plural, one {# entry} other {# entries}} added to the ledger",
+      "savedRemoved": "Booking income switched off: {count, plural, one {# entry} other {# entries}} taken out of the ledger",
+      "saveFailed": "Could not save the booking income",
+      "fields": {
+        "enabled": "Enter bookings in the ledger as income automatically",
+        "onCancel": "When a booking is cancelled"
+      },
+      "onCancel": {
+        "delete": "Delete its entries",
+        "zero": "Keep its entries at 0"
+      },
+      "hints": {
+        "onCancel": "For cancellations from now on.",
+        "switchOn": "Bookings confirmed so far are added too, unless income you typed in yourself is linked to them.",
+        "switchOff": "The entries made automatically are taken out of the ledger; those you edited stay."
+      },
+      "summary": {
+        "delete": "On · cancelled: entries deleted",
+        "zero": "On · cancelled: entries kept at 0",
+        "off": "Off: bookings enter the ledger only with their payments"
+      }
+    },
     "bankDetails": {
       "title": "Bank details",
       "description": "Where guests transfer their payments to. Guests see them on their booking page with the amount due, the reference to quote and a GiroCode their banking app can scan.",

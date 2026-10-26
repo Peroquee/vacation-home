@@ -7,6 +7,7 @@
     "migrate:deploy": "node node_modules/prisma/build/index.js migrate deploy",
     "guests:repurge": "node dist-tools/guests-repurge.mjs",
     "tokens:rotate": "node dist-tools/tokens-rotate.mjs",
-    "bookings:check": "node dist-tools/bookings-check.mjs"
+    "bookings:check": "node dist-tools/bookings-check.mjs",
+    "income:backfill": "node dist-tools/income-backfill.mjs"
   }
 }

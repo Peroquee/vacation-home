@@ -21,6 +21,8 @@ Everything you set up once: your homes, rules, payments, emails, the legal pages
 
 **Give someone access:** under **Access**, enter their Google address.
 
+**Bookings as income:** under **Booking income**, choose **Edit** next to the home. With "Enter bookings in the ledger as income automatically" on (as it is for a new home), every confirmed booking is income in Finance. Choose what happens to its entries when a booking is cancelled.
+
 ## Good to know
 
 - **Deposit non-refundable** (in the payment terms): when a guest cancels, you keep the deposit; anything beyond it is refunded.
@@ -28,5 +30,7 @@ Everything you set up once: your homes, rules, payments, emails, the legal pages
 - A home's **web address** is the name of its public page, e.g. `/stay/lake-house`. Only lower-case letters, digits and hyphens.
 
 ## What if …
+
+- **… Finance shows too little income?** Look under **Booking income**: if it is off for a home, its bookings count only with the payments you record. Switching it on adds the bookings confirmed so far too, except those you already linked income to by hand.
 
 - **… someone can't sign in?** Add their address under **Access**. While the app's Google sign-in is still in testing, the account must also be a test user at Google.

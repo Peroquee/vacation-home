@@ -21,6 +21,8 @@ Alles, was einmal eingerichtet wird: Ihre Unterkünfte, Regeln, Zahlungen, E-Mai
 
 **Jemandem Zugang geben:** unter **Zugang** die Google-Adresse eintragen.
 
+**Buchungen als Einnahmen:** Wählen Sie unter **Einnahmen aus Buchungen** bei der Unterkunft **Bearbeiten**. Ist „Buchungen automatisch als Einnahmen ins Kassenbuch eintragen“ an (wie bei einer neuen Unterkunft), ist jede bestätigte Buchung eine Einnahme unter Finanzen. Wählen Sie, was bei einer Stornierung mit ihren Einträgen geschieht.
+
 ## Gut zu wissen
 
 - **Anzahlung nicht erstattbar** (bei den Zahlungsbedingungen): Storniert der Gast, behalten Sie die Anzahlung; alles darüber hinaus wird erstattet.
@@ -28,5 +30,7 @@ Alles, was einmal eingerichtet wird: Ihre Unterkünfte, Regeln, Zahlungen, E-Mai
 - **Webadresse** einer Unterkunft: so heißt ihre öffentliche Seite, z. B. `/stay/haus-am-see`. Nur Kleinbuchstaben, Ziffern und Bindestriche.
 
 ## Was tun, wenn …
+
+- **… unter Finanzen zu wenig Einnahmen stehen?** Sehen Sie unter **Einnahmen aus Buchungen** nach: Ist es für eine Unterkunft aus, zählen ihre Buchungen nur mit den Zahlungen, die Sie erfassen. Einschalten trägt auch die bisher bestätigten Buchungen ein, außer denen, mit denen Sie schon von Hand eine Einnahme verknüpft haben.
 
 - **… sich jemand nicht anmelden kann?** Tragen Sie die Adresse unter **Zugang** ein. Ist die Google-Anmeldung noch im Testmodus, muss das Konto bei Google auch als Testnutzer eingetragen sein.

@@ -194,6 +194,24 @@ describe("the ledger", () => {
     expect(await status(id)).toBe("confirmed");
     expect(await deletePayment(id, deposit.payment.id)).toBe(false);
   });
+
+  it("gives the booking its generated income back when its last payment is taken back (GitLab #137)", async () => {
+    const { id } = await booking(day(60), "confirmed");
+    const first = await pay(id, { amountMinor: 22_000 });
+    const second = await pay(id, { amountMinor: 30_000, receivedOn: day(2) });
+    if (!("payment" in first) || !("payment" in second)) throw new Error("not recorded");
+
+    // One payment left: its entry alone is the income.
+    await deletePayment(id, second.payment.id);
+    expect(await ledger(id)).toEqual(["income booking_income 22000"]);
+
+    // None left: the automation's entries are back, once each.
+    await deletePayment(id, first.payment.id);
+    expect(await ledger(id)).toEqual([
+      "income booking_income 100000 generated",
+      "income cleaning_fees 10000 generated",
+    ]);
+  });
 });
 
 describe("the guest's link", () => {

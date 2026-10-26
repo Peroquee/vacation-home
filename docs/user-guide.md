@@ -524,8 +524,14 @@ already there) are skipped unless you tick them. A file exported here
 imports again without creating anything twice.
 
 **Booking income** fills the ledger automatically: each confirmed booking
-becomes income entries (accommodation and cleaning fee). It is set up
-through the API for now (see the [README](../README.md#api)).
+becomes income entries (accommodation, cleaning fee and Kurtaxe), dated on
+the check-in day, and they follow the booking when it changes. A booking
+with payments recorded counts with its payments instead. It is on for a new
+home. Switch it under **Settings → Booking income**, where you also choose
+what happens to the entries of a cancelled booking (deleted, or kept at 0).
+Switching it on adds the bookings confirmed so far too, except those you
+already linked income to by hand; switching it off takes the automatic
+entries out again. An entry you edit by hand is never changed or removed.
 
 ### Recurring costs
 

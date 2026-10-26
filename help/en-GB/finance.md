@@ -4,7 +4,7 @@ guide: finance
 
 # Finance
 
-Your income and expenses, month by month. Payments you record on bookings appear here by themselves.
+Your income and expenses, month by month. Confirmed bookings appear here by themselves (switch: **Settings → Booking income**), and a booking with payments recorded appears with its payments.
 
 ## Common tasks
 

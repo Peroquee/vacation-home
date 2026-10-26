@@ -159,12 +159,17 @@ describe("generating income", () => {
     ]);
   });
 
-  it("does not backfill a booking confirmed before automation was on", async () => {
+  it("brings in a booking confirmed while it was off, when switched on (GitLab #137)", async () => {
     await automate("delete", false);
     const booking = await book();
-    await automate();
-    await updateBooking(booking.id, { checkOut: "2026-11-05" });
     expect(await entries(booking.id)).toEqual([]);
+    await automate();
+    expect(await summary(booking.id)).toHaveLength(2);
+    await updateBooking(booking.id, { checkOut: "2026-11-05" });
+    expect(await summary(booking.id)).toEqual([
+      ["booking_accommodation", "booking_income", 400_00],
+      ["booking_cleaning", "cleaning_fees", 40_00],
+    ]);
   });
 });
 

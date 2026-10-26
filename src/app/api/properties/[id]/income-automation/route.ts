@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 import { isUuid, notFound, parseBody } from "@/lib/api";
-import { db } from "@/lib/db";
+import { getIncomeAutomation, setIncomeAutomation } from "@/lib/finance/income-automation";
 
 type Context = RouteContext<"/api/properties/[id]/income-automation">;
 
@@ -11,40 +11,30 @@ const settingsSchema = z.strictObject({
   onCancel: z.enum(["delete", "zero"]).default("delete"),
 });
 
-const OFF = { enabled: false, onCancel: "delete" as const };
-
 /**
  * Whether confirmed bookings of the property create their income entries:
- * `{ enabled, onCancel: "delete" | "zero" }`. Off unless turned on.
+ * `{ enabled, onCancel: "delete" | "zero" }`. On for a new property.
  */
 export async function GET(_request: Request, { params }: Context) {
   const { id } = await params;
   if (!isUuid(id)) return notFound("Property");
-  const property = await db.property.findUnique({
-    where: { id },
-    select: { incomeAutomation: { select: { enabled: true, onCancel: true } } },
-  });
-  if (!property) return notFound("Property");
-  return Response.json(property.incomeAutomation ?? OFF);
+  const settings = await getIncomeAutomation(id);
+  if (!settings) return notFound("Property");
+  return Response.json(settings);
 }
 
 /**
- * Turns income automation on or off. It applies to bookings confirmed or
- * changed from then on; existing bookings are not backfilled, so entries
- * already typed in by hand are never doubled.
+ * Turns income automation on or off (GitLab #137). On, the bookings already
+ * confirmed get their entries too, unless hand-typed income is linked to
+ * them; off, the generated entries nobody edited go. Answers the settings
+ * with `added` and `removed`, the entries created and taken out.
  */
 export async function PUT(request: Request, { params }: Context) {
   const { id } = await params;
   if (!isUuid(id)) return notFound("Property");
   const body = await parseBody(request, settingsSchema);
   if ("response" in body) return body.response;
-  const property = await db.property.findUnique({ where: { id }, select: { id: true } });
-  if (!property) return notFound("Property");
-  const settings = await db.incomeAutomation.upsert({
-    where: { propertyId: id },
-    create: { propertyId: id, ...body.data },
-    update: body.data,
-    select: { enabled: true, onCancel: true },
-  });
-  return Response.json(settings);
+  const result = await setIncomeAutomation(id, body.data);
+  if (!result) return notFound("Property");
+  return Response.json(result);
 }

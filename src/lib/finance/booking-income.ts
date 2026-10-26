@@ -8,10 +8,12 @@
  * - `booking_cleaning`: the cleaning fee, in "Cleaning fees";
  * - `booking_tourist_tax`: the Kurtaxe, in the pass-through "Kurtaxe
  *   (durchlaufend)", which is not revenue (GitLab #120).
- * They are created when the booking is confirmed (bookings confirmed before
- * the automation was on are not backfilled), are dated on the check-in day,
- * and follow the booking's amounts and dates. A part worth nothing (no
- * cleaning fee) has no entry.
+ * They are created when the booking is confirmed, are dated on the check-in
+ * day, and follow the booking's amounts and dates. A part worth nothing (no
+ * cleaning fee) has no entry. Bookings confirmed while the automation was
+ * off get theirs when it is switched on, or by `npm run income:backfill`
+ * (GitLab #137, ./income-automation.ts), unless income typed in by hand is
+ * already linked to them.
  *
  * When the booking is cancelled (or turned back into an inquiry), its
  * entries are deleted, or kept at zero, as the property's setting says.
@@ -66,8 +68,18 @@ export function bookingIncomeParts(booking: {
 export async function syncBookingIncome(
   bookingId: string,
   tx: DbClient,
-  /** The write confirmed it (created confirmed, or confirmed it now). */
-  { justConfirmed = false }: { justConfirmed?: boolean } = {},
+  {
+    justConfirmed = false,
+    backfill = false,
+  }: {
+    /** The write confirmed it (created confirmed, or confirmed it now). */
+    justConfirmed?: boolean;
+    /**
+     * Create the entries of a booked booking that has none (switched on,
+     * or its last payment taken back), unless hand-typed income is linked.
+     */
+    backfill?: boolean;
+  } = {},
 ): Promise<void> {
   const booking = await tx.booking.findUnique({
     where: { id: bookingId },
@@ -107,10 +119,12 @@ export async function syncBookingIncome(
     return;
   }
 
-  // Entries are created on confirmation. A booking confirmed before the
-  // automation was turned on gets none when edited later: its income may
-  // well have been entered by hand already.
-  if (!justConfirmed && entries.length === 0) return;
+  // Entries are created on confirmation, or by a backfill. A booking
+  // confirmed while the automation was off gets none when edited later: its
+  // income may well have been entered by hand already.
+  if (!justConfirmed && entries.length === 0) {
+    if (!backfill || (await hasHandIncome(tx, bookingId))) return;
+  }
 
   const parts = bookingIncomeParts(booking);
   for (const kind of Object.keys(CATEGORY) as GeneratedEntry[]) {
@@ -147,4 +161,17 @@ export async function syncBookingIncome(
       });
     }
   }
+}
+
+/**
+ * Whether income typed in by hand (not generated, not a payment's) is
+ * linked to the booking: then a backfill leaves it alone, as the owner
+ * already counted it.
+ */
+export async function hasHandIncome(tx: DbClient, bookingId: string): Promise<boolean> {
+  const typed = await tx.transaction.findFirst({
+    where: { bookingId, type: "income", generated: null, paymentId: null },
+    select: { id: true },
+  });
+  return typed !== null;
 }

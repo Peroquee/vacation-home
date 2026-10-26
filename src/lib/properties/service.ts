@@ -6,6 +6,7 @@ import type { Property } from "@/generated/prisma/client";
 import { invalidateWindows } from "@/lib/availability/cache";
 import { db } from "@/lib/db";
 import { isPrismaError, orNullIfMissing, raisedByDatabase } from "@/lib/db-errors";
+import { INCOME_DEFAULT } from "@/lib/finance/income-automation";
 import { isLegalComplete } from "@/lib/legal/service";
 
 import { type CreatePropertyInput, SLUG, type UpdatePropertyInput } from "./schema";
@@ -54,7 +55,10 @@ export async function createProperty(
 ): Promise<Property | "slug_taken" | "legal_required"> {
   if (input.publiclyListed && !(await isLegalComplete())) return "legal_required";
   try {
-    return await db.property.create({ data: input });
+    // Booking income on from the start (GitLab #137).
+    return await db.property.create({
+      data: { ...input, incomeAutomation: { create: INCOME_DEFAULT } },
+    });
   } catch (error) {
     // The slug is the only unique field a client chooses.
     if (isPrismaError(error, "P2002")) return "slug_taken";
