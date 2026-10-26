@@ -1,11 +1,14 @@
 /**
  * `npm run audit`: fails when a production dependency has a high or critical
  * advisory that is not in security/audit-allowlist.json - or is there past
- * its `until` date. Each allow-listed advisory names why it does not apply
- * and when to look again (see docs/security.md). Run in CI.
+ * its `until` date, or without one. Each allow-listed advisory names why it
+ * does not apply and when to look again (see docs/security.md); the rules
+ * are in ./audit-rules.mjs. Run in CI.
  */
 import { execFileSync } from "node:child_process";
 import { readFileSync } from "node:fs";
+
+import { judge } from "./audit-rules.mjs";
 
 const allowlist = JSON.parse(
   readFileSync(new URL("../security/audit-allowlist.json", import.meta.url), "utf8"),
@@ -34,25 +37,13 @@ for (const vulnerability of Object.values(report.vulnerabilities ?? {})) {
   }
 }
 
-const failures = [];
-for (const [id, advisory] of advisories) {
-  const allowed = allowlist[id];
-  if (!allowed) failures.push(`${advisory.severity} ${id} ${advisory.package}: ${advisory.title}`);
-  else if (allowed.until < today)
-    failures.push(
-      `${id} ${advisory.package}: allow-list entry expired on ${allowed.until}; review it again`,
-    );
-  else console.log(`accepted ${id} ${advisory.package} (until ${allowed.until})`);
-}
-for (const id of Object.keys(allowlist)) {
-  if (!advisories.has(id))
-    console.log(`note: ${id} no longer reported; remove it from the allow-list`);
-}
+const { failures, notes, accepted } = judge(allowlist, advisories, today);
+for (const line of [...accepted, ...notes]) console.log(line);
 
 if (failures.length > 0) {
   console.error(
-    `\n${failures.length} unaccepted advisory(ies) in production dependencies:\n  ${failures.join("\n  ")}`,
+    `\n${failures.length} problem(s) with production dependencies' advisories:\n  ${failures.join("\n  ")}`,
   );
   process.exit(1);
 }
-console.log(`npm audit: no unaccepted high or critical advisories (${advisories.size} accepted).`);
+console.log(`npm audit: no unaccepted high or critical advisories (${accepted.length} accepted).`);
