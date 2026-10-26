@@ -17,6 +17,8 @@
  * referenced by id only, so purging a guest (GitLab #100) clears those and
  * never needs to touch booking amounts or dates.
  */
+import "server-only";
+
 import type { Booking, BookingSource, Prisma } from "@/generated/prisma/client";
 import { getStayTimes } from "@/lib/listing/service";
 import { invalidateWindows } from "@/lib/availability/cache";

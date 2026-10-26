@@ -1,6 +1,8 @@
 /**
  * Payment terms per property (GitLab #114): storage. Server-side only.
  */
+import "server-only";
+
 import { Prisma, type PaymentTerms as PaymentTermsRow } from "@/generated/prisma/client";
 import type { RefundSchedule } from "@/lib/cancellation/policy";
 import { db, type DbClient } from "@/lib/db";

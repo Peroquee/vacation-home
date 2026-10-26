@@ -3,6 +3,8 @@
  * with confirmed bookings; the date rule is the half-open one documented on
  * the Block model and in src/lib/date-range.ts.
  */
+import "server-only";
+
 import type { Block } from "@/generated/prisma/client";
 import { type CalendarDate, toUtcDate } from "@/lib/calendar-date";
 import { assertNonEmptyRange } from "@/lib/date-range";

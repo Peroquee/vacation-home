@@ -12,6 +12,8 @@
  * the name and phone as given with this request are kept on the request
  * too, with the guest's message - all cleared by the DSGVO purge.
  */
+import "server-only";
+
 import type { Property } from "@/generated/prisma/client";
 import type { CalendarDate } from "@/lib/calendar-date";
 import { violationFields } from "@/lib/booking-rules/rules";

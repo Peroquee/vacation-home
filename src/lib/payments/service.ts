@@ -18,6 +18,8 @@
  * (src/lib/finance/booking-income.ts), so nothing is counted twice. An entry
  * edited by hand is left alone, as there.
  */
+import "server-only";
+
 import type { BookingPayment, PaymentKind, PaymentMethod } from "@/generated/prisma/client";
 import { invalidateWindows } from "@/lib/availability/cache";
 import { recordEvent } from "@/lib/bookings/hold";

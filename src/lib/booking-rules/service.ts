@@ -4,6 +4,8 @@
  * owner's booking form shows it as warnings. The rules themselves are in
  * ./rules.ts. Server-side only.
  */
+import "server-only";
+
 import { HOLDING_STATUSES } from "@/lib/bookings/values";
 import type { BookingRules as BookingRulesRow } from "@/generated/prisma/client";
 import { addDays, fromUtcDate, toUtcDate } from "@/lib/calendar-date";

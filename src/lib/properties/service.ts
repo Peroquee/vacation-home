@@ -2,6 +2,8 @@
  * Property persistence. Server-side only. Route handlers validate input with
  * ./schema and translate the results below into HTTP responses.
  */
+import "server-only";
+
 import type { Property } from "@/generated/prisma/client";
 import { invalidateWindows } from "@/lib/availability/cache";
 import { db } from "@/lib/db";

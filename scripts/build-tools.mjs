@@ -18,6 +18,9 @@ await build({
   outExtension: { ".js": ".mjs" },
   bundle: true,
   platform: "node",
+  // The server modules import "server-only" (GitLab #148), whose default
+  // entry throws outside a server bundle: here it is the empty one.
+  alias: { "server-only": "./node_modules/server-only/empty.js" },
   format: "esm",
   target: "node24",
   // pg's optional native binding, required only if installed.

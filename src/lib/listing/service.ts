@@ -1,6 +1,8 @@
 /**
  * The listing profile and its photos (GitLab #106). Server-side only.
  */
+import "server-only";
+
 import type { PropertyListing, PropertyPhoto, PropertyPhotoSize } from "@/generated/prisma/client";
 import { db, type DbClient } from "@/lib/db";
 import { removeIfUnreferenced, storeFile } from "@/lib/files/store";

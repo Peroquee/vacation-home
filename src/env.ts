@@ -18,6 +18,8 @@
  * `NEXT_PUBLIC_` prefix into the client bundle, so importing this from a client
  * component produces a validation failure rather than a leak.
  */
+import "server-only";
+
 import { PHASE_PRODUCTION_BUILD } from "next/constants";
 import { z } from "zod";
 

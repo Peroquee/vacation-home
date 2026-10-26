@@ -4,6 +4,8 @@
  * in ./rules.ts. One aggregation layer, so the dashboard only displays.
  * Server-side only.
  */
+import "server-only";
+
 import { BOOKED_STATUSES } from "@/lib/bookings/values";
 import { z } from "zod";
 
