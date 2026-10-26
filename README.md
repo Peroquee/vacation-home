@@ -1026,18 +1026,34 @@ else imports the typed `env` object from `@/env`. An ESLint rule enforces this.
 [`.gitlab-ci.yml`](.gitlab-ci.yml) runs on merge requests and on the default
 branch; a push to a branch with no open merge request builds nothing.
 
+The runner takes one job at a time, so a pipeline lasts as long as its jobs
+together, and each job is set up to waste none of that (GitLab #149):
+
 - `install` seeds two caches: npm's download store under a stable key, so it
   survives a dependency bump, and `node_modules` under the `package-lock.json`
-  hash, since that tree is valid only for the lockfile that produced it.
-- `quality` runs lint, typecheck and the Prettier check as parallel jobs, so a
-  lint error and a type error are both reported instead of one masking the other.
-- `test` runs the Vitest suite; `e2e` runs Playwright against a PostgreSQL
-  16 service container, building and starting the app itself.
+  hash, since that tree is valid only for the lockfile that produced it. On a
+  cache hit it installs nothing.
+- `quality` runs lint, the dependency audit, the type check and the Prettier
+  check in one job, all four even when one fails, so every problem is
+  reported at once.
 - `build` runs a production build with no environment variables, because
-  validation happens at server boot rather than at build time.
+  validation happens at server boot rather than at build time, checks the
+  bundle budgets, and hands its `.next` to the browser tests.
+- `test` runs the unit tests, then the database tests against a PostgreSQL
+  16 service container.
+- `e2e` and `lighthouse` run Playwright in its own image (browser and system
+  libraries included, pinned to the installed `@playwright/test`), starting
+  the app from the build's `.next` (`E2E_PREBUILT=1`) instead of building it
+  again.
+- The test jobs publish JUnit reports, which GitLab shows on the merge
+  request; e2e keeps its traces and screenshots of failed tests.
+- `deploy` (main only, when configured) waits for every job above;
+  [`scripts/ci.test.ts`](scripts/ci.test.ts) checks that its `needs` list is
+  complete.
 
-The job image is pinned to the exact Node version in [`.nvmrc`](.nvmrc), and
-`install` fails if the two ever drift apart.
+The Node jobs' image is pinned to the exact Node version in
+[`.nvmrc`](.nvmrc), and `install` fails if the two ever drift apart.
+Playwright's image brings Node 24 too, of its own minor version.
 
 ## Performance
 
