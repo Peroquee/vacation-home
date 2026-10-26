@@ -34,7 +34,7 @@ export default defineConfig({
     environment: "node",
     globalSetup: ["./vitest.db.setup.mts"],
     // Each file starts from a clean database; see the file for why.
-    setupFiles: ["./vitest.db.each-file.mts"],
+    setupFiles: ["./vitest.clock.ts", "./vitest.db.each-file.mts"],
     fileParallelism: false,
     // `npm run test:coverage` only: the same measurement as the unit suite's.
     coverage: {

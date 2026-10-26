@@ -45,6 +45,7 @@ const eslintConfig = defineConfig([
       "scripts/ux/seed.ts",
       "vitest.db.setup.mts",
       "vitest.db.each-file.mts",
+      "vitest.clock.ts",
     ],
     rules: { "no-restricted-properties": "off" },
   },

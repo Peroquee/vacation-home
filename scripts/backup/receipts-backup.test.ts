@@ -12,6 +12,7 @@ import {
   readdirSync,
   readFileSync,
   rmSync,
+  statSync,
   utimesSync,
   writeFileSync,
 } from "node:fs";
@@ -93,7 +94,9 @@ describe("receipts-mirror.sh", () => {
     expect(existsSync(marker)).toBe(true);
     expect(existsSync(at(join(mirror, "files"), a))).toBe(true);
 
-    const longAgo = new Date(Date.now() - 40 * 86_400_000);
+    // 40 days before the marker was made, by the file system's clock, which
+    // the script's `find -mtime` reads: a shifted Date must not move it (GitLab #147).
+    const longAgo = new Date(statSync(marker).mtimeMs - 40 * 86_400_000);
     utimesSync(marker, longAgo, longAgo);
     expect(run("receipts-mirror.sh", [], { KEEP_DAYS: "30" }).stdout).toContain(
       "1 removed after 30 days",

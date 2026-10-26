@@ -115,10 +115,15 @@ describe("a monthly rule", () => {
   });
 
   it("creates the periods already due when created with a past start date", async () => {
-    const start = new Date();
-    start.setUTCMonth(start.getUTCMonth() - 2);
-    start.setUTCDate(1);
-    const { body } = await rule({ startDate: start.toISOString().slice(0, 10) });
+    // The first of the month two months back, where the property is: built
+    // from the month alone, so the 29th to 31st cannot roll it over, nor the
+    // last UTC hour of a month put Lisbon in the next one (GitLab #147).
+    const today = new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Lisbon" }).format(
+      new Date(),
+    );
+    const months = Number(today.slice(0, 4)) * 12 + Number(today.slice(5, 7)) - 1 - 2;
+    const startDate = `${Math.floor(months / 12)}-${String((months % 12) + 1).padStart(2, "0")}-01`;
+    const { body } = await rule({ startDate });
     expect(await created(body.id)).toHaveLength(3);
   });
 

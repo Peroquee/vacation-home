@@ -3,6 +3,7 @@ import { solveChallenge } from "altcha-lib";
 import { deriveKey } from "altcha-lib/algorithms/pbkdf2";
 
 import { withE2eDb } from "./database";
+import { day, today } from "./dates";
 
 // Guest and owner emails (GitLab #111), read back from Mailpit: one email
 // per step of a request that becomes a paid booking, each sent once, the
@@ -16,13 +17,6 @@ test.skip(!MAILPIT, "needs Mailpit: set E2E_SMTP_HOST and E2E_MAILPIT_URL");
 
 const GUEST = "mira@e2e.example.test";
 const OWNER = "owner@e2e.example.test";
-
-const today = new Date().toISOString().slice(0, 10);
-function day(offset: number): string {
-  const date = new Date(`${today}T00:00:00Z`);
-  date.setUTCDate(date.getUTCDate() + offset);
-  return date.toISOString().slice(0, 10);
-}
 
 type Summary = { ID: string; Subject: string; To: { Address: string }[] };
 type Message = {
@@ -178,7 +172,7 @@ test("each step of a booking mails the guest once, the address only once paid", 
   // The deposit, then the balance.
   const pay = (kind: string, amountMinor: number) =>
     request.post(`/api/bookings/${bookingId}/payments`, {
-      data: { kind, amountMinor, receivedOn: today },
+      data: { kind, amountMinor, receivedOn: today() },
     });
   expect((await pay("deposit", depositAmountMinor)).status()).toBe(201);
   await expectMail(request, 3, 1);

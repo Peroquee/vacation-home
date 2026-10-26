@@ -4,6 +4,8 @@
  * file goes only once no row of either kind points to it. A bug here
  * deletes photos or receipts for good, so each case is checked.
  */
+import { stat } from "node:fs/promises";
+
 import sharp from "sharp";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 
@@ -12,7 +14,7 @@ import { db } from "@/lib/db";
 import { addReceipt, deleteReceipt } from "@/lib/finance/receipts";
 import { addPhoto, deletePhoto } from "@/lib/listing/service";
 
-import { readStoredFile, removeOrphanFiles } from "./store";
+import { readStoredFile, removeOrphanFiles, storedFilePath } from "./store";
 
 let propertyId: string;
 let transactionId: string;
@@ -34,6 +36,13 @@ async function photo(): Promise<{ id: string; shas: string[] }> {
   const sizes = await db.propertyPhotoSize.findMany({ where: { photoId: result.photo.id } });
   return { id: result.photo.id, shas: sizes.map((s) => s.sha256) };
 }
+
+/**
+ * When a file was written, by the file system's clock: the sweep's grace
+ * period is measured from it, so "now" is taken from it too, not from Date,
+ * which a test run may shift (GitLab #147).
+ */
+const writtenAt = async (sha: string) => (await stat(storedFilePath(sha))).mtime;
 
 const exists = (sha: string) =>
   readStoredFile(sha).then(
@@ -92,9 +101,10 @@ describe("the file sweep", () => {
     // SQL, say): the sweep waits out the grace period, then removes them.
     const orphan = await photo();
     await db.propertyPhoto.delete({ where: { id: orphan.id } });
-    await removeOrphanFiles();
+    const written = await writtenAt(orphan.shas[0]!);
+    await removeOrphanFiles({ now: written });
     for (const sha of orphan.shas) expect(await exists(sha)).toBe(true);
-    await removeOrphanFiles({ now: LATER() });
+    await removeOrphanFiles({ now: new Date(written.getTime() + 2 * 60 * 60_000) });
     for (const sha of orphan.shas) expect(await exists(sha)).toBe(false);
   });
 

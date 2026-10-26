@@ -1,6 +1,7 @@
 import { type APIRequestContext, expect, test } from "@playwright/test";
 
 import { withE2eDb } from "./database";
+import { day } from "./dates";
 
 // The owner's inbox (GitLab #110): requests from the public site with a
 // badge in the navigation, accepted (reserved) or declined there; one whose
@@ -9,13 +10,6 @@ import { withE2eDb } from "./database";
 // The requests are put straight into the database: sending them through the
 // public form is the request form's own spec (booking-requests.spec.ts), and
 // the public request rate limit is shared by every spec.
-
-const today = new Date().toISOString().slice(0, 10);
-function day(offset: number): string {
-  const date = new Date(`${today}T00:00:00Z`);
-  date.setUTCDate(date.getUTCDate() + offset);
-  return date.toISOString().slice(0, 10);
-}
 
 test.afterEach(async () => {
   await withE2eDb(async (db) => {

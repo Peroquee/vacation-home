@@ -1,17 +1,11 @@
 import { type APIRequestContext, expect, test } from "@playwright/test";
 
 import { withE2eDb } from "./database";
+import { day } from "./dates";
 
 // Payment terms and the reservation hold (GitLab #114): accepting a request
 // reserves its dates - refused to anyone else, unavailable on the public
 // site - under the property's payment terms, until the deposit arrives.
-
-const today = new Date().toISOString().slice(0, 10);
-function day(offset: number): string {
-  const date = new Date(`${today}T00:00:00Z`);
-  date.setUTCDate(date.getUTCDate() + offset);
-  return date.toISOString().slice(0, 10);
-}
 
 test.afterEach(async () => {
   await withE2eDb(async (db) => {

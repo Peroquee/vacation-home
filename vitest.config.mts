@@ -15,7 +15,7 @@ export default defineConfig({
     // Node by default. Component tests opt into a DOM with a
     // `// @vitest-environment jsdom` comment at the top of the file.
     environment: "node",
-    setupFiles: ["./vitest.setup.ts"],
+    setupFiles: ["./vitest.clock.ts", "./vitest.setup.ts"],
     // `npm run test:coverage` only (GitLab #133): a measurement, not a gate,
     // so no thresholds. The database suite reports to coverage/db. The
     // instrumentation slows the component tests, so the script raises
@@ -36,6 +36,9 @@ export default defineConfig({
       AUTH_GOOGLE_SECRET: "unit-test-google-secret",
       AUTH_ALLOWED_EMAILS: "owner@example.test, Partner@Example.test",
       APP_URL: "http://localhost:3000",
+      // Far from UTC, as the database suite runs (GitLab #147): a calendar
+      // date pushed through local time shifts and fails, on every machine.
+      TZ: "Pacific/Kiritimati",
     },
   },
 });
