@@ -15,26 +15,32 @@ afterEach(cleanup);
  * Components translate through next-intl. Tests run them in British English
  * with the real catalogue, through next-intl's own translator, so a test
  * sees exactly the text a user would, without a provider in every test.
- * A test that wants German overrides these mocks.
+ * The translator is strict (vitest.translator.ts, GitLab #146): a key
+ * missing in either language fails the test. A test that wants German
+ * overrides these mocks.
  */
 vi.mock("next-intl", async (importOriginal) => {
   const actual = await importOriginal<typeof import("next-intl")>();
   const { default: messages } = await import("./messages/en-GB.json");
+  const { default: german } = await import("./messages/de-DE.json");
+  const { strictTranslator } = await import("./vitest.translator");
   return {
     ...actual,
     useLocale: () => "en-GB",
     useMessages: () => messages,
     useTranslations: (namespace?: string) =>
-      actual.createTranslator({ locale: "en-GB", messages, namespace: namespace as never }),
+      strictTranslator(actual.createTranslator, messages, german, namespace),
   };
 });
 vi.mock("next-intl/server", async () => {
   const { createTranslator } = await import("next-intl");
   const { default: messages } = await import("./messages/en-GB.json");
+  const { default: german } = await import("./messages/de-DE.json");
+  const { strictTranslator } = await import("./vitest.translator");
   return {
     getLocale: async () => "en-GB",
     getMessages: async () => messages,
     getTranslations: async (namespace?: string) =>
-      createTranslator({ locale: "en-GB", messages, namespace: namespace as never }),
+      strictTranslator(createTranslator, messages, german, namespace),
   };
 });
