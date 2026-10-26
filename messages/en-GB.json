@@ -1611,6 +1611,7 @@
     "dateLike": "must be a date like 2026-07-14 or 14.07.2026",
     "amountLike": "must be an amount like 1234.50 or 1.234,50",
     "notZero": "must not be zero",
+    "negativeIncome": "is negative: a refund is recorded on its booking, not imported",
     "incomeOrExpense": "must be income or expense",
     "otherProperty": "belongs to another property",
     "importMax": "at most 5000 rows at a time",

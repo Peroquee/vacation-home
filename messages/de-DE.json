@@ -1611,6 +1611,7 @@
     "dateLike": "muss ein Datum wie 2026-07-14 oder 14.07.2026 sein",
     "amountLike": "muss ein Betrag wie 1234.50 oder 1.234,50 sein",
     "notZero": "darf nicht null sein",
+    "negativeIncome": "ist negativ: Eine Erstattung wird bei ihrer Buchung erfasst, nicht importiert",
     "incomeOrExpense": "muss Einnahme oder Ausgabe sein",
     "otherProperty": "gehört zu einer anderen Unterkunft",
     "importMax": "höchstens 5000 Zeilen auf einmal",

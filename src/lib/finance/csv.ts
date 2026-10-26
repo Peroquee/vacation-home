@@ -9,7 +9,7 @@
  * | ------------- | --------------------------------------------------------- |
  * | `date`        | YYYY-MM-DD                                                |
  * | `type`        | `income` or `expense`                                     |
- * | `amount`      | Positive, in the currency's minor digits, no thousands separator: `1234.50` (`1234,50` in the Excel format) |
+ * | `amount`      | In the currency's minor digits, no thousands separator: `1234.50` (`1234,50` in the Excel format). Positive, except a refund: negative income, `-20.00`, which an import refuses (GitLab #138) |
  * | `currency`    | ISO 4217, e.g. `EUR`                                      |
  * | `category`    | The category's name                                       |
  * | `property`    | The property's name                                       |

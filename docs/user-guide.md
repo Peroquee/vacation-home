@@ -521,7 +521,9 @@ export: say which column holds the date, the amount and so on, look at the
 checked rows, and import. Rows with problems are listed by line and left
 out; possible duplicates (same date, amount and description as an entry
 already there) are skipped unless you tick them. A file exported here
-imports again without creating anything twice.
+imports again without creating anything twice. A refund is exported as
+negative income (`-20.00`); a row like that is refused on import, since
+refunds are recorded on their booking.
 
 **Booking income** fills the ledger automatically: each confirmed booking
 becomes income entries (accommodation and cleaning fee). It is set up

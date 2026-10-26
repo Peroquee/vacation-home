@@ -14,6 +14,10 @@
  *   by line (`include`), since two equal coffees on one day can be real.
  * - **Exact**: amounts are read in the property's currency without rounding
  *   (`parseAmount`), so an exported file comes back to the cent.
+ * - **Signs**: without a type column the sign gives the type (a bank
+ *   statement); with one, an expense may be written negative and is stored
+ *   positive. A negative income is a refund (GitLab #138), which only a
+ *   booking's payments can hold, so that row is refused, never flipped.
  */
 import { z } from "zod";
 
@@ -63,6 +67,9 @@ export const importSchema = z.strictObject({
 export type ImportRequest = z.infer<typeof importSchema>;
 
 export type RowError = { field: string; message: string };
+
+/** A negative income: a refund, recorded on its booking, not imported. */
+export const NEGATIVE_INCOME = "is negative: a refund is recorded on its booking, not imported";
 
 export type ImportRow = {
   line: number;
@@ -194,6 +201,7 @@ export async function importTransactions(request: ImportRequest): Promise<{
     if (mapping.type !== undefined && typeText && !type) {
       fail("type", "must be income or expense");
     }
+    if (type === "income" && signed !== null && signed < 0) fail("amount", NEGATIVE_INCOME);
 
     const categoryText = cell(row, "category");
     const category = type

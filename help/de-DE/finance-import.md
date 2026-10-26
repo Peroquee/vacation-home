@@ -16,3 +16,4 @@ guide: finance
 ## Was tun, wenn …
 
 - **… die Beträge falsch aussehen?** Prüfen Sie, ob die Datei Komma oder Punkt als Dezimalzeichen nutzt, und wählen Sie das passende Format.
+- **… eine Zeile mit negativer Einnahme abgewiesen wird?** Das ist eine Erstattung. Erstattungen werden bei ihrer Buchung erfasst (**Zahlung erfassen**), nicht importiert.

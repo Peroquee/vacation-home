@@ -7,12 +7,14 @@ import Papa from "papaparse";
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
 
 import { POST } from "@/app/api/transactions/import/route";
+import { createBooking } from "@/lib/bookings/service";
 import { toUtcDate } from "@/lib/calendar-date";
 import { db } from "@/lib/db";
+import { recordPayment } from "@/lib/payments/service";
 
 import { guessMapping } from "./csv";
 import { exportTransactions } from "./export";
-import { type ImportRequest, importTransactions } from "./import";
+import { type ImportRequest, importTransactions, NEGATIVE_INCOME } from "./import";
 
 let propertyId: string;
 let cleaning: { id: string; name: string };
@@ -108,6 +110,95 @@ describe("round trip", () => {
       orderBy: { date: "asc" },
     });
     expect(after).toEqual(before);
+  });
+});
+
+describe("refunds (GitLab #138)", () => {
+  /** A booking paid 200.00, of which 20.00 was refunded: income -20.00. */
+  async function refunded() {
+    const guest = await db.guest.create({ data: { name: "Ada" } });
+    const result = await createBooking({
+      propertyId,
+      guestId: guest.id,
+      checkIn: "2026-08-01",
+      checkOut: "2026-08-03",
+      status: "confirmed",
+      source: "direct",
+      guestCount: 2,
+      nightlyRateMinor: 100_00,
+      cleaningFeeMinor: 0,
+    });
+    if (!("booking" in result)) throw new Error(JSON.stringify(result));
+    const pay = (kind: "full" | "refund", amountMinor: number) =>
+      recordPayment(result.booking.id, {
+        kind,
+        method: "bank_transfer",
+        amountMinor,
+        receivedOn: "2026-07-10",
+        note: null,
+      });
+    expect(await pay("full", 200_00)).toHaveProperty("payment");
+    expect(await pay("refund", 20_00)).toHaveProperty("payment");
+  }
+
+  it("exports a refund as negative income", async () => {
+    await refunded();
+    const exported = await exportTransactions({
+      propertyId,
+      format: "standard",
+      categoryId: undefined,
+    });
+    if (!("csv" in exported)) throw new Error("too many");
+    expect(exported.csv).toMatch(/2026-07-10,income,-20\.00,EUR,/);
+    expect(exported.csv).toMatch(/2026-07-10,income,200\.00,EUR,/);
+  });
+
+  it("never comes back from an import as positive income: the row is refused", async () => {
+    await refunded();
+    const exported = await exportTransactions({
+      propertyId,
+      format: "excel-de",
+      categoryId: undefined,
+    });
+    if (!("csv" in exported)) throw new Error("too many");
+    await db.transaction.deleteMany({ where: { propertyId } });
+
+    const result = await importTransactions(request(exported.csv, { commit: true }));
+    expect(result.summary).toMatchObject({ imported: 4, invalid: 1 });
+    expect(result.rows.find((r) => r.status === "invalid")!.errors).toEqual([
+      { field: "amount", message: NEGATIVE_INCOME },
+    ]);
+    const income = await db.transaction.findMany({
+      where: { propertyId, type: "income" },
+      select: { amountMinor: true },
+    });
+    // The 200.00 and the original 123,456.78, never a +20.00.
+    expect(income.map((t) => t.amountMinor).sort((a, b) => a - b)).toEqual([200_00, 12345678]);
+  });
+
+  it("keeps reading an expense written as a negative amount, type or not", async () => {
+    const csv = [
+      "date,type,amount,category,description",
+      `2026-07-20,expense,-5.00,${cleaning.name},Bank style`,
+      `2026-07-21,,-6.00,${cleaning.name},Sign only`,
+      `2026-07-22,income,-7.00,${rent.name},A refund typed in`,
+    ].join("\n");
+    const result = await importTransactions(
+      request(csv, { defaults: { propertyId }, commit: true }),
+    );
+    expect(result.rows.map((r) => [r.line, r.status])).toEqual([
+      [2, "imported"],
+      [3, "imported"],
+      [4, "invalid"],
+    ]);
+    const added = await db.transaction.findMany({
+      where: { propertyId, date: { gte: toUtcDate("2026-07-20") } },
+      orderBy: { date: "asc" },
+    });
+    expect(added.map((t) => [t.type, t.amountMinor])).toEqual([
+      ["expense", 500],
+      ["expense", 600],
+    ]);
   });
 });
 
