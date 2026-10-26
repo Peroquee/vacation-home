@@ -38,6 +38,30 @@ export function answerBy(receivedOn: CalendarDate, expiryDays: number): Calendar
   return addDays(receivedOn, expiryDays);
 }
 
+/**
+ * The booking's latest reinstatement (GitLab #135), to include with it. Its
+ * key is the moment it was reinstated.
+ */
+export const LATEST_REINSTATEMENT = {
+  where: { kind: "reinstated" as const },
+  orderBy: { createdAt: "desc" as const },
+  take: 1,
+  select: { key: true },
+};
+
+/**
+ * Where a request's answer window starts (GitLab #140): when it arrived, or
+ * when it was last reinstated, so a reinstated request gets its days again
+ * instead of expiring at the next hourly run.
+ */
+export function answerWindowStart(request: { createdAt: Date; events: { key: string }[] }): Date {
+  const key = request.events[0]?.key;
+  const reinstated = key ? new Date(key) : null;
+  return reinstated && !Number.isNaN(reinstated.getTime()) && reinstated > request.createdAt
+    ? reinstated
+    : request.createdAt;
+}
+
 export type InboxRequest = {
   id: string;
   reference: string | null;
@@ -62,6 +86,7 @@ export async function listOpenRequests(): Promise<InboxRequest[]> {
     include: {
       property: { select: { id: true, name: true, timezone: true } },
       guest: { select: { name: true, email: true, phone: true } },
+      events: LATEST_REINSTATEMENT,
     },
     orderBy: [{ createdAt: "asc" }, { id: "asc" }],
   });
@@ -82,7 +107,7 @@ export async function listOpenRequests(): Promise<InboxRequest[]> {
     currency: row.currency,
     receivedAt: row.createdAt.toISOString(),
     answerBy: answerBy(
-      todayIn(row.property.timezone, row.createdAt),
+      todayIn(row.property.timezone, answerWindowStart(row)),
       (settings.get(row.propertyId) ?? DEFAULT_REQUEST_SETTINGS).expiryDays,
     ),
   }));
@@ -182,6 +207,7 @@ export async function expireRequests(now = new Date()): Promise<number> {
       checkIn: true,
       checkOut: true,
       property: { select: { timezone: true } },
+      events: LATEST_REINSTATEMENT,
     },
   });
   const settings = await getRequestSettingsFor([...new Set(open.map((r) => r.propertyId))]);
@@ -189,7 +215,7 @@ export async function expireRequests(now = new Date()): Promise<number> {
   for (const request of open) {
     const { timezone } = request.property;
     const last = answerBy(
-      todayIn(timezone, request.createdAt),
+      todayIn(timezone, answerWindowStart(request)),
       (settings.get(request.propertyId) ?? DEFAULT_REQUEST_SETTINGS).expiryDays,
     );
     if (todayIn(timezone, now) <= last) continue;

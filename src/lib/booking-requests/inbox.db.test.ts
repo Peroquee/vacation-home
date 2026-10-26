@@ -2,9 +2,11 @@ import { beforeAll, beforeEach, describe, expect, it } from "vitest";
 
 import type { Property } from "@/generated/prisma/client";
 import { reserveBooking, runHold } from "@/lib/bookings/hold";
-import { createBooking } from "@/lib/bookings/service";
+import { createBooking, reinstateBooking } from "@/lib/bookings/service";
 import { addDays } from "@/lib/calendar-date";
 import { db } from "@/lib/db";
+import { issueGuestToken } from "@/lib/payments/guest-link";
+import { guestView } from "@/lib/payments/guest-view";
 
 import {
   answerBy,
@@ -184,6 +186,36 @@ describe("expiry, against a fake clock", () => {
     expect(await status(accepted.booking.id)).toBe("reserved");
     await runHold(at(10));
     expect(await status(accepted.booking.id)).toBe("expired");
+  });
+});
+
+describe("a reinstated request (GitLab #140)", () => {
+  it("gets a new answer window from its reinstatement, and expires again only after it", async () => {
+    const { booking } = await request(day(30), day(34));
+    // Unanswered for its 3 days: expired on day 4.
+    expect(await expireRequests(at(4))).toBe(1);
+
+    // Reinstated on day 4, at noon: answer by day 7, not again within the hour.
+    const reinstated = await reinstateBooking(booking.id, at(4));
+    expect(reinstated).toHaveProperty("booking");
+    expect(await expireRequests(new Date(at(4).getTime() + 3_600_000))).toBe(0);
+    expect(await status(booking.id)).toBe("inquiry");
+    expect(await listOpenRequests()).toEqual([
+      expect.objectContaining({ id: booking.id, answerBy: day(7) }),
+    ]);
+    const token = await issueGuestToken(booking.id);
+    expect(await guestView(token)).toMatchObject({ status: "inquiry", answerBy: day(7) });
+
+    // The new last day, late evening in Berlin: still open; then expired again,
+    // with an event of its own (so its email goes out).
+    expect(await expireRequests(new Date(`${day(7)}T21:30:00Z`))).toBe(0);
+    expect(await expireRequests(new Date(`${day(7)}T22:30:00Z`))).toBe(1);
+    expect(await kinds(booking.id)).toEqual([
+      "requested",
+      "request_expired",
+      "reinstated",
+      "request_expired",
+    ]);
   });
 });
 
