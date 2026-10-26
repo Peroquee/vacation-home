@@ -7,8 +7,7 @@
 # The runner takes one job at a time, so a pipeline lasts as long as its jobs
 # together (GitLab #149): the app is built once, before the tests, which
 # start it from the build's output; the four quick checks share one job; and
-# the browser tests run in Playwright's own image, browser and system
-# libraries included, instead of installing them in every run.
+# the browser and its system libraries come from caches, not downloads.
 stages:
   - install
   - quality
@@ -159,10 +158,6 @@ test:
 e2e:
   stage: test
   extends: .node
-  # Playwright's own image, of exactly the installed @playwright/test: the
-  # browser and its system libraries are in it (no install per run, which
-  # cost a minute of apt downloads). Node 24 like .nvmrc's.
-  image: mcr.microsoft.com/playwright:v1.64.0-noble
   # The build job's .next: the server starts on it (E2E_PREBUILT).
   dependencies: [build]
   # The same server version as docker-compose.yml. The harness drops and
@@ -183,6 +178,41 @@ e2e:
     E2E_SMTP_HOST: mailpit
     E2E_MAILPIT_URL: http://mailpit:8025
     E2E_PREBUILT: "1"
+    # Inside the project directory so the cache below can carry the browser.
+    PLAYWRIGHT_BROWSERS_PATH: "$CI_PROJECT_DIR/.cache/ms-playwright"
+  cache:
+    - <<: *npm_store
+      policy: pull
+    - <<: *node_modules
+      policy: pull
+    # Keyed on the lockfile, since the browser build is tied to the exact
+    # @playwright/test version.
+    - key:
+        prefix: playwright
+        files:
+          - package-lock.json
+      paths:
+        - .cache/ms-playwright/
+    # The browser's system libraries as Debian packages (about 77 MB, a
+    # minute to download): only the first run of a Playwright version fetches
+    # them. Not Playwright's own image: its 1 GB pull from mcr.microsoft.com
+    # broke off on this network.
+    - key:
+        prefix: playwright-apt
+        files:
+          - package-lock.json
+      paths:
+        - .cache/apt/
+  before_script:
+    - !reference [.node, before_script]
+    # The browser has to match the installed @playwright/test exactly. Debian's
+    # image deletes downloaded packages (docker-clean); kept, they are cached.
+    - |
+      rm -f /etc/apt/apt.conf.d/docker-clean
+      mkdir -p .cache/apt
+      cp .cache/apt/*.deb /var/cache/apt/archives/ 2>/dev/null || true
+      npx playwright install --with-deps chromium
+      cp /var/cache/apt/archives/*.deb .cache/apt/ 2>/dev/null || true
   script:
     - npm run test:e2e
   artifacts:
@@ -210,6 +240,26 @@ lighthouse:
     E2E_SMTP_HOST: ""
     E2E_MAILPIT_URL: ""
     LIGHTHOUSE_RUNS: "3"
+  # e2e keeps the browser caches up to date; this job only reads them.
+  cache:
+    - <<: *npm_store
+      policy: pull
+    - <<: *node_modules
+      policy: pull
+    - key:
+        prefix: playwright
+        files:
+          - package-lock.json
+      paths:
+        - .cache/ms-playwright/
+      policy: pull
+    - key:
+        prefix: playwright-apt
+        files:
+          - package-lock.json
+      paths:
+        - .cache/apt/
+      policy: pull
   script:
     - npm run test:lighthouse
   artifacts:

@@ -1041,19 +1041,18 @@ together, and each job is set up to waste none of that (GitLab #149):
   bundle budgets, and hands its `.next` to the browser tests.
 - `test` runs the unit tests, then the database tests against a PostgreSQL
   16 service container.
-- `e2e` and `lighthouse` run Playwright in its own image (browser and system
-  libraries included, pinned to the installed `@playwright/test`), starting
-  the app from the build's `.next` (`E2E_PREBUILT=1`) instead of building it
-  again.
+- `e2e` and `lighthouse` run Playwright, starting the app from the build's
+  `.next` (`E2E_PREBUILT=1`) instead of building it again. The browser and
+  its system libraries (as Debian packages) come from caches keyed on the
+  lockfile, so only the first run of a Playwright version downloads them.
 - The test jobs publish JUnit reports, which GitLab shows on the merge
   request; e2e keeps its traces and screenshots of failed tests.
 - `deploy` (main only, when configured) waits for every job above;
   [`scripts/ci.test.ts`](scripts/ci.test.ts) checks that its `needs` list is
   complete.
 
-The Node jobs' image is pinned to the exact Node version in
-[`.nvmrc`](.nvmrc), and `install` fails if the two ever drift apart.
-Playwright's image brings Node 24 too, of its own minor version.
+The job image is pinned to the exact Node version in [`.nvmrc`](.nvmrc), and
+`install` fails if the two ever drift apart.
 
 ## Performance
 
