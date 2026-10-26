@@ -171,6 +171,89 @@ describe("importing a feed", () => {
   });
 });
 
+// GitLab #144: a feed that suddenly lists far fewer stays, or one it can't
+// read, must not free the dates on the public calendar.
+describe("a feed that would free many dates at once", () => {
+  const three = () =>
+    ics(
+      ["a@airbnb", "2026-11-02", "2026-11-05"],
+      ["b@airbnb", "2026-11-10", "2026-11-12"],
+      ["c@airbnb", "2026-11-20", "2026-11-23"],
+    );
+  const feed = () => db.icalFeed.findUniqueOrThrow({ where: { id: feedId } });
+  const withRaw = (...vevents: string[][]) =>
+    three().replace("END:VCALENDAR", [...vevents.flat(), "END:VCALENDAR"].join("\r\n"));
+
+  it("keeps every block when the feed comes back empty, until a second fetch agrees", async () => {
+    body = three();
+    await run();
+    body = ics();
+    expect(await run()).toMatchObject({ kind: "imported", deleted: 0, held: 3 });
+    expect(await blocks()).toHaveLength(3);
+    expect(await feed()).toMatchObject({
+      heldRemovals: ["a@airbnb", "b@airbnb", "c@airbnb"],
+      heldSince: now,
+      // Fetched in full next time, never answered with a 304.
+      etag: null,
+      lastModified: null,
+    });
+
+    expect(await run()).toMatchObject({ kind: "imported", deleted: 3, held: 0 });
+    expect(await blocks()).toEqual([]);
+    expect(await feed()).toMatchObject({ heldRemovals: [], heldSince: null });
+  });
+
+  it("starts the wait again when the second fetch wants something else", async () => {
+    body = three();
+    await run();
+    body = ics();
+    await run();
+    // a is back; b and c are still missing: a different removal, so it waits again.
+    body = ics(["a@airbnb", "2026-11-02", "2026-11-05"]);
+    expect(await run()).toMatchObject({ deleted: 0, held: 2 });
+    expect((await feed()).heldRemovals).toEqual(["b@airbnb", "c@airbnb"]);
+    expect(await run()).toMatchObject({ deleted: 2, held: 0 });
+    expect(await blocks()).toEqual([["Airbnb", "2026-11-02", "2026-11-05"]]);
+  });
+
+  it("removes the one block of a stay cancelled on the platform straight away", async () => {
+    body = three();
+    await run();
+    body = ics(["a@airbnb", "2026-11-02", "2026-11-05"], ["b@airbnb", "2026-11-10", "2026-11-12"]);
+    expect(await run()).toMatchObject({ deleted: 1, held: 0 });
+    expect(await blocks()).toHaveLength(2);
+  });
+
+  it("keeps the block of a stay it can't read, and says how many it couldn't", async () => {
+    body = three();
+    await run();
+    body = ics(
+      ["a@airbnb", "2026-11-02", "2026-11-05"],
+      ["b@airbnb", "2026-11-10", "2026-11-12"],
+    ).replace(
+      "END:VCALENDAR",
+      ["BEGIN:VEVENT", "UID:c@airbnb", "SUMMARY:Reserved", "END:VEVENT", "END:VCALENDAR"].join(
+        "\r\n",
+      ),
+    );
+    expect(await run()).toMatchObject({ deleted: 0, held: 0 });
+    expect(await blocks()).toHaveLength(3);
+    expect((await feed()).droppedEventCount).toBe(1);
+  });
+
+  it("removes nothing while the feed has an event without a UID", async () => {
+    body = three();
+    await run();
+    body = withRaw(["BEGIN:VEVENT", "SUMMARY:Reserved", "END:VEVENT"]).replace(
+      /BEGIN:VEVENT\r\nUID:c@airbnb[\s\S]*?END:VEVENT\r\n/,
+      "",
+    );
+    expect(await run()).toMatchObject({ deleted: 0 });
+    expect(await blocks()).toHaveLength(3);
+    expect((await feed()).droppedEventCount).toBe(1);
+  });
+});
+
 describe("the export token", () => {
   it("is off until switched on, and regenerating retires the old one", async () => {
     expect(await db.property.findUniqueOrThrow({ where: { id: propertyId } })).toMatchObject({

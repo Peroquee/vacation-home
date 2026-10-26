@@ -142,6 +142,7 @@ function FeedRow({ feed }: { feed: FeedDto }) {
   const router = useRouter();
   const request = useRequest();
   const status = useFeedStatus()(feed);
+  const format = useFormat();
   const [refreshing, setRefreshing] = useState(false);
 
   async function refresh() {
@@ -169,6 +170,17 @@ function FeedRow({ feed }: { feed: FeedDto }) {
           <p className="text-destructive font-medium">
             {t("conflicts", { count: feed.conflictCount })}
           </p>
+        ) : null}
+        {feed.heldCount > 0 && feed.heldSince ? (
+          <p className="text-destructive font-medium">
+            {t("held", {
+              count: feed.heldCount,
+              time: format.dateTime(feed.heldSince, "UTC"),
+            })}
+          </p>
+        ) : null}
+        {feed.droppedEventCount > 0 ? (
+          <p className="text-destructive">{t("dropped", { count: feed.droppedEventCount })}</p>
         ) : null}
       </div>
       <div className="flex gap-2">

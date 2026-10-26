@@ -465,6 +465,15 @@ booking ringed) name the platform, the dates and the booking. Cancel one of
 the two, on the platform or here; the warning goes by itself once the dates
 no longer clash.
 
+**Stays that vanish at once.** A stay cancelled on the platform frees its
+dates here at the next reading. But if one reading would free all of a
+platform's coming stays, or more than half of them, the app waits: a
+platform sometimes serves an empty calendar by mistake, and the website
+would then offer those dates. The stays stay blocked, Settings says so,
+and they are freed once the next reading says the same. Stays the
+platform's calendar lists in a form the app can't read stay blocked too,
+and Settings counts them.
+
 A platform's stays are blocks here, not bookings: record a stay as a
 booking if you want it in the finances and occupancy.
 

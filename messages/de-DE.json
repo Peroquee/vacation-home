@@ -273,7 +273,9 @@
       },
       "hintTexts": {
         "exportUrl": "Kopieren Sie ihn bei Airbnb, Booking.com oder einer anderen Plattform dorthin, wo ein Kalender importiert werden kann. Die Plattform sieht dann Ihre Buchungen und blockierten Tage, ohne Namen von Gästen, und verkauft diese Nächte nicht doppelt. Behalten Sie den Link für sich."
-      }
+      },
+      "held": "{count, plural, one {# Aufenthalt, der nicht mehr im Kalender steht, bleibt blockiert: Es würde zu viel auf einmal frei. Er wird frei, sobald das nächste Lesen dasselbe ergibt (zurückgehalten seit {time}, UTC).} other {# Aufenthalte, die nicht mehr im Kalender stehen, bleiben blockiert: Es würde zu viel auf einmal frei. Sie werden frei, sobald das nächste Lesen dasselbe ergibt (zurückgehalten seit {time}, UTC).}}",
+      "dropped": "{count, plural, one {# Eintrag im Kalender ist nicht lesbar; seine Tage bleiben blockiert, und solange er keine ID hat, wird nichts frei, was im Kalender fehlt.} other {# Einträge im Kalender sind nicht lesbar; ihre Tage bleiben blockiert, und solange einer keine ID hat, wird nichts frei, was im Kalender fehlt.}}"
     },
     "bookingRules": {
       "title": "Buchungsregeln",

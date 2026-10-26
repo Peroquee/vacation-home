@@ -44,6 +44,11 @@ export function toFeedDto(feed: IcalFeed) {
     lastError: feed.lastError,
     eventCount: feed.eventCount,
     conflictCount: feed.conflictCount,
+    /** Events in the last fetch it couldn't read (GitLab #144). */
+    droppedEventCount: feed.droppedEventCount,
+    /** Stays gone from the feed whose blocks are held back, and since when. */
+    heldCount: feed.heldRemovals.length,
+    heldSince: feed.heldSince?.toISOString() ?? null,
     nextFetchAt: feed.nextFetchAt.toISOString(),
   };
 }

@@ -13,6 +13,9 @@
  *   leave this module.
  * - **Recurring events** are taken at their first occurrence; the platforms
  *   do not use them for stays.
+ * - **Unreadable events** (no start, no UID, dates that make no sense) are
+ *   named, never silently dropped (GitLab #144): to the importer an event
+ *   it can't read is not a stay cancelled on the platform.
  */
 import ICAL from "ical.js";
 
@@ -31,8 +34,22 @@ function localDate(instant: Date, timezone: string): CalendarDate {
   return new Intl.DateTimeFormat("en-CA", { timeZone: timezone }).format(instant);
 }
 
+export type FeedRead = {
+  /** The blocking events, one per UID (the last wins). */
+  events: FeedEvent[];
+  /** UIDs of events it couldn't read, and no readable event has. */
+  unreadable: string[];
+  /** Events it couldn't read that have no UID either. */
+  unreadableWithoutUid: number;
+};
+
 /** The blocking events of a feed, one per UID (the last wins). Throws FeedParseError. */
 export function parseFeed(text: string, timezone: string): FeedEvent[] {
+  return readFeed(text, timezone).events;
+}
+
+/** A feed's blocking events, and the events it couldn't read. Throws FeedParseError. */
+export function readFeed(text: string, timezone: string): FeedRead {
   let calendar: InstanceType<typeof ICAL.Component>;
   try {
     calendar = new ICAL.Component(ICAL.parse(text));
@@ -50,29 +67,46 @@ export function parseFeed(text: string, timezone: string): FeedEvent[] {
   }
 
   const byUid = new Map<string, FeedEvent>();
+  const unreadable = new Set<string>();
+  let unreadableWithoutUid = 0;
   for (const component of calendar.getAllSubcomponents("vevent")) {
     const nights = blockedNights(component, timezone);
-    if (nights) byUid.set(nights.uid, nights);
+    if (nights === "free") continue;
+    if (nights === "unreadable") {
+      const uid = uidOf(component);
+      if (uid) unreadable.add(uid);
+      else unreadableWithoutUid++;
+    } else {
+      byUid.set(nights.uid, nights);
+    }
   }
-  return [...byUid.values()];
+  return {
+    events: [...byUid.values()],
+    unreadable: [...unreadable].filter((uid) => !byUid.has(uid)).sort(),
+    unreadableWithoutUid,
+  };
 }
 
+const uidOf = (component: InstanceType<typeof ICAL.Component>) =>
+  String(component.getFirstPropertyValue("uid") ?? "").trim();
+
+/** The nights an event blocks; "free" for one that blocks none, "unreadable". */
 function blockedNights(
   component: InstanceType<typeof ICAL.Component>,
   timezone: string,
-): FeedEvent | null {
+): FeedEvent | "free" | "unreadable" {
   const status = String(component.getFirstPropertyValue("status") ?? "").toUpperCase();
   const transparency = String(component.getFirstPropertyValue("transp") ?? "").toUpperCase();
-  if (status === "CANCELLED" || transparency === "TRANSPARENT") return null;
+  if (status === "CANCELLED" || transparency === "TRANSPARENT") return "free";
 
-  const uid = String(component.getFirstPropertyValue("uid") ?? "").trim();
-  if (!uid || !component.hasProperty("dtstart")) return null;
+  const uid = uidOf(component);
+  if (!uid || !component.hasProperty("dtstart")) return "unreadable";
 
   let event: InstanceType<typeof ICAL.Event>;
   try {
     event = new ICAL.Event(component);
   } catch {
-    return null;
+    return "unreadable";
   }
   const start = event.startDate;
   const hasEnd = component.hasProperty("dtend") || component.hasProperty("duration");
@@ -81,7 +115,7 @@ function blockedNights(
     const first = start.toString().slice(0, 10);
     // No end on a date event means one day (RFC 5545, 3.6.1).
     const end = hasEnd ? event.endDate.toString().slice(0, 10) : addDays(first, 1);
-    if (!isCalendarDate(first) || !isCalendarDate(end)) return null;
+    if (!isCalendarDate(first) || !isCalendarDate(end)) return "unreadable";
     return end > first ? { uid, start: first, end } : { uid, start: first, end: addDays(first, 1) };
   }
 
