@@ -113,3 +113,42 @@ describe("a live restore and the erased guests (GitLab #145)", () => {
     expect(dockerCalls()).not.toContain("audit_events");
   });
 });
+
+describe("a live restore and the database structure (GitLab #141)", () => {
+  /** The order of the steps that matter here, from the docker calls. */
+  const steps = () =>
+    dockerCalls()
+      .split("\n")
+      .flatMap((call) =>
+        /RENAME TO "vacation_home"/.test(call)
+          ? ["swap"]
+          : /compose run --rm migrate/.test(call)
+            ? ["migrate"]
+            : /compose start app/.test(call)
+              ? ["start"]
+              : /compose stop app/.test(call)
+                ? ["stop"]
+                : [],
+      );
+
+  it("applies the running version's migrations on production, before the app starts", () => {
+    writeFileSync(join(checkout, ".env"), "COMPOSE_FILE=compose.prod.yml\n");
+    const result = restore(LIVE, { ERASED_IDS: "" });
+    expect(result.status, result.stderr).toBe(0);
+    expect(steps()).toEqual(["stop", "swap", "migrate", "start"]);
+  });
+
+  it("only says so on a dry run", () => {
+    writeFileSync(join(checkout, ".env"), "COMPOSE_FILE=compose.prod.yml\n");
+    const result = restore(["--dry-run", ...LIVE], { ERASED_IDS: "" });
+    expect(result.status, result.stderr).toBe(0);
+    expect(result.stdout).toContain("[dry-run] compose run --rm migrate");
+    expect(steps()).toEqual([]);
+  });
+
+  it("leaves it to the app in development, which migrates on start", () => {
+    const result = restore(LIVE, { ERASED_IDS: "" });
+    expect(result.status, result.stderr).toBe(0);
+    expect(steps()).toEqual(["stop", "swap", "start"]);
+  });
+});

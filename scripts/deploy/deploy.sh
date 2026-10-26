@@ -17,8 +17,12 @@
 #
 # Safe to re-run: building an existing tag is a no-op apart from checking
 # it, migrations apply only what is pending, and restarting onto the version
-# already running changes nothing. If a step fails, the version that was
-# running keeps running. The last five app builds are kept for rollbacks,
+# already running changes nothing. If a step before the switch fails, the
+# version that was running keeps running. If the new version does not become
+# ready after the switch, the previous build is started again by itself, the
+# script checks that it is ready, and it exits 1 (GitLab #141); the new
+# version's migrations stay applied, as ours only add. The last five app
+# builds are kept for rollbacks,
 # and the last two tools builds (migrations run forward only). Docker's
 # build cache is capped by size (DEPLOY_BUILD_CACHE_MAX, default 4gb, from
 # the environment or .env), so frequent deploys cannot fill the disk.
@@ -104,20 +108,31 @@ current_sha() {
     awk -v id="$id" '$1 == id && $2 != "current" { print $2; exit }'
 }
 
-# Waits until the app answers /api/ready on this machine, up to two minutes.
+# Waits until the app answers /api/ready on this machine, up to two minutes
+# (DEPLOY_READY_TRIES times DEPLOY_READY_INTERVAL seconds; tests shorten it).
 wait_ready() {
   local port
   port="$(sed -n 's/^APP_LOCAL_PORT=//p' .env | tr -d '"')"
   port="${port:-3000}"
-  for _ in $(seq 1 60); do
+  for _ in $(seq 1 "${DEPLOY_READY_TRIES:-60}"); do
     if curl -fsS "http://127.0.0.1:${port}/api/ready" >/dev/null 2>&1; then
       echo "    the app is ready"
       return 0
     fi
-    sleep 2
+    sleep "${DEPLOY_READY_INTERVAL:-2}"
   done
   echo "The app did not become ready; see: docker compose logs --tail 100 app" >&2
   return 1
+}
+
+# Points "current" at the kept build of a commit and restarts the app on it.
+# Fewer tools builds are kept; without one, its "current" stays as it is.
+switch_back_to() {
+  change docker tag "vacation-home:$1" vacation-home:current
+  if docker image inspect "vacation-home-tools:$1" >/dev/null 2>&1; then
+    change docker tag "vacation-home-tools:$1" vacation-home-tools:current
+  fi
+  change docker compose up -d app
 }
 
 if [ -n "$rollback" ]; then
@@ -125,12 +140,7 @@ if [ -n "$rollback" ]; then
   step "Rolling back to $sha"
   docker image inspect "vacation-home:$sha" >/dev/null 2>&1 ||
     { echo "No build of $sha is kept here. Kept builds:" >&2; docker images vacation-home --format '  {{.Tag}}' >&2; exit 1; }
-  change docker tag "vacation-home:$sha" vacation-home:current
-  # Fewer tools builds are kept; without one, "current" stays as it is.
-  if docker image inspect "vacation-home-tools:$sha" >/dev/null 2>&1; then
-    change docker tag "vacation-home-tools:$sha" vacation-home-tools:current
-  fi
-  change docker compose up -d app
+  switch_back_to "$sha"
   $dry_run || wait_ready
   printf '\nRolled back to %s. The database was not changed.\n' "$sha"
   exit 0
@@ -181,7 +191,29 @@ change docker tag "vacation-home:$sha" vacation-home:current
 change docker tag "vacation-home-tools:$sha" vacation-home-tools:current
 # Recreates the app only if its image changed; starts anything not running.
 change docker compose up -d
-$dry_run || wait_ready
+can_go_back=false
+[ -n "$previous" ] && [ "$previous" != "$sha" ] &&
+  docker image inspect "vacation-home:$previous" >/dev/null 2>&1 && can_go_back=true
+if $dry_run; then
+  if $can_go_back; then
+    echo "    [dry-run] if $sha does not become ready: back to $previous, and exit 1"
+  fi
+elif ! wait_ready; then
+  # The new version did not come up: back to the one that ran (GitLab #141).
+  if ! $can_go_back; then
+    printf '\nDeploy of %s FAILED: it did not become ready, and there is no earlier build to go back to.\n' "$sha" >&2
+    exit 1
+  fi
+  step "Rolling back to $previous: $sha did not become ready"
+  switch_back_to "$previous"
+  if wait_ready; then
+    printf '\nDeploy of %s FAILED: it did not become ready. %s is running again.\n' "$sha" "$previous" >&2
+    printf 'Its migrations stay applied (ours only add). Why it failed: docker compose logs --tail 100 app\n' >&2
+  else
+    printf '\nDeploy of %s FAILED, and %s did not become ready either. See: docker compose logs --tail 100 app\n' "$sha" "$previous" >&2
+  fi
+  exit 1
+fi
 
 step "Keeping the last $KEEP app builds and $KEEP_TOOLS tools builds"
 for repo in vacation-home vacation-home-tools; do

@@ -271,8 +271,10 @@ The script:
 5. stops the app, renames the current database to
    `vacation_home_pre_restore_<date>_<time>` (kept, not deleted) and gives
    the restored one its name;
-6. starts the app again, which brings the database structure up to date if
-   the backup is older than the app.
+6. on the production server, applies the running version's migrations to
+   the restored database (the `migrate` service), so a backup older than
+   the app gets the app's database structure before the app sees it;
+7. starts the app again.
 
 So a damaged backup never costs you the current data: if the restore fails
 in step 3, the script says the live database was not touched. Fix what it
