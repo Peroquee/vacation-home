@@ -24,7 +24,10 @@
 # Guests erased (DSGVO) after the backup was taken come back with it. Before
 # a live restore the script saves the ids of every erased guest, and writes
 # those the restore brought back to a file, to be erased again. See "After a
-# restore" in docs/backup-and-restore.md.
+# restore" in docs/backup-and-restore.md. If those ids cannot be read, a live
+# restore stops before changing anything (GitLab #145), unless
+# --without-erasure-check says to go ahead and erase them again by hand: on a
+# new server, say, whose database is still empty.
 
 set -euo pipefail
 
@@ -34,19 +37,25 @@ DB_USER="vacation"
 
 usage() {
   cat <<EOF
-Usage: $(basename "$0") [--dry-run] [--target DATABASE] [--yes] BACKUP_FILE
+Usage: $(basename "$0") [--dry-run] [--target DATABASE] [--yes] [--without-erasure-check] BACKUP_FILE
 
   BACKUP_FILE        a .sql.gz from the backup directory, e.g.
                      /mnt/backups/vacation-home/daily/vacation_home-latest.sql.gz
   --target DATABASE  where to restore (default: $SCRATCH_DB, a rehearsal;
                      use $LIVE_DB to replace the live data)
   --yes              do not ask before replacing the live database
+  --without-erasure-check
+                     restore over the live database even if the erased
+                     guests cannot be read from it (a new, empty server);
+                     you then erase them again by hand, see "After a
+                     restore" in docs/backup-and-restore.md
   --dry-run          check the file and print what would be done, change nothing
 EOF
 }
 
 dry_run=false
 assume_yes=false
+erasure_check=true
 target="$SCRATCH_DB"
 file=""
 
@@ -54,6 +63,7 @@ while [ $# -gt 0 ]; do
   case "$1" in
     --dry-run) dry_run=true ;;
     --yes) assume_yes=true ;;
+    --without-erasure-check) erasure_check=false ;;
     --target)
       [ $# -ge 2 ] || { usage >&2; exit 2; }
       target="$2"
@@ -136,9 +146,10 @@ erasure_dir="backups-restore"
 erased_file=""
 if $live; then
   step "Saving the ids of erased guests (DSGVO) from the current database"
+  # The database's own error, if any, goes to the terminal: it says why.
   if exists "$LIVE_DB" && records="$(psql_in "$LIVE_DB" -A -t -c \
     "SELECT DISTINCT subject_id FROM audit_events
-     WHERE subject_type = 'guest' AND action IN ('guest.purged', 'guest.deleted')" 2>/dev/null)"; then
+     WHERE subject_type = 'guest' AND action IN ('guest.purged', 'guest.deleted')")"; then
     erased_file="$erasure_dir/erased-guests-$stamp.txt"
     if $dry_run; then
       echo "    [dry-run] would save $(grep -c . <<<"$records" || true) id(s) to $erased_file"
@@ -147,9 +158,25 @@ if $live; then
       printf '%s\n' "$records" | grep . >"$erased_file" || true
       echo "    $(wc -l <"$erased_file") erased guest(s) on record, saved to $erased_file"
     fi
+  elif $erasure_check; then
+    cat >&2 <<MSG
+
+The erased guests could not be read from '$LIVE_DB' (see above), so the
+restore would bring back guests erased since the backup without telling you.
+Nothing was changed. Fix the problem and run this again.
+
+Only if there is nothing to read, as on a new server whose database is still
+empty, run it again with --without-erasure-check and then erase those guests
+by hand: docs/backup-and-restore.md, "After a restore".
+MSG
+    exit 1
   else
-    echo "    The current database could not be read, so erasures cannot be"
-    echo "    carried over automatically. Follow 'After a restore' in the docs."
+    cat >&2 <<MSG
+    WARNING: the erased guests could not be read from '$LIVE_DB', and
+    --without-erasure-check says to go ahead. Guests erased since the backup
+    will be back: erase them again by hand right after the restore, see
+    "After a restore" in docs/backup-and-restore.md.
+MSG
   fi
 fi
 

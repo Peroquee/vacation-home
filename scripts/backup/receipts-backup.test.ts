@@ -9,7 +9,9 @@ import {
   existsSync,
   mkdirSync,
   mkdtempSync,
+  readdirSync,
   readFileSync,
+  rmSync,
   utimesSync,
   writeFileSync,
 } from "node:fs";
@@ -82,6 +84,7 @@ describe("receipts-mirror.sh", () => {
 
   it("keeps a receipt deleted in the app for KEEP_DAYS, then drops it", () => {
     const a = store(receipts, "invoice A");
+    store(receipts, "invoice B");
     run("receipts-mirror.sh", []);
     spawnSync("rm", [at(receipts, a)]);
 
@@ -96,6 +99,80 @@ describe("receipts-mirror.sh", () => {
       "1 removed after 30 days",
     );
     expect(existsSync(at(join(mirror, "files"), a))).toBe(false);
+  });
+});
+
+/** The gone markers the mirror holds. */
+const markers = () => (existsSync(join(mirror, "gone")) ? readdirSync(join(mirror, "gone")) : []);
+const lastRun = () => readFileSync(join(mirror, ".last-run"), "utf8");
+
+describe("receipts-mirror.sh when the receipts are not there (GitLab #145)", () => {
+  it("fails, and marks nothing as gone, when the receipts folder is missing", () => {
+    store(receipts, "invoice A");
+    run("receipts-mirror.sh", []);
+    rmSync(receipts, { recursive: true });
+
+    const result = run("receipts-mirror.sh", []);
+    expect(result.status).toBe(1);
+    expect(result.stderr).toContain(`No receipts folder at ${receipts}`);
+    expect(markers()).toEqual([]);
+    expect(lastRun()).toMatch(/^failed /);
+  });
+
+  it("fails, and marks nothing, when the receipts folder is empty but the mirror is not", () => {
+    // Docker mounts an empty new volume where the receipts volume went missing.
+    const a = store(receipts, "invoice A");
+    store(receipts, "invoice B");
+    run("receipts-mirror.sh", []);
+    for (const folder of readdirSync(receipts)) rmSync(join(receipts, folder), { recursive: true });
+
+    const result = run("receipts-mirror.sh", []);
+    expect(result.status).toBe(1);
+    expect(result.stderr).toContain("The receipts folder is empty, but the mirror holds 2");
+    expect(markers()).toEqual([]);
+    expect(existsSync(at(join(mirror, "files"), a))).toBe(true);
+  });
+
+  it("refuses to mark more than 10 % (and over 10) as gone in one run, unless told to", () => {
+    const names = Array.from({ length: 20 }, (_, i) => store(receipts, `receipt ${i}`));
+    run("receipts-mirror.sh", []);
+    for (const name of names.slice(0, 11)) rmSync(at(receipts, name));
+
+    const refused = run("receipts-mirror.sh", []);
+    expect(refused.status).toBe(1);
+    expect(refused.stderr).toContain("11 of 20 mirrored files are no longer in the app");
+    expect(refused.stderr).toContain("RECEIPTS_ALLOW_GONE=1");
+    expect(markers()).toEqual([]);
+    expect(lastRun()).toMatch(/^failed /);
+
+    const allowed = run("receipts-mirror.sh", [], { RECEIPTS_ALLOW_GONE: "1" });
+    expect(allowed.status).toBe(0);
+    expect(markers()).toHaveLength(11);
+    expect(lastRun()).toMatch(/^ok /);
+  });
+
+  it("marks up to 10 gone files in one run without asking", () => {
+    const names = Array.from({ length: 20 }, (_, i) => store(receipts, `receipt ${i}`));
+    run("receipts-mirror.sh", []);
+    for (const name of names.slice(0, 10)) rmSync(at(receipts, name));
+
+    expect(run("receipts-mirror.sh", []).status).toBe(0);
+    expect(markers()).toHaveLength(10);
+  });
+
+  it("records each run's result for the healthcheck, but not on a dry run", () => {
+    store(receipts, "invoice A");
+    expect(run("receipts-mirror.sh", ["--dry-run"]).status).toBe(0);
+    expect(existsSync(join(mirror, ".last-run"))).toBe(false);
+
+    run("receipts-mirror.sh", []);
+    expect(lastRun()).toMatch(/^ok \d{4}-\d\d-\d\dT\d\d:\d\d:\d\dZ/);
+
+    const broken = sha("what it should be");
+    mkdirSync(join(receipts, broken.slice(0, 2)), { recursive: true });
+    writeFileSync(at(receipts, broken), "something else");
+    expect(run("receipts-mirror.sh", []).status).not.toBe(0);
+    expect(lastRun()).toMatch(/^failed .*broken/);
   });
 });
 

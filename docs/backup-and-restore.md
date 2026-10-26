@@ -102,6 +102,7 @@ docker compose --profile backup up -d backup receipts-backup
 docker compose logs backup                            # show what it did; look for "SQL backup created successfully"
 ls -l /mnt/backups/vacation-home/last/                # the first backup file should be listed, a few kB or more in size
 docker compose logs receipts-backup                   # look for "Receipts: ... copied, ... 0 broken"
+docker compose ps backup receipts-backup              # both "(healthy)" once their first run has succeeded
 ```
 
 From now on it backs up every day and removes old backups by itself.
@@ -120,8 +121,9 @@ docker compose restart backup receipts-backup         # start both services agai
 
 On the production server, `scripts/deploy/deploy.sh` does this for a local
 folder by itself (with `sudo`, if it may run without a password; otherwise it
-stops and prints these commands). For a network share it only checks, and
-warns if user 999 cannot write there: ownership is set on the NAS.
+stops and prints these commands). For a network share it only checks, since
+ownership is set on the NAS: it writes a test file there as user 999 and
+stops the deploy if that fails.
 
 ## 2. The 48-hour alert
 
@@ -168,6 +170,19 @@ The monitor should now show the check as up. The alert threshold lives in
 the monitor (172800 seconds, or period + grace). To change it, change it
 there. If you back up more often than daily (`BACKUP_SCHEDULE`), you may
 shorten it.
+
+Docker keeps a second, local eye on both services. `docker compose ps` shows
+`backup` as **unhealthy** when its newest successful dump is more than 26
+hours old, and `receipts-backup` when its last run failed or is more than 26
+hours ago. The reason is in the log:
+
+```bash
+docker compose ps backup receipts-backup              # "(healthy)" or "(unhealthy)" after each name
+docker compose logs --tail 50 receipts-backup         # the reason, after "Receipts mirror FAILED:"
+```
+
+If you back up less often than daily, set `BACKUP_HEALTH_MAX_AGE_MIN` in
+`.env` to a little over the interval, in minutes (1560 is 26 hours).
 
 ## 3. Rehearse a restore
 
@@ -246,7 +261,9 @@ scripts/backup/restore.sh --target vacation_home /mnt/backups/vacation-home/dail
 The script:
 
 1. checks that the backup file is complete;
-2. saves the list of guests erased so far (see step 5);
+2. saves the list of guests erased so far (see step 5). If it cannot read
+   them, it stops here, before changing anything, and shows the database's
+   error;
 3. restores the backup into a separate staging database,
    `vacation_home_restoring`, and counts what it restored. The app keeps
    running and the live database is not touched yet;
@@ -300,8 +317,8 @@ the app and swap the names back (ask for help with this one).
 
    ```bash
    docker compose up -d db                            # start only the database (empty for now)
-   scripts/backup/restore.sh --yes --target vacation_home /mnt/backups/vacation-home/daily/vacation_home-latest.sql.gz
-                                                      # restore the newest backup into it
+   scripts/backup/restore.sh --yes --without-erasure-check --target vacation_home /mnt/backups/vacation-home/daily/vacation_home-latest.sql.gz
+                                                      # restore the newest backup into it; the empty database has no erasures to read
    docker compose up -d                               # start the app (and create the empty receipts volume)
    scripts/backup/receipts-restore.sh /mnt/backups/vacation-home/receipts
                                                       # copy the receipts back from the mirror
@@ -309,8 +326,9 @@ the app and swap the names back (ask for help with this one).
                                                       # and the backups again
    ```
 
-On a new machine, the script cannot read the list of erased guests from the
-lost database. It says so. Do step 5 by hand.
+On a new machine there is no list of erased guests to read: it was in the
+lost database. Without `--without-erasure-check` the script would stop there.
+With it, it warns and goes ahead. Do step 5 by hand.
 
 ## 5. After a restore: erase guests again
 
@@ -326,8 +344,8 @@ record of the erasure disappears with it. Those guests must be erased again
   ends with "ERASE THESE GUESTS AGAIN NOW" and the command to run. The full
   list of erasures on record is saved beside it as `erased-guests-...txt`.
   The files hold ids only, no personal data.
-- **The database was lost** (4.2), or the script could not read it: the
-  erasures since the backup can only come from your own records. Erasure
+- **The database was lost** (4.2): the erasures since the backup can only
+  come from your own records. Erasure
   requests should therefore also be noted outside the app, for example in
   the GDPR request log you keep anyway.
 
@@ -415,6 +433,19 @@ hours, checking each copy against its name.
 - **Deleted receipts and photos** (or those of a deleted transaction) stay in the mirror
   for `BACKUP_RECEIPTS_KEEP_DAYS` (186 by default, like the monthly dumps), so
   an older database backup still has its receipts. Then they go.
+- **A missing or empty volume is not a deletion.** If the receipts folder is
+  missing or empty while the mirror holds files, the run fails and marks
+  nothing as gone. A run that would newly mark more than a tenth of the
+  mirror (and more than 10 files) as gone fails the same way. Either one
+  makes `receipts-backup` unhealthy (see step 2). If many files really were
+  deleted at once, for example a property with all its photos, let one run
+  through:
+
+  ```bash
+  docker compose --profile backup run --rm -e RECEIPTS_ALLOW_GONE=1 receipts-backup /opt/backup/receipts-mirror.sh
+                                                      # one mirror run that may mark any number of files as gone; they still stay 186 days
+  ```
+
 - **A restore** (`scripts/backup/receipts-restore.sh`) only adds files the
   volume lacks and deletes nothing. Files the restored database no longer
   lists are removed by the app's daily cleanup, which keeps every file a

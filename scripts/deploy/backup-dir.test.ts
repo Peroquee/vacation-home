@@ -125,13 +125,48 @@ describe("a network share", () => {
     expect(sudoCalls()).toEqual([]);
   });
 
-  it("warns, without changing anything, when user 999 cannot write", () => {
+  /** A stub docker whose `run` (the write test as 999) exits `status`. */
+  function dockerRuns(status: number) {
+    stub("docker", `echo "$*" >> "${join(root, "docker-calls")}"\nexit ${status}`);
+  }
+  const dockerCalls = () =>
+    existsSync(join(root, "docker-calls"))
+      ? readFileSync(join(root, "docker-calls"), "utf8").trim().split("\n")
+      : [];
+
+  it("stops when user 999 cannot write there, by a real write test (GitLab #145)", () => {
     const dir = join(root, "backups");
     mkdirSync(dir, { mode: 0o750 });
+    dockerRuns(1);
     const result = run([dir], { FAKE_FS: "nfs", SUDO_OK: "1" });
-    expect(result.status).toBe(0);
-    expect(result.stderr).toContain("WARNING");
+    expect(result.status).toBe(1);
+    expect(result.stderr).toContain("user 999 cannot write to it");
+    expect(result.stderr).toContain("owner 999:999");
+    expect(dockerCalls()).toEqual([
+      expect.stringMatching(new RegExp(`^run --rm --user 999:999 -v ${dir}:/check alpine:3\\.24 `)),
+    ]);
     expect(sudoCalls()).toEqual([]);
+  });
+
+  it("passes when the write test as 999 works, whatever the mode bits say", () => {
+    // SMB and NFS with id mapping often show owners and modes that are not
+    // what the NAS enforces.
+    const dir = join(root, "backups");
+    mkdirSync(dir, { mode: 0o750 });
+    dockerRuns(0);
+    const result = run([dir], { FAKE_FS: "cifs" });
+    expect(result.status, result.stderr).toBe(0);
+    expect(dockerCalls()).toHaveLength(1);
+  });
+
+  it("only says it would test writing on a dry run", () => {
+    const dir = join(root, "backups");
+    mkdirSync(dir, { mode: 0o750 });
+    dockerRuns(1);
+    const result = run(["--dry-run", dir], { FAKE_FS: "nfs" });
+    expect(result.status).toBe(0);
+    expect(result.stdout).toContain("[dry-run] would test writing to it as user 999");
+    expect(dockerCalls()).toEqual([]);
   });
 
   it("is fine when everyone may write", () => {
