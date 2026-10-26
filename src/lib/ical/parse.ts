@@ -8,6 +8,12 @@
  *   ("Reserved", "Not available", "CLOSED - Not available") on their own
  *   dates, end exclusive, like a block. A timed event blocks every night it
  *   touches, in the property's timezone: a stay is never shorter than a night.
+ * - **Times** (GitLab #142): one in UTC is that instant; one with a TZID is
+ *   read in that zone, an IANA name through Intl, any other by the feed's
+ *   own VTIMEZONE for it; a floating one, or a TZID nothing defines, is the
+ *   property's wall clock. Never the server's timezone, and no definition
+ *   is shared between feeds: ical.js's process-wide TimezoneService is not
+ *   used.
  * - **No personal data**: only the UID and the dates are kept. Summaries and
  *   descriptions (Airbnb's carry a reservation link and phone digits) never
  *   leave this module.
@@ -21,6 +27,8 @@ import ICAL from "ical.js";
 
 import { addDays, type CalendarDate, isCalendarDate } from "@/lib/calendar-date";
 import type { DateRange } from "@/lib/date-range";
+
+import { zonedInstant } from "./stay-event";
 
 export type FeedEvent = DateRange & {
   /** The event's UID: the same stay keeps it from one fetch to the next. */
@@ -58,11 +66,13 @@ export function readFeed(text: string, timezone: string): FeedRead {
   }
   if (calendar.name !== "vcalendar") throw new FeedParseError("not a VCALENDAR");
 
-  // Times given in the feed's own timezones (TZID) need their definitions.
+  // The feed's own timezone definitions, for TZIDs that are not IANA names
+  // (e.g. Windows ones). Kept to this feed: never registered process-wide.
+  const zones = new Map<string, InstanceType<typeof ICAL.Timezone>>();
   for (const zone of calendar.getAllSubcomponents("vtimezone")) {
     const tzid = zone.getFirstPropertyValue("tzid");
-    if (typeof tzid === "string" && !ICAL.TimezoneService.has(tzid)) {
-      ICAL.TimezoneService.register(zone);
+    if (typeof tzid === "string" && !isIanaZone(tzid)) {
+      zones.set(tzid, new ICAL.Timezone(zone));
     }
   }
 
@@ -70,7 +80,7 @@ export function readFeed(text: string, timezone: string): FeedRead {
   const unreadable = new Set<string>();
   let unreadableWithoutUid = 0;
   for (const component of calendar.getAllSubcomponents("vevent")) {
-    const nights = blockedNights(component, timezone);
+    const nights = blockedNights(component, timezone, zones);
     if (nights === "free") continue;
     if (nights === "unreadable") {
       const uid = uidOf(component);
@@ -94,6 +104,7 @@ const uidOf = (component: InstanceType<typeof ICAL.Component>) =>
 function blockedNights(
   component: InstanceType<typeof ICAL.Component>,
   timezone: string,
+  zones: Map<string, InstanceType<typeof ICAL.Timezone>>,
 ): FeedEvent | "free" | "unreadable" {
   const status = String(component.getFirstPropertyValue("status") ?? "").toUpperCase();
   const transparency = String(component.getFirstPropertyValue("transp") ?? "").toUpperCase();
@@ -119,7 +130,54 @@ function blockedNights(
     return end > first ? { uid, start: first, end } : { uid, start: first, end: addDays(first, 1) };
   }
 
-  const first = localDate(start.toJSDate(), timezone);
-  const endDay = hasEnd ? localDate(event.endDate.toJSDate(), timezone) : first;
+  const startZone = tzidOf(component, "dtstart");
+  const first = localDay(start, startZone, timezone, zones);
+  // An end given as a duration is in the start's zone.
+  const endZone = component.hasProperty("dtend") ? tzidOf(component, "dtend") : startZone;
+  const endDay = hasEnd ? localDay(event.endDate, endZone, timezone, zones) : first;
+  if (!isCalendarDate(first) || !isCalendarDate(endDay)) return "unreadable";
   return { uid, start: first, end: endDay > first ? endDay : addDays(first, 1) };
+}
+
+const tzidOf = (component: InstanceType<typeof ICAL.Component>, name: string) => {
+  const tzid = component.getFirstProperty(name)?.getParameter("tzid");
+  return typeof tzid === "string" && tzid.trim() ? tzid.trim() : null;
+};
+
+/** Whether Intl knows `name` as a timezone, e.g. "Europe/Berlin" or "UTC". */
+function isIanaZone(name: string): boolean {
+  try {
+    new Intl.DateTimeFormat("en", { timeZone: name });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * The date in the property's `timezone` of an iCal time: a date as it is,
+ * a time by the rules in the module comment. Only the value's own fields
+ * are read, never through the server's local time.
+ */
+function localDay(
+  time: InstanceType<typeof ICAL.Time>,
+  tzid: string | null,
+  timezone: string,
+  zones: Map<string, InstanceType<typeof ICAL.Timezone>>,
+): CalendarDate {
+  const date = `${String(time.year).padStart(4, "0")}-${String(time.month).padStart(2, "0")}-${String(time.day).padStart(2, "0")}`;
+  if (time.isDate) return date;
+  const wall = Date.UTC(time.year, time.month - 1, time.day, time.hour, time.minute, time.second);
+  const clock = `${String(time.hour).padStart(2, "0")}:${String(time.minute).padStart(2, "0")}`;
+  let instant: Date;
+  if (time.zone === ICAL.Timezone.utcTimezone || tzid === "UTC" || tzid === "Z") {
+    instant = new Date(wall);
+  } else if (tzid && isIanaZone(tzid)) {
+    instant = new Date(zonedInstant(date, clock, tzid).getTime() + time.second * 1000);
+  } else if (tzid && zones.has(tzid)) {
+    instant = new Date(wall - zones.get(tzid)!.utcOffset(time) * 1000);
+  } else {
+    instant = new Date(zonedInstant(date, clock, timezone).getTime() + time.second * 1000);
+  }
+  return localDate(instant, timezone);
 }

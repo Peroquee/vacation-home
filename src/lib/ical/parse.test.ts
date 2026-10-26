@@ -191,3 +191,105 @@ describe("readFeed", () => {
     expect(readFeed(twice, "UTC")).toMatchObject({ unreadable: [], unreadableWithoutUid: 0 });
   });
 });
+
+describe("times without a timezone of their own (GitLab #142)", () => {
+  // Late evenings, where reading them in the wrong zone moves the date.
+  const feed = ics(
+    "BEGIN:VCALENDAR",
+    "VERSION:2.0",
+    "BEGIN:VTIMEZONE",
+    "TZID:W. Europe Standard Time",
+    "BEGIN:STANDARD",
+    "DTSTART:16010101T030000",
+    "TZOFFSETFROM:+0200",
+    "TZOFFSETTO:+0100",
+    "RRULE:FREQ=YEARLY;BYDAY=-1SU;BYMONTH=10",
+    "END:STANDARD",
+    "BEGIN:DAYLIGHT",
+    "DTSTART:16010101T020000",
+    "TZOFFSETFROM:+0100",
+    "TZOFFSETTO:+0200",
+    "RRULE:FREQ=YEARLY;BYDAY=-1SU;BYMONTH=3",
+    "END:DAYLIGHT",
+    "END:VTIMEZONE",
+    "BEGIN:VEVENT",
+    "UID:floating",
+    "DTSTART:20261024T230000",
+    "DTEND:20261026T100000",
+    "END:VEVENT",
+    "BEGIN:VEVENT",
+    "UID:tzid-without-vtimezone",
+    "DTSTART;TZID=Europe/Berlin:20261024T230000",
+    "DTEND;TZID=Europe/Berlin:20261026T100000",
+    "END:VEVENT",
+    "BEGIN:VEVENT",
+    "UID:new-york",
+    // 20:00 in New York is 02:00 the next day in Berlin.
+    "DTSTART;TZID=America/New_York:20261024T200000",
+    "DTEND;TZID=America/New_York:20261026T080000",
+    "END:VEVENT",
+    "BEGIN:VEVENT",
+    "UID:windows-zone",
+    "DTSTART;TZID=W. Europe Standard Time:20261024T233000",
+    "DTEND;TZID=W. Europe Standard Time:20261026T100000",
+    "END:VEVENT",
+    "BEGIN:VEVENT",
+    "UID:date-end",
+    "DTSTART;TZID=Europe/Berlin:20261024T230000",
+    "DTEND;VALUE=DATE:20261027",
+    "END:VEVENT",
+    "END:VCALENDAR",
+  );
+  const expected = [
+    { uid: "floating", start: "2026-10-24", end: "2026-10-26" },
+    { uid: "tzid-without-vtimezone", start: "2026-10-24", end: "2026-10-26" },
+    { uid: "new-york", start: "2026-10-25", end: "2026-10-26" },
+    { uid: "windows-zone", start: "2026-10-24", end: "2026-10-26" },
+    { uid: "date-end", start: "2026-10-24", end: "2026-10-27" },
+  ];
+
+  // The lint rule is about the app's configuration; this sets the process
+  // timezone the way production (UTC) and the database suite (UTC+14) run.
+  // eslint-disable-next-line no-restricted-properties
+  const env = process.env;
+
+  it.each(["UTC", "Pacific/Kiritimati", "America/Los_Angeles"])(
+    "reads them in the property's timezone, or their named one, whatever the server's (%s)",
+    (zone) => {
+      const before = env.TZ;
+      env.TZ = zone;
+      try {
+        expect(parseFeed(feed, "Europe/Berlin")).toEqual(expected);
+      } finally {
+        if (before === undefined) delete env.TZ;
+        else env.TZ = before;
+      }
+    },
+  );
+
+  it("does not let one feed's timezone definition change how another is read", () => {
+    // A feed that defines Europe/Berlin wrongly (UTC+5)...
+    parseFeed(
+      ics(
+        "BEGIN:VCALENDAR",
+        "VERSION:2.0",
+        "BEGIN:VTIMEZONE",
+        "TZID:Europe/Berlin",
+        "BEGIN:STANDARD",
+        "DTSTART:16010101T000000",
+        "TZOFFSETFROM:+0500",
+        "TZOFFSETTO:+0500",
+        "END:STANDARD",
+        "END:VTIMEZONE",
+        "BEGIN:VEVENT",
+        "UID:x",
+        "DTSTART;TZID=Europe/Berlin:20261001T120000",
+        "END:VEVENT",
+        "END:VCALENDAR",
+      ),
+      "Europe/Berlin",
+    );
+    // ...then one that relies on the real Europe/Berlin.
+    expect(parseFeed(feed, "Europe/Berlin")).toEqual(expected);
+  });
+});
