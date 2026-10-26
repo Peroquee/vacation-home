@@ -7,9 +7,11 @@ import { isUuid } from "@/lib/api";
 import { toPropertyChoice } from "@/lib/bookings/form";
 import { pricingRulesForMany } from "@/lib/pricing/service";
 import { getBooking, toDto } from "@/lib/bookings/service";
+import { statusByHand } from "@/lib/bookings/values";
 import { getFormat } from "@/i18n/get-format";
 import { guestDisplayName } from "@/lib/guests/display";
 import { getGuest } from "@/lib/guests/service";
+import { listPayments } from "@/lib/payments/service";
 import { listProperties } from "@/lib/properties/service";
 
 import { BookingForm } from "../../booking-form";
@@ -25,9 +27,10 @@ export default async function EditBookingPage({ params }: PageProps<"/bookings/[
   const booking = isUuid(id) ? await getBooking(id) : null;
   if (!booking) notFound();
 
-  const [guest, all] = await Promise.all([
+  const [guest, all, payments] = await Promise.all([
     getGuest(booking.guestId),
     listProperties({ includeArchived: true }),
+    listPayments(booking.id),
   ]);
   // Its own property stays listed even if archived since; the selector is
   // read-only when editing anyway.
@@ -47,7 +50,11 @@ export default async function EditBookingPage({ params }: PageProps<"/bookings/[
       />
       <BookingForm
         properties={properties}
-        booking={{ ...dto, guest: { ...dto.guest, email: guest?.email ?? null } }}
+        booking={{
+          ...dto,
+          guest: { ...dto.guest, email: guest?.email ?? null },
+          statusByHand: statusByHand({ ...dto, hasPayments: payments.length > 0 }),
+        }}
       />
     </>
   );

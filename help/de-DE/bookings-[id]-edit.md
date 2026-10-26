@@ -22,3 +22,4 @@ guide: bookings
 ## Was tun, wenn …
 
 - **… die neuen Tage belegt sind?** Das Formular zeigt es sofort. Eine bestätigte Buchung kann nicht auf belegte Tage gelegt werden.
+- **… sich der Status nicht ändern lässt?** Eine Buchung von der Website, oder eine hier angenommene oder bezahlte, ändert ihren Status über die Schaltflächen auf der Seite der Buchung: Zahlung erfassen, stornieren oder wiederherstellen.

@@ -353,7 +353,18 @@ bestätigen** prüft die Daten erneut und lehnt ab, wenn sie inzwischen
 vergeben sind. **Buchung stornieren** gibt die Tage sofort frei und behält
 die Buchung (als storniert markiert); zur Erstattung siehe
 **Stornierungen** weiter unten. Eine stornierte oder abgelaufene
-Buchung lässt sich **als Anfrage wiederherstellen**.
+Buchung lässt sich **als Anfrage wiederherstellen**, solange kein Geld aus
+ihr mehr eingegangen ist (erst erstatten oder eine neue Buchung anlegen)
+und ihre Tage noch frei sind.
+
+Den Status setzen Sie selbst nur bei einer Buchung, die Sie von Hand
+eingetragen haben und die außerhalb des Zahlungsablaufs liegt: nie
+angenommen, keine Zahlung erfasst. Eine Buchung von Airbnb oder
+Booking.com, dort bezahlt, kann gleich **Bezahlt** sein. Jede andere
+Änderung des Status läuft über die Schaltflächen der Buchung: annehmen,
+Zahlung erfassen, stornieren, wiederherstellen. Deshalb gibt es **Buchung
+bestätigen** nur bei von Hand eingetragenen Buchungen; eine Anfrage von
+der Website wird angenommen, und ihre Zahlungen bestätigen sie.
 
 **Anfragen** (Buchungen → Anfragen; die Zahl neben Buchungen im Menü zählt
 sie) listet die Anfragen, die Gäste über Ihre öffentliche Seite geschickt

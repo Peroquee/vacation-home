@@ -701,7 +701,8 @@
       "overrideTax": "Kurtaxe von Hand festlegen",
       "taxAmount": "Kurtaxe für diese Buchung",
       "taxNote": "Grund (optional)",
-      "taxNoteHint": "Zum Beispiel eine Befreiung nach der Satzung; steht beim Betrag."
+      "taxNoteHint": "Zum Beispiel eine Befreiung nach der Satzung; steht beim Betrag.",
+      "statusByAction": "Wird auf der Seite der Buchung geändert: annehmen, Zahlung erfassen, stornieren oder als Anfrage wiederherstellen."
     },
     "actions": {
       "confirmed": "Buchung bestätigt",
@@ -1698,7 +1699,10 @@
     "rampAfterFree": "darf nicht länger sein als der kostenlose Zeitraum",
     "startAboveEnd": "darf nicht über dem Endanteil liegen",
     "rampNeedsFree": "braucht einen kostenlosen Zeitraum davor",
-    "departureOrder": "darf nicht später als die späteste Abreise sein"
+    "departureOrder": "darf nicht später als die späteste Abreise sein",
+    "statusByAction": "wird nur über die Aktionen der Buchung geändert: annehmen, Zahlung erfassen, stornieren oder als Anfrage wiederherstellen",
+    "onlyEnded": "nur eine stornierte oder abgelaufene Buchung kann wiederhergestellt werden",
+    "moneyHeld": "kann nicht wiederhergestellt werden, solange Geld eingegangen ist: erst erstatten oder eine neue Buchung anlegen"
   },
   "stay": {
     "photoOf": "Foto {n} von {title}",

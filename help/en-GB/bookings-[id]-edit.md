@@ -22,3 +22,4 @@ Change a booking's dates, guests, price or notes.
 ## What if …
 
 - **… the new dates are taken?** The form shows it straight away. A confirmed booking can't be moved onto taken days.
+- **… the status can't be changed?** A booking from the website, or one accepted or paid here, changes status through its buttons on the booking page: record a payment, cancel or reinstate.

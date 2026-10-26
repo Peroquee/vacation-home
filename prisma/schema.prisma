@@ -253,6 +253,8 @@ enum BookingEventKind {
   deposit_received
   fully_paid
   cancelled
+  /// Back from cancelled or expired to a request (GitLab #135); mails no one.
+  reinstated
 
   @@map("booking_event_kind")
 }

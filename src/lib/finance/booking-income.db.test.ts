@@ -9,7 +9,12 @@ import {
   PUT as putSettings,
 } from "@/app/api/properties/[id]/income-automation/route";
 import { PATCH as patchTransaction } from "@/app/api/transactions/[id]/route";
-import { cancelBooking, createBooking, updateBooking } from "@/lib/bookings/service";
+import {
+  cancelBooking,
+  createBooking,
+  reinstateBooking,
+  updateBooking,
+} from "@/lib/bookings/service";
 import { db } from "@/lib/db";
 
 import { bookingIncomeParts } from "./booking-income";
@@ -169,7 +174,8 @@ describe("cancellation", () => {
     const booking = await book();
     await cancelBooking(booking.id);
     expect(await entries(booking.id)).toEqual([]);
-    // Confirmed again: generated afresh.
+    // Confirmed again (reinstated, then confirmed): generated afresh.
+    await reinstateBooking(booking.id);
     await updateBooking(booking.id, { status: "confirmed" });
     expect(await summary(booking.id)).toHaveLength(2);
   });
@@ -182,6 +188,7 @@ describe("cancellation", () => {
       ["booking_accommodation", "booking_income", 0],
       ["booking_cleaning", "cleaning_fees", 0],
     ]);
+    await reinstateBooking(booking.id);
     await updateBooking(booking.id, { status: "confirmed" });
     expect(await summary(booking.id)).toEqual([
       ["booking_accommodation", "booking_income", 300_00],

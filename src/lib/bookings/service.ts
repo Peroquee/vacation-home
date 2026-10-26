@@ -60,9 +60,14 @@ import {
   type CreateBookingInput,
   FLOW_ONLY,
   FLOW_STATUSES,
+  HAND_STATUSES,
   holdsDates,
   isBooked,
   type ListBookingsQuery,
+  MONEY_HELD,
+  ONLY_ENDED,
+  STATUS_BY_ACTION,
+  statusByHand,
   stayProblem,
   type UpdateBookingInput,
   WEBSITE_ONLY,
@@ -244,6 +249,17 @@ export async function createBooking(
   }
   if (!guest) return { error: "invalid", field: "guestId", message: "does not exist" };
   if (guest.purgedAt) return { error: "invalid", field: "guestId", message: "has been erased" };
+  // A new booking starts as a request, or - entered by hand - as confirmed
+  // or paid (on a platform); the rest only the actions reach (GitLab #135).
+  if ((FLOW_STATUSES as readonly string[]).includes(input.status)) {
+    return { error: "invalid", field: "status", message: FLOW_ONLY };
+  }
+  if (
+    !(HAND_STATUSES as readonly string[]).includes(input.status) ||
+    (input.source === "website" && input.status !== "inquiry")
+  ) {
+    return { error: "invalid", field: "status", message: STATUS_BY_ACTION };
+  }
 
   // The booking's own rate, if any (else its nights follow the seasons),
   // and the cleaning fee copied from the property now: later changes there
@@ -373,6 +389,16 @@ export async function updateBooking(id: string, input: UpdateBookingInput): Prom
         (FLOW_STATUSES as readonly string[]).includes(input.status)
       ) {
         return { error: "invalid", field: "status", message: FLOW_ONLY };
+      }
+      // Any other change of status only by hand where the owner owns it
+      // (GitLab #135): to cancel, pay or reinstate there are the actions.
+      if (input.status && input.status !== current.status) {
+        const payments = await tx.bookingPayment.count({ where: { bookingId: id } });
+        const byHand = (status: string) =>
+          statusByHand({ ...current, status, hasPayments: payments > 0 });
+        if (!byHand(current.status) || !byHand(input.status)) {
+          return { error: "invalid", field: "status", message: STATUS_BY_ACTION };
+        }
       }
       // An erased guest's bookings keep their facts but take no new notes.
       if (current.guest.purgedAt && input.notes && input.guestId === undefined) {
@@ -584,6 +610,64 @@ export async function cancelBooking(
 }
 
 export const REFUND_ABOVE_RECEIVED = "cannot be more than was received";
+
+/**
+ * Brings a cancelled or expired booking back as a request (GitLab #135),
+ * without what ended it: the cancellation, the refund due, the expiry, the
+ * decline, and the hold, which accepting it again sets anew. Refused while
+ * money is held, which would have to be refunded first, and while its dates
+ * have been taken meanwhile.
+ */
+export async function reinstateBooking(id: string, now = new Date()): Promise<WriteResult> {
+  const head = await db.booking.findUnique({ where: { id }, select: { propertyId: true } });
+  if (!head) return { error: "not_found" };
+  const result = await locked(head.propertyId, { error: "not_found" }, async (tx) => {
+    const current = await tx.booking.findUnique({
+      where: { id },
+      include: { payments: { select: { kind: true, amountMinor: true } } },
+    });
+    if (!current) return { error: "not_found" };
+    if (current.status !== "cancelled" && current.status !== "expired") {
+      return { error: "invalid", field: "status", message: ONLY_ENDED };
+    }
+    if (receivedOf(current.payments) > 0) {
+      return { error: "invalid", field: "status", message: MONEY_HELD };
+    }
+    const stay = { checkIn: fromUtcDate(current.checkIn), checkOut: fromUtcDate(current.checkOut) };
+    const conflict = await check(tx, { propertyId: current.propertyId, ...stay }, id);
+    if (conflict) return conflict;
+
+    await tx.booking.update({
+      where: { id },
+      data: {
+        status: "inquiry",
+        cancelledAt: null,
+        cancelledBy: null,
+        refundDueMinor: null,
+        expiredAt: null,
+        declinedAt: null,
+        declineReason: null,
+        reservedAt: null,
+        depositAmountMinor: null,
+        depositDueOn: null,
+        balanceDueOn: null,
+      },
+    });
+    await tx.bookingEvent.create({
+      data: { bookingId: id, kind: "reinstated", key: now.toISOString() },
+    });
+    await syncBookingIncome(id, tx);
+    await scheduleBookingSync(id, tx);
+    const booking = await tx.booking.findUnique({ where: { id }, include: withRelations });
+    return booking ? { booking } : { error: "not_found" };
+  });
+  if (!("booking" in result)) return result;
+  kickOutboundSync();
+  invalidateWindows(head.propertyId, [
+    { start: fromUtcDate(result.booking.checkIn), end: fromUtcDate(result.booking.checkOut) },
+  ]);
+  return result;
+}
 
 /** Received less refunded, from a booking's payments. */
 function receivedOf(payments: { kind: string; amountMinor: number }[]): number {

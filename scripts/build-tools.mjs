@@ -8,7 +8,11 @@
 import { build } from "esbuild";
 
 await build({
-  entryPoints: ["scripts/guests-repurge.ts", "scripts/tokens-rotate.ts"],
+  entryPoints: [
+    "scripts/guests-repurge.ts",
+    "scripts/tokens-rotate.ts",
+    "scripts/bookings-check.ts",
+  ],
   outdir: "dist-tools",
   outExtension: { ".js": ".mjs" },
   bundle: true,

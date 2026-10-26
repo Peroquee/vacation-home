@@ -5,7 +5,12 @@
  */
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
 
-import { cancelBooking, createBooking, updateBooking } from "@/lib/bookings/service";
+import {
+  cancelBooking,
+  createBooking,
+  reinstateBooking,
+  updateBooking,
+} from "@/lib/bookings/service";
 import { db } from "@/lib/db";
 
 import { type CalendarClient, type CalendarEvent, GoogleCalendarError } from "./calendar";
@@ -256,6 +261,7 @@ describe("keeping Google in step", () => {
     await sync();
     await cancelBooking(booking.id);
     google.duringNextWrite(async () => {
+      await reinstateBooking(booking.id);
       await updateBooking(booking.id, { status: "confirmed" });
     });
     await sync();
