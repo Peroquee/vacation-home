@@ -5,7 +5,7 @@
  * only.
  */
 import type { BookingStatus } from "@/generated/prisma/client";
-import { answerBy } from "@/lib/booking-requests/inbox";
+import { answerBy, answerWindowStart, LATEST_REINSTATEMENT } from "@/lib/booking-requests/inbox";
 import { getRequestSettings } from "@/lib/booking-requests/settings";
 import { type CalendarDate, fromUtcDate } from "@/lib/calendar-date";
 import type { CancellationTerms } from "@/lib/cancellation/policy";
@@ -67,7 +67,11 @@ export async function guestView(token: string): Promise<GuestView | null> {
   if (!bookingId) return null;
   const booking = await db.booking.findUnique({
     where: { id: bookingId },
-    include: { property: { select: { id: true, name: true, timezone: true } }, payments: true },
+    include: {
+      property: { select: { id: true, name: true, timezone: true } },
+      payments: true,
+      events: LATEST_REINSTATEMENT,
+    },
   });
   if (!booking) return null;
   const [listing, bank, requests] = await Promise.all([
@@ -122,7 +126,10 @@ export async function guestView(token: string): Promise<GuestView | null> {
     wasReserved: booking.reservedAt !== null,
     answerBy:
       booking.status === "inquiry"
-        ? answerBy(todayIn(booking.property.timezone, booking.createdAt), requests.expiryDays)
+        ? answerBy(
+            todayIn(booking.property.timezone, answerWindowStart(booking)),
+            requests.expiryDays,
+          )
         : null,
     totalAmountMinor: booking.totalAmountMinor,
     price: guestPrice(booking),

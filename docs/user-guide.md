@@ -310,7 +310,8 @@ dates at once and keeps the booking (marked cancelled); see
 **Cancellations** below for the refund. A cancelled or expired
 booking can be **reinstated as an inquiry**, as long as no money from it is
 still held (refund it first, or make a new booking) and its dates are still
-free.
+free. A request from your website reinstated this way waits for your answer
+as long again as a new one, counted from the reinstatement.
 
 You set the status yourself only on a booking you entered by hand that is
 outside the payment flow: never accepted, and no payment recorded for it.

@@ -355,7 +355,9 @@ die Buchung (als storniert markiert); zur Erstattung siehe
 **Stornierungen** weiter unten. Eine stornierte oder abgelaufene
 Buchung lässt sich **als Anfrage wiederherstellen**, solange kein Geld aus
 ihr mehr eingegangen ist (erst erstatten oder eine neue Buchung anlegen)
-und ihre Tage noch frei sind.
+und ihre Tage noch frei sind. Eine so wiederhergestellte Anfrage von Ihrer
+Website wartet ab der Wiederherstellung wieder so lange auf Ihre Antwort
+wie eine neue.
 
 Den Status setzen Sie selbst nur bei einer Buchung, die Sie von Hand
 eingetragen haben und die außerhalb des Zahlungsablaufs liegt: nie
