@@ -86,3 +86,50 @@ describe("amountExamples", () => {
     expect(inputToMinor("1.000,50", "EUR")).toBeNull();
   });
 });
+
+describe("amounts in German (GitLab #139)", () => {
+  it("are read with a decimal comma, thousands points, or a decimal point", () => {
+    expect(inputToMinor("12,50", "EUR", "de-DE")).toBe(1250);
+    expect(inputToMinor("1.234,56", "EUR", "de-DE")).toBe(123456);
+    expect(inputToMinor("1.234", "EUR", "de-DE")).toBe(123400);
+    expect(inputToMinor("1.234.567,8", "EUR", "de-DE")).toBe(123456780);
+    expect(inputToMinor("12.50", "EUR", "de-DE")).toBe(1250);
+    expect(inputToMinor("1.500", "JPY", "de-DE")).toBe(1500);
+  });
+
+  it("refuse what they would have to guess or round", () => {
+    expect(inputToMinor("1,234", "EUR", "de-DE")).toBeNull();
+    expect(inputToMinor("12.5.0", "EUR", "de-DE")).toBeNull();
+    expect(inputToMinor("1.23,4", "EUR", "de-DE")).toBeNull();
+    expect(inputToMinor("-5", "EUR", "de-DE")).toBeNull();
+    // Three minor digits: the point is the decimal mark, not a thousands group.
+    expect(inputToMinor("1.234", "KWD", "de-DE")).toBe(1234);
+  });
+
+  it("are shown with a decimal comma, and read back", () => {
+    expect(minorToInput(18000, "EUR", "de-DE")).toBe("180,00");
+    expect(minorToInput(1500, "JPY", "de-DE")).toBe("1500");
+    for (const [minor, currency] of [
+      [18050, "EUR"],
+      [7, "EUR"],
+      [1500, "JPY"],
+      [1234, "KWD"],
+    ] as const) {
+      expect(inputToMinor(minorToInput(minor, currency, "de-DE"), currency, "de-DE")).toBe(minor);
+    }
+  });
+
+  it("are described with German examples", () => {
+    expect(amountExamples("EUR", "de-DE")).toEqual(["1000,50", "1.000,50"]);
+    expect(amountExamples("JPY", "de-DE")).toEqual(["100050"]);
+  });
+
+  it("leave English unchanged", () => {
+    expect(inputToMinor("12.50", "EUR", "en-GB")).toBe(1250);
+    expect(inputToMinor("12,50", "EUR", "en-GB")).toBe(1250);
+    expect(inputToMinor("1.234", "EUR", "en-GB")).toBeNull();
+    expect(inputToMinor("1,000.00", "EUR", "en-GB")).toBeNull();
+    expect(minorToInput(18000, "EUR", "en-GB")).toBe("180.00");
+    expect(amountExamples("EUR", "en-GB")).toEqual(["1000.50", "1000,50"]);
+  });
+});

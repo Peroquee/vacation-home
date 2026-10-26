@@ -9,7 +9,7 @@ import { Button, buttonVariants } from "@/components/ui/button";
 import { Field, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { NativeSelect, NativeSelectOption } from "@/components/ui/native-select";
-import { todayUtc } from "@/lib/bookings/list-params";
+import { appToday } from "@/lib/app-today";
 import { addDays } from "@/lib/calendar-date";
 import { addMonths } from "@/lib/calendar/month";
 import { db } from "@/lib/db";
@@ -39,7 +39,7 @@ const STATEMENT_SIZE = 200;
  */
 export default async function FinancePage({ searchParams }: PageProps<"/finance">) {
   const asked = ledgerParams(await searchParams);
-  const today = todayUtc();
+  const today = appToday();
   const period = ledgerPeriod(asked, today);
   // Month navigation starts from the period's month, also for a custom range.
   const month = period.month ?? period.from.slice(0, 7);

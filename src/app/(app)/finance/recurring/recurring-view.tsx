@@ -42,11 +42,14 @@ const STATUS_STYLE: Record<RuleStatus, string> = {
  * and delete. Nothing here removes a transaction a rule already created.
  */
 export function RecurringView({
+  today,
   rules,
   properties,
   categories,
   prefill,
 }: {
+  /** Where the owner is (GitLab #139), for a new rule's start. */
+  today: string;
   rules: Rule[];
   properties: RuleProperty[];
   categories: RuleCategory[];
@@ -227,6 +230,7 @@ export function RecurringView({
       />
       {dialog ? (
         <RuleDialog
+          today={today}
           key={dialog.mode === "edit" ? dialog.rule.id : "new"}
           rule={dialog.mode === "edit" ? dialog.rule : undefined}
           prefill={dialog.mode === "create" ? dialog.prefill : null}

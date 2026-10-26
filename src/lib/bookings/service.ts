@@ -30,7 +30,7 @@ import { type CalendarDate, fromUtcDate, toUtcDate } from "@/lib/calendar-date";
 import { guestRefund } from "@/lib/cancellation/policy";
 import type { CancelInput } from "@/lib/cancellation/schema";
 import { bookingPolicy, policySnapshot } from "@/lib/cancellation/service";
-import { todayIn } from "@/lib/finance/recurring";
+import { todayIn } from "@/lib/today";
 import { db, type DbClient } from "@/lib/db";
 import { isPrismaError, raisedByDatabase } from "@/lib/db-errors";
 import { syncBookingIncome } from "@/lib/finance/booking-income";

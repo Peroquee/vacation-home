@@ -29,7 +29,7 @@ import { env } from "@/env";
 import { fromUtcDate } from "@/lib/calendar-date";
 import { bookingPolicy } from "@/lib/cancellation/service";
 import { db } from "@/lib/db";
-import { todayIn } from "@/lib/finance/recurring";
+import { todayIn } from "@/lib/today";
 import { logger } from "@/lib/logger";
 import { DEFAULT_LOCALE, isLocale } from "@/i18n/locales";
 import { stayEventOf } from "@/lib/ical/guest-stay";

@@ -68,7 +68,7 @@ export function toCsv(rows: ExportRow[], format: CsvFormat): string {
   const delimiter = format === "excel-de" ? ";" : ",";
   const line = (cells: string[]) => cells.map((c) => cell(c, delimiter)).join(delimiter);
   const amount = (row: ExportRow) => {
-    const text = minorToInput(row.amountMinor, row.currency);
+    const text = minorToInput(row.amountMinor, row.currency, "en-GB");
     return format === "excel-de" ? text.replace(".", ",") : text;
   };
   return (

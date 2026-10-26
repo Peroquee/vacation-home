@@ -641,8 +641,8 @@
     }
   },
   "forms": {
-    "amountHint": "muss ein Betrag wie {example} sein, ohne Tausendertrennzeichen",
-    "amountHintEither": "muss ein Betrag wie {example} oder {alternative} sein, ohne Tausendertrennzeichen",
+    "amountHint": "muss ein Betrag wie {example} sein",
+    "amountHintEither": "muss ein Betrag wie {example} oder {alternative} sein",
     "required": "ist erforderlich",
     "inCurrency": "In {currency}.",
     "fieldError": "{label} {message}",

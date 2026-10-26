@@ -11,7 +11,7 @@ import { type CalendarDate, fromUtcDate } from "@/lib/calendar-date";
 import type { CancellationTerms } from "@/lib/cancellation/policy";
 import { bookingPolicy } from "@/lib/cancellation/service";
 import { db } from "@/lib/db";
-import { todayIn } from "@/lib/finance/recurring";
+import { todayIn } from "@/lib/today";
 import { bookingStayTimes, getListing } from "@/lib/listing/service";
 import type { StayTimes } from "@/lib/listing/stay-times";
 

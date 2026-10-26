@@ -29,6 +29,7 @@ import { type CalendarDate, fromUtcDate, isCalendarDate, toUtcDate } from "@/lib
 import { db, type DbClient } from "@/lib/db";
 import { isPrismaError } from "@/lib/db-errors";
 import { calendarDate, optionalText } from "@/lib/query";
+import { todayIn } from "@/lib/today";
 
 export const RECURRENCE_INTERVALS = ["monthly", "quarterly", "annual"] as const;
 const MONTHS: Record<RecurrenceInterval, number> = { monthly: 1, quarterly: 3, annual: 12 };
@@ -62,11 +63,6 @@ export function firstOccurrenceFrom(
   let n = Math.max(Math.floor(((dy - sy) * 12 + (dm - sm)) / MONTHS[interval]) - 1, 0);
   while (occurrenceDate(start, interval, n) < date) n++;
   return n;
-}
-
-/** Today's date where the property is. */
-export function todayIn(timezone: string, now = new Date()): CalendarDate {
-  return new Intl.DateTimeFormat("en-CA", { timeZone: timezone }).format(now);
 }
 
 // --- Validation -------------------------------------------------------------

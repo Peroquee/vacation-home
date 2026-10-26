@@ -6,8 +6,6 @@
  */
 import type { z } from "zod";
 
-import { fromUtcDate } from "@/lib/calendar-date";
-
 import {
   BOOKING_SORTS,
   type BookingSort,
@@ -23,11 +21,6 @@ type SearchParams = Record<string, string | string[] | undefined>;
 
 /** The params the list understands, in the order they appear in its URLs. */
 const KEYS = ["when", "propertyId", "status", "source", "from", "to", "q", "sort", "page"] as const;
-
-/** Today as a calendar date, in UTC. */
-export function todayUtc(now = new Date()): string {
-  return fromUtcDate(new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate())));
-}
 
 /** The first value of each known param, dropping blanks (an empty form field). */
 export function cleanParams(params: SearchParams): Partial<Record<(typeof KEYS)[number], string>> {
@@ -55,7 +48,8 @@ export type ListState = {
  */
 export function parseListParams(
   params: SearchParams,
-  today = todayUtc(),
+  /** Where the owner is: appToday() (GitLab #139). */
+  today: string,
 ): ListState & ({ query: ListBookingsQuery } | { error: z.ZodError }) {
   const clean = cleanParams(params);
   // An explicit date range without a choice of stays means that range.

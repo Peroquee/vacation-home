@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { useState } from "react";
 
 import { toastError, toastSuccess } from "@/components/toast";
@@ -57,6 +57,7 @@ export function CancelDialog({ id, currency }: { id: string; currency: string })
   const api = useApiText();
   const amountHint = useAmountHint();
   const format = useFormat();
+  const locale = useLocale();
   const [open, setOpen] = useState(false);
   const [preview, setPreview] = useState<Preview | null>(null);
   const [by, setBy] = useState<By>("guest");
@@ -70,7 +71,7 @@ export function CancelDialog({ id, currency }: { id: string; currency: string })
 
   function choose(who: By, from = preview) {
     setBy(who);
-    if (from) setRefund(minorToInput(suggested(from, who), currency));
+    if (from) setRefund(minorToInput(suggested(from, who), currency, locale));
   }
 
   async function load() {
@@ -90,7 +91,7 @@ export function CancelDialog({ id, currency }: { id: string; currency: string })
 
   async function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const refundMinor = inputToMinor(refund, currency);
+    const refundMinor = inputToMinor(refund, currency, locale);
     if (refundMinor === null) {
       setError(amountHint(currency));
       return;

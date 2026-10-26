@@ -125,7 +125,7 @@ export default async function StayPage({ params }: PageProps<"/stay/[slug]">) {
 
       <StayPicker
         slug={property.slug}
-        firstMonth={monthOf(new Date().toISOString().slice(0, 10))}
+        firstMonth={monthOf(property.today)}
         maxGuests={property.maxGuests}
         cancellation={property.cancellation}
       />

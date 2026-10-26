@@ -1,4 +1,5 @@
 import { apiError, validationError } from "@/lib/api";
+import { appToday } from "@/lib/app-today";
 import { exportSchema, exportTransactions, MAX_EXPORT_ROWS } from "@/lib/finance/export";
 import { queryParams } from "@/lib/query";
 
@@ -19,7 +20,7 @@ export async function GET(request: Request) {
       `At most ${MAX_EXPORT_ROWS} transactions per file; choose a shorter range.`,
     );
   }
-  const stamp = new Date().toISOString().slice(0, 10);
+  const stamp = appToday();
   return new Response(result.csv, {
     headers: {
       "Content-Type": "text/csv; charset=utf-8",

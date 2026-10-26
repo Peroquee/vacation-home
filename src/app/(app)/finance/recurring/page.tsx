@@ -6,6 +6,7 @@ import { getTranslations } from "next-intl/server";
 import { PageHeader } from "@/components/page-header";
 import { buttonVariants } from "@/components/ui/button";
 import { isUuid } from "@/lib/api";
+import { appToday } from "@/lib/app-today";
 import { fromUtcDate } from "@/lib/calendar-date";
 import { db } from "@/lib/db";
 import { listCategories } from "@/lib/finance/categories";
@@ -71,6 +72,7 @@ export default async function RecurringPage({ searchParams }: PageProps<"/financ
         }
       />
       <RecurringView
+        today={appToday()}
         rules={rules.map((rule) => toDto(rule) as Rule)}
         properties={properties.map((p) => ({
           id: p.id,

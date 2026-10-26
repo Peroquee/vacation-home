@@ -25,7 +25,7 @@ import { locked, withRelations, type WriteResult } from "@/lib/bookings/service"
 import { type CalendarDate, fromUtcDate, toUtcDate } from "@/lib/calendar-date";
 import { db, type DbClient } from "@/lib/db";
 import { syncBookingIncome } from "@/lib/finance/booking-income";
-import { todayIn } from "@/lib/finance/recurring";
+import { todayIn } from "@/lib/today";
 import { scheduleBookingSync } from "@/lib/google/outbound";
 import { kickOutboundSync } from "@/lib/google/sync-worker";
 

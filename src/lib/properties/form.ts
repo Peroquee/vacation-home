@@ -1,10 +1,13 @@
 /**
  * Helpers for the property settings form. Client-safe: no database access.
  *
- * The form shows amounts in major units ("180.00") while the API takes integer
- * minor units (18000), so these convert between the two through strings,
- * never through a float.
+ * The form shows amounts in major units ("180.00", "180,00" in German) while
+ * the API takes integer minor units (18000), so these convert between the
+ * two through strings, never through a float.
  */
+
+/** Whether amounts are written the German way: 1.234,56 (GitLab #139). */
+const german = (locale: string) => locale.startsWith("de");
 
 /** Minor digits of a currency: 2 for EUR, 0 for JPY, 3 for KWD. */
 export function minorDigits(currency: string): number {
@@ -14,25 +17,42 @@ export function minorDigits(currency: string): number {
   );
 }
 
-/** 18000 EUR -> "180.00", 1500 JPY -> "1500". Plain digits, for an input. */
-export function minorToInput(amountMinor: number, currency: string): string {
+/**
+ * 18000 EUR -> "180.00" ("180,00" in German), 1500 JPY -> "1500". Plain
+ * digits, no thousands separators, for an input.
+ */
+export function minorToInput(amountMinor: number, currency: string, locale = "en-GB"): string {
   const digits = minorDigits(currency);
   const padded = String(Math.abs(amountMinor)).padStart(digits + 1, "0");
   const sign = amountMinor < 0 ? "-" : "";
+  const mark = german(locale) ? "," : ".";
   return digits === 0
     ? `${sign}${padded}`
-    : `${sign}${padded.slice(0, -digits)}.${padded.slice(-digits)}`;
+    : `${sign}${padded.slice(0, -digits)}${mark}${padded.slice(-digits)}`;
 }
 
 /**
  * "180", "180.5" or "180,50" in EUR -> 18000 / 18050 / 18050. Null when the
  * text is not a non-negative amount with at most the currency's minor digits,
  * so the form can say so instead of rounding silently. A blank input is 0.
+ *
+ * In German (GitLab #139) points may also group thousands: "1.234,56" and
+ * "1.234" are 1234.56 and 1234.00, while a point before one or two digits
+ * ("12.50") is still a decimal point. In English nothing changes.
  */
-export function inputToMinor(text: string, currency: string): number | null {
-  const value = text.trim().replace(",", ".");
+export function inputToMinor(text: string, currency: string, locale = "en-GB"): number | null {
+  let value = text.trim();
   if (value === "") return 0;
   const digits = minorDigits(currency);
+  // A point before three digits is a decimal point in a currency with three.
+  if (
+    german(locale) &&
+    /^\d{1,3}(\.\d{3})+(,\d*)?$/.test(value) &&
+    !(digits === 3 && /^\d+\.\d{3}$/.test(value))
+  ) {
+    value = value.replaceAll(".", "");
+  }
+  value = value.replace(",", ".");
   const match = /^(\d+)(?:\.(\d*))?$/.exec(value);
   if (!match) return null;
   const [, whole, fraction = ""] = match;
@@ -42,12 +62,16 @@ export function inputToMinor(text: string, currency: string): number | null {
 }
 
 /**
- * The message for an amount `inputToMinor` refused. Thousands separators are
- * the usual cause ("1.000,50" in German), so it says to leave them out.
+ * Examples for the message on an amount `inputToMinor` refused. In English
+ * thousands separators are the usual cause, so the message says to leave
+ * them out; in German they may be there.
  */
-export function amountExamples(currency: string): [string] | [string, string] {
-  const example = minorToInput(100050, currency);
-  return example.includes(".") ? [example, example.replace(".", ",")] : [example];
+export function amountExamples(currency: string, locale = "en-GB"): [string] | [string, string] {
+  const example = minorToInput(100050, currency, locale);
+  if (!/[.,]/.test(example)) return [example];
+  return german(locale)
+    ? [example, example.replace(/^(\d+)(\d{3}),/, "$1.$2,")]
+    : [example, example.replace(".", ",")];
 }
 
 /** IANA timezones for the selector, e.g. "Europe/Lisbon". */

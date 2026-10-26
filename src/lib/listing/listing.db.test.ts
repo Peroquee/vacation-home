@@ -2,6 +2,7 @@ import sharp from "sharp";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 
 import { db } from "@/lib/db";
+import { todayIn } from "@/lib/today";
 import { fillLegal } from "@/lib/legal/testing/complete-legal";
 import { readStoredFile } from "@/lib/files/store";
 
@@ -159,6 +160,14 @@ describe("the public face", () => {
 
   it("falls back to the property's name when there is no title yet", async () => {
     expect((await getPublicProperty("lake-house"))?.title).toEqual({ en: "Lake House", de: "" });
+  });
+
+  it("says what day it is where the property is, for the calendar's first month (GitLab #139)", async () => {
+    // 25 hours apart: never the same date.
+    for (const timezone of ["Pacific/Kiritimati", "Pacific/Pago_Pago"]) {
+      await db.property.update({ where: { id: propertyId }, data: { timezone } });
+      expect((await getPublicProperty("lake-house"))?.today).toBe(todayIn(timezone));
+    }
   });
 
   it("lists every listed, active property for the start page, oldest first", async () => {

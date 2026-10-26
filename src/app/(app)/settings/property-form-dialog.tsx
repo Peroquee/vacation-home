@@ -55,15 +55,15 @@ type Values = {
   publiclyListed: boolean;
 };
 
-function initialValues(property?: PropertyDto): Values {
+function initialValues(property: PropertyDto | undefined, locale: string): Values {
   if (property) {
     return {
       name: property.name,
       address: property.address ?? "",
       timezone: property.timezone,
       currency: property.currency,
-      nightlyRate: minorToInput(property.defaultNightlyRateMinor, property.currency),
-      cleaningFee: minorToInput(property.defaultCleaningFeeMinor, property.currency),
+      nightlyRate: minorToInput(property.defaultNightlyRateMinor, property.currency, locale),
+      cleaningFee: minorToInput(property.defaultCleaningFeeMinor, property.currency, locale),
       color: property.color,
       slug: property.slug ?? "",
       publiclyListed: property.publiclyListed,
@@ -99,8 +99,9 @@ export function PropertyFormDialog({
   canList?: boolean;
 }) {
   const router = useRouter();
+  const { locale } = useFormat();
   const [open, setOpen] = useState(false);
-  const [values, setValues] = useState(() => initialValues(property));
+  const [values, setValues] = useState(() => initialValues(property, locale));
   const [errors, setErrors] = useState<FieldErrors>({});
   const [pending, setPending] = useState(false);
   const t = useTranslations("settings.propertyForm");
@@ -108,7 +109,6 @@ export function PropertyFormDialog({
   const tCommon = useTranslations("common");
   const api = useApiText();
   const amountHint = useAmountHint();
-  const { locale } = useFormat();
 
   const timeZones = useMemo(() => {
     const zones = timeZoneOptions();
@@ -120,7 +120,7 @@ export function PropertyFormDialog({
   function openChange(next: boolean) {
     if (pending) return;
     if (next) {
-      setValues(initialValues(property));
+      setValues(initialValues(property, locale));
       setErrors({});
     }
     setOpen(next);
@@ -132,8 +132,8 @@ export function PropertyFormDialog({
 
   async function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const nightly = inputToMinor(values.nightlyRate, values.currency);
-    const cleaning = inputToMinor(values.cleaningFee, values.currency);
+    const nightly = inputToMinor(values.nightlyRate, values.currency, locale);
+    const cleaning = inputToMinor(values.cleaningFee, values.currency, locale);
     const amountError = amountHint(values.currency);
     if (nightly === null || cleaning === null) {
       setErrors({
@@ -276,7 +276,7 @@ export function PropertyFormDialog({
                     inputMode="decimal"
                     value={values.nightlyRate}
                     onChange={(event) => set("nightlyRate", event.target.value)}
-                    placeholder={minorToInput(0, values.currency)}
+                    placeholder={minorToInput(0, values.currency, locale)}
                   />
                 ),
                 tForms("inCurrency", { currency: values.currency }),
@@ -290,7 +290,7 @@ export function PropertyFormDialog({
                     inputMode="decimal"
                     value={values.cleaningFee}
                     onChange={(event) => set("cleaningFee", event.target.value)}
-                    placeholder={minorToInput(0, values.currency)}
+                    placeholder={minorToInput(0, values.currency, locale)}
                   />
                 ),
                 tForms("inCurrency", { currency: values.currency }),

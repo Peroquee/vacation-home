@@ -6,7 +6,7 @@ import { createBooking, updateBooking } from "@/lib/bookings/service";
 import { declineRequest } from "@/lib/booking-requests/inbox";
 import { addDays } from "@/lib/calendar-date";
 import { db } from "@/lib/db";
-import { todayIn } from "@/lib/finance/recurring";
+import { todayIn } from "@/lib/today";
 import { FROM_PAYMENT, updateTransaction } from "@/lib/finance/transactions";
 
 import { saveBankDetails } from "./bank";

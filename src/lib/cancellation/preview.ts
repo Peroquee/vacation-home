@@ -5,7 +5,7 @@
  */
 import { type CalendarDate, fromUtcDate } from "@/lib/calendar-date";
 import { db } from "@/lib/db";
-import { todayIn } from "@/lib/finance/recurring";
+import { todayIn } from "@/lib/today";
 import { netReceived } from "@/lib/payments/service";
 
 import { type CancellationTerms, guestRefund, type GuestRefund } from "./policy";

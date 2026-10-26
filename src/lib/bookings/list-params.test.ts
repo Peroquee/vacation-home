@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { cleanParams, listHref, nextSort, parseListParams, todayUtc } from "./list-params";
+import { cleanParams, listHref, nextSort, parseListParams } from "./list-params";
 
 const TODAY = "2026-10-08";
 const PROPERTY = "6f1c2a52-6f0c-4c4e-9d43-3a0e4f1b9a11";
@@ -10,12 +10,6 @@ function query(params: Record<string, string | string[]>) {
   if ("error" in state) throw state.error;
   return state;
 }
-
-describe("todayUtc", () => {
-  it("is the UTC calendar date", () => {
-    expect(todayUtc(new Date("2026-10-08T23:30:00-05:00"))).toBe("2026-10-09");
-  });
-});
 
 describe("cleanParams", () => {
   it("keeps the first value of known params and drops blanks", () => {

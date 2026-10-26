@@ -19,7 +19,7 @@ import { guestsOf } from "@/lib/pricing/booking-price";
 import { bookingSyncStatus } from "@/lib/google/sync-status";
 import { guestDisplayName } from "@/lib/guests/display";
 import { getGuest } from "@/lib/guests/service";
-import { todayIn } from "@/lib/finance/recurring";
+import { todayIn } from "@/lib/today";
 import { getProperty } from "@/lib/properties/service";
 import { refundOutstanding } from "@/lib/cancellation/preview";
 import { listPayments, netReceived, nextDue } from "@/lib/payments/service";

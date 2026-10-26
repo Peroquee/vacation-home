@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { useId, useState } from "react";
 
 import { toastError, toastSuccess } from "@/components/toast";
@@ -28,22 +28,21 @@ import { RulePayments } from "./rule-payments";
 type FieldErrors = Record<string, string[] | undefined>;
 const INTERVALS = ["monthly", "quarterly", "annual"] as const;
 
-function today(): string {
-  return new Date().toISOString().slice(0, 10);
-}
-
 /**
  * Adds a recurring cost, or edits one (GitLab #104). Property, interval and
  * start are fixed once the rule exists: its past transactions were made
  * from them. Everything else applies to the transactions made from now on.
  */
 export function RuleDialog({
+  today,
   rule,
   prefill,
   properties,
   categories,
   onClose,
 }: {
+  /** Where the owner is, from the server (GitLab #139): a new rule starts on it. */
+  today: string;
   rule?: Rule;
   prefill: RulePrefill | null;
   properties: RuleProperty[];
@@ -56,6 +55,7 @@ export function RuleDialog({
   const api = useApiText();
   const amountHint = useAmountHint();
   const router = useRouter();
+  const locale = useLocale();
   const id = useId();
   const active = properties.filter((p) => !p.archived);
   const start = rule ?? prefill;
@@ -69,7 +69,7 @@ export function RuleDialog({
       (prefill && categories.some((c) => c.id === prefill.categoryId) ? prefill.categoryId : ""),
     amount: "",
     interval: (rule?.interval ?? "monthly") as (typeof INTERVALS)[number],
-    startDate: rule?.startDate ?? prefill?.startDate ?? today(),
+    startDate: rule?.startDate ?? prefill?.startDate ?? today,
     endDate: rule?.endDate ?? "",
     description: rule?.description ?? prefill?.description ?? "",
   });
@@ -81,7 +81,7 @@ export function RuleDialog({
   const amount =
     amountTouched || amountMinor === undefined
       ? values.amount
-      : minorToInput(amountMinor, currency);
+      : minorToInput(amountMinor, currency, locale);
   const [errors, setErrors] = useState<FieldErrors>({});
   const [pending, setPending] = useState(false);
 
@@ -98,7 +98,7 @@ export function RuleDialog({
   async function submit(event: React.FormEvent) {
     event.preventDefault();
     const local: FieldErrors = {};
-    const minor = inputToMinor(amount, currency);
+    const minor = inputToMinor(amount, currency, locale);
     if (!values.propertyId) local.propertyId = [tForms("required")];
     if (!values.categoryId) local.categoryId = [tForms("required")];
     if (minor === null || minor === 0) {
@@ -229,7 +229,7 @@ export function RuleDialog({
                   inputMode="decimal"
                   autoFocus={!rule}
                   value={amount}
-                  placeholder={minorToInput(0, currency)}
+                  placeholder={minorToInput(0, currency, locale)}
                   aria-invalid={invalid("amountMinor")}
                   onChange={(event) => {
                     setAmountTouched(true);
