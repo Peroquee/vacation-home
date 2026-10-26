@@ -403,8 +403,10 @@ such as a reminder for a payment that has since arrived, is not sent.
 A guest's page shows their contact details and all their stays. **Erase
 personal data** carries out a request to be forgotten (DSGVO Art. 17): the
 name becomes "Deleted guest", and the email, phone and notes go, as do the
-notes of their bookings. The bookings themselves remain, anonymised, because
-they are accounting records. This cannot be undone. Receipts on transactions are not touched: they are
+notes of their bookings, the Kurtaxe notes and the notes on their payments.
+Links sent to the guest for their booking page stop working. The bookings
+and payments themselves remain, anonymised, with their amounts and dates,
+because they are accounting records. This cannot be undone. Receipts on transactions are not touched: they are
 accounting records. How erased guests age out of backups:
 [backup-and-restore.md](backup-and-restore.md).
 

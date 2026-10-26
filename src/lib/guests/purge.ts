@@ -9,8 +9,12 @@
  * - the personal data a booking row can hold is cleared: its free-text
  *   notes, and for a request from the public site (GitLab #109) the
  *   guest's message and the name and phone given with it, and the reason
- *   given when it was declined (GitLab #110). Otherwise a
- *   booking references the guest by id only;
+ *   given when it was declined (GitLab #110), the note on its Kurtaxe and
+ *   the notes on its payments (GitLab #136): free text the owner writes,
+ *   which can name the guest or whoever paid. Amounts, kinds and days
+ *   stay. Otherwise a booking references the guest by id only;
+ * - the links to the guest's booking page are revoked (GitLab #136): the
+ *   page and its calendar file answer as for an unknown link;
  * - an audit event records that it happened, when and by whom, without any
  *   of the removed data.
  * A guest without bookings is simply deleted, with the same audit event.
@@ -105,6 +109,15 @@ async function purgeInTransaction(id: string, actorUserId: string | null): Promi
       },
       data: { guestMessage: null, requesterName: null, requesterPhone: null, declineReason: null },
     });
+    await tx.booking.updateMany({
+      where: { guestId: id, touristTaxNote: { not: null } },
+      data: { touristTaxNote: null },
+    });
+    await tx.bookingPayment.updateMany({
+      where: { booking: { guestId: id }, note: { not: null } },
+      data: { note: null },
+    });
+    await tx.guestAccessToken.deleteMany({ where: { booking: { guestId: id } } });
     const guest = await tx.guest.update({
       where: { id },
       data: {
